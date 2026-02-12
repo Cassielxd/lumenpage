@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-node-paragraph": ["../node-paragraph/src/index.ts"],
+      "lumenpage-node-heading": ["../node-heading/src/index.ts"],
+      "lumenpage-node-table": ["../node-table/src/index.ts"]
+    }
+  },
+  "references": [
+    { "path": "../core" },
+    { "path": "../node-paragraph" },
+    { "path": "../node-heading" },
+    { "path": "../node-table" }
+  ],
+  "include": ["src"]
+}

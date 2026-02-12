@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "vite/client"
+    ],
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-core": [
+        "../../packages/core/src/index.ts"
+      ],
+      "lumenpage-view-canvas": [
+        "../../packages/view-canvas/src/index.ts"
+      ],
+      "lumenpage-kit-basic": [
+        "../../packages/kit-basic/src/index.ts"
+      ],
+      "lumenpage-node-paragraph": [
+        "../../packages/node-paragraph/src/index.ts"
+      ],
+      "lumenpage-node-heading": [
+        "../../packages/node-heading/src/index.ts"
+      ],
+      "lumenpage-node-table": [
+        "../../packages/node-table/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

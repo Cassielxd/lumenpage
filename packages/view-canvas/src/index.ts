@@ -1,0 +1,12 @@
+export { Renderer } from "./renderer";
+export { CanvasRenderer } from "./render/canvasRenderer";
+export { createRenderSync } from "./renderSync";
+export { createSelectionMovement } from "./selectionMovement";
+export { attachInputBridge } from "./input/bridge";
+export { createInputHandlers } from "./input/handlers";
+export { createPointerHandlers } from "./input/pointerHandlers";
+export { coordsAtPos, posAtCoords } from "./posIndex";
+export { findLineForOffset, offsetAtX } from "./caret";
+export { selectionToRects } from "./render/selection";
+export { measureTextWidth, getFontSize } from "./measure";
+export { createHtmlParser } from "./htmlParser";
