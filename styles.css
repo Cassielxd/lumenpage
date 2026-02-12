@@ -23,7 +23,7 @@ body {
   height: 44px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   padding: 0 16px;
   background: #111827;
   color: #f9fafb;
@@ -31,6 +31,41 @@ body {
 
 #toolbar .title {
   font-weight: 600;
+}
+
+#tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#tools .divider {
+  width: 1px;
+  height: 20px;
+  background: #374151;
+  display: inline-block;
+}
+
+#tools button {
+  background: #1f2937;
+  color: #f9fafb;
+  border: 1px solid #374151;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#tools button:hover {
+  background: #374151;
+}
+
+#tools button:active {
+  background: #4b5563;
+}
+
+#status {
+  margin-left: auto;
 }
 
 #viewport {

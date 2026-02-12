@@ -22,7 +22,14 @@ const layoutCell = (cell, settings, registry, maxWidth) => {
   }
 
   const { runs, length } = docToRuns(cell, settings, registry);
-  const lines = breakLines(runs, maxWidth, settings.font, length);
+  const lines = breakLines(
+    runs,
+    maxWidth,
+    settings.font,
+    length,
+    settings.wrapTolerance || 0,
+    settings.minLineWidth || 0
+  );
   if (lines.length === 0) {
     lines.push({ text: "", start: 0, end: 0, width: 0, runs: [] });
   }

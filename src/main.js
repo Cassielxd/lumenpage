@@ -5,7 +5,9 @@ import { schema, docToText, getTableTextLength } from "./editor/schema.js";
 import {
   basicCommands,
   runCommand,
-  setParagraphAlign,
+  setBlockAlign,
+  setHeadingLevel,
+  setParagraph,
 } from "./editor/commands.js";
 import { LayoutPipeline } from "./layout/engine.js";
 import { createDefaultNodeRendererRegistry } from "./layout/nodeRegistry.js";
@@ -27,6 +29,7 @@ const settings = {
   },
   lineHeight: 22,
   font: "16px Arial",
+  wrapTolerance: 2,
 };
 
 const viewport = document.getElementById("viewport");
@@ -40,7 +43,8 @@ const initialDocJson = {
   type: "doc",
   content: [
     {
-      type: "paragraph",
+      type: "heading",
+      attrs: { level: 1 },
       content: [{ type: "text", text: "LumenPage MVP" }],
     },
     {
@@ -134,6 +138,7 @@ const initialDocJson = {
 };
 
 const nodeRegistry = createDefaultNodeRendererRegistry();
+const tools = document.getElementById("tools");
 const layoutPipeline = new LayoutPipeline(settings, nodeRegistry);
 const renderer = new Renderer(canvas, settings, nodeRegistry);
 const supportsBeforeInput = "onbeforeinput" in inputEl;
@@ -800,17 +805,17 @@ const handleKeyDown = (event) => {
   if (metaKey && event.shiftKey) {
     if (event.key === "L") {
       event.preventDefault();
-      runCommand(setParagraphAlign("left"), editorState, dispatchTransaction);
+      runCommand(setBlockAlign("left"), editorState, dispatchTransaction);
       return;
     }
     if (event.key === "C" || event.key === "E") {
       event.preventDefault();
-      runCommand(setParagraphAlign("center"), editorState, dispatchTransaction);
+      runCommand(setBlockAlign("center"), editorState, dispatchTransaction);
       return;
     }
     if (event.key === "R") {
       event.preventDefault();
-      runCommand(setParagraphAlign("right"), editorState, dispatchTransaction);
+      runCommand(setBlockAlign("right"), editorState, dispatchTransaction);
       return;
     }
   }
@@ -979,6 +984,40 @@ attachInputBridge(inputEl, {
 
 inputEl.addEventListener("focus", updateStatus);
 inputEl.addEventListener("blur", updateStatus);
+
+tools?.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) {
+    return;
+  }
+  const action = button.dataset.action;
+  switch (action) {
+    case "block-paragraph":
+      runCommand(setParagraph(), editorState, dispatchTransaction);
+      break;
+    case "block-h1":
+      runCommand(setHeadingLevel(1), editorState, dispatchTransaction);
+      break;
+    case "block-h2":
+      runCommand(setHeadingLevel(2), editorState, dispatchTransaction);
+      break;
+    case "block-h3":
+      runCommand(setHeadingLevel(3), editorState, dispatchTransaction);
+      break;
+    case "align-left":
+      runCommand(setBlockAlign("left"), editorState, dispatchTransaction);
+      break;
+    case "align-center":
+      runCommand(setBlockAlign("center"), editorState, dispatchTransaction);
+      break;
+    case "align-right":
+      runCommand(setBlockAlign("right"), editorState, dispatchTransaction);
+      break;
+    default:
+      break;
+  }
+  inputEl.focus();
+});
 
 updateLayout();
 syncAfterStateChange();

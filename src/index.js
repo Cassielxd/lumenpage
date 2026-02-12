@@ -3,9 +3,11 @@ export { createEditorState, applyTransaction } from "./editor/state.js";
 export {
   basicCommands,
   runCommand,
-  setParagraphAlign,
+  setBlockAlign,
   setParagraphIndent,
   changeParagraphIndent,
+  setHeadingLevel,
+  setParagraph,
 } from "./editor/commands.js";
 export { attachInputBridge } from "./input/bridge.js";
 export { LayoutPipeline } from "./layout/engine.js";
@@ -15,6 +17,7 @@ export { coordsAtPos, posAtCoords } from "./layout/posIndex.js";
 export {
   NodeRendererRegistry,
   paragraphRenderer,
+  headingRenderer,
   tableRenderer,
   createDefaultNodeRendererRegistry,
 } from "./layout/nodeRegistry.js";

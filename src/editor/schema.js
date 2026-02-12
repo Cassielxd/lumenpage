@@ -53,6 +53,43 @@ export const schema = new Schema({
         return ["p", attrs, 0];
       },
     },
+    heading: {
+      content: "inline*",
+      group: "block",
+      attrs: {
+        level: { default: 1 },
+        align: { default: "left" },
+      },
+      parseDOM: [
+        {
+          tag: "h1",
+          getAttrs: (dom) => ({
+            level: 1,
+            align: dom.style.textAlign || "left",
+          }),
+        },
+        {
+          tag: "h2",
+          getAttrs: (dom) => ({
+            level: 2,
+            align: dom.style.textAlign || "left",
+          }),
+        },
+        {
+          tag: "h3",
+          getAttrs: (dom) => ({
+            level: 3,
+            align: dom.style.textAlign || "left",
+          }),
+        },
+      ],
+      toDOM(node) {
+        const level = Math.max(1, Math.min(3, Number(node.attrs.level) || 1));
+        const align = node.attrs.align || "left";
+        const attrs = align !== "left" ? { style: `text-align:${align}` } : {};
+        return [`h${level}`, attrs, 0];
+      },
+    },
     table: {
       group: "block",
       content: "table_row+",

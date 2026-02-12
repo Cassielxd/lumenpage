@@ -69,6 +69,7 @@ export class LayoutPipeline {
       let blockLength = 0;
       let blockHeight = 0;
       let blockAttrs = block.attrs || null;
+      let blockLineHeight = null;
 
       if (renderer?.layoutBlock) {
         const result = renderer.layoutBlock({
@@ -82,13 +83,30 @@ export class LayoutPipeline {
         if (result?.blockAttrs) {
           blockAttrs = result.blockAttrs;
         }
+        if (result?.blockAttrs?.lineHeight) {
+          blockLineHeight = result.blockAttrs.lineHeight;
+        }
       } else {
-        const { runs, length } = renderer?.toRuns
+        const runsResult = renderer?.toRuns
           ? renderer.toRuns(block, this.settings)
           : docToRuns(block, this.settings, this.registry);
+        const { runs, length } = runsResult;
         blockLength = length;
-        blockLines = breakLines(runs, this.settings.pageWidth - margin.left - margin.right, font, length);
-        blockHeight = blockLines.length * lineHeight;
+        if (runsResult?.blockAttrs) {
+          blockAttrs = runsResult.blockAttrs;
+        }
+        if (runsResult?.blockAttrs?.lineHeight) {
+          blockLineHeight = runsResult.blockAttrs.lineHeight;
+        }
+        blockLines = breakLines(
+          runs,
+          this.settings.pageWidth - margin.left - margin.right,
+          font,
+          length,
+          this.settings.wrapTolerance || 0,
+          this.settings.minLineWidth || 0
+        );
+        blockHeight = blockLines.length * (blockLineHeight || lineHeight);
       }
 
       if (cursorY + blockHeight > pageHeight - margin.bottom && page.lines.length > 0) {
@@ -108,7 +126,7 @@ export class LayoutPipeline {
           blockType: block.type.name,
           blockAttrs,
         });
-        blockHeight = lineHeight;
+        blockHeight = blockLineHeight || lineHeight;
       }
 
       blockLines.forEach((line, lineIndex) => {
@@ -117,11 +135,13 @@ export class LayoutPipeline {
         lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
         adjustLineOffsets(lineCopy, textOffset);
 
+        const effectiveLineHeight = blockLineHeight || lineHeight;
         if (typeof lineCopy.relativeY === "number") {
           lineCopy.y = cursorY + lineCopy.relativeY;
         } else {
-          lineCopy.y = cursorY + lineIndex * lineHeight;
+          lineCopy.y = cursorY + lineIndex * effectiveLineHeight;
         }
+        lineCopy.lineHeight = effectiveLineHeight;
 
         if (typeof lineCopy.x !== "number") {
           lineCopy.x = computeLineX(lineCopy, this.settings);
@@ -174,7 +194,14 @@ export class LayoutPipeline {
     const maxWidth =
       this.settings.pageWidth - margin.left - margin.right;
 
-    const lines = breakLines(runs, maxWidth, font, totalLength);
+    const lines = breakLines(
+      runs,
+      maxWidth,
+      font,
+      totalLength,
+      this.settings.wrapTolerance || 0,
+      this.settings.minLineWidth || 0
+    );
 
     const pages = [];
     let pageIndex = 0;

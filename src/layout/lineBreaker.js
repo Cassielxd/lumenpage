@@ -39,7 +39,14 @@ const appendRunSegment = (
   });
 };
 
-export function breakLines(runs, maxWidth, baseFont, totalLength) {
+export function breakLines(
+  runs,
+  maxWidth,
+  baseFont,
+  totalLength,
+  wrapTolerance = 0,
+  minLineWidth = 0
+) {
   const lines = [];
   let lineStart = 0;
   let lineText = "";
@@ -76,6 +83,8 @@ export function breakLines(runs, maxWidth, baseFont, totalLength) {
     lineBlockStart = null;
   };
 
+  const limit = maxWidth + wrapTolerance;
+
   for (const run of runs) {
     if (run.blockType) {
       currentBlockType = run.blockType;
@@ -101,7 +110,7 @@ export function breakLines(runs, maxWidth, baseFont, totalLength) {
     for (let i = 0; i < run.text.length; i += 1) {
       const ch = run.text[i];
       const w = measureTextWidth(style.font || baseFont, ch);
-      if (lineWidth + w > maxWidth && lineText.length > 0) {
+      if (lineWidth + w > limit && lineText.length > 0) {
         pushLine(offsetCursor);
         lineStart = offsetCursor;
       }

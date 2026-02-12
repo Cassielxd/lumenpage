@@ -1,5 +1,8 @@
 import { measureTextWidth, getFontSize } from "./measure.js";
 
+const getLineHeight = (line, layout) =>
+  Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+
 const getLineXForOffset = (line, offset, fallbackFont) => {
   if (!line.runs || line.runs.length === 0) {
     return measureTextWidth(
@@ -70,7 +73,7 @@ export function findLineForOffset(layout, offset, textLength) {
         return { pageIndex: p, lineIndex: l, line };
       }
       if (clamped == line.end && line.end > line.start) {
-        return { pageIndex: p, lineIndex: l, line };
+        return { pageIndex: p, lineIndex: l, line, isLineEnd: true };
       }
     }
   }
@@ -138,18 +141,21 @@ export function getCaretRect(layout, offset, scrollTop, viewportWidth, textLengt
   }
 
   const { pageIndex, line } = info;
+  const isLineEnd = info.isLineEnd === true;
   const pageSpan = layout.pageHeight + layout.pageGap;
   const pageTop = pageIndex * pageSpan - scrollTop;
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
 
   const localIndex = Math.max(0, Math.min(offset - line.start, line.text.length));
   const localX = getLineXForOffset(line, line.start + localIndex, layout.font);
+  const caretX = isLineEnd ? Math.max(localX, line.width || localX) : localX;
   const caretFont = getFontForOffset(line, offset, layout.font);
   const fontSize = getFontSize(caretFont);
-  const baselineOffset = getBaselineOffset(layout.lineHeight, fontSize);
+  const lineHeight = getLineHeight(line, layout);
+  const baselineOffset = getBaselineOffset(lineHeight, fontSize);
 
   return {
-    x: pageX + line.x + localX,
+    x: pageX + line.x + caretX,
     y: pageTop + line.y + baselineOffset,
     height: fontSize,
   };
@@ -201,14 +207,17 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
   const localY = y + scrollTop - pageIndex * pageSpan;
 
-  const linesAtY = page.lines.filter(
-    (line) => localY >= line.y && localY < line.y + layout.lineHeight
-  );
+  const linesAtY = page.lines.filter((line) => {
+    const lineHeight = getLineHeight(line, layout);
+    return localY >= line.y && localY < line.y + lineHeight;
+  });
 
   let line = pickLineAtPoint(linesAtY, x, pageX);
   if (!line) {
     line = page.lines.reduce((closest, candidate) => {
-      const delta = Math.abs(candidate.y - localY);
+      const lineHeight = getLineHeight(candidate, layout);
+      const center = candidate.y + lineHeight / 2;
+      const delta = Math.abs(center - localY);
       if (!closest || delta < closest.delta) {
         return { line: candidate, delta };
       }

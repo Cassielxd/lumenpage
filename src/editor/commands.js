@@ -3,20 +3,26 @@ import {
   joinBackward,
   joinForward,
   splitBlock,
+  setBlockType,
 } from "prosemirror-commands";
 import { undo, redo } from "prosemirror-history";
 
-const updateParagraphs = (state, dispatch, updater) => {
+const getCurrentBlockAttrs = (state) => {
+  const parent = state.selection.$from.parent;
+  return parent?.attrs ? { ...parent.attrs } : {};
+};
+
+const updateBlocks = (state, dispatch, updater) => {
   const { from, to } = state.selection;
   let tr = state.tr;
   let changed = false;
 
   state.doc.nodesBetween(from, to, (node, pos) => {
-    if (node.type.name !== "paragraph") {
+    if (node.type.name !== "paragraph" && node.type.name !== "heading") {
       return;
     }
 
-    const nextAttrs = updater(node.attrs || {});
+    const nextAttrs = updater(node, node.attrs || {});
     if (!nextAttrs) {
       return;
     }
@@ -38,23 +44,45 @@ const updateParagraphs = (state, dispatch, updater) => {
   return changed;
 };
 
-export const setParagraphAlign = (align) => (state, dispatch) =>
-  updateParagraphs(state, dispatch, (attrs) => ({
+export const setBlockAlign = (align) => (state, dispatch) =>
+  updateBlocks(state, dispatch, (_node, attrs) => ({
     ...attrs,
     align,
   }));
 
 export const setParagraphIndent = (indent) => (state, dispatch) =>
-  updateParagraphs(state, dispatch, (attrs) => ({
-    ...attrs,
-    indent: Math.max(0, indent),
-  }));
+  updateBlocks(state, dispatch, (node, attrs) => {
+    if (node.type.name !== "paragraph") {
+      return null;
+    }
+    return { ...attrs, indent: Math.max(0, indent) };
+  });
 
 export const changeParagraphIndent = (delta) => (state, dispatch) =>
-  updateParagraphs(state, dispatch, (attrs) => ({
-    ...attrs,
-    indent: Math.max(0, (attrs.indent || 0) + delta),
-  }));
+  updateBlocks(state, dispatch, (node, attrs) => {
+    if (node.type.name !== "paragraph") {
+      return null;
+    }
+    return { ...attrs, indent: Math.max(0, (attrs.indent || 0) + delta) };
+  });
+
+export const setHeadingLevel = (level) => (state, dispatch) => {
+  const type = state.schema.nodes.heading;
+  if (!type) {
+    return false;
+  }
+  const attrs = { ...getCurrentBlockAttrs(state), level };
+  return setBlockType(type, attrs)(state, dispatch);
+};
+
+export const setParagraph = () => (state, dispatch) => {
+  const type = state.schema.nodes.paragraph;
+  if (!type) {
+    return false;
+  }
+  const attrs = { ...getCurrentBlockAttrs(state) };
+  return setBlockType(type, attrs)(state, dispatch);
+};
 
 export const basicCommands = {
   deleteSelection,

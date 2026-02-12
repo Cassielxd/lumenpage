@@ -1,4 +1,5 @@
 import { paragraphRenderer } from "../editor/node-renderers/paragraph.js";
+import { headingRenderer } from "../editor/node-renderers/heading.js";
 import { tableRenderer } from "../editor/node-renderers/table.js";
 
 export class NodeRendererRegistry {
@@ -20,11 +21,12 @@ export class NodeRendererRegistry {
   }
 }
 
-export { paragraphRenderer, tableRenderer };
+export { paragraphRenderer, headingRenderer, tableRenderer };
 
 export const createDefaultNodeRendererRegistry = () => {
   const registry = new NodeRendererRegistry();
   registry.register("paragraph", paragraphRenderer);
+  registry.register("heading", headingRenderer);
   registry.register("table", tableRenderer);
   return registry;
 };

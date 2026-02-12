@@ -1,5 +1,8 @@
 import { measureTextWidth } from "../core/measure.js";
 
+const getLineHeight = (line, layout) =>
+  Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+
 const offsetToX = (line, offset, layout) => {
   if (!line.runs || line.runs.length === 0) {
     return measureTextWidth(
@@ -87,7 +90,7 @@ export function selectionToRects(
         x: pageX + line.x + xStart,
         y: pageTop + line.y,
         width,
-        height: layout.lineHeight,
+        height: getLineHeight(line, layout),
       });
     }
   }
