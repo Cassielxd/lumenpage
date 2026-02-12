@@ -155,6 +155,15 @@ let isPointerSelecting = false;
 let pointerAnchorOffset = 0;
 let pointerId = null;
 let lastSelectionSignature = "";
+const debugDelete = true;
+
+const logDelete = (phase, payload) => {
+  if (!debugDelete) {
+    return;
+  }
+  console.log("[delete]", phase, payload);
+};
+
 
 const getText = () => docToText(editorState.doc);
 
@@ -248,12 +257,12 @@ const textOffsetToDocPos = (doc, offset) => {
   for (let i = 0; i < doc.childCount; i += 1) {
     const node = doc.child(i);
     const textLength = getBlockTextLength(node);
-    const nodeStart = docPos + 1;
+    const nodeStart = docPos;
     const nodeEnd = nodeStart + node.nodeSize;
 
     if (remaining <= textLength) {
       if (node.type.name === "table") {
-        return mapOffsetInTable(node, nodeStart - 1, remaining);
+        return mapOffsetInTable(node, nodeStart, remaining);
       }
       return mapOffsetInTextblock(node, nodeStart, remaining);
     }
@@ -348,7 +357,7 @@ const docPosToTextOffset = (doc, pos) => {
   for (let i = 0; i < doc.childCount; i += 1) {
     const node = doc.child(i);
     const textLength = getBlockTextLength(node);
-    const nodeStart = docPos + 1;
+    const nodeStart = docPos;
     const nodeEnd = nodeStart + node.nodeSize;
 
     if (clamped <= nodeStart) {
@@ -357,7 +366,7 @@ const docPosToTextOffset = (doc, pos) => {
 
     if (clamped < nodeEnd) {
       if (node.type.name === "table") {
-        return offset + mapPosInTable(node, nodeStart - 1, clamped);
+        return offset + mapPosInTable(node, nodeStart, clamped);
       }
       return offset + mapPosInTextblock(node, nodeStart, clamped);
     }
@@ -498,6 +507,11 @@ const setSelectionOffsets = (anchorOffset, headOffset, updatePreferred) => {
     TextSelection.create(editorState.doc, anchorPos, headPos)
   );
   dispatchTransaction(tr);
+  logDelete("after", {
+    caretOffset,
+    textLength: getText().length,
+    lastChar: getText().slice(-1) || null,
+  });
 };
 
 const setCaretOffset = (offset, updatePreferred) => {
@@ -519,6 +533,11 @@ const insertText = (text) => {
   const tr = editorState.tr.insertText(text, from, to);
   pendingPreferredUpdate = true;
   dispatchTransaction(tr);
+  logDelete("after", {
+    caretOffset,
+    textLength: getText().length,
+    lastChar: getText().slice(-1) || null,
+  });
 };
 
 const parseHtmlToSlice = (html) => {
@@ -553,7 +572,19 @@ const deleteSelectionIfNeeded = () => {
 const deleteText = (direction) => {
   const textValue = getText();
 
+  logDelete("before", {
+    direction,
+    caretOffset,
+    textLength: textValue.length,
+    prevChar: caretOffset > 0 ? textValue[caretOffset - 1] : null,
+    nextChar: caretOffset < textValue.length ? textValue[caretOffset] : null,
+  });
+
   if (deleteSelectionIfNeeded()) {
+    logDelete("selection", {
+      from: editorState.selection.from,
+      to: editorState.selection.to,
+    });
     return;
   }
 
@@ -565,18 +596,36 @@ const deleteText = (direction) => {
     if (textValue[caretOffset - 1] === "\n") {
       pendingPreferredUpdate = true;
       const selectionState = createSelectionStateAtOffset(caretOffset);
+      logDelete("joinBackward", {
+        caretOffset,
+        from: editorState.selection.from,
+        to: editorState.selection.to,
+      });
       runCommand(basicCommands.joinBackward, selectionState, dispatchTransaction);
       return;
     }
 
     const fromPos = textOffsetToDocPos(editorState.doc, caretOffset - 1);
     const toPos = textOffsetToDocPos(editorState.doc, caretOffset);
+    const rangeText = editorState.doc.textBetween(fromPos, toPos, "\n");
+    logDelete("deleteRange", {
+      fromOffset: caretOffset - 1,
+      toOffset: caretOffset,
+      fromPos,
+      toPos,
+      rangeText,
+    });
     let tr = editorState.tr.setSelection(
       TextSelection.create(editorState.doc, toPos)
     );
     tr = tr.delete(fromPos, toPos);
     pendingPreferredUpdate = true;
     dispatchTransaction(tr);
+    logDelete("after", {
+      caretOffset,
+      textLength: getText().length,
+      lastChar: getText().slice(-1) || null,
+    });
     return;
   }
 
@@ -599,6 +648,11 @@ const deleteText = (direction) => {
   tr = tr.delete(fromPos, toPos);
   pendingPreferredUpdate = true;
   dispatchTransaction(tr);
+  logDelete("after", {
+    caretOffset,
+    textLength: getText().length,
+    lastChar: getText().slice(-1) || null,
+  });
 };
 
 const computeLineEdgeOffset = (edge) => {
@@ -755,6 +809,10 @@ const runRedo = () => {
 };
 
 const handleBeforeInput = (event) => {
+  if (event.inputType == "insertCompositionText") {
+    return;
+  }
+
   if (isComposing || event.isComposing) {
     return;
   }
@@ -780,9 +838,6 @@ const handleBeforeInput = (event) => {
     case "historyRedo":
       event.preventDefault();
       runRedo();
-      break;
-    case "insertCompositionText":
-      event.preventDefault();
       break;
     default:
       if (event.inputType && event.inputType.startsWith("delete")) {
@@ -969,6 +1024,9 @@ const handlePaste = (event) => {
 };
 
 const handleInput = () => {
+  if (isComposing) {
+    return;
+  }
   inputEl.value = "";
 };
 
