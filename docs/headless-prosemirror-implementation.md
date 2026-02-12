@@ -1,44 +1,60 @@
-﻿# Headless ProseMirror + Canvas 分页编辑器实现文档
+﻿说明：该文档描述 headless ProseMirror + Canvas 的实现步骤。
 
-## 目标
-- 以 ProseMirror 作为文档模型与事务内核，完全 headless（不使用 EditorView）。
-- 保留自研分页布局与 Canvas 渲染，获得类似腾讯文档的分页体验。
-- 输入与 IME 由隐藏 textarea 接收，事务驱动渲染。
+è¯´æï¼è¯¥ææ¡£æè¿° headless ProseMirror + Canvas çå®ç°æ­¥éª¤ã
 
-## 技术选型
+ï»¿# Headless ProseMirror + Canvas åé¡µç¼è¾å¨å®ç°ææ¡£
+
+## ç®æ 
+- ä»¥ ProseMirror ä½ä¸ºææ¡£æ¨¡åä¸äºå¡å
+æ ¸ï¼å®å
+¨ headlessï¼ä¸ä½¿ç¨ EditorViewï¼ã
+- ä¿çèªç åé¡µå¸å±ä¸ Canvas æ¸²æï¼è·å¾ç±»ä¼¼è
+¾è®¯ææ¡£çåé¡µä½éªã
+- è¾å
+¥ä¸ IME ç±éè textarea æ¥æ¶ï¼äºå¡é©±å¨æ¸²æã
+
+## ææ¯éå
 - ProseMirror core: prosemirror-model/state/transform/commands/history/inputrules/keymap
-- 协作可选：prosemirror-collab 或 Yjs
-- 构建方式（二选一）
-  1) 本地构建：Vite/ESBuild/Rollup + npm 依赖（推荐）
-  2) 无构建：使用 import map + CDN ESM（适合原型）
+- åä½å¯éï¼prosemirror-collab æ Yjs
+- æå»ºæ¹å¼ï¼äºéä¸ï¼
+  1) æ¬å°æå»ºï¼Vite/ESBuild/Rollup + npm ä¾èµï¼æ¨èï¼
+  2) æ æå»ºï¼ä½¿ç¨ import map + CDN ESMï¼éåååï¼
 
-## 总体架构
-- 编辑内核：EditorState + Schema + Transaction + plugins（history/collab/inputrules）
-- 输入桥接：textarea 捕获 beforeinput/keydown/composition/paste → 生成 transaction
-- 布局引擎：state.doc → runs → lines → pages（输出位置映射）
-- 渲染引擎：Canvas 绘制分页、文本、选区、光标
-- 映射层：coordsAtPos / posAtCoords / selectionRects
+## æ»ä½æ¶æ
+- ç¼è¾å
+æ ¸ï¼EditorState + Schema + Transaction + pluginsï¼history/collab/inputrulesï¼
+- è¾å
+¥æ¡¥æ¥ï¼textarea æè· beforeinput/keydown/composition/paste â çæ transaction
+- å¸å±å¼æï¼state.doc â runs â lines â pagesï¼è¾åºä½ç½®æ å°ï¼
+- æ¸²æå¼æï¼Canvas ç»å¶åé¡µãææ¬ãéåºãå
+æ 
+- æ å°å±ï¼coordsAtPos / posAtCoords / selectionRects
 
 ```
-Input/IME → Transaction → EditorState → Layout → Canvas Render
-                    ↑                       ↓
-               Selection update ← coords/pos mapping
+Input/IME â Transaction â EditorState â Layout â Canvas Render
+                    â                       â
+               Selection update â coords/pos mapping
 ```
 
-## 目录结构规划（建议）
-- src/editor/schema.js: 定义 Schema、marks、nodes
-- src/editor/state.js: createState、dispatchTransaction、plugin 注入
-- src/editor/commands.js: 封装常用编辑命令与快捷键映射
-- src/input/bridge.js: beforeinput/keydown/composition/paste 处理
-- src/layout/engine.js: 文档到分页布局的入口
-- src/layout/textRuns.js: doc → runs（带样式）
-- src/layout/lineBreaker.js: 行内断行策略
-- src/layout/posIndex.js: pos ↔ coords 映射
-- src/render/canvasRenderer.js: Canvas 渲染
-- src/render/selection.js: selection → rects
-- src/core/virtualization.js: 可视分页范围
+## ç®å½ç»æè§åï¼å»ºè®®ï¼
+- src/editor/schema.js: å®ä¹ Schemaãmarksãnodes
+- src/editor/state.js: createStateãdispatchTransactionãplugin æ³¨å
+¥
+- src/editor/commands.js: å°è£
+å¸¸ç¨ç¼è¾å½ä»¤ä¸å¿«æ·é®æ å°
+- src/input/bridge.js: beforeinput/keydown/composition/paste å¤ç
+- src/layout/engine.js: ææ¡£å°åé¡µå¸å±çå
+¥å£
+- src/layout/textRuns.js: doc â runsï¼å¸¦æ ·å¼ï¼
+- src/layout/lineBreaker.js: è¡å
+æ­è¡ç­ç¥
+- src/layout/posIndex.js: pos â coords æ å°
+- src/render/canvasRenderer.js: Canvas æ¸²æ
+- src/render/selection.js: selection â rects
+- src/core/virtualization.js: å¯è§åé¡µèå´
 
-## 关键数据结构
+## å
+³é®æ°æ®ç»æ
 - LayoutResult
   - pages: PageLayout[]
   - pageWidth/pageHeight/pageGap/margin/lineHeight/font
@@ -57,129 +73,163 @@ Input/IME → Transaction → EditorState → Layout → Canvas Render
   - x/width
 - PosIndex
   - posToLine: Map<pos, {pageIndex, lineIndex, x, y}>
-  - lineToPos: 每行可按 runs 进行二分定位
+  - lineToPos: æ¯è¡å¯æ runs è¿è¡äºåå®ä½
 
-## 事务与渲染链路
-1) 输入事件生成 transaction
-2) dispatchTransaction 更新 EditorState
-3) 从 state.doc 生成 LayoutResult
-4) 更新 spacer/scroll 高度，重绘 Canvas
-5) 根据 selection 更新 caret/selection 绘制
-6) 更新 textarea 位置（用于 IME 候选框）
+## äºå¡ä¸æ¸²æé¾è·¯
+1) è¾å
+¥äºä»¶çæ transaction
+2) dispatchTransaction æ´æ° EditorState
+3) ä» state.doc çæ LayoutResult
+4) æ´æ° spacer/scroll é«åº¦ï¼éç» Canvas
+5) æ ¹æ® selection æ´æ° caret/selection ç»å¶
+6) æ´æ° textarea ä½ç½®ï¼ç¨äº IME åéæ¡ï¼
 
-## 输入桥接（headless）
-- beforeinput: 作为主入口（支持 insertText/delete/insertParagraph 等）
-- keydown: 处理导航与快捷键（Arrow/Home/End/Ctrl+B/I/U/Z/Y）
+## è¾å
+¥æ¡¥æ¥ï¼headlessï¼
+- beforeinput: ä½ä¸ºä¸»å
+¥å£ï¼æ¯æ insertText/delete/insertParagraph ç­ï¼
+- keydown: å¤çå¯¼èªä¸å¿«æ·é®ï¼Arrow/Home/End/Ctrl+B/I/U/Z/Yï¼
 - composition: compositionstart/update/end
-- paste: HTML → Slice → replaceSelection，纯文本 → insertText
+- paste: HTML â Slice â replaceSelectionï¼çº¯ææ¬ â insertText
 
-输入事件映射（示例）：
-- insertText → tr.insertText(text, from, to)
-- deleteContentBackward → deleteSelection 或 joinBackward
-- insertParagraph → splitBlock
-- insertFromPaste → replaceSelection(slice)
+è¾å
+¥äºä»¶æ å°ï¼ç¤ºä¾ï¼ï¼
+- insertText â tr.insertText(text, from, to)
+- deleteContentBackward â deleteSelection æ joinBackward
+- insertParagraph â splitBlock
+- insertFromPaste â replaceSelection(slice)
 
-## IME 处理（关键）
-- compositionstart: 记录起始 selection
-- compositionupdate: 不直接写入 doc，绘制临时 overlay（或使用临时 decoration）
-- compositionend: 将最终文本插入 doc，清理 overlay
-- textarea 始终定位到 caret 的 coordsAtPos 位置，保证候选框准确
+## IME å¤çï¼å
+³é®ï¼
+- compositionstart: è®°å½èµ·å§ selection
+- compositionupdate: ä¸ç´æ¥åå
+¥ docï¼ç»å¶ä¸´æ¶ overlayï¼æä½¿ç¨ä¸´æ¶ decorationï¼
+- compositionend: å°æç»ææ¬æå
+¥ docï¼æ¸
+ç overlay
+- textarea å§ç»å®ä½å° caret ç coordsAtPos ä½ç½®ï¼ä¿è¯åéæ¡åç¡®
 
-## 坐标映射
+## åæ æ å°
 - coordsAtPos(pos)
-  - 从 PosIndex 获取行信息，计算 x/y/height
+  - ä» PosIndex è·åè¡ä¿¡æ¯ï¼è®¡ç® x/y/height
 - posAtCoords(x,y)
-  - 找到页与行 → 在 runs 内按宽度二分定位字符位置
+  - æ¾å°é¡µä¸è¡ â å¨ runs å
+æå®½åº¦äºåå®ä½å­ç¬¦ä½ç½®
 - selectionRects(from,to)
-  - 按行切片生成矩形，Canvas 绘制高亮
+  - æè¡åççæç©å½¢ï¼Canvas ç»å¶é«äº®
 
-## 布局引擎细节
-- doc → runs
-  - 使用 doc.nodesBetween 输出文本与 marks
-  - 非文本节点（图片/公式）作为 inline atom，占位一个 glyph
-- 行内断行
-  - 使用 Intl.Segmenter + UAX#14 规则
-  - 每个 run 按样式测量宽度，缓存 TextMetrics
-- 分页
-  - 以 pageHeight/margin/lineHeight 切页
-  - 对 block 节点定义分页策略（可拆分、不可拆分、孤儿/寡妇行）
-- 表格/图片
-  - 表格先按行内布局成 block，超页时拆行或整体下移
-  - 图片按 attrs 宽高占位，可异步加载后刷新布局
+## å¸å±å¼æç»è
+- doc â runs
+  - ä½¿ç¨ doc.nodesBetween è¾åºææ¬ä¸ marks
+  - éææ¬èç¹ï¼å¾ç/å
+¬å¼ï¼ä½ä¸º inline atomï¼å ä½ä¸ä¸ª glyph
+- è¡å
+æ­è¡
+  - ä½¿ç¨ Intl.Segmenter + UAX#14 è§å
+  - æ¯ä¸ª run ææ ·å¼æµéå®½åº¦ï¼ç¼å­ TextMetrics
+- åé¡µ
+  - ä»¥ pageHeight/margin/lineHeight åé¡µ
+  - å¯¹ block èç¹å®ä¹åé¡µç­ç¥ï¼å¯æåãä¸å¯æåãå­¤å¿/å¯¡å¦è¡ï¼
+- è¡¨æ ¼/å¾ç
+  - è¡¨æ ¼å
+æè¡å
+å¸å±æ blockï¼è¶
+é¡µæ¶æè¡ææ´ä½ä¸ç§»
+  - å¾çæ attrs å®½é«å ä½ï¼å¯å¼æ­¥å è½½åå·æ°å¸å±
 
-## 渲染引擎
-- 只渲染可视页（virtualization）
-- 绘制顺序
-  1) 背景页
-  2) 文本 runs
-  3) 装饰（下划线/高亮）
-  4) 选区
-  5) 光标
-- 高 DPI 适配：canvas.width/height = css * devicePixelRatio
+## æ¸²æå¼æ
+- åªæ¸²æå¯è§é¡µï¼virtualizationï¼
+- ç»å¶é¡ºåº
+  1) èæ¯é¡µ
+  2) ææ¬ runs
+  3) è£
+é¥°ï¼ä¸åçº¿/é«äº®ï¼
+  4) éåº
+  5) å
+æ 
+- é« DPI éé
+ï¼canvas.width/height = css * devicePixelRatio
 
-## 剪贴板
-- 粘贴 HTML：DOMParser.fromSchema(schema).parseSlice
-- 复制：DOMSerializer.fromSchema(schema).serializeFragment
-- 纯文本：textBetween + insertText
+## åªè´´æ¿
+- ç²è´´ HTMLï¼DOMParser.fromSchema(schema).parseSlice
+- å¤å¶ï¼DOMSerializer.fromSchema(schema).serializeFragment
+- çº¯ææ¬ï¼textBetween + insertText
 
-## 协作与历史
-- history 插件：undo/redo
-- collab/Yjs：接收 steps → dispatchTransaction → 重排
-- 协作光标：远端 selection 转为装饰绘制
+## åä½ä¸åå²
+- history æä»¶ï¼undo/redo
+- collab/Yjsï¼æ¥æ¶ steps â dispatchTransaction â éæ
+- åä½å
+æ ï¼è¿ç«¯ selection è½¬ä¸ºè£
+é¥°ç»å¶
 
-## 分阶段拆解（按此实现）
+## åé¶æ®µæè§£ï¼ææ­¤å®ç°ï¼
 
-### Phase 0: 基础工程
-- 选定构建方式（Vite 或 import map）
-- 引入 ProseMirror 依赖
-- 新建 src/editor 与 src/layout 目录
-- 验收：能在浏览器运行并加载依赖
+### Phase 0: åºç¡å·¥ç¨
+- éå®æå»ºæ¹å¼ï¼Vite æ import mapï¼
+- å¼å
+¥ ProseMirror ä¾èµ
+- æ°å»º src/editor ä¸ src/layout ç®å½
+- éªæ¶ï¼è½å¨æµè§å¨è¿è¡å¹¶å è½½ä¾èµ
 
-### Phase 1: PM 内核替换 DocModel
-- 建立 Schema（doc/paragraph/text）
-- 创建 EditorState 与 dispatchTransaction
-- 用 state.doc.textBetween 替代 doc.getText
-- 验收：插入/删除文本驱动重排
+### Phase 1: PM å
+æ ¸æ¿æ¢ DocModel
+- å»ºç« Schemaï¼doc/paragraph/textï¼
+- åå»º EditorState ä¸ dispatchTransaction
+- ç¨ state.doc.textBetween æ¿ä»£ doc.getText
+- éªæ¶ï¼æå
+¥/å é¤ææ¬é©±å¨éæ
 
-### Phase 2: runs 与样式
-- 实现 doc → runs（包含 marks）
-- LayoutEngine 使用 runs 进行行内排版
-- 渲染不同样式（bold/italic/color）
-- 验收：不同 marks 文本正确渲染
+### Phase 2: runs ä¸æ ·å¼
+- å®ç° doc â runsï¼å
+å« marksï¼
+- LayoutEngine ä½¿ç¨ runs è¿è¡è¡å
+æç
+- æ¸²æä¸åæ ·å¼ï¼bold/italic/colorï¼
+- éªæ¶ï¼ä¸å marks ææ¬æ­£ç¡®æ¸²æ
 
-### Phase 3: 坐标映射与选区
-- 实现 coordsAtPos / posAtCoords
-- selectionRects 用于绘制选区
-- 更新 caret 定位逻辑
-- 验收：鼠标点击定位、拖选、键盘移动正确
+### Phase 3: åæ æ å°ä¸éåº
+- å®ç° coordsAtPos / posAtCoords
+- selectionRects ç¨äºç»å¶éåº
+- æ´æ° caret å®ä½é»è¾
+- éªæ¶ï¼é¼ æ ç¹å»å®ä½ãæéãé®çç§»å¨æ­£ç¡®
 
-### Phase 4: 输入桥接完善
-- beforeinput 覆盖 insert/delete/paragraph
-- keydown 快捷键与导航
-- composition 处理 IME
-- paste 解析 HTML
-- 验收：中文输入、粘贴、撤销/重做正常
+### Phase 4: è¾å
+¥æ¡¥æ¥å®å
+- beforeinput è¦ç insert/delete/paragraph
+- keydown å¿«æ·é®ä¸å¯¼èª
+- composition å¤ç IME
+- paste è§£æ HTML
+- éªæ¶ï¼ä¸­æè¾å
+¥ãç²è´´ãæ¤é/éåæ­£å¸¸
 
-### Phase 5: 复杂节点
-- 列表、引用、代码块
-- 图片与表格（inline/block）
-- 分页策略（禁止断页/可拆分）
-- 验收：复杂节点分页与布局稳定
+### Phase 5: å¤æèç¹
+- åè¡¨ãå¼ç¨ãä»£ç å
+- å¾çä¸è¡¨æ ¼ï¼inline/blockï¼
+- åé¡µç­ç¥ï¼ç¦æ­¢æ­é¡µ/å¯æåï¼
+- éªæ¶ï¼å¤æèç¹åé¡µä¸å¸å±ç¨³å®
 
-### Phase 6: 性能与协作
-- 增量布局（仅重排受影响块）
-- 页面缓存/局部重绘
-- 协作接入（collab 或 Yjs）
-- 验收：大文档滚动与输入流畅
+### Phase 6: æ§è½ä¸åä½
+- å¢éå¸å±ï¼ä»
+éæåå½±ååï¼
+- é¡µé¢ç¼å­/å±é¨éç»
+- åä½æ¥å
+¥ï¼collab æ Yjsï¼
+- éªæ¶ï¼å¤§ææ¡£æ»å¨ä¸è¾å
+¥æµç
 
-## 验收清单（最小）
-- 输入：普通文字、回车、退格、撤销/重做
-- 选区：点击、拖选、Shift+方向键
-- IME：中文输入、候选框位置正确
-- 分页：跨页插入、删除后分页稳定
-- 粘贴：HTML 与纯文本
 
-## 参考接口（伪代码）
+## éªæ¶æ¸
+åï¼æå°ï¼
+- è¾å
+¥ï¼æ®éæå­ãåè½¦ãéæ ¼ãæ¤é/éå
+- éåºï¼ç¹å»ãæéãShift+æ¹åé®
+- IMEï¼ä¸­æè¾å
+¥ãåéæ¡ä½ç½®æ­£ç¡®
+- åé¡µï¼è·¨é¡µæå
+¥ãå é¤ååé¡µç¨³å®
+- ç²è´´ï¼HTML ä¸çº¯ææ¬
+
+## åèæ¥å£ï¼ä¼ªä»£ç ï¼
 ```js
 // src/editor/state.js
 export function createEditorState(schema, plugins) {}

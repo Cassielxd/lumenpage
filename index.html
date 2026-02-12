@@ -1,37 +1,43 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>LumenPage</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div id="app">
-      <div id="toolbar">
-        <div class="title">LumenPage MVP</div>
-        <div id="tools">
-          <button type="button" data-action="block-paragraph">P</button>
-          <button type="button" data-action="block-h1">H1</button>
-          <button type="button" data-action="block-h2">H2</button>
-          <button type="button" data-action="block-h3">H3</button>
-          <span class="divider"></span>
-          <button type="button" data-action="align-left">Left</button>
-          <button type="button" data-action="align-center">Center</button>
-          <button type="button" data-action="align-right">Right</button>
-        </div>
-        <div id="status"></div>
-      </div>
-      <div id="viewport">
-        <div id="scrollArea">
-          <div id="spacer"></div>
-        </div>
-        <canvas id="pageCanvas"></canvas>
-        <div id="inputHost">
-          <textarea id="input" spellcheck="false"></textarea>
-        </div>
-      </div>
-    </div>
-    <script type="module" src="src/main.js"></script>
-  </body>
-</html>
+﻿<!--
+  文件说明：应用入口页面，定义工具栏、滚动层、分页画布与输入层结构。
+  主要职责：提供 DOM 容器与层级布局，挂载编辑器主脚本。
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LumenPage</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="toolbar">
+        <div class="title">LumenPage MVP</div>
+        <div id="tools">
+          <button type="button" data-action="block-paragraph">P</button>
+          <button type="button" data-action="block-h1">H1</button>
+          <button type="button" data-action="block-h2">H2</button>
+          <button type="button" data-action="block-h3">H3</button>
+          <span class="divider"></span>
+          <button type="button" data-action="align-left">Left</button>
+          <button type="button" data-action="align-center">Center</button>
+          <button type="button" data-action="align-right">Right</button>
+        </div>
+        <div id="status"></div>
+      </div>
+      <div id="viewport">
+        <div id="scrollArea">
+          <div id="spacer"></div>
+        </div>
+        <div id="pageLayer"></div>
+        <canvas id="overlayCanvas"></canvas>
+        <div id="inputHost">
+          <textarea id="input" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
