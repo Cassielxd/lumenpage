@@ -1,0 +1,35 @@
+{
+  "name": "lumenpage",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./dist-lib/lumenpage-core.js"
+  },
+  "module": "./dist-lib/lumenpage-core.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:lib": "vite build --mode lib",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "prosemirror-commands": "^1.6.1",
+    "prosemirror-history": "^1.4.1",
+    "prosemirror-inputrules": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.25.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "vite": "^5.4.3"
+  },
+  "peerDependencies": {
+    "prosemirror-commands": "^1.6.1",
+    "prosemirror-history": "^1.4.1",
+    "prosemirror-inputrules": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.25.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2"
+  }
+}
