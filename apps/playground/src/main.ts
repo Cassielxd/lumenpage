@@ -1,4 +1,4 @@
-﻿import {
+import {
   createDefaultNodeRendererRegistry,
   createDocFromText,
   docToText,
@@ -154,7 +154,85 @@ const initialDocJson = {
         },
       ],
     },
-  ],
+    {
+      type: "bullet_list",
+
+      content: [
+        {
+          type: "list_item",
+
+          content: [
+            {
+              type: "paragraph",
+
+              content: [{ type: "text", text: "Bullet item one" }],
+            },
+          ],
+        },
+
+        {
+          type: "list_item",
+
+          content: [
+            {
+              type: "paragraph",
+
+              content: [{ type: "text", text: "Bullet item two" }],
+            },
+          ],
+        },
+      ],
+    },
+
+    {
+      type: "ordered_list",
+
+      attrs: { order: 1 },
+
+      content: [
+        {
+          type: "list_item",
+
+          content: [
+            {
+              type: "paragraph",
+
+              content: [{ type: "text", text: "Ordered item one" }],
+            },
+          ],
+        },
+
+        {
+          type: "list_item",
+
+          content: [
+            {
+              type: "paragraph",
+
+              content: [{ type: "text", text: "Ordered item two" }],
+            },
+          ],
+        },
+      ],
+    },
+
+    {
+      type: "image",
+
+      attrs: { alt: "Image placeholder", width: 280, height: 160 },
+    },
+
+    {
+      type: "paragraph",
+
+      content: [
+        {
+          type: "text",
+
+          text: "Lists and images now participate in layout and selection.",
+        },
+      ],
+    },  ],
 };
 
 const nodeRegistry = createDefaultNodeRendererRegistry();
@@ -258,3 +336,4 @@ tools?.addEventListener("click", (event) => {
 });
 
 initDevTools();
+
