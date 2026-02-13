@@ -22,8 +22,8 @@
     "lumenpage-core": "workspace:*"
   },
   "peerDependencies": {
-    "prosemirror-model": "^1.25.0",
-    "prosemirror-state": "^1.4.3"
+    "lumenpage-model": "workspace:*",
+    "lumenpage-state": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

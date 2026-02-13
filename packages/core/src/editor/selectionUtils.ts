@@ -1,4 +1,4 @@
-﻿import { TextSelection } from "prosemirror-state";
+﻿import { TextSelection } from "lumenpage-state";
 
 export const createSelectionStateAtOffset = (editorState, textOffsetToDocPos, offset) => {
   const pos = textOffsetToDocPos(editorState.doc, offset);

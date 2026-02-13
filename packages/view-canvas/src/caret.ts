@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 文件说明：光标/命中逻辑。
  * 主要职责：根据文本偏移计算光标位置；根据坐标反算偏移。
  */
@@ -106,6 +106,10 @@ export function findLineForOffset(layout, offset, textLength) {
 }
 
 export function offsetAtX(font, line, x) {
+  if (line.imageMeta || line.blockType === "image") {
+    return line.end ?? line.start;
+  }
+
   if (x <= 0) {
     return line.start;
   }
@@ -307,3 +311,4 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
     lineIndex: page.lines.indexOf(line),
   };
 }
+

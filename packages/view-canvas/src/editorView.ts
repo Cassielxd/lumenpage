@@ -1,9 +1,10 @@
-import { DOMParser as PMDOMParser } from "prosemirror-model";
-import { TextSelection } from "prosemirror-state";
+import { DOMParser as PMDOMParser } from "lumenpage-model";
+import { TextSelection } from "lumenpage-state";
 
 import {
   applyTransaction,
   basicCommands,
+  createChangeEvent,
   createEditorOps,
   createEditorState,
   createSelectionLogger,
@@ -24,8 +25,9 @@ import { createHtmlParser } from "./htmlParser";
 import { createRenderSync } from "./renderSync";
 import { createSelectionMovement } from "./selectionMovement";
 import { coordsAtPos, posAtCoords } from "./posIndex";
-import { findLineForOffset, offsetAtX } from "./caret";
-import { selectionToRects } from "./render/selection";
+import { selectionToRects, activeBlockToRects } from "./render/selection";
+import { buildLayoutIndex } from "./layoutIndex";
+
 import { measureTextWidth } from "./measure";
 import { Renderer } from "./renderer";
 
@@ -44,6 +46,18 @@ const DEFAULT_SETTINGS = {
   wrapTolerance: 2,
   pageBuffer: 1,
   maxPageCache: 16,
+  selectionStyle: {
+    fill: "rgba(191, 219, 254, 0.4)",
+    stroke: "rgba(59, 130, 246, 0.8)",
+    strokeWidth: 1,
+    radius: 2,
+    inset: 0,
+  },
+  blockSelection: {
+    enabled: true,
+    onlyWhenFocused: true,
+    types: ["paragraph", "heading", "image"],
+  },
   measureTextWidth,
 };
 
@@ -167,6 +181,7 @@ export class CanvasEditorView {
     const renderer = new Renderer(dom.pageLayer, dom.overlayCanvas, settings, nodeRegistry);
 
     let layout = null;
+    let layoutIndex = null;
     let rafId = 0;
     let caretOffset = 0;
     let caretRect = null;
@@ -215,6 +230,7 @@ export class CanvasEditorView {
       },
       applyTransaction,
       layoutPipeline,
+      buildLayoutIndex,
       renderer,
       spacer: dom.spacer,
       scrollArea: dom.scrollArea,
@@ -225,6 +241,8 @@ export class CanvasEditorView {
       docPosToTextOffset,
       getSelectionOffsets,
       selectionToRects,
+      activeBlockToRects,
+      blockSelectionConfig: settings.blockSelection,
       coordsAtPos,
       logSelection,
       getCaretOffset: () => caretOffset,
@@ -243,6 +261,10 @@ export class CanvasEditorView {
         pendingPreferredUpdate = value;
       },
       getLayout: () => layout,
+      getLayoutIndex: () => layoutIndex,
+      setLayoutIndex: (value) => {
+        layoutIndex = value;
+      },
       setLayout: (value) => {
         layout = value;
       },
@@ -261,7 +283,15 @@ export class CanvasEditorView {
         props.dispatchTransaction(tr);
         return;
       }
-      const nextState = applyTransaction(this.state, tr);
+      const prevState = this.state;
+      const nextState = applyTransaction(prevState, tr);
+      const changeEvent = createChangeEvent(tr, prevState, nextState);
+      if (changeEvent?.summary?.blocks?.ids?.length) {
+        layoutPipeline.invalidateBlocks(changeEvent.summary.blocks.ids);
+      }
+      if (props?.onChange) {
+        props.onChange(changeEvent);
+      }
       this.updateState(nextState);
     };
 
@@ -295,6 +325,7 @@ export class CanvasEditorView {
       dispatchTransaction,
       runCommand,
       basicCommands,
+  createChangeEvent,
       pendingPreferredUpdateRef: {
         set: (value) => {
           pendingPreferredUpdate = value;
@@ -325,14 +356,13 @@ export class CanvasEditorView {
       extendSelection,
     } = createSelectionMovement({
       getLayout: () => layout,
+      getLayoutIndex: () => layoutIndex,
       getCaretOffset: () => caretOffset,
       setCaretOffset,
       getText,
       getPreferredX: () => preferredX,
       updateCaret,
       scrollArea: dom.scrollArea,
-      findLineForOffset,
-      offsetAtX,
       getSelectionAnchorOffset: () =>
         getSelectionAnchorOffset(this.state, docPosToTextOffset, clampOffset),
       setSelectionOffsets,
@@ -365,6 +395,7 @@ export class CanvasEditorView {
       dispatchTransaction,
       runCommand,
       basicCommands,
+  createChangeEvent,
       setBlockAlign,
       insertText,
       insertTextWithBreaks,
@@ -428,10 +459,12 @@ export class CanvasEditorView {
       dom,
       settings,
       renderer,
+      onChange: props?.onChange,
       layoutPipeline,
       renderSync,
       getText,
       getLayout: () => layout,
+      getLayoutIndex: () => layoutIndex,
       getRafId: () => rafId,
       dispatchTransaction,
       updateLayout,
@@ -467,7 +500,15 @@ export class CanvasEditorView {
       dispatchTransaction(tr);
       return;
     }
-    const nextState = applyTransaction(this.state, tr);
+    const prevState = this.state;
+    const nextState = applyTransaction(prevState, tr);
+    const changeEvent = createChangeEvent(tr, prevState, nextState);
+    if (changeEvent?.summary?.blocks?.ids?.length) {
+      this._internals.layoutPipeline?.invalidateBlocks(changeEvent.summary.blocks.ids);
+    }
+    if (this._internals.onChange) {
+      this._internals.onChange(changeEvent);
+    }
     this.updateState(nextState);
   }
 
@@ -559,3 +600,27 @@ export class CanvasEditorView {
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,6 +1,6 @@
-﻿/*
- * 文件说明：渲染主引擎。
- * 主要职责：页缓存管理、离屏渲染、主画布拼合、选区与光标叠加。
+/*
+ * 锟侥硷拷说锟斤拷锟斤拷锟斤拷染锟斤拷锟斤拷锟芥。
+ * 锟斤拷要职锟斤拷页锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟饺撅拷锟斤拷锟斤拷锟斤拷锟狡达拷稀锟窖★拷锟斤拷锟斤拷锟斤拷锟接★拷
  */
 
 import { getVisiblePages } from "./virtualization";
@@ -30,6 +30,46 @@ const hashString = (hash, value) => {
   return hash;
 };
 
+const resolveSelectionStyle = (settings) => {
+  const style = settings?.selectionStyle || {};
+  const resolveColor = (value, fallback) => {
+    if (value === null || value === false || value === "none" || value === "transparent") {
+      return null;
+    }
+    return value ?? fallback;
+  };
+  return {
+    fill: resolveColor(style.fill, "rgba(191, 219, 254, 0.4)"),
+    stroke: resolveColor(style.stroke, "rgba(59, 130, 246, 0.8)"),
+    strokeWidth: Number.isFinite(style.strokeWidth) ? style.strokeWidth : 1,
+    radius: Number.isFinite(style.radius) ? style.radius : 2,
+    inset: Number.isFinite(style.inset) ? style.inset : 0,
+  };
+};
+
+const drawSelectionRectPath = (ctx, x, y, width, height, radius) => {
+  const clampedRadius = Math.min(Math.max(radius, 0), width / 2, height / 2);
+  if (clampedRadius > 0 && typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, clampedRadius);
+    return;
+  }
+
+  if (clampedRadius > 0) {
+    ctx.beginPath();
+    ctx.moveTo(x + clampedRadius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, clampedRadius);
+    ctx.arcTo(x + width, y + height, x, y + height, clampedRadius);
+    ctx.arcTo(x, y + height, x, y, clampedRadius);
+    ctx.arcTo(x, y, x + width, y, clampedRadius);
+    ctx.closePath();
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.rect(x, y, width, height);
+};
+
 export class Renderer {
   constructor(pageLayer, overlayCanvas, settings, registry = null) {
     this.pageLayer = pageLayer;
@@ -49,7 +89,7 @@ export class Renderer {
     this.lastDpr = 1;
   }
 
-  /* 页签名：用于判断页缓存是否失效 */
+  /* 页签锟斤拷锟斤拷锟斤拷锟斤拷锟叫讹拷页锟斤拷锟斤拷锟角凤拷失效 */
 
   getPageSignature(page) {
     let hash = 0;
@@ -309,9 +349,9 @@ export class Renderer {
     entry.dirty = false;
   }
 
-  /* 主渲染：离屏缓存 + 主画布/叠加层绘制 */
+  /* 锟斤拷锟斤拷染锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷 + 锟斤拷锟斤拷锟斤拷/锟斤拷锟接诧拷锟斤拷锟?*/
 
-  render(layout, viewport, caret, selectionRects = []) {
+  render(layout, viewport, caret, selectionRects = [], blockRects = []) {
     if (!layout) {
       return;
     }
@@ -430,11 +470,48 @@ export class Renderer {
 
     this.enforceCacheLimit(activePages, maxCache);
 
-    if (selectionRects && selectionRects.length > 0) {
-      this.overlayCtx.fillStyle = "rgba(191, 219, 254, 0.4)";
+    const overlayRects =
+      selectionRects && selectionRects.length > 0 ? selectionRects : blockRects;
 
-      for (const rect of selectionRects) {
-        this.overlayCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    if (overlayRects && overlayRects.length > 0) {
+      const selectionStyle = resolveSelectionStyle(this.settings);
+      const hasFill = !!selectionStyle.fill;
+      const hasStroke = !!selectionStyle.stroke && selectionStyle.strokeWidth > 0;
+
+      if (hasFill) {
+        this.overlayCtx.fillStyle = selectionStyle.fill;
+      }
+      if (hasStroke) {
+        this.overlayCtx.strokeStyle = selectionStyle.stroke;
+        this.overlayCtx.lineWidth = selectionStyle.strokeWidth;
+      }
+
+      for (const rect of overlayRects) {
+        const inset = selectionStyle.inset || 0;
+        const x = rect.x + inset;
+        const y = rect.y + inset;
+        const width = rect.width - inset * 2;
+        const height = rect.height - inset * 2;
+
+        if (width <= 0 || height <= 0) {
+          continue;
+        }
+
+        drawSelectionRectPath(
+          this.overlayCtx,
+          x,
+          y,
+          width,
+          height,
+          selectionStyle.radius || 0
+        );
+
+        if (hasFill) {
+          this.overlayCtx.fill();
+        }
+        if (hasStroke) {
+          this.overlayCtx.stroke();
+        }
       }
     }
 
@@ -449,3 +526,4 @@ export class Renderer {
     }
   }
 }
+

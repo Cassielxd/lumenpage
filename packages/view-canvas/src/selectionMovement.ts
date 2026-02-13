@@ -1,13 +1,14 @@
+import { findLineForOffsetIndexed, offsetAtXIndexed } from "./layoutIndex";
+
 export const createSelectionMovement = ({
   getLayout,
+  getLayoutIndex,
   getCaretOffset,
   setCaretOffset,
   getText,
   getPreferredX,
   updateCaret,
   scrollArea,
-  findLineForOffset,
-  offsetAtX,
   getSelectionAnchorOffset,
   setSelectionOffsets,
 }) => {
@@ -17,7 +18,12 @@ export const createSelectionMovement = ({
       return null;
     }
 
-    const info = findLineForOffset(layout, getCaretOffset(), getText().length);
+    const info = findLineForOffsetIndexed(
+      layout,
+      getCaretOffset(),
+      getText().length,
+      getLayoutIndex?.()
+    );
     if (!info) {
       return null;
     }
@@ -31,7 +37,12 @@ export const createSelectionMovement = ({
       return null;
     }
 
-    const info = findLineForOffset(layout, getCaretOffset(), getText().length);
+    const info = findLineForOffsetIndexed(
+      layout,
+      getCaretOffset(),
+      getText().length,
+      getLayoutIndex?.()
+    );
     if (!info) {
       return null;
     }
@@ -65,7 +76,7 @@ export const createSelectionMovement = ({
     const targetLine = layout.pages[targetPageIndex].lines[targetLineIndex];
     const pageX = Math.max(0, (scrollArea.clientWidth - layout.pageWidth) / 2);
     const localX = Math.max(0, preferredX - (pageX + targetLine.x));
-    return offsetAtX(layout.font, targetLine, localX);
+    return offsetAtXIndexed(layout, targetLine, localX);
   };
 
   const moveHorizontal = (delta) => {

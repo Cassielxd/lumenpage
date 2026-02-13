@@ -11,3 +11,4 @@ export { selectionToRects } from "./render/selection";
 export { measureTextWidth, getFontSize } from "./measure";
 export { createHtmlParser } from "./htmlParser";
 export { CanvasEditorView } from "./editorView";
+export { createSegmentText, createLinebreakSegmentText } from "./segmenter";

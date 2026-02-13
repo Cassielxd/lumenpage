@@ -20,10 +20,12 @@
   },
   "dependencies": {
     "lumenpage-core": "workspace:*",
-    "lumenpage-node-paragraph": "workspace:*",
     "lumenpage-node-heading": "workspace:*",
+    "lumenpage-node-image": "workspace:*",
+    "lumenpage-node-list": "workspace:*",
+    "lumenpage-node-paragraph": "workspace:*",
     "lumenpage-node-table": "workspace:*",
-    "prosemirror-model": "^1.25.0"
+    "lumenpage-model": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

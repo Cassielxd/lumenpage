@@ -9,9 +9,11 @@ import {
   joinForward,
   splitBlock,
   setBlockType,
-} from "prosemirror-commands";
+} from "lumenpage-commands";
 
-import { undo, redo } from "prosemirror-history";
+import { Command } from "lumenpage-state";
+
+import { undo, redo } from "lumenpage-history";
 
 const getCurrentBlockAttrs = (state) => {
   const parent = state.selection.$from.parent;
@@ -106,7 +108,7 @@ export const setParagraph = () => (state, dispatch) => {
   return setBlockType(type, attrs)(state, dispatch);
 };
 
-export const basicCommands = {
+export const basicCommands: Record<string, Command> = {
   deleteSelection,
 
   joinBackward,

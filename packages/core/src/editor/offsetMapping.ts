@@ -15,19 +15,126 @@ const getTableTextLength = (tableNode) => {
   return length;
 };
 
-const getBlockTextLength = (node) => {
+const getImageTextLength = () => 1;
+
+function getListItemTextLength(item) {
+  let length = 0;
+  item.forEach((child, _pos, index) => {
+    length += getNodeTextLength(child);
+    if (index < item.childCount - 1) {
+      length += 1;
+    }
+  });
+  return length;
+}
+
+function getListTextLength(listNode) {
+  let length = 0;
+  listNode.forEach((item, _pos, index) => {
+    length += getListItemTextLength(item);
+    if (index < listNode.childCount - 1) {
+      length += 1;
+    }
+  });
+  return length;
+}
+
+function getNodeTextLength(node) {
   if (node.type.name === "table") {
     return getTableTextLength(node);
   }
 
+  if (node.type.name === "image") {
+    return getImageTextLength();
+  }
+
+  if (node.type.name === "bullet_list" || node.type.name === "ordered_list") {
+    return getListTextLength(node);
+  }
+
+  if (node.type.name === "list_item") {
+    return getListItemTextLength(node);
+  }
+
   return node.textContent.length;
-};
+}
+
+const getBlockTextLength = (node) => getNodeTextLength(node);
 
 const mapOffsetInTextblock = (node, nodePos, offset) => {
   const textStart = nodePos + 1;
 
   return textStart + offset;
 };
+
+const mapOffsetInImage = (node, nodePos, offset) =>
+  offset <= 0 ? nodePos : nodePos + node.nodeSize;
+
+function mapOffsetInListItem(item, itemPos, offset) {
+  let remaining = offset;
+
+  let innerPos = itemPos + 1;
+
+  for (let i = 0; i < item.childCount; i += 1) {
+    const child = item.child(i);
+
+    const childPos = innerPos;
+
+    const textLength = getNodeTextLength(child);
+
+    if (remaining <= textLength) {
+      return mapOffsetInNode(child, childPos, remaining);
+    }
+
+    remaining -= textLength;
+
+    if (i < item.childCount - 1) {
+      if (remaining === 0) {
+        return childPos + child.nodeSize - 1;
+      }
+
+      remaining -= 1;
+    }
+
+    innerPos += child.nodeSize;
+  }
+
+  return itemPos + item.nodeSize - 1;
+}
+
+function mapOffsetInList(list, listPos, offset) {
+  let remaining = offset;
+
+  const listStart = listPos + 1;
+
+  let itemPos = listStart;
+
+  for (let i = 0; i < list.childCount; i += 1) {
+    const item = list.child(i);
+
+    const itemStart = itemPos;
+
+    const itemLength = getListItemTextLength(item);
+
+    if (remaining <= itemLength) {
+      return mapOffsetInListItem(item, itemStart, remaining);
+    }
+
+    remaining -= itemLength;
+
+    if (i < list.childCount - 1) {
+      if (remaining === 0) {
+        return itemStart + item.nodeSize - 1;
+      }
+
+      remaining -= 1;
+    }
+
+    itemPos += item.nodeSize;
+  }
+
+  return listPos + list.nodeSize - 1;
+}
 
 const mapOffsetInCell = (cell, cellPos, offset) => {
   let remaining = offset;
@@ -111,6 +218,26 @@ const mapOffsetInTable = (table, tablePos, offset) => {
   return tablePos + table.nodeSize - 1;
 };
 
+function mapOffsetInNode(node, nodePos, offset) {
+  if (node.type.name === "table") {
+    return mapOffsetInTable(node, nodePos, offset);
+  }
+
+  if (node.type.name === "image") {
+    return mapOffsetInImage(node, nodePos, offset);
+  }
+
+  if (node.type.name === "bullet_list" || node.type.name === "ordered_list") {
+    return mapOffsetInList(node, nodePos, offset);
+  }
+
+  if (node.type.name === "list_item") {
+    return mapOffsetInListItem(node, nodePos, offset);
+  }
+
+  return mapOffsetInTextblock(node, nodePos, offset);
+}
+
 const clampTextOffset = (doc, offset) => {
   let length = 0;
   for (let i = 0; i < doc.childCount; i += 1) {
@@ -137,21 +264,15 @@ export const textOffsetToDocPos = (doc, offset) => {
 
     const nodeStart = docPos;
 
-    const nodeEnd = nodeStart + node.nodeSize;
-
     if (remaining <= textLength) {
-      if (node.type.name === "table") {
-        return mapOffsetInTable(node, nodeStart, remaining);
-      }
-
-      return mapOffsetInTextblock(node, nodeStart, remaining);
+      return mapOffsetInNode(node, nodeStart, remaining);
     }
 
     remaining -= textLength;
 
     if (i < doc.childCount - 1) {
       if (remaining === 0) {
-        return nodeEnd - 1;
+        return nodeStart + node.nodeSize - 1;
       }
 
       remaining -= 1;
@@ -178,6 +299,71 @@ const mapPosInTextblock = (node, nodePos, pos) => {
 
   return node.textContent.length;
 };
+
+const mapPosInImage = (node, nodePos, pos) =>
+  pos <= nodePos ? 0 : getImageTextLength();
+
+function mapPosInListItem(item, itemPos, pos) {
+  let offset = 0;
+
+  let innerPos = itemPos + 1;
+
+  for (let i = 0; i < item.childCount; i += 1) {
+    const child = item.child(i);
+
+    const childPos = innerPos;
+
+    if (pos <= childPos) {
+      return offset;
+    }
+
+    if (pos < childPos + child.nodeSize) {
+      return offset + mapPosInNode(child, childPos, pos);
+    }
+
+    offset += getNodeTextLength(child);
+
+    if (i < item.childCount - 1) {
+      offset += 1;
+    }
+
+    innerPos += child.nodeSize;
+  }
+
+  return offset;
+}
+
+function mapPosInList(list, listPos, pos) {
+  let offset = 0;
+
+  const listStart = listPos + 1;
+
+  let itemPos = listStart;
+
+  for (let i = 0; i < list.childCount; i += 1) {
+    const item = list.child(i);
+
+    const itemStart = itemPos;
+
+    if (pos <= itemStart) {
+      return offset;
+    }
+
+    if (pos < itemStart + item.nodeSize) {
+      return offset + mapPosInListItem(item, itemStart, pos);
+    }
+
+    offset += getListItemTextLength(item);
+
+    if (i < list.childCount - 1) {
+      offset += 1;
+    }
+
+    itemPos += item.nodeSize;
+  }
+
+  return offset;
+}
 
 const mapPosInCell = (cell, cellPos, pos) => {
   let offset = 0;
@@ -253,6 +439,26 @@ const mapPosInTable = (table, tablePos, pos) => {
   return offset;
 };
 
+function mapPosInNode(node, nodePos, pos) {
+  if (node.type.name === "table") {
+    return mapPosInTable(node, nodePos, pos);
+  }
+
+  if (node.type.name === "image") {
+    return mapPosInImage(node, nodePos, pos);
+  }
+
+  if (node.type.name === "bullet_list" || node.type.name === "ordered_list") {
+    return mapPosInList(node, nodePos, pos);
+  }
+
+  if (node.type.name === "list_item") {
+    return mapPosInListItem(node, nodePos, pos);
+  }
+
+  return mapPosInTextblock(node, nodePos, pos);
+}
+
 export const docPosToTextOffset = (doc, pos) => {
   const clamped = Math.max(0, Math.min(pos, doc.content.size));
 
@@ -274,11 +480,11 @@ export const docPosToTextOffset = (doc, pos) => {
     }
 
     if (clamped < nodeEnd) {
-      if (node.type.name === "table") {
-        return offset + mapPosInTable(node, nodeStart, clamped);
-      }
+      return offset + mapPosInNode(node, nodeStart, clamped);
+    }
 
-      return offset + mapPosInTextblock(node, nodeStart, clamped);
+    if (clamped === nodeEnd && node.type.name === "image") {
+      return offset + getImageTextLength();
     }
 
     offset += textLength;
@@ -292,3 +498,4 @@ export const docPosToTextOffset = (doc, pos) => {
 
   return offset;
 };
+

@@ -13,6 +13,9 @@ export const createRenderSync = ({
   docPosToTextOffset,
   getSelectionOffsets,
   selectionToRects,
+  activeBlockToRects,
+  buildLayoutIndex,
+  blockSelectionConfig,
   coordsAtPos,
   logSelection,
   getCaretOffset,
@@ -24,6 +27,8 @@ export const createRenderSync = ({
   setPendingPreferredUpdate,
   getLayout,
   setLayout,
+  getLayoutIndex,
+  setLayoutIndex,
   getRafId,
   setRafId,
   setInputPosition,
@@ -35,6 +40,15 @@ export const createRenderSync = ({
     status.textContent = `${pageCount} pages | ${focused}`;
   };
 
+  const resolveBlockSelection = () => {
+    const config = blockSelectionConfig || {};
+    const focused = document.activeElement === inputEl;
+    const onlyWhenFocused = config.onlyWhenFocused !== false;
+    const enabled = config.enabled !== false && (!onlyWhenFocused || focused);
+    const types = Array.isArray(config.types) ? config.types : ["paragraph", "heading", "image"];
+    return { enabled, types };
+  };
+
   const scheduleRender = () => {
     if (getRafId()) {
       return;
@@ -44,6 +58,7 @@ export const createRenderSync = ({
       requestAnimationFrame(() => {
         setRafId(0);
         const layout = getLayout();
+        const layoutIndex = getLayoutIndex?.() || null;
         const selection = getSelectionOffsets(getEditorState(), docPosToTextOffset, clampOffset);
         const selectionRects = selectionToRects(
           layout,
@@ -51,9 +66,27 @@ export const createRenderSync = ({
           selection.to,
           scrollArea.scrollTop,
           scrollArea.clientWidth,
-          getText().length
+          getText().length,
+          layoutIndex
         );
-        renderer.render(layout, scrollArea, getCaretRect(), selectionRects);
+        let blockRects = [];
+        const blockSelection = resolveBlockSelection();
+        if (
+          selection.from === selection.to &&
+          blockSelection.enabled &&
+          typeof activeBlockToRects === "function"
+        ) {
+          blockRects = activeBlockToRects(
+            layout,
+            selection.from,
+            scrollArea.scrollTop,
+            scrollArea.clientWidth,
+            getText().length,
+            { blockTypes: blockSelection.types },
+            layoutIndex
+          );
+        }
+        renderer.render(layout, scrollArea, getCaretRect(), selectionRects, blockRects);
       })
     );
   };
@@ -83,6 +116,9 @@ export const createRenderSync = ({
   const updateLayout = () => {
     const layout = layoutPipeline.layoutFromDoc(getEditorState().doc);
     setLayout(layout);
+    if (typeof buildLayoutIndex === "function") {
+      setLayoutIndex(buildLayoutIndex(layout));
+    }
     spacer.style.height = `${layout.totalHeight}px`;
   };
 
@@ -117,3 +153,4 @@ export const createRenderSync = ({
     dispatchTransaction,
   };
 };
+

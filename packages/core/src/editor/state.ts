@@ -1,11 +1,7 @@
-﻿/*
- * 文件说明：编辑器状态创建与事务应用。
- * 主要职责：根据 JSON/Doc/Text 初始化 EditorState，并应用事务更新。
- */
+import { EditorState, TextSelection } from "lumenpage-state";
 
-import { EditorState, TextSelection } from "prosemirror-state";
-
-import { history } from "prosemirror-history";
+import { history } from "lumenpage-history";
+import { createBlockIdPlugin, createBlockIdTransaction } from "./blockIdPlugin";
 
 type CreateEditorStateOptions = {
   schema?: any;
@@ -14,6 +10,7 @@ type CreateEditorStateOptions = {
   doc?: any;
   json?: any;
   plugins?: any[];
+  ensureBlockIds?: boolean;
 };
 
 export function createEditorState({
@@ -28,6 +25,8 @@ export function createEditorState({
   json = null,
 
   plugins = [],
+
+  ensureBlockIds = true,
 }: CreateEditorStateOptions = {}) {
   if (!schema) {
     throw new Error("schema is required to create editor state.");
@@ -49,15 +48,24 @@ export function createEditorState({
 
   const selection = TextSelection.create(resolvedDoc, resolvedDoc.content.size);
 
-  return EditorState.create({
+  const state = EditorState.create({
     schema,
 
     doc: resolvedDoc,
 
     selection,
 
-    plugins: [history(), ...plugins],
+    plugins: [history(), ...(ensureBlockIds ? [createBlockIdPlugin()] : []), ...plugins],
   });
+
+  if (ensureBlockIds) {
+    const tr = createBlockIdTransaction(state);
+    if (tr) {
+      return state.apply(tr);
+    }
+  }
+
+  return state;
 }
 
 export function applyTransaction(state, tr) {
