@@ -5,14 +5,7 @@
 
 import { EditorState, TextSelection } from "prosemirror-state";
 
-
 import { history } from "prosemirror-history";
-
-
-
-
-
-
 
 type CreateEditorStateOptions = {
   schema?: any;
@@ -24,7 +17,6 @@ type CreateEditorStateOptions = {
 };
 
 export function createEditorState({
-
   schema,
 
   createDocFromText,
@@ -36,10 +28,7 @@ export function createEditorState({
   json = null,
 
   plugins = [],
-
 }: CreateEditorStateOptions = {}) {
-
-
   if (!schema) {
     throw new Error("schema is required to create editor state.");
   }
@@ -50,52 +39,27 @@ export function createEditorState({
 
   let resolvedDoc = doc;
 
-
   if (!resolvedDoc) {
-
-
-    resolvedDoc = json ? schema.nodeFromJSON(json) : createDocFromText ? createDocFromText(text) : doc;
-
-
+    resolvedDoc = json
+      ? schema.nodeFromJSON(json)
+      : createDocFromText
+        ? createDocFromText(text)
+        : doc;
   }
-
-
-
-
 
   const selection = TextSelection.create(resolvedDoc, resolvedDoc.content.size);
 
-
   return EditorState.create({
-
-
     schema,
-
 
     doc: resolvedDoc,
 
-
     selection,
 
-
     plugins: [history(), ...plugins],
-
-
   });
-
-
 }
-
-
-
-
 
 export function applyTransaction(state, tr) {
-
-
   return state.apply(tr);
-
-
 }
-
-

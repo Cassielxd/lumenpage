@@ -3,141 +3,196 @@
  * 主要职责：定义工具栏、视口、分页画布层、输入层样式与滚动行为。
  */
 
-:root {
-  color-scheme: light;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: #f3f4f6;
-  color: #111827;
-}
-
-#app {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-#toolbar {
-  height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  background: #111827;
-  color: #f9fafb;
-}
-
-#toolbar .title {
-  font-weight: 600;
-}
-
-#tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#tools .divider {
-  width: 1px;
-  height: 20px;
-  background: #374151;
-  display: inline-block;
-}
-
-#tools button {
-  background: #1f2937;
-  color: #f9fafb;
-  border: 1px solid #374151;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-#tools button:hover {
-  background: #374151;
-}
-
-#tools button:active {
-  background: #4b5563;
-}
-
-#status {
-  margin-left: auto;
-}
-
-#viewport {
-  position: relative;
-  flex: 1;
-  background: #e5e7eb;
-}
-
-#scrollArea {
-  position: absolute;
-  inset: 0;
-  overflow: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-#scrollArea::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-#spacer {
-  width: 100%;
-  position: relative;
-}
-
-#pageLayer {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.page-canvas {
-  position: absolute;
-  left: 0;
-  top: 0;
-  pointer-events: none;
-  will-change: transform;
-}
-
-#overlayCanvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-#inputHost {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-#input {
-  position: absolute;
-  width: 2px;
-  height: 22px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow: hidden;
-  background: transparent;
-  color: transparent;
-  caret-color: #111827;
-  font: 16px Arial;
-  line-height: 22px;
-}
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+
+  font-family: "Segoe UI", Arial, sans-serif;
+
+  background: #f3f4f6;
+
+  color: #111827;
+}
+
+#app {
+  height: 100vh;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+#toolbar {
+  height: 44px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 0 16px;
+
+  background: #111827;
+
+  color: #f9fafb;
+}
+
+#toolbar .title {
+  font-weight: 600;
+}
+
+#tools {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+#tools .divider {
+  width: 1px;
+
+  height: 20px;
+
+  background: #374151;
+
+  display: inline-block;
+}
+
+#tools button {
+  background: #1f2937;
+
+  color: #f9fafb;
+
+  border: 1px solid #374151;
+
+  border-radius: 4px;
+
+  padding: 4px 8px;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+#tools button:hover {
+  background: #374151;
+}
+
+#tools button:active {
+  background: #4b5563;
+}
+
+#status {
+  margin-left: auto;
+}
+
+#viewport {
+  position: relative;
+
+  flex: 1;
+
+  background: #e5e7eb;
+}
+
+#scrollArea {
+  position: absolute;
+
+  inset: 0;
+
+  overflow: auto;
+
+  scrollbar-width: none;
+
+  -ms-overflow-style: none;
+}
+
+#scrollArea::-webkit-scrollbar {
+  width: 0;
+
+  height: 0;
+}
+
+#spacer {
+  width: 100%;
+
+  position: relative;
+}
+
+#pageLayer {
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+}
+
+.page-canvas {
+  position: absolute;
+
+  left: 0;
+
+  top: 0;
+
+  pointer-events: none;
+
+  will-change: transform;
+}
+
+#overlayCanvas {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+
+  height: 100%;
+
+  pointer-events: none;
+}
+
+#inputHost {
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+}
+
+#input {
+  position: absolute;
+
+  width: 2px;
+
+  height: 22px;
+
+  padding: 0;
+
+  margin: 0;
+
+  border: none;
+
+  outline: none;
+
+  resize: none;
+
+  overflow: hidden;
+
+  background: transparent;
+
+  color: transparent;
+
+  caret-color: #111827;
+
+  font: 16px Arial;
+
+  line-height: 22px;
+}

@@ -8,7 +8,5 @@
     "composite": true
   },
   "references": [],
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

@@ -39,7 +39,6 @@ export const createEditorOps = ({
     });
   };
 
-
   const insertTextWithBreaks = (text) => {
     if (!text) {
       return;
@@ -112,9 +111,7 @@ export const createEditorOps = ({
         toPos,
         rangeText,
       });
-      let tr = getEditorState().tr.setSelection(
-        TextSelection.create(getEditorState().doc, toPos)
-      );
+      let tr = getEditorState().tr.setSelection(TextSelection.create(getEditorState().doc, toPos));
       tr = tr.delete(fromPos, toPos);
       pendingPreferredUpdateRef.set(true);
       dispatchTransaction(tr);
@@ -141,9 +138,7 @@ export const createEditorOps = ({
     }
     const fromPos = textOffsetToDocPos(getEditorState().doc, caretOffset);
     const toPos = textOffsetToDocPos(getEditorState().doc, caretOffset + 1);
-    let tr = getEditorState().tr.setSelection(
-      TextSelection.create(getEditorState().doc, fromPos)
-    );
+    let tr = getEditorState().tr.setSelection(TextSelection.create(getEditorState().doc, fromPos));
     tr = tr.delete(fromPos, toPos);
     pendingPreferredUpdateRef.set(true);
     dispatchTransaction(tr);

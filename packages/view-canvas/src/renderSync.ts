@@ -44,11 +44,7 @@ export const createRenderSync = ({
       requestAnimationFrame(() => {
         setRafId(0);
         const layout = getLayout();
-        const selection = getSelectionOffsets(
-          getEditorState(),
-          docPosToTextOffset,
-          clampOffset
-        );
+        const selection = getSelectionOffsets(getEditorState(), docPosToTextOffset, clampOffset);
         const selectionRects = selectionToRects(
           layout,
           selection.from,

@@ -10,3 +10,4 @@ export { findLineForOffset, offsetAtX } from "./caret";
 export { selectionToRects } from "./render/selection";
 export { measureTextWidth, getFontSize } from "./measure";
 export { createHtmlParser } from "./htmlParser";
+export { CanvasEditorView } from "./editorView";

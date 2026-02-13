@@ -5,13 +5,14 @@
 
 import { Renderer } from "../renderer";
 
+export class CanvasRenderer extends Renderer {
+  updateRegistry(registry) {
+    this.registry = registry;
+    return this;
+  }
 
-
-
-
-
-
-export class CanvasRenderer extends Renderer {}
-
-
-
+  updateSettings(settings) {
+    this.settings = { ...this.settings, ...settings };
+    return this;
+  }
+}

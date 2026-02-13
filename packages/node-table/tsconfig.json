@@ -11,6 +11,5 @@
       "lumenpage-core": ["../core/src/index.ts"]
     }
   },
-  "references": [{ "path": "../core" }],
   "include": ["src"]
 }

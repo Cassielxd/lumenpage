@@ -1,4 +1,10 @@
-export { schema, createDocFromText, docToText, serializeTableToText, getTableTextLength } from "./schema";
+export {
+  schema,
+  createDocFromText,
+  docToText,
+  serializeTableToText,
+  getTableTextLength,
+} from "./schema";
 
 import { NodeRendererRegistry } from "lumenpage-core";
 import { paragraphRenderer } from "lumenpage-node-paragraph";
@@ -13,8 +19,4 @@ export const createDefaultNodeRendererRegistry = () => {
   return registry;
 };
 
-export {
-  paragraphRenderer,
-  headingRenderer,
-  tableRenderer,
-};
+export { paragraphRenderer, headingRenderer, tableRenderer };

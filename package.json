@@ -7,9 +7,12 @@
     "dev": "pnpm -C apps/playground dev",
     "build": "pnpm -r build",
     "build:app": "pnpm -C apps/playground build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   }
 }

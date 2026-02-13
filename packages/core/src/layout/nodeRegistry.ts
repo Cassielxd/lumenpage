@@ -3,15 +3,6 @@
  * 主要职责：按节点类型分发 layout/render 实现。
  */
 
-
-
-
-
-
-
-
-
-
 export type NodeLayoutResult = {
   lines: any[];
   length: number;
@@ -32,65 +23,21 @@ export type NodeRenderer = {
 export class NodeRendererRegistry {
   renderers;
 
-
   constructor() {
-
-
     this.renderers = new Map();
-
-
   }
-
-
-
-
 
   register(typeName, renderer) {
-
-
     this.renderers.set(typeName, renderer);
 
-
     return this;
-
-
   }
-
-
-
-
 
   get(typeName) {
-
-
     return this.renderers.get(typeName);
-
-
   }
-
-
-
-
 
   has(typeName) {
-
-
     return this.renderers.has(typeName);
-
-
   }
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-

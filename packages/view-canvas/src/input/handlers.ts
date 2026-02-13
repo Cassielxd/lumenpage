@@ -64,9 +64,7 @@ export const createInputHandlers = ({
       default:
         if (event.inputType && event.inputType.startsWith("delete")) {
           event.preventDefault();
-          deleteText(
-            event.inputType === "deleteContentForward" ? "forward" : "backward"
-          );
+          deleteText(event.inputType === "deleteContentForward" ? "forward" : "backward");
         }
         break;
     }
@@ -216,7 +214,15 @@ export const createInputHandlers = ({
     setIsComposing(true);
   };
 
-  const handleCompositionUpdate = () => {};
+  const handleCompositionUpdate = (event) => {
+    if (!getIsComposing()) {
+      setIsComposing(true);
+    }
+    if (typeof event?.data === "string") {
+      inputEl.value = event.data;
+    }
+    setPendingPreferredUpdate(true);
+  };
 
   const handleCompositionEnd = (event) => {
     setIsComposing(false);
