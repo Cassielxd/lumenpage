@@ -33,7 +33,7 @@ export const joinBackward: Command = (state, dispatch, view) => {
 
   let $cut = findCutBefore($cursor)
 
-  // If there is no node before this, try to lift
+  // 如果之前没有节点，尝试提升
   if (!$cut) {
     let range = $cursor.blockRange(), target = range && liftTarget(range)
     if (target == null) return false
@@ -42,11 +42,11 @@ export const joinBackward: Command = (state, dispatch, view) => {
   }
 
   let before = $cut.nodeBefore!
-  // Apply the joining algorithm
+  // 应用连接算法
   if (deleteBarrier(state, $cut, dispatch, -1)) return true
 
-  // If the node below has no content and the node above is
-  // selectable, delete the node below and select the one above.
+  // 如果下面的节点没有内容且上面的节点可选择
+  // 则删除下面的节点并选择上面的节点
   if ($cursor.parent.content.size == 0 &&
       (textblockAt(before, "end") || NodeSelection.isSelectable(before))) {
     for (let depth = $cursor.depth;; depth--) {
@@ -65,7 +65,7 @@ export const joinBackward: Command = (state, dispatch, view) => {
     }
   }
 
-  // If the node before is an atom, delete it
+  // 如果之前的节点是原子节点，删除它
   if (before.isAtom && $cut.depth == $cursor.depth - 1) {
     if (dispatch) dispatch(state.tr.delete($cut.pos - before.nodeSize, $cut.pos).scrollIntoView())
     return true
@@ -176,15 +176,15 @@ export const joinForward: Command = (state, dispatch, view) => {
   if (!$cursor) return false
 
   let $cut = findCutAfter($cursor)
-  // If there is no node after this, there's nothing to do
+  // 如果之后没有节点，则无事可做
   if (!$cut) return false
 
   let after = $cut.nodeAfter!
-  // Try the joining algorithm
+  // 尝试连接算法
   if (deleteBarrier(state, $cut, dispatch, 1)) return true
 
-  // If the node above has no content and the node below is
-  // selectable, delete the node above and select the one below.
+  // 如果上面的节点没有内容且下面的节点可选择
+  // 则删除上面的节点并选择下面的节点
   if ($cursor.parent.content.size == 0 &&
       (textblockAt(after, "start") || NodeSelection.isSelectable(after))) {
     let delStep = replaceStep(state.doc, $cursor.before(), $cursor.after(), Slice.empty)
@@ -199,7 +199,7 @@ export const joinForward: Command = (state, dispatch, view) => {
     }
   }
 
-  // If the next node is an atom, delete it
+  // 如果下一个节点是原子节点，删除它
   if (after.isAtom && $cut.depth == $cursor.depth - 1) {
     if (dispatch) dispatch(state.tr.delete($cut.pos, $cut.pos + after.nodeSize).scrollIntoView())
     return true
@@ -526,7 +526,7 @@ export const selectTextblockStart = selectTextblockSide(-1)
 /// Moves the cursor to the end of current text block.
 export const selectTextblockEnd = selectTextblockSide(1)
 
-// Parameterized commands
+// 参数化命令
 
 /// Wrap the selection in a node of the given type with the given
 /// attributes.
@@ -682,8 +682,8 @@ function wrapDispatchForJoin(dispatch: (tr: Transaction) => void, isJoinable: (a
       map.forEach((_s, _e, from, to) => ranges.push(from, to))
     }
 
-    // Figure out which joinable points exist inside those ranges,
-    // by checking all node boundaries in their parent nodes.
+    // 找出这些范围内存在哪些可连接点
+    // 通过检查其父节点中的所有节点边界
     let joinable = []
     for (let i = 0; i < ranges.length; i += 2) {
       let from = ranges[i], to = ranges[i + 1]
@@ -699,7 +699,7 @@ function wrapDispatchForJoin(dispatch: (tr: Transaction) => void, isJoinable: (a
         pos += after.nodeSize
       }
     }
-    // Join the joinable points
+    // 连接可连接的点
     joinable.sort((a, b) => a - b)
     for (let i = joinable.length - 1; i >= 0; i--) {
       if (canJoin(tr.doc, joinable[i])) tr.join(joinable[i])

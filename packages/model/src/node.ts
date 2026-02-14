@@ -28,7 +28,7 @@ export class Node {
     /// attributes allowed and required are
     /// [determined](#model.NodeSpec.attrs) by the node type.
     readonly attrs: Attrs,
-    // A fragment holding the node's children.
+    // 保存节点子节点的片段。
     content?: Fragment | null,
     /// The marks (things like whether it is emphasized or part of a
     /// link) applied to this node.

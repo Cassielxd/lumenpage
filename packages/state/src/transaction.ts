@@ -45,12 +45,11 @@ export class Transaction extends Transform {
   time: number
 
   private curSelection: Selection
-  // The step count for which the current selection is valid.
+  // 当前选区有效的步骤计数
   private curSelectionFor = 0
-  // Bitfield to track which aspects of the state were updated by
-  // this transaction.
+  // 位字段，用于跟踪此事务更新了状态的哪些方面
   private updated = 0
-  // Object used to store metadata properties for the transaction.
+  // 用于存储事务元数据属性的对象
   private meta: {[name: string]: any} = Object.create(null)
 
   /// The stored marks set by this transaction, if any.

@@ -40,8 +40,8 @@ const baseFields = [
   })
 ]
 
-// Object wrapping the part of a state object that stays the same
-// across transactions. Stored in the state's `config` property.
+// 包装状态对象中在事务之间保持不变的部分的对象
+// 存储在状态的 `config` 属性中
 class Configuration {
   fields: FieldDesc<any>[]
   plugins: Plugin[] = []
@@ -138,9 +138,8 @@ export class EditorState {
     if (!this.filterTransaction(rootTr)) return {state: this, transactions: []}
 
     let trs = [rootTr], newState = this.applyInner(rootTr), seen = null
-    // This loop repeatedly gives plugins a chance to respond to
-    // transactions as new transactions are added, making sure to only
-    // pass the transactions the plugin did not see before.
+    // 这个循环反复给插件机会响应事务
+    // 当新事务被添加时，确保只传递插件之前未见过的事务
     for (;;) {
       let haveNew = false
       for (let i = 0; i < this.config.plugins.length; i++) {
@@ -253,7 +252,7 @@ export class EditorState {
           let plugin = pluginFields[prop], state = plugin.spec.state
           if (plugin.key == field.name && state && state.fromJSON &&
               Object.prototype.hasOwnProperty.call(json, prop)) {
-            // This field belongs to a plugin mapped to a JSON field, read it from there.
+            // 此字段属于映射到 JSON 字段的插件，从那里读取它
             ;(instance as any)[field.name] = state.fromJSON.call(plugin, config, json[prop], instance)
             return
           }

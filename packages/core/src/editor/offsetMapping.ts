@@ -1,4 +1,4 @@
-// Text offset <-> ProseMirror position mapping.
+// 文本偏移量 <-> ProseMirror 位置映射
 const getTableTextLength = (tableNode) => {
   let length = 0;
   tableNode.forEach((row, _pos, rowIndex) => {

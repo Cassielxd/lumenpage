@@ -209,7 +209,7 @@ export class DOMParser {
       }
     })
 
-    // Only normalize list elements when lists in the schema can't directly contain themselves
+    // 只有当模式中的列表不能直接包含自身时才规范化列表元素
     this.normalizeLists = !this.tags.some(r => {
       if (!/^(ul|ol)\b/.test(r.tag!) || !r.node) return false
       let node = schema.nodes[r.node]
@@ -259,9 +259,8 @@ export class DOMParser {
       let rule = this.styles[i], style = rule.style!
       if (style.indexOf(prop) != 0 ||
           rule.context && !context.matchesContext(rule.context) ||
-          // Test that the style string either precisely matches the prop,
-          // or has an '=' sign after the prop, followed by the given
-          // value.
+          // 测试样式字符串是否精确匹配属性，
+          // 或在属性后有一个 '=' 符号，后跟给定的值。
           style.length > prop.length &&
           (style.charCodeAt(prop.length) != 61 || style.slice(prop.length + 1) != value))
         continue
@@ -328,7 +327,7 @@ const ignoreTags: {[tagName: string]: boolean} = {
 
 const listTags: {[tagName: string]: boolean} = {ol: true, ul: true}
 
-// Using a bitfield for node context options
+// 使用位字段表示节点上下文选项
 const OPT_PRESERVE_WS = 1, OPT_PRESERVE_WS_FULL = 2, OPT_OPEN_LEFT = 4
 
 function wsOptionsFor(type: NodeType | null, preserveWhitespace: boolean | "full" | undefined, base: number) {
@@ -341,7 +340,7 @@ class NodeContext {
   match: ContentMatch | null
   content: Node[] = []
 
-  // Marks applied to the node's children
+  // 应用于节点子节点的标记
   activeMarks: readonly Mark[] = Mark.none
 
   constructor(
@@ -375,7 +374,7 @@ class NodeContext {
   }
 
   finish(openEnd: boolean): Node | Fragment {
-    if (!(this.options & OPT_PRESERVE_WS)) { // Strip trailing whitespace
+    if (!(this.options & OPT_PRESERVE_WS)) { // 去除尾随空白
       let last = this.content[this.content.length - 1], m
       if (last && last.isText && (m = /[ \t\r\n\u000c]+$/.exec(last.text!))) {
         let text = last as TextNode
@@ -404,9 +403,9 @@ class ParseContext {
   localPreserveWS = false
 
   constructor(
-    // The parser we are using.
+    // 我们正在使用的解析器。
     readonly parser: DOMParser,
-    // The options passed to this parse.
+    // 传递给此解析的选项。
     readonly options: ParseOptions,
     readonly isOpen: boolean
   ) {
@@ -428,9 +427,9 @@ class ParseContext {
     return this.nodes[this.open]
   }
 
-  // Add a DOM node to the content. Text is inserted as text node,
-  // otherwise, the node is passed to `addElement` or, if it has a
-  // `style` attribute, `addElementWithStyles`.
+  // 将 DOM 节点添加到内容。文本作为文本节点插入，
+  // 否则，节点传递给 `addElement` 或，如果它有
+  // `style` 属性，传递给 `addElementWithStyles`。
   addDOM(dom: DOMNode, marks: readonly Mark[]) {
     if (dom.nodeType == 3) this.addTextNode(dom as Text, marks)
     else if (dom.nodeType == 1) this.addElement(dom as HTMLElement, marks)
@@ -446,9 +445,9 @@ class ParseContext {
         /[^ \t\r\n\u000c]/.test(value)) {
       if (!preserveWS) {
         value = value.replace(/[ \t\r\n\u000c]+/g, " ")
-        // If this starts with whitespace, and there is no node before it, or
-        // a hard break, or a text node that ends with whitespace, strip the
-        // leading space.
+        // 如果这以空白开头，并且之前没有节点，或者
+        // 有硬换行，或者有以空白结尾的文本节点，去除
+        // 前导空格。
         if (/^[ \t\r\n\u000c]/.test(value) && this.open == this.nodes.length - 1) {
           let nodeBefore = top.content[top.content.length - 1]
           let domNodeBefore = dom.previousSibling
@@ -476,8 +475,8 @@ class ParseContext {
     }
   }
 
-  // Try to find a handler for the given tag and use that to parse. If
-  // none is found, the element's content nodes are added directly.
+  // 尝试为给定标签找到处理器并使用它来解析。如果
+  // 找不到，元素的内容节点将直接添加。
   addElement(dom: HTMLElement, marks: readonly Mark[], matchAfter?: TagParseRule) {
     let outerWS = this.localPreserveWS, top = this.top
     if (dom.tagName == "PRE" || /pre/.test(dom.style && dom.style.whiteSpace))
@@ -517,29 +516,29 @@ class ParseContext {
     this.localPreserveWS = outerWS
   }
 
-  // Called for leaf DOM nodes that would otherwise be ignored
+  // 为否则会被忽略的叶 DOM 节点调用
   leafFallback(dom: DOMNode, marks: readonly Mark[]) {
     if (dom.nodeName == "BR" && this.top.type && this.top.type.inlineContent)
       this.addTextNode(dom.ownerDocument!.createTextNode("\n"), marks)
   }
 
-  // Called for ignored nodes
+  // 为被忽略的节点调用
   ignoreFallback(dom: DOMNode, marks: readonly Mark[]) {
-    // Ignored BR nodes should at least create an inline context
+    // 被忽略的 BR 节点至少应该创建一个内联上下文
     if (dom.nodeName == "BR" && (!this.top.type || !this.top.type.inlineContent))
       this.findPlace(this.parser.schema.text("-"), marks, true)
   }
 
-  // Run any style parser associated with the node's styles. Either
-  // return an updated array of marks, or null to indicate some of the
-  // styles had a rule with `ignore` set.
+  // 运行与节点样式关联的任何样式解析器。要么
+  // 返回更新的标记数组，要么返回 null 表示某些
+  // 样式有设置了 `ignore` 的规则。
   readStyles(dom: HTMLElement, marks: readonly Mark[]) {
     let styles = dom.style
-    // Because many properties will only show up in 'normalized' form
-    // in `style.item` (i.e. text-decoration becomes
-    // text-decoration-line, text-decoration-color, etc), we directly
-    // query the styles mentioned in our rules instead of iterating
-    // over the items.
+    // 因为许多属性只会以 'normalized' 形式显示
+    // 在 `style.item` 中（即 text-decoration 变成
+    // text-decoration-line, text-decoration-color 等），我们直接
+    // 查询规则中提到的样式，而不是迭代
+    // 这些项。
     if (styles && styles.length) for (let i = 0; i < this.parser.matchedStyles.length; i++) {
       let name = this.parser.matchedStyles[i], value = styles.getPropertyValue(name)
       if (value) for (let after: StyleParseRule | undefined = undefined;;) {
@@ -557,9 +556,9 @@ class ParseContext {
     return marks
   }
 
-  // Look up a handler for the given node. If none are found, return
-  // false. Otherwise, apply it, use its return value to drive the way
-  // the node's content is wrapped, and return true.
+  // 查找给定节点的处理器。如果找不到，返回
+  // false。否则，应用它，使用其返回值来驱动
+  // 节点内容的包装方式，并返回 true。
   addElementByRule(dom: HTMLElement, rule: TagParseRule, marks: readonly Mark[], continueAfter?: TagParseRule) {
     let sync, nodeType
     if (rule.node) {
@@ -598,9 +597,9 @@ class ParseContext {
     if (sync && this.sync(startIn)) this.open--
   }
 
-  // Add all child nodes between `startIndex` and `endIndex` (or the
-  // whole node, if not given). If `sync` is passed, use it to
-  // synchronize after every block element.
+  // 在 `startIndex` 和 `endIndex` 之间添加所有子节点（或者
+  // 整个节点，如果未给出）。如果传递了 `sync`，使用它在
+  // 每个块元素后同步。
   addAll(parent: DOMNode, marks: readonly Mark[], startIndex?: number, endIndex?: number) {
     let index = startIndex || 0
     for (let dom = startIndex ? parent.childNodes[startIndex] : parent.firstChild,
@@ -612,9 +611,9 @@ class ParseContext {
     this.findAtPoint(parent, index)
   }
 
-  // Try to find a way to fit the given node type into the current
-  // context. May add intermediate wrappers and/or leave non-solid
-  // nodes that we're in.
+  // 尝试找到一种方法将给定的节点类型放入当前
+  // 上下文。可能添加中间包装器和/或离开我们所在的
+  // 非实心节点。
   findPlace(node: Node, marks: readonly Mark[], cautious: boolean) {
     let route, sync: NodeContext | undefined
     for (let depth = this.open, penalty = 0; depth >= 0; depth--) {
@@ -637,7 +636,7 @@ class ParseContext {
     return marks
   }
 
-  // Try to insert the given node, adjusting the context when needed.
+  // 尝试插入给定的节点，在需要时调整上下文。
   insertNode(node: Node, marks: readonly Mark[], cautious: boolean) {
     if (node.isInline && this.needsBlock && !this.top.type) {
       let block = this.textblockFromContext()
@@ -658,15 +657,15 @@ class ParseContext {
     return false
   }
 
-  // Try to start a node of the given type, adjusting the context when
-  // necessary.
+  // 尝试启动给定类型的节点，在
+  // 必要时调整上下文。
   enter(type: NodeType, attrs: Attrs | null, marks: readonly Mark[], preserveWS?: boolean | "full") {
     let innerMarks = this.findPlace(type.create(attrs), marks, false)
     if (innerMarks) innerMarks = this.enterInner(type, attrs, marks, true, preserveWS)
     return innerMarks
   }
 
-  // Open a node of the given type
+  // 打开给定类型的节点
   enterInner(type: NodeType, attrs: Attrs | null, marks: readonly Mark[],
              solid: boolean = false, preserveWS?: boolean | "full") {
     this.closeExtra()
@@ -687,8 +686,8 @@ class ParseContext {
     return marks
   }
 
-  // Make sure all nodes above this.open are finished and added to
-  // their parents
+  // 确保 this.open 之上的所有节点都已完成并添加到
+  // 它们的父节点
   closeExtra(openEnd = false) {
     let i = this.nodes.length - 1
     if (i > this.open) {
@@ -758,7 +757,7 @@ class ParseContext {
     }
   }
 
-  // Determines whether the given context string matches this context.
+  // 确定给定的上下文字符串是否匹配此上下文。
   matchesContext(context: string) {
     if (context.indexOf("|") > -1)
       return context.split(/\s*\|\s*/).some(this.matchesContext, this)
@@ -802,9 +801,9 @@ class ParseContext {
   }
 }
 
-// Kludge to work around directly nested list nodes produced by some
-// tools and allowed by browsers to mean that the nested list is
-// actually part of the list item above it.
+// 解决直接嵌套列表节点的变通方法，这些节点由某些
+// 工具产生，并被浏览器允许，意味着嵌套列表实际上
+// 是其上方列表项的一部分。
 function normalizeList(dom: DOMNode) {
   for (let child = dom.firstChild, prevItem: ChildNode | null = null; child; child = child.nextSibling) {
     let name = child.nodeType == 1 ? child.nodeName.toLowerCase() : null
@@ -819,7 +818,7 @@ function normalizeList(dom: DOMNode) {
   }
 }
 
-// Apply a CSS selector.
+// 应用 CSS 选择器。
 function matches(dom: any, selector: string): boolean {
   return (dom.matches || dom.msMatchesSelector || dom.webkitMatchesSelector || dom.mozMatchesSelector).call(dom, selector)
 }
@@ -830,9 +829,9 @@ function copy(obj: {[prop: string]: any}) {
   return copy
 }
 
-// Used when finding a mark at the top level of a fragment parse.
-// Checks whether it would be reasonable to apply a given mark type to
-// a given node, by looking at the way the mark occurs in the schema.
+// 在片段解析的顶层查找标记时使用。
+// 通过查看标记在模式中出现的方式，检查
+// 将给定的标记类型应用于给定的节点是否合理。
 function markMayApply(markType: MarkType, nodeType: NodeType) {
   let nodes = nodeType.schema.nodes
   for (let name in nodes) {

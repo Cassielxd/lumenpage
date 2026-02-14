@@ -10,10 +10,9 @@ import {ParseRule, TagParseRule} from "./from_dom"
 /// An object holding the attributes of a node.
 export type Attrs = {readonly [attr: string]: any}
 
-// For node types where all attrs have a default value (or which don't
-// have any attributes), build up a single reusable default attribute
-// object, and use it for all nodes that don't specify specific
-// attributes.
+// 对于所有属性都有默认值（或没有任何属性）的节点类型，
+// 构建一个可重用的默认属性对象，并将其用于所有
+// 不指定特定属性的节点。
 function defaultAttrs(attrs: {[name: string]: Attribute}) {
   let defaults = Object.create(null)
   for (let attrName in attrs) {
@@ -78,7 +77,7 @@ export class NodeType {
     this.attrs = initAttrs(name, spec.attrs)
     this.defaultAttrs = defaultAttrs(this.attrs)
 
-    // Filled in later
+    // 稍后填充
     ;(this as any).contentMatch = null
     ;(this as any).inlineContent = null
 
@@ -254,7 +253,7 @@ function validateType(typeName: string, attrName: string, type: string) {
   }
 }
 
-// Attribute descriptors
+// 属性描述符
 
 class Attribute {
   hasDefault: boolean
@@ -272,7 +271,7 @@ class Attribute {
   }
 }
 
-// Marks
+// 标记
 
 /// Like nodes, marks (which are associated with nodes to signify
 /// things like emphasis or being part of a link) are
@@ -522,7 +521,7 @@ export interface MarkSpec {
   /// nodes when serialized to DOM/HTML. Defaults to true.
   spanning?: boolean
 
-  /// Marks the content of this span as being code, which causes some
+  /// 标记 the content of this span as being code, which causes some
   /// commands and extensions to treat it differently.
   code?: boolean
 

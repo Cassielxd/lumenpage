@@ -128,7 +128,7 @@ export function setBlockType(tr: Transform, from: number, to: number,
         if (pre && !supportLinebreak) convertNewlines = false
         else if (!pre && supportLinebreak) convertNewlines = true
       }
-      // Ensure all markup that isn't allowed in the new node type is cleared
+      // 确保清除新节点类型中不允许的所有标记
       if (convertNewlines === false) replaceLinebreaks(tr, node, pos, mapFrom)
       clearIncompatible(tr, tr.mapping.slice(mapFrom).map(pos, 1), type, undefined, convertNewlines === null)
       let mapping = tr.mapping.slice(mapFrom)

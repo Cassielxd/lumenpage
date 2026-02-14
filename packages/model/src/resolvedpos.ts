@@ -130,19 +130,19 @@ export class ResolvedPos {
   marks(): readonly Mark[] {
     let parent = this.parent, index = this.index()
 
-    // In an empty parent, return the empty array
+    // 在空父节点中，返回空数组
     if (parent.content.size == 0) return Mark.none
 
-    // When inside a text node, just return the text node's marks
+    // 当在文本节点内时，只返回文本节点的标记
     if (this.textOffset) return parent.child(index).marks
 
     let main = parent.maybeChild(index - 1), other = parent.maybeChild(index)
-    // If the `after` flag is true of there is no node before, make
-    // the node after this position the main reference.
+    // 如果 `after` 标志为 true 或之前没有节点，使
+    // 此位置之后的节点成为主要参考。
     if (!main) { let tmp = main; main = other; other = tmp }
 
-    // Use all marks in the main node, except those that have
-    // `inclusive` set to false and are not present in the other node.
+    // 使用主节点中的所有标记，除了那些将
+    // `inclusive` 设置为 false 且不存在于另一个节点中的标记。
     let marks = main!.marks
     for (var i = 0; i < marks.length; i++)
       if (marks[i].type.spec.inclusive === false && (!other || !marks[i].isInSet(other.marks)))

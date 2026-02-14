@@ -16,15 +16,13 @@ export interface Mappable {
   mapResult: (pos: number, assoc?: number) => MapResult
 }
 
-// Recovery values encode a range index and an offset. They are
-// represented as numbers, because tons of them will be created when
-// mapping, for example, a large number of decorations. The number's
-// lower 16 bits provide the index, the remaining bits the offset.
+// 恢复值编码范围索引和偏移量
+// 它们表示为数字，因为在映射时会创建大量这样的值
+// 例如，大量装饰。数字的低 16 位提供索引，其余位提供偏移量
 //
-// Note: We intentionally don't use bit shift operators to en- and
-// decode these, since those clip to 32 bits, which we might in rare
-// cases want to overflow. A 64-bit float can represent 48-bit
-// integers precisely.
+// 注意：我们故意不使用位移运算符来编码和解码这些值
+// 因为这些运算符会截断到 32 位，而我们在极少数情况下可能想要溢出
+// 64 位浮点数可以精确表示 48 位整数
 
 const lower16 = 0xffff
 const factor16 = Math.pow(2, 16)
@@ -189,7 +187,7 @@ export class Mapping implements Mappable {
   get maps(): readonly StepMap[] { return this._maps }
 
   private _maps: StepMap[]
-  // False if maps/mirror are shared arrays that we shouldn't mutate
+  // 如果 maps/mirror 是我们不应该修改的共享数组，则为 false
   private ownData: boolean
 
   /// Create a mapping that maps only through a part of this one.

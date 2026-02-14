@@ -13,7 +13,7 @@ export function replaceStep(doc: Node, from: number, to = from, slice = Slice.em
   if (from == to && !slice.size) return null
 
   let $from = doc.resolve(from), $to = doc.resolve(to)
-  // Optimization -- avoid work if it's obvious that it's not needed.
+  // 优化 -- 如果明显不需要，则避免工作
   if (fitsTrivially($from, $to, slice)) return new ReplaceStep(from, to, slice)
   return new Fitter($from, $to, slice).fit()
 }
@@ -31,23 +31,19 @@ interface Fittable {
   wrap?: readonly NodeType[]
 }
 
-// Algorithm for 'placing' the elements of a slice into a gap:
+// 将切片元素"放置"到间隙中的算法：
 //
-// We consider the content of each node that is open to the left to be
-// independently placeable. I.e. in <p("foo"), p("bar")>, when the
-// paragraph on the left is open, "foo" can be placed (somewhere on
-// the left side of the replacement gap) independently from p("bar").
+// 我们认为向左开放的每个节点的内容是可以独立放置的
+// 即在 <p("foo"), p("bar")> 中，当左侧的段落开放时
+// "foo" 可以独立于 p("bar") 放置（在替换间隙的左侧某处）
 //
-// This class tracks the state of the placement progress in the
-// following properties:
+// 此类在以下属性中跟踪放置进度的状态：
 //
-//  - `frontier` holds a stack of `{type, match}` objects that
-//    represent the open side of the replacement. It starts at
-//    `$from`, then moves forward as content is placed, and is finally
-//    reconciled with `$to`.
+//  - `frontier` 保存一个 `{type, match}` 对象的堆栈
+//    表示替换的开放侧。它从 `$from` 开始
+//    然后随着内容的放置向前移动，最后与 `$to` 协调
 //
-//  - `unplaced` is a slice that represents the content that hasn't
-//    been placed yet.
+//  - `unplaced` 是一个表示尚未放置的内容的切片
 //
 //  - `placed` is a fragment of placed content. Its open-start value
 //    is implicit in `$from`, and its open-end value in `frontier`.
@@ -75,24 +71,23 @@ class Fitter {
   get depth() { return this.frontier.length - 1 }
 
   fit() {
-    // As long as there's unplaced content, try to place some of it.
-    // If that fails, either increase the open score of the unplaced
-    // slice, or drop nodes from it, and then try again.
+    // 只要有未放置的内容，就尝试放置一些
+    // 如果失败，要么增加未放置切片的开放分数
+    // 要么从中删除节点，然后再试一次
     while (this.unplaced.size) {
       let fit = this.findFittable()
       if (fit) this.placeNodes(fit)
       else this.openMore() || this.dropNode()
     }
-    // When there's inline content directly after the frontier _and_
-    // directly after `this.$to`, we must generate a `ReplaceAround`
-    // step that pulls that content into the node after the frontier.
-    // That means the fitting must be done to the end of the textblock
-    // node after `this.$to`, not `this.$to` itself.
+    // 当边界之后和 `this.$to` 之后直接有内联内容时
+    // 我们必须生成一个 `ReplaceAround` 步骤，将该内容拉入边界之后的节点
+    // 这意味着必须将拟合完成到 `this.$to` 之后的文本块节点的末尾
+    // 而不是 `this.$to` 本身
     let moveInline = this.mustMoveInline(), placedSize = this.placed.size - this.depth - this.$from.depth
     let $from = this.$from, $to = this.close(moveInline < 0 ? this.$to : $from.doc.resolve(moveInline))
     if (!$to) return null
 
-    // If closing to `$to` succeeded, create a step
+    // 如果成功关闭到 `$to`，创建一个步骤
     let content = this.placed, openStart = $from.depth, openEnd = $to.depth
     while (openStart && openEnd && content.childCount == 1) { // Normalize by dropping open parent nodes
       content = content.firstChild!.content
@@ -106,9 +101,9 @@ class Fitter {
     return null
   }
 
-  // Find a position on the start spine of `this.unplaced` that has
-  // content that can be moved somewhere on the frontier. Returns two
-  // depths, one for the slice and one for the frontier.
+  // 在 `this.unplaced` 的起始脊柱上找到一个位置
+  // 该位置具有可以移动到边界某处的内容
+  // 返回两个深度，一个用于切片，一个用于边界
   findFittable(): Fittable | undefined {
     let startDepth = this.unplaced.openStart
     for (let cur = this.unplaced.content, d = 0, openEnd = this.unplaced.openEnd; d < startDepth; d++) {
@@ -121,8 +116,8 @@ class Fitter {
       cur = node.content
     }
 
-    // Only try wrapping nodes (pass 2) after finding a place without
-    // wrapping failed.
+    // 只有在没有包装的情况下找到位置失败后
+    // 才尝试包装节点（第 2 遍）
     for (let pass = 1; pass <= 2; pass++) {
       for (let sliceDepth = pass == 1 ? startDepth : this.unplaced.openStart; sliceDepth >= 0; sliceDepth--) {
         let fragment, parent = null
@@ -135,18 +130,15 @@ class Fitter {
         let first = fragment.firstChild
         for (let frontierDepth = this.depth; frontierDepth >= 0; frontierDepth--) {
           let {type, match} = this.frontier[frontierDepth], wrap, inject: Fragment | null = null
-          // In pass 1, if the next node matches, or there is no next
-          // node but the parents look compatible, we've found a
-          // place.
+          // 在第 1 遍中，如果下一个节点匹配，或者没有下一个节点
+          // 但父节点看起来兼容，我们就找到了一个位置
           if (pass == 1 && (first ? match.matchType(first.type) || (inject = match.fillBefore(Fragment.from(first), false))
                             : parent && type.compatibleContent(parent.type)))
             return {sliceDepth, frontierDepth, parent, inject}
-          // In pass 2, look for a set of wrapping nodes that make
-          // `first` fit here.
+          // 在第 2 遍中，寻找一组包装节点使 `first` 适合这里
           else if (pass == 2 && first && (wrap = match.findWrapping(first.type)))
             return {sliceDepth, frontierDepth, parent, wrap}
-          // Don't continue looking further up if the parent node
-          // would fit here.
+          // 如果父节点适合这里，不要继续向上查找
           if (parent && match.matchType(parent.type)) break
         }
       }
@@ -174,9 +166,8 @@ class Fitter {
     }
   }
 
-  // Move content from the unplaced slice at `sliceDepth` to the
-  // frontier node at `frontierDepth`. Close that frontier node when
-  // applicable.
+  // 将内容从 `sliceDepth` 处的未放置切片移动到
+  // `frontierDepth` 处的边界节点。在适用时关闭该边界节点
   placeNodes({sliceDepth, frontierDepth, parent, inject, wrap}: Fittable) {
     while (this.depth > frontierDepth) this.closeFrontierNode()
     if (wrap) for (let i = 0; i < wrap.length; i++) this.openFrontierNode(wrap[i])
@@ -189,12 +180,11 @@ class Fitter {
       for (let i = 0; i < inject.childCount; i++) add.push(inject.child(i))
       match = match.matchFragment(inject)!
     }
-    // Computes the amount of (end) open nodes at the end of the
-    // fragment. When 0, the parent is open, but no more. When
-    // negative, nothing is open.
+    // 计算片段末尾的（结束）开放节点数量
+    // 当为 0 时，父节点是开放的，但不再有更多
+    // 当为负数时，没有任何节点是开放的
     let openEndCount = (fragment.size + sliceDepth) - (slice.content.size - slice.openEnd)
-    // Scan over the fragment, fitting as many child nodes as
-    // possible.
+    // 扫描片段，尽可能多地拟合子节点
     while (taken < fragment.childCount) {
       let next = fragment.child(taken), matches = match.matchType(next.type)
       if (!matches) break
@@ -211,21 +201,20 @@ class Fitter {
     this.placed = addToFragment(this.placed, frontierDepth, Fragment.from(add))
     this.frontier[frontierDepth].match = match
 
-    // If the parent types match, and the entire node was moved, and
-    // it's not open, close this frontier node right away.
+    // 如果父类型匹配，并且整个节点已移动，并且它未开放
+    // 立即关闭此边界节点
     if (toEnd && openEndCount < 0 && parent && parent.type == this.frontier[this.depth].type && this.frontier.length > 1)
       this.closeFrontierNode()
 
-    // Add new frontier nodes for any open nodes at the end.
+    // 为末尾的任何开放节点添加新的边界节点
     for (let i = 0, cur = fragment; i < openEndCount; i++) {
       let node = cur.lastChild!
       this.frontier.push({type: node.type, match: node.contentMatchAt(node.childCount)})
       cur = node.content
     }
 
-    // Update `this.unplaced`. Drop the entire node from which we
-    // placed it we got to its end, otherwise just drop the placed
-    // nodes.
+    // 更新 `this.unplaced`。如果我们到达了节点的末尾
+    // 则删除我们从中放置的整个节点，否则只删除已放置的节点
     this.unplaced = !toEnd ? new Slice(dropFromFragment(slice.content, sliceDepth, taken), slice.openStart, slice.openEnd)
       : sliceDepth == 0 ? Slice.empty
       : new Slice(dropFromFragment(slice.content, sliceDepth - 1, 1),
@@ -339,24 +328,23 @@ export function replaceRange(tr: Transform, from: number, to: number, slice: Sli
     return tr.step(new ReplaceStep(from, to, slice))
 
   let targetDepths = coveredDepths($from, $to)
-  // Can't replace the whole document, so remove 0 if it's present
+  // 无法替换整个文档，因此如果存在 0 则将其删除
   if (targetDepths[targetDepths.length - 1] == 0) targetDepths.pop()
-  // Negative numbers represent not expansion over the whole node at
-  // that depth, but replacing from $from.before(-D) to $to.pos.
+  // 负数表示不是在该深度扩展整个节点
+  // 而是从 $from.before(-D) 替换到 $to.pos
   let preferredTarget = -($from.depth + 1)
   targetDepths.unshift(preferredTarget)
-  // This loop picks a preferred target depth, if one of the covering
-  // depths is not outside of a defining node, and adds negative
-  // depths for any depth that has $from at its start and does not
-  // cross a defining node.
+  // 此循环选择首选目标深度，如果其中一个覆盖深度
+  // 不在定义节点之外，并为任何在其开始处具有 $from
+  // 且不跨越定义节点的深度添加负深度
   for (let d = $from.depth, pos = $from.pos - 1; d > 0; d--, pos--) {
     let spec = $from.node(d).type.spec
     if (spec.defining || spec.definingAsContext || spec.isolating) break
     if (targetDepths.indexOf(d) > -1) preferredTarget = d
     else if ($from.before(d) == pos) targetDepths.splice(1, 0, -d)
   }
-  // Try to fit each possible depth of the slice into each possible
-  // target depth, starting with the preferred depths.
+  // 尝试将切片的每个可能深度拟合到每个可能的目标深度
+  // 从首选深度开始
   let preferredTargetIndex = targetDepths.indexOf(preferredTarget)
 
   let leftNodes: Node[] = [], preferredDepth = slice.openStart
@@ -367,7 +355,7 @@ export function replaceRange(tr: Transform, from: number, to: number, slice: Sli
     content = node.content
   }
 
-  // Back up preferredDepth to cover defining textblocks directly
+  // 回退 preferredDepth 以直接覆盖定义文本块
   // above it, possibly skipping a non-defining textblock.
   for (let d = preferredDepth - 1; d >= 0; d--) {
     let leftNode = leftNodes[d], def = definesContent(leftNode.type)
@@ -380,8 +368,7 @@ export function replaceRange(tr: Transform, from: number, to: number, slice: Sli
     let insert = leftNodes[openDepth]
     if (!insert) continue
     for (let i = 0; i < targetDepths.length; i++) {
-      // Loop over possible expansion levels, starting with the
-      // preferred one
+      // 循环遍历可能的扩展级别，从首选级别开始
       let targetDepth = targetDepths[(i + preferredTargetIndex) % targetDepths.length], expand = true
       if (targetDepth < 0) { expand = false; targetDepth = -targetDepth }
       let parent = $from.node(targetDepth - 1), index = $from.index(targetDepth - 1)
@@ -441,8 +428,7 @@ export function deleteRange(tr: Transform, from: number, to: number) {
   tr.delete(from, to)
 }
 
-// Returns an array of all depths for which $from - $to spans the
-// whole content of the nodes at that depth.
+// 返回 $from - $to 跨越该深度节点的整个内容的所有深度的数组
 function coveredDepths($from: ResolvedPos, $to: ResolvedPos) {
   let result: number[] = [], minDepth = Math.min($from.depth, $to.depth)
   for (let d = minDepth; d >= 0; d--) {

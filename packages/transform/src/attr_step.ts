@@ -10,7 +10,7 @@ export class AttrStep extends Step {
     readonly pos: number,
     /// The attribute to set.
     readonly attr: string,
-    // The attribute's new value.
+    // 属性的新值
     readonly value: any
   ) {
     super()
@@ -58,7 +58,7 @@ export class DocAttrStep extends Step {
   constructor(
     /// The attribute to set.
     readonly attr: string,
-    // The attribute's new value.
+    // 属性的新值
     readonly value: any
   ) {
     super()

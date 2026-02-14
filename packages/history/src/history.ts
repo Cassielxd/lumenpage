@@ -2,30 +2,26 @@ import RopeSequence from "rope-sequence"
 import {Mapping, Step, StepMap, Transform} from "lumenpage-transform"
 import {Plugin, Command, PluginKey, EditorState, Transaction, SelectionBookmark} from "lumenpage-state"
 
-// ProseMirror's history isn't simply a way to roll back to a previous
-// state, because ProseMirror supports applying changes without adding
-// them to the history (for example during collaboration).
+// ProseMirror 的历史记录不仅仅是回滚到之前状态的方式
+// 因为 ProseMirror 支持应用更改而不将其添加到历史记录中
+// （例如在协作期间）
 //
-// To this end, each 'Branch' (one for the undo history and one for
-// the redo history) keeps an array of 'Items', which can optionally
-// hold a step (an actual undoable change), and always hold a position
-// map (which is needed to move changes below them to apply to the
-// current document).
+// 为此，每个"分支"（一个用于撤销历史，一个用于重做历史）
+// 保留一个"项目"数组，可以选择性地保存一个步骤（实际可撤销的更改）
+// 并始终保存一个位置映射（需要将其下方的更改移动到当前文档）
 //
-// An item that has both a step and a selection bookmark is the start
-// of an 'event' — a group of changes that will be undone or redone at
-// once. (It stores only the bookmark, since that way we don't have to
-// provide a document until the selection is actually applied, which
-// is useful when compressing.)
+// 同时具有步骤和选区书签的项目是"事件"的开始
+// — 一组将一次撤销或重做的更改。（它只存储书签
+// 因为这样我们不必提供文档，直到实际应用选区
+// 这在压缩时很有用）
 
-// Used to schedule history compression
+// 用于调度历史压缩
 const max_empty_items = 500
 
 class Branch {
   constructor(readonly items: RopeSequence<Item>, readonly eventCount: number) {}
 
-  // Pop the latest event off the branch's history and apply it
-  // to a document transform.
+  // 从分支的历史记录中弹出最新事件并将其应用到文档转换
   popEvent(state: EditorState, preserveItems: boolean) {
     if (this.eventCount == 0) return null
 
@@ -79,7 +75,7 @@ class Branch {
     return {remaining: remaining!, transform, selection: selection!}
   }
 
-  // Create a new branch with the given transform added.
+  // 创建一个添加了给定转换的新分支
   addTransform(transform: Transform, selection: SelectionBookmark | undefined,
                histOptions: Required<HistoryOptions>, preserveItems: boolean) {
     let newItems = [], eventCount = this.eventCount
@@ -123,10 +119,9 @@ class Branch {
     return new Branch(this.items.append(array.map(map => new Item(map))), this.eventCount)
   }
 
-  // When the collab module receives remote changes, the history has
-  // to know about those, so that it can adjust the steps that were
-  // rebased on top of the remote changes, and include the position
-  // maps for the remote changes in its array of items.
+  // 当协作模块接收到远程更改时，历史记录必须知道这些更改
+  // 以便它可以调整在远程更改之上变基的步骤
+  // 并在其项目数组中包含远程更改的位置映射
   rebased(rebasedTransform: Transform, rebasedCount: number) {
     if (!this.eventCount) return this
 
@@ -170,12 +165,11 @@ class Branch {
     return count
   }
 
-  // Compressing a branch means rewriting it to push the air (map-only
-  // items) out. During collaboration, these naturally accumulate
-  // because each remote change adds one. The `upto` argument is used
-  // to ensure that only the items below a given level are compressed,
-  // because `rebased` relies on a clean, untouched set of items in
-  // order to associate old items with rebased steps.
+  // 压缩分支意味着重写它以推出空气（仅映射项）
+  // 在协作期间，这些自然会累积，因为每个远程更改都会添加一个
+  // `upto` 参数用于确保只压缩给定级别以下的项目
+  // 因为 `rebased` 依赖于一组干净、未触及的项目
+  // 以便将旧项目与变基步骤关联
   compress(upto = this.items.length) {
     let remap = this.remapping(0, upto), mapFrom = remap.maps.length
     let items: Item[] = [], events = 0
@@ -219,16 +213,15 @@ function cutOffEvents(items: RopeSequence<Item>, n: number) {
 
 class Item {
   constructor(
-    // The (forward) step map for this item.
+    // 此项目的（正向）步骤映射
     readonly map: StepMap,
-    // The inverted step
+    // 反转的步骤
     readonly step?: Step,
-    // If this is non-null, this item is the start of a group, and
-    // this selection is the starting selection for the group (the one
-    // that was active before the first step was applied)
+    // 如果这不为 null，则此项目是组的开始
+    // 此选区是组的起始选区（在应用第一步之前处于活动状态的选区）
     readonly selection?: SelectionBookmark,
-    // If this item is the inverse of a previous mapping on the stack,
-    // this points at the inverse's offset
+    // 如果此项目是堆栈上先前映射的逆
+    // 这指向逆的偏移量
     readonly mirrorOffset?: number
   ) {}
 
@@ -240,9 +233,8 @@ class Item {
   }
 }
 
-// The value of the state field that tracks undo/redo history for that
-// state. Will be stored in the plugin state when the history plugin
-// is active.
+// 跟踪该状态的撤销/重做历史的状态字段的值
+// 当历史插件处于活动状态时，将存储在插件状态中
 class HistoryState {
   constructor(
     readonly done: Branch,
@@ -255,7 +247,7 @@ class HistoryState {
 
 const DEPTH_OVERFLOW = 20
 
-// Record a transformation in undo history.
+// 在撤销历史中记录转换
 function applyTransaction(history: HistoryState, state: EditorState, tr: Transaction, options: Required<HistoryOptions>) {
   let historyTr = tr.getMeta(historyKey), rebased
   if (historyTr) return historyTr.historyState
@@ -275,7 +267,7 @@ function applyTransaction(history: HistoryState, state: EditorState, tr: Transac
       return new HistoryState(history.done, history.undone.addTransform(tr, undefined, options, mustPreserveItems(state)),
                               null, history.prevTime, history.prevComposition)
   } else if (tr.getMeta("addToHistory") !== false && !(appended && appended.getMeta("addToHistory") === false)) {
-    // Group transforms that occur in quick succession into one event.
+    // 将快速连续发生的转换分组到一个事件中
     let composition = tr.getMeta("composition")
     let newGroup = history.prevTime == 0 ||
       (!appended && history.prevComposition != composition &&
@@ -285,8 +277,7 @@ function applyTransaction(history: HistoryState, state: EditorState, tr: Transac
                                                       options, mustPreserveItems(state)),
                             Branch.empty, prevRanges, tr.time, composition == null ? history.prevComposition : composition)
   } else if (rebased = tr.getMeta("rebased")) {
-    // Used by the collab module to tell the history that some of its
-    // content has been rebased.
+    // 协作模块使用此方法告诉历史记录其某些内容已被变基
     return new HistoryState(history.done.rebased(tr, rebased),
                             history.undone.rebased(tr, rebased),
                             mapRanges(history.prevRanges!, tr.mapping), history.prevTime, history.prevComposition)
@@ -326,8 +317,7 @@ function mapRanges(ranges: readonly number[], mapping: Mapping) {
   return result
 }
 
-// Apply the latest event from one branch to the document and shift the event
-// onto the other branch.
+// 将一个分支的最新事件应用到文档并将事件转移到另一个分支
 function histTransaction(history: HistoryState, state: EditorState, redo: boolean): Transaction | null {
   let preserveItems = mustPreserveItems(state)
   let histOptions = (historyKey.get(state)!.spec as any).config as Required<HistoryOptions>
@@ -343,7 +333,7 @@ function histTransaction(history: HistoryState, state: EditorState, redo: boolea
 }
 
 let cachedPreserveItems = false, cachedPreserveItemsPlugins: readonly Plugin[] | null = null
-// Check whether any plugin in the given state has a
+// 检查给定状态中的任何插件是否有 historyPreserveItems 属性
 // `historyPreserveItems` property in its spec, in which case we must
 // preserve steps exactly as they came in, so that they can be
 // rebased.

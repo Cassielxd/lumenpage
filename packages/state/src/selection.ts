@@ -70,9 +70,9 @@ export abstract class Selection {
   /// Replace the selection with a slice or, if no slice is given,
   /// delete the selection. Will append to the given transaction.
   replace(tr: Transaction, content = Slice.empty) {
-    // Put the new selection at the position after the inserted
-    // content. When that ended in an inline node, search backwards,
-    // to get the position after that node. If not, search forward.
+    // 将新选区放置在插入内容之后的位置
+    // 当内容以内联节点结束时，向后搜索以获取该节点之后的位置
+    // 否则向前搜索
     let lastNode = content.content.lastChild, lastParent = null
     for (let i = 0; i < content.openEnd; i++) {
       lastParent = lastNode!
@@ -431,11 +431,10 @@ const AllBookmark = {
   resolve(doc: Node) { return new AllSelection(doc) }
 }
 
-// FIXME we'll need some awareness of text direction when scanning for selections
+// FIXME 在扫描选区时需要考虑文本方向
 
-// Try to find a selection inside the given node. `pos` points at the
-// position where the search starts. When `text` is true, only return
-// text selections.
+// 尝试在给定节点内查找选区。`pos` 指向搜索开始的位置
+// 当 `text` 为 true 时，只返回文本选区
 function findSelectionIn(doc: Node, node: Node, pos: number, index: number, dir: number, text = false): Selection | null {
   if (node.inlineContent) return TextSelection.create(doc, pos)
   for (let i = index - (dir > 0 ? 0 : 1); dir > 0 ? i < node.childCount : i >= 0; i += dir) {

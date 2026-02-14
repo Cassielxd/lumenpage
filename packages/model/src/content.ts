@@ -273,20 +273,17 @@ function parseExprAtom(stream: TokenStream): Expr {
   }
 }
 
-// The code below helps compile a regular-expression-like language
-// into a deterministic finite automaton. For a good introduction to
-// these concepts, see https://swtch.com/~rsc/regexp/regexp1.html
+// 下面的代码帮助将类似正则表达式的语言编译成确定性有限自动机。
+// 关于这些概念的良好介绍，请参见 https://swtch.com/~rsc/regexp/regexp1.html
 
 type Edge = {term: NodeType | undefined, to: number | undefined}
 
-// Construct an NFA from an expression as returned by the parser. The
-// NFA is represented as an array of states, which are themselves
-// arrays of edges, which are `{term, to}` objects. The first state is
-// the entry state and the last node is the success state.
+// 从解析器返回的表达式构造 NFA。NFA 表示为状态数组，
+// 状态本身是边的数组，边是 `{term, to}` 对象。第一个状态是
+// 入口状态，最后一个节点是成功状态。
 //
-// Note that unlike typical NFAs, the edge ordering in this one is
-// significant, in that it is used to contruct filler content when
-// necessary.
+// 注意，与典型的 NFA 不同，这个 NFA 中的边顺序是
+// 有意义的，因为它用于在必要时构造填充内容。
 function nfa(expr: Expr): Edge[][] {
   let nfa: Edge[][] = [[]]
   connect(compile(expr, 0), node())
@@ -351,9 +348,9 @@ function nfa(expr: Expr): Edge[][] {
 
 function cmp(a: number, b: number) { return b - a }
 
-// Get the set of nodes reachable by null edges from `node`. Omit
-// nodes with only a single null-out-edge, since they may lead to
-// needless duplicated nodes.
+// 获取从 `node` 通过空边可达的节点集合。省略
+// 只有单个空出边的节点，因为它们可能导致
+// 不必要的重复节点。
 function nullFrom(nfa: Edge[][], node: number): readonly number[] {
   let result: number[] = []
   scan(node)
@@ -370,9 +367,8 @@ function nullFrom(nfa: Edge[][], node: number): readonly number[] {
   }
 }
 
-// Compiles an NFA as produced by `nfa` into a DFA, modeled as a set
-// of state objects (`ContentMatch` instances) with transitions
-// between them.
+// 将 `nfa` 生成的 NFA 编译成 DFA，建模为一组
+// 状态对象（`ContentMatch` 实例）及其之间的转换。
 function dfa(nfa: Edge[][]): ContentMatch {
   let labeled = Object.create(null)
   return explore(nullFrom(nfa, 0))
