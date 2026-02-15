@@ -1,17 +1,16 @@
 import {
+  basicCommands,
   createDefaultNodeRendererRegistry,
   createDocFromText,
   docToText,
-  schema,
-} from "lumenpage-kit-basic";
-import {
-  applyTransaction,
   runCommand,
+  schema,
   setBlockAlign,
   setHeadingLevel,
   setParagraph,
-} from "lumenpage-core";
-import { CanvasEditorView } from "lumenpage-view-canvas";
+} from "lumenpage-kit-basic";
+import { applyTransaction, CanvasEditorView, createCanvasConfigPlugin, createEditorState } from "lumenpage-view-canvas";
+import { history } from "lumenpage-history";
 
 const settings = {
   pageWidth: 816,
@@ -223,13 +222,75 @@ const initialDocJson = {
     },
 
     {
+      type: "video",
+
+      attrs: {
+        src: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+        width: 480,
+        height: 270,
+      },
+    },
+
+    {
+      type: "horizontal_rule",
+    },
+
+    {
+      type: "blockquote",
+
+      content: [
+        {
+          type: "paragraph",
+
+          content: [
+            {
+              type: "text",
+
+              text: "Blockquote supports nested blocks with custom layout.",
+            },
+          ],
+        },
+      ],
+    },
+
+    {
+      type: "code_block",
+
+      content: [
+        {
+          type: "text",
+
+          text: "const answer = 42;\nconsole.log(answer);",
+        },
+      ],
+    },
+
+    {
       type: "paragraph",
 
       content: [
         {
           type: "text",
 
-          text: "Lists and images now participate in layout and selection.",
+          text: "Hard break demo:",
+        },
+        { type: "hard_break" },
+        {
+          type: "text",
+
+          text: "Second line after hard_break.",
+        },
+      ],
+    },
+
+    {
+      type: "paragraph",
+
+      content: [
+        {
+          type: "text",
+
+          text: "Lists, images, videos, and code/quote blocks now participate in layout and selection.",
         },
       ],
     },  ],
@@ -248,6 +309,26 @@ viewport.innerHTML = "";
 let devtoolsView = null;
 let view = null;
 
+const statusElement = document.getElementById("status");
+const canvasConfigPlugin = createCanvasConfigPlugin({
+  settings,
+  nodeRegistry,
+  getText: (doc) => docToText(doc),
+  commands: {
+    basicCommands,
+    runCommand,
+    setBlockAlign,
+  },
+  statusElement: statusElement || undefined,
+});
+
+const editorState = createEditorState({
+  schema,
+  createDocFromText,
+  json: initialDocJson,
+  plugins: [history(), canvasConfigPlugin],
+});
+
 const dispatchTransaction = (tr) => {
   if (!view) {
     return;
@@ -264,12 +345,7 @@ const dispatchTransaction = (tr) => {
 };
 
 view = new CanvasEditorView(viewport, {
-  schema,
-  createDocFromText,
-  nodeRegistry,
-  json: initialDocJson,
-  settings,
-  getText: (doc) => docToText(doc),
+  state: editorState,
   dispatchTransaction,
 });
 
@@ -319,6 +395,12 @@ tools?.addEventListener("click", (event) => {
     case "block-h3":
       runCommand(setHeadingLevel(3), view.state, dispatch);
       break;
+    case "undo":
+      runCommand(basicCommands.undo, view.state, dispatch);
+      break;
+    case "redo":
+      runCommand(basicCommands.redo, view.state, dispatch);
+      break;
     case "align-left":
       runCommand(setBlockAlign("left"), view.state, dispatch);
       break;
@@ -336,4 +418,5 @@ tools?.addEventListener("click", (event) => {
 });
 
 initDevTools();
+
 
