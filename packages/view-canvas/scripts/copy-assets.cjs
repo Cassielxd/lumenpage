@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const srcDir = path.resolve(__dirname, "..", "src", "assets");
+const srcDir = path.resolve(__dirname, "..", "src", "view", "assets");
 const destDir = path.resolve(__dirname, "..", "dist", "assets");
 
 const copyDir = (from, to) => {
@@ -21,3 +21,4 @@ const copyDir = (from, to) => {
 };
 
 copyDir(srcDir, destDir);
+

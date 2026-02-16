@@ -4,7 +4,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
       "lumenpage-node-paragraph": ["../node-paragraph/src/index.ts"],
       "lumenpage-node-heading": ["../node-heading/src/index.ts"],
       "lumenpage-node-table": ["../node-table/src/index.ts"]
@@ -12,3 +12,4 @@
   },
   "include": ["src"]
 }
+

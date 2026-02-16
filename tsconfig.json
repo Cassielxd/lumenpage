@@ -2,12 +2,6 @@
   "files": [],
   "references": [
     {
-      "path": "packages/layout-pagination"
-    },
-    {
-      "path": "packages/core"
-    },
-    {
       "path": "packages/view-canvas"
     },
     {
@@ -21,6 +15,27 @@
     },
     {
       "path": "packages/node-table"
+    },
+    {
+      "path": "packages/node-list"
+    },
+    {
+      "path": "packages/node-image"
+    },
+    {
+      "path": "packages/node-video"
+    },
+    {
+      "path": "packages/node-blockquote"
+    },
+    {
+      "path": "packages/node-code-block"
+    },
+    {
+      "path": "packages/node-horizontal-rule"
+    },
+    {
+      "path": "packages/node-hard-break"
     },
     {
       "path": "packages/kit-basic"

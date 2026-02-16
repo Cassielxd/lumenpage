@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "lumenpage-commands",
   "version": "1.7.1",
   "description": "Editing commands for ProseMirror",
@@ -26,14 +26,7 @@
   "dependencies": {
     "lumenpage-model": "workspace:*",
     "lumenpage-transform": "workspace:*",
-    "lumenpage-state": "workspace:*"
-  },
-  "devDependencies": {
-    "@prosemirror/buildhelper": "^0.1.5",
-    "prosemirror-test-builder": "^1.0.0"
-  },
-  "scripts": {
-    "test": "pm-runtests",
-    "prepare": "pm-buildhelper src/commands.ts"
+    "lumenpage-state": "workspace:*",
+    "lumenpage-view-types": "workspace:*"
   }
 }

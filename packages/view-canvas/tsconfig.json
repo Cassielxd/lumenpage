@@ -5,11 +5,7 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-core": ["../core/src/index.ts"]
-    }
+    "composite": true
   },
   "include": ["src"]
 }

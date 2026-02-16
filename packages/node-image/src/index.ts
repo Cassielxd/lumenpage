@@ -1,3 +1,5 @@
+import { type NodeSpec } from "lumenpage-model";
+
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
@@ -19,7 +21,7 @@ const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
 
 export const serializeImageToText = () => " ";
 
-export const imageNodeSpec = {
+export const imageNodeSpec: NodeSpec = {
   group: "block",
 
   atom: true,
@@ -55,7 +57,7 @@ export const imageNodeSpec = {
   ],
 
   toDOM(node) {
-    const attrs = { src: node.attrs?.src || "" };
+    const attrs: Record<string, unknown> = { src: node.attrs?.src || "" };
 
     if (node.attrs?.id) {
       attrs["data-node-id"] = node.attrs.id;

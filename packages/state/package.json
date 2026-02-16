@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "lumenpage-state",
   "version": "1.4.4",
   "description": "ProseMirror editor state",
@@ -26,14 +26,6 @@
   "dependencies": {
     "lumenpage-model": "workspace:*",
     "lumenpage-transform": "workspace:*",
-    "prosemirror-view": "^1.27.0"
-  },
-  "devDependencies": {
-    "@prosemirror/buildhelper": "^0.1.5",
-    "prosemirror-test-builder": "^1.0.0"
-  },
-  "scripts": {
-    "test": "pm-runtests",
-    "prepare": "pm-buildhelper src/index.ts"
+    "lumenpage-view-types": "workspace:*"
   }
 }

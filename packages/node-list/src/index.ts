@@ -1,4 +1,5 @@
-import { breakLines, docToRuns } from "lumenpage-core";
+import { breakLines, docToRuns } from "lumenpage-view-canvas";
+import { type NodeSpec } from "lumenpage-model";
 
 const serializeListItemToText = (itemNode) =>
   itemNode.textBetween(0, itemNode.content.size, "\n");
@@ -15,7 +16,7 @@ export const serializeListToText = (listNode) => {
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
 
-export const listNodeSpecs = {
+export const listNodeSpecs: Record<string, NodeSpec> = {
   bullet_list: {
     group: "block",
 
@@ -34,7 +35,7 @@ export const listNodeSpecs = {
     ],
 
     toDOM(node) {
-      const attrs = {};
+      const attrs: Record<string, unknown> = {};
 
       if (node.attrs?.id) {
         attrs["data-node-id"] = node.attrs.id;
@@ -70,7 +71,7 @@ export const listNodeSpecs = {
     ],
 
     toDOM(node) {
-      const attrs = {};
+      const attrs: Record<string, unknown> = {};
 
       if (node.attrs?.order && node.attrs.order !== 1) {
         attrs.start = node.attrs.order;
@@ -263,3 +264,4 @@ export const orderedListRenderer = {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
+

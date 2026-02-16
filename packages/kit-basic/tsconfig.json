@@ -8,11 +8,42 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-core": ["../core/src/index.ts"],
-      "lumenpage-node-paragraph": ["../node-paragraph/src/index.ts"],
-      "lumenpage-node-heading": ["../node-heading/src/index.ts"],
-      "lumenpage-node-table": ["../node-table/src/index.ts"]
+      "lumenpage-view-canvas": [
+        "../view-canvas/dist/index.d.ts"
+      ],
+      "lumenpage-node-paragraph": [
+        "../node-paragraph/dist/index.d.ts"
+      ],
+      "lumenpage-node-heading": [
+        "../node-heading/dist/index.d.ts"
+      ],
+      "lumenpage-node-table": [
+        "../node-table/dist/index.d.ts"
+      ],
+      "lumenpage-node-list": [
+        "../node-list/dist/index.d.ts"
+      ],
+      "lumenpage-node-image": [
+        "../node-image/dist/index.d.ts"
+      ],
+      "lumenpage-node-video": [
+        "../node-video/dist/index.d.ts"
+      ],
+      "lumenpage-node-blockquote": [
+        "../node-blockquote/dist/index.d.ts"
+      ],
+      "lumenpage-node-code-block": [
+        "../node-code-block/dist/index.d.ts"
+      ],
+      "lumenpage-node-horizontal-rule": [
+        "../node-horizontal-rule/dist/index.d.ts"
+      ],
+      "lumenpage-node-hard-break": [
+        "../node-hard-break/dist/index.d.ts"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }

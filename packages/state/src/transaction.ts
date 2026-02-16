@@ -1,6 +1,6 @@
-import {Transform, Step} from "lumenpage-transform"
+﻿import {Transform, Step} from "lumenpage-transform"
 import {Mark, MarkType, Node, Slice} from "lumenpage-model"
-import {type EditorView} from "prosemirror-view"
+import type { EditorView } from "lumenpage-view-types"
 import {Selection} from "./selection"
 import {Plugin, PluginKey} from "./plugin"
 import {EditorState} from "./state"
@@ -45,11 +45,10 @@ export class Transaction extends Transform {
   time: number
 
   private curSelection: Selection
-  // 当前选区有效的步骤计数
-  private curSelectionFor = 0
-  // 位字段，用于跟踪此事务更新了状态的哪些方面
+  // 褰撳墠閫夊尯鏈夋晥鐨勬楠よ鏁?  private curSelectionFor = 0
+  // 浣嶅瓧娈碉紝鐢ㄤ簬璺熻釜姝や簨鍔℃洿鏂颁簡鐘舵€佺殑鍝簺鏂归潰
   private updated = 0
-  // 用于存储事务元数据属性的对象
+  // 鐢ㄤ簬瀛樺偍浜嬪姟鍏冩暟鎹睘鎬х殑瀵硅薄
   private meta: {[name: string]: any} = Object.create(null)
 
   /// The stored marks set by this transaction, if any.
@@ -212,3 +211,4 @@ export class Transaction extends Transform {
     return (this.updated & UPDATED_SCROLL) > 0
   }
 }
+

@@ -2,7 +2,9 @@
 
 import { Schema } from "lumenpage-model";
 import { paragraphNodeSpec } from "lumenpage-node-paragraph";
+import { blockquoteNodeSpec } from "lumenpage-node-blockquote";
 import { headingNodeSpec } from "lumenpage-node-heading";
+import { codeBlockNodeSpec } from "lumenpage-node-code-block";
 import {
   getTableTextLength,
   serializeTableToText,
@@ -10,12 +12,21 @@ import {
 } from "lumenpage-node-table";
 import { listNodeSpecs, serializeListToText } from "lumenpage-node-list";
 import { imageNodeSpec, serializeImageToText } from "lumenpage-node-image";
+import { horizontalRuleNodeSpec } from "lumenpage-node-horizontal-rule";
+import { hardBreakNodeSpec } from "lumenpage-node-hard-break";
+import { videoNodeSpec, serializeVideoToText } from "lumenpage-node-video";
 
 export { serializeTableToText, getTableTextLength };
 
 export const schema = new Schema({
   nodes: {
     doc: { content: "block+" },
+
+    blockquote: blockquoteNodeSpec,
+
+    code_block: codeBlockNodeSpec,
+
+    horizontal_rule: horizontalRuleNodeSpec,
 
     paragraph: paragraphNodeSpec,
 
@@ -26,6 +37,10 @@ export const schema = new Schema({
     ...tableNodeSpecs,
 
     image: imageNodeSpec,
+
+    video: videoNodeSpec,
+
+    hard_break: hardBreakNodeSpec,
 
     text: { group: "inline" },
   },
@@ -82,6 +97,52 @@ export const schema = new Schema({
         return ["u", 0];
       },
     },
+
+    link: {
+      attrs: {
+        href: {},
+        title: { default: null },
+      },
+      inclusive: false,
+      parseDOM: [
+        {
+          tag: "a[href]",
+          getAttrs: (dom) => ({
+            href: dom.getAttribute("href"),
+            title: dom.getAttribute("title"),
+          }),
+        },
+      ],
+      toDOM(node) {
+        const attrs = { href: node.attrs.href, title: node.attrs.title };
+        if (!attrs.title) {
+          delete attrs.title;
+        }
+        return ["a", attrs, 0];
+      },
+    },
+
+    code: {
+      parseDOM: [{ tag: "code" }],
+      toDOM() {
+        return ["code", 0];
+      },
+    },
+
+    strike: {
+      parseDOM: [
+        { tag: "s" },
+        { tag: "del" },
+        { tag: "strike" },
+        {
+          style: "text-decoration",
+          getAttrs: (value) => (value && value.includes("line-through") ? {} : false),
+        },
+      ],
+      toDOM() {
+        return ["s", 0];
+      },
+    },
   },
 });
 
@@ -113,6 +174,14 @@ export function docToText(doc) {
 
     if (node.type.name === "image") {
       return serializeImageToText();
+    }
+
+    if (node.type.name === "video") {
+      return serializeVideoToText();
+    }
+
+    if (node.type.name === "horizontal_rule") {
+      return "----";
     }
 
     return node.textBetween(0, node.content.size, "\n");

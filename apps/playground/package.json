@@ -10,7 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "lumenpage-core": "workspace:*",
     "lumenpage-kit-basic": "workspace:*",
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-commands": "workspace:*",

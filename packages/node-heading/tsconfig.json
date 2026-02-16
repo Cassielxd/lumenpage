@@ -8,8 +8,9 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-core": ["../core/src/index.ts"]
+      "lumenpage-view-canvas": ["../view-canvas/dist/index.d.ts"]
     }
   },
   "include": ["src"]
 }
+

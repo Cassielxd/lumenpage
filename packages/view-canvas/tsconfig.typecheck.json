@@ -1,11 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-core": ["../core/src/index.ts"]
-    }
+    "noEmit": true
   },
   "include": ["src"]
 }

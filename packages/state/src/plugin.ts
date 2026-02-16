@@ -1,4 +1,4 @@
-import {type EditorView, type EditorProps} from "prosemirror-view"
+﻿import type { EditorView, EditorProps } from "lumenpage-view-types"
 import {EditorState, EditorStateConfig} from "./state"
 import {Transaction} from "./transaction"
 
@@ -34,7 +34,7 @@ export interface PluginSpec<PluginState> {
   /// Allows the plugin to append another transaction to be applied
   /// after the given array of transactions. When another plugin
   /// appends a transaction after this was called, it is called again
-  /// with the new state and new transactions—but only the new
+  /// with the new state and new transactions鈥攂ut only the new
   /// transactions, i.e. it won't be passed transactions that it
   /// already saw.
   appendTransaction?: (transactions: readonly Transaction[], oldState: EditorState, newState: EditorState) => Transaction | null | undefined
@@ -140,3 +140,4 @@ export class PluginKey<PluginState = any> {
   /// Get the plugin's state from an editor state.
   getState(state: EditorState): PluginState | undefined { return (state as any)[this.key] }
 }
+

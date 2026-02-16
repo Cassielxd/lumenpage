@@ -1,9 +1,9 @@
-import {joinPoint, canJoin, findWrapping, liftTarget, canSplit,
+﻿import {joinPoint, canJoin, findWrapping, liftTarget, canSplit,
         ReplaceStep, ReplaceAroundStep, replaceStep} from "lumenpage-transform"
 import {Slice, Fragment, Node, NodeType, Attrs, MarkType, ResolvedPos, ContentMatch} from "lumenpage-model"
 import {Selection, EditorState, Transaction, TextSelection, NodeSelection,
         SelectionRange, AllSelection, Command} from "lumenpage-state"
-import {EditorView} from "prosemirror-view"
+import type { EditorView } from "lumenpage-view-types"
 
 /// Delete the selection, if there is one.
 export const deleteSelection: Command = (state, dispatch) => {
@@ -21,7 +21,7 @@ function atBlockStart(state: EditorState, view?: EditorView): ResolvedPos | null
 }
 
 /// If the selection is empty and at the start of a textblock, try to
-/// reduce the distance between that block and the one before it—if
+/// reduce the distance between that block and the one before it鈥攊f
 /// there's a block directly before it that can be joined, join them.
 /// If not, try to move the selected block closer to the next one in
 /// the document structure by lifting it out of its parent or moving it
@@ -33,7 +33,7 @@ export const joinBackward: Command = (state, dispatch, view) => {
 
   let $cut = findCutBefore($cursor)
 
-  // 如果之前没有节点，尝试提升
+  // If there is no node before, try lifting.
   if (!$cut) {
     let range = $cursor.blockRange(), target = range && liftTarget(range)
     if (target == null) return false
@@ -42,11 +42,10 @@ export const joinBackward: Command = (state, dispatch, view) => {
   }
 
   let before = $cut.nodeBefore!
-  // 应用连接算法
+  // Try the join algorithm.
   if (deleteBarrier(state, $cut, dispatch, -1)) return true
 
-  // 如果下面的节点没有内容且上面的节点可选择
-  // 则删除下面的节点并选择上面的节点
+  // If the parent is empty and the adjacent node is selectable, delete and select.
   if ($cursor.parent.content.size == 0 &&
       (textblockAt(before, "end") || NodeSelection.isSelectable(before))) {
     for (let depth = $cursor.depth;; depth--) {
@@ -65,7 +64,7 @@ export const joinBackward: Command = (state, dispatch, view) => {
     }
   }
 
-  // 如果之前的节点是原子节点，删除它
+  // 濡傛灉涔嬪墠鐨勮妭鐐规槸鍘熷瓙鑺傜偣锛屽垹闄ゅ畠
   if (before.isAtom && $cut.depth == $cursor.depth - 1) {
     if (dispatch) dispatch(state.tr.delete($cut.pos - before.nodeSize, $cut.pos).scrollIntoView())
     return true
@@ -176,15 +175,14 @@ export const joinForward: Command = (state, dispatch, view) => {
   if (!$cursor) return false
 
   let $cut = findCutAfter($cursor)
-  // 如果之后没有节点，则无事可做
+  // 濡傛灉涔嬪悗娌℃湁鑺傜偣锛屽垯鏃犱簨鍙仛
   if (!$cut) return false
 
   let after = $cut.nodeAfter!
-  // 尝试连接算法
+  // Try the join algorithm.
   if (deleteBarrier(state, $cut, dispatch, 1)) return true
 
-  // 如果上面的节点没有内容且下面的节点可选择
-  // 则删除上面的节点并选择下面的节点
+  // If the parent is empty and the adjacent node is selectable, delete and select.
   if ($cursor.parent.content.size == 0 &&
       (textblockAt(after, "start") || NodeSelection.isSelectable(after))) {
     let delStep = replaceStep(state.doc, $cursor.before(), $cursor.after(), Slice.empty)
@@ -199,7 +197,7 @@ export const joinForward: Command = (state, dispatch, view) => {
     }
   }
 
-  // 如果下一个节点是原子节点，删除它
+  // 濡傛灉涓嬩竴涓妭鐐规槸鍘熷瓙鑺傜偣锛屽垹闄ゅ畠
   if (after.isAtom && $cut.depth == $cursor.depth - 1) {
     if (dispatch) dispatch(state.tr.delete($cut.pos, $cut.pos + after.nodeSize).scrollIntoView())
     return true
@@ -526,8 +524,7 @@ export const selectTextblockStart = selectTextblockSide(-1)
 /// Moves the cursor to the end of current text block.
 export const selectTextblockEnd = selectTextblockSide(1)
 
-// 参数化命令
-
+// 鍙傛暟鍖栧懡浠?
 /// Wrap the selection in a node of the given type with the given
 /// attributes.
 export function wrapIn(nodeType: NodeType, attrs: Attrs | null = null): Command {
@@ -682,9 +679,7 @@ function wrapDispatchForJoin(dispatch: (tr: Transaction) => void, isJoinable: (a
       map.forEach((_s, _e, from, to) => ranges.push(from, to))
     }
 
-    // 找出这些范围内存在哪些可连接点
-    // 通过检查其父节点中的所有节点边界
-    let joinable = []
+    // 鎵惧嚭杩欎簺鑼冨洿鍐呭瓨鍦ㄥ摢浜涘彲杩炴帴鐐?    // 閫氳繃妫€鏌ュ叾鐖惰妭鐐逛腑鐨勬墍鏈夎妭鐐硅竟鐣?    let joinable = []
     for (let i = 0; i < ranges.length; i += 2) {
       let from = ranges[i], to = ranges[i + 1]
       let $from = tr.doc.resolve(from), depth = $from.sharedDepth(to), parent = $from.node(depth)
@@ -699,8 +694,7 @@ function wrapDispatchForJoin(dispatch: (tr: Transaction) => void, isJoinable: (a
         pos += after.nodeSize
       }
     }
-    // 连接可连接的点
-    joinable.sort((a, b) => a - b)
+    // 杩炴帴鍙繛鎺ョ殑鐐?    joinable.sort((a, b) => a - b)
     for (let i = joinable.length - 1; i >= 0; i--) {
       if (canJoin(tr.doc, joinable[i])) tr.join(joinable[i])
     }
@@ -781,3 +775,12 @@ const mac = typeof navigator != "undefined" ? /Mac|iP(hone|[oa]d)/.test(navigato
 /// [`pcBasekeymap`](#commands.pcBaseKeymap) or
 /// [`macBaseKeymap`](#commands.macBaseKeymap).
 export const baseKeymap: {[key: string]: Command} = mac ? macBaseKeymap : pcBaseKeymap
+
+
+
+
+
+
+
+
+
