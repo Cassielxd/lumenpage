@@ -9,7 +9,7 @@ import {
   setHeadingLevel,
   setParagraph,
 } from "lumenpage-kit-basic";
-import { applyTransaction, CanvasEditorView, createCanvasConfigPlugin, createEditorState } from "lumenpage-view-canvas";
+import { applyTransaction, CanvasEditorView, createCanvasState } from "lumenpage-view-canvas";
 import { history } from "lumenpage-history";
 
 const settings = {
@@ -310,23 +310,22 @@ let devtoolsView = null;
 let view = null;
 
 const statusElement = document.getElementById("status");
-const canvasConfigPlugin = createCanvasConfigPlugin({
-  settings,
-  nodeRegistry,
-  getText: (doc) => docToText(doc),
-  commands: {
-    basicCommands,
-    runCommand,
-    setBlockAlign,
-  },
-  statusElement: statusElement || undefined,
-});
-
-const editorState = createEditorState({
+const editorState = createCanvasState({
   schema,
   createDocFromText,
   json: initialDocJson,
-  plugins: [history(), canvasConfigPlugin],
+  plugins: [history()],
+  canvasConfig: {
+    settings,
+    nodeRegistry,
+    getText: (doc) => docToText(doc),
+    commands: {
+      basicCommands,
+      runCommand,
+      setBlockAlign,
+    },
+    statusElement: statusElement || undefined,
+  },
 });
 
 const dispatchTransaction = (tr) => {

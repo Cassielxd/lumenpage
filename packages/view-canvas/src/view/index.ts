@@ -27,3 +27,4 @@ export {
   type CollaborationMeta,
 } from "./collaborationPlugin";
 export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
+export { createCanvasState } from "./canvasState";

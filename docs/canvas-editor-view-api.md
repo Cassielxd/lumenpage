@@ -34,6 +34,21 @@ new CanvasEditorView(place, props)
 
 ## Canvas 配置插件
 
+## createCanvasState
+
+`createCanvasState` 会自动注入 Canvas 配置插件，保持 `CanvasEditorView` 只接收纯 EditorView props。
+
+```ts
+import { createCanvasState } from "lumenpage-view-canvas";
+
+const state = createCanvasState({
+  schema,
+  json: initialDocJson,
+  plugins: [history()],
+  canvasConfig: { settings, nodeRegistry, commands },
+});
+```
+
 Canvas 相关配置通过 `createCanvasConfigPlugin` 注入到 `state.plugins`：
 
 ```ts
@@ -72,17 +87,16 @@ import {
 } from "lumenpage-view-canvas";
 import { history } from "lumenpage-history";
 
-const canvasConfigPlugin = createCanvasConfigPlugin({
-  settings,
-  nodeRegistry,
-  getText: (doc) => docToText(doc),
-  commands: { basicCommands, runCommand, setBlockAlign },
-});
-
-const state = createEditorState({
+const state = createCanvasState({
   schema,
   json: initialDocJson,
-  plugins: [history(), canvasConfigPlugin],
+  plugins: [history()],
+  canvasConfig: {
+    settings,
+    nodeRegistry,
+    getText: (doc) => docToText(doc),
+    commands: { basicCommands, runCommand, setBlockAlign },
+  },
 });
 
 const view = new CanvasEditorView(mount, {
