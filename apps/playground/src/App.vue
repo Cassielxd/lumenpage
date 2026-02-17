@@ -19,12 +19,12 @@
         <div class="toolbar-group">
           <t-tooltip content="撤销">
             <t-button size="small" variant="text" class="icon-btn" @click="runUndo">
-              <Icon name="rollback" />
+              <Icon name="arrow-left" />
             </t-button>
           </t-tooltip>
           <t-tooltip content="重做">
             <t-button size="small" variant="text" class="icon-btn" @click="runRedo">
-              <Icon name="refresh" />
+              <Icon name="arrow-right" />
             </t-button>
           </t-tooltip>
         </div>
@@ -181,6 +181,7 @@ import {
   setParagraph,
 } from "lumenpage-kit-basic";
 import { baseKeymap, setBlockType, toggleMark, wrapIn } from "lumenpage-commands";
+import { liftTarget } from "lumenpage-transform";
 import { keymap } from "lumenpage-keymap";
 import { CanvasEditorView, createCanvasState } from "lumenpage-view-canvas";
 import { history } from "lumenpage-history";
@@ -189,6 +190,7 @@ const docTitle = ref("项目周报");
 const editorHost = ref<HTMLElement | null>(null);
 const statusEl = ref<HTMLElement | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
+let destroyDevTools: (() => void) | null = null;
 
 const blockType = ref("paragraph");
 const blockTypeOptions = [
@@ -392,7 +394,27 @@ const applyCodeBlock = () =>
       return false;
     }
     rawView.focus?.();
-    return runCommand(setBlockType(type), rawView.state, rawView.dispatch.bind(rawView));
+    const { $from, $to } = rawView.state.selection as any;
+    if ($from?.parent?.type === type) {
+      return runCommand(setParagraph(), rawView.state, rawView.dispatch.bind(rawView));
+    }
+
+    const command = setBlockType(type);
+    if (runCommand(command, rawView.state, rawView.dispatch.bind(rawView))) {
+      return true;
+    }
+
+    const range = $from?.blockRange?.($to);
+    if (!range) {
+      return false;
+    }
+    const target = liftTarget(range);
+    if (target == null) {
+      return false;
+    }
+    const tr = rawView.state.tr.lift(range, target);
+    rawView.dispatch(tr.scrollIntoView());
+    return runCommand(command, rawView.state, rawView.dispatch.bind(rawView));
   });
 
 const insertHorizontalRule = () =>
@@ -486,9 +508,23 @@ onMounted(() => {
     },
   });
   view.value = new CanvasEditorView(editorHost.value, { state: editorState });
+  if (import.meta.env.DEV) {
+    import("prosemirror-dev-tools").then((mod) => {
+      const applyDevTools = mod.default || mod.applyDevTools;
+      const rawView = view.value ? toRaw(view.value) : null;
+      if (!applyDevTools || !rawView) {
+        return;
+      }
+      destroyDevTools = applyDevTools(rawView as any);
+    });
+  }
 });
 
 onBeforeUnmount(() => {
+  if (destroyDevTools) {
+    destroyDevTools();
+    destroyDevTools = null;
+  }
   view.value?.destroy();
   view.value = null;
 });
@@ -631,6 +667,22 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

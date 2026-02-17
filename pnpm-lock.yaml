@@ -41,9 +41,6 @@ importers:
       lumenpage-view-canvas:
         specifier: workspace:*
         version: link:../../packages/view-canvas
-      prosemirror-inputrules:
-        specifier: ^1.4.0
-        version: 1.5.1
       tdesign-icons-vue-next:
         specifier: ^0.3.4
         version: 0.3.7(vue@3.5.28(typescript@5.9.3))
@@ -59,10 +56,16 @@ importers:
         version: 5.2.4(vite@5.4.21)(vue@3.5.28(typescript@5.9.3))
       prosemirror-dev-tools:
         specifier: ^4.3.0
-        version: 4.3.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 4.3.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       prosemirror-view:
         specifier: ^1.41.6
         version: 1.41.6
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -1091,6 +1094,10 @@ packages:
   lodash-es@4.17.23:
     resolution: {integrity: sha512-kVI48u3PZr38HdYz98UmfPnXl2DXrpdctLrFLCd3kOx1xUkOmpFPx7gCWWM5MPkL/fD8zb+Ph0QzjGFs4+hHWg==, tarball: https://registry.npmmirror.com/lodash-es/-/lodash-es-4.17.23.tgz}
 
+  loose-envify@1.4.0:
+    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==, tarball: https://registry.npmmirror.com/loose-envify/-/loose-envify-1.4.0.tgz}
+    hasBin: true
+
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==, tarball: https://registry.npmmirror.com/lru-cache/-/lru-cache-5.1.1.tgz}
 
@@ -1193,10 +1200,10 @@ packages:
       '@types/react': ^16.3.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react: ^16.3.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  react-dom@19.2.4:
-    resolution: {integrity: sha512-AXJdLo8kgMbimY95O2aKQqsz2iWi9jMgKJhRBAxECE4IFxfcazB2LmzloIoibJI3C12IlY20+KFaLv+71bUJeQ==, tarball: https://registry.npmmirror.com/react-dom/-/react-dom-19.2.4.tgz}
+  react-dom@18.3.1:
+    resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==, tarball: https://registry.npmmirror.com/react-dom/-/react-dom-18.3.1.tgz}
     peerDependencies:
-      react: ^19.2.4
+      react: ^18.3.1
 
   react-json-tree@0.20.0:
     resolution: {integrity: sha512-h+f9fUNAxzBx1rbrgUF7+zSWKGHDtt2VPYLErIuB0JyKGnWgFMM21ksqQyb3EXwXNnoMW2rdE5kuAaubgGOx2Q==, tarball: https://registry.npmmirror.com/react-json-tree/-/react-json-tree-0.20.0.tgz}
@@ -1204,8 +1211,8 @@ packages:
       '@types/react': ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  react@19.2.4:
-    resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==, tarball: https://registry.npmmirror.com/react/-/react-19.2.4.tgz}
+  react@18.3.1:
+    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==, tarball: https://registry.npmmirror.com/react/-/react-18.3.1.tgz}
     engines: {node: '>=0.10.0'}
 
   readable-stream@2.3.8:
@@ -1232,8 +1239,8 @@ packages:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==, tarball: https://registry.npmmirror.com/saxes/-/saxes-6.0.0.tgz}
     engines: {node: '>=v12.22.7'}
 
-  scheduler@0.27.0:
-    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==, tarball: https://registry.npmmirror.com/scheduler/-/scheduler-0.27.0.tgz}
+  scheduler@0.23.2:
+    resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==, tarball: https://registry.npmmirror.com/scheduler/-/scheduler-0.23.2.tgz}
 
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==, tarball: https://registry.npmmirror.com/semver/-/semver-6.3.1.tgz}
@@ -1514,10 +1521,10 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
-  '@compiled/react@0.19.0(react@19.2.4)':
+  '@compiled/react@0.19.0(react@18.3.1)':
     dependencies:
       csstype: 3.2.3
-      react: 19.2.4
+      react: 18.3.1
 
   '@dmsnell/diff-match-patch@1.1.0': {}
 
@@ -2028,15 +2035,14 @@ snapshots:
 
   isarray@1.0.0: {}
 
-  jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4):
+  jotai@2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@18.3.1):
     optionalDependencies:
       '@babel/core': 7.29.0
       '@babel/template': 7.28.6
       '@types/react': 19.2.14
-      react: 19.2.4
+      react: 18.3.1
 
-  js-tokens@4.0.0:
-    optional: true
+  js-tokens@4.0.0: {}
 
   jsdom@20.0.3:
     dependencies:
@@ -2082,6 +2088,10 @@ snapshots:
       '@dmsnell/diff-match-patch': 1.1.0
 
   lodash-es@4.17.23: {}
+
+  loose-envify@1.4.0:
+    dependencies:
+      js-tokens: 4.0.0
 
   lru-cache@5.1.1:
     dependencies:
@@ -2131,20 +2141,20 @@ snapshots:
 
   process-nextick-args@2.0.1: {}
 
-  prosemirror-dev-tools@4.3.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  prosemirror-dev-tools@4.3.0(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.28.6
-      '@compiled/react': 0.19.0(react@19.2.4)
+      '@compiled/react': 0.19.0(react@18.3.1)
       html: 1.0.0
-      jotai: 2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@19.2.4)
+      jotai: 2.17.1(@babel/core@7.29.0)(@babel/template@7.28.6)(@types/react@19.2.14)(react@18.3.1)
       jsondiffpatch: 0.7.3
       nanoid: 5.1.6
       prosemirror-model: 1.25.4
       prosemirror-state: 1.4.4
-      react: 19.2.4
-      react-dock: 0.8.0(@types/react@19.2.14)(react@19.2.4)
-      react-dom: 19.2.4(react@19.2.4)
-      react-json-tree: 0.20.0(@types/react@19.2.14)(react@19.2.4)
+      react: 18.3.1
+      react-dock: 0.8.0(@types/react@19.2.14)(react@18.3.1)
+      react-dom: 18.3.1(react@18.3.1)
+      react-json-tree: 0.20.0(@types/react@19.2.14)(react@18.3.1)
     transitivePeerDependencies:
       - '@babel/core'
       - '@babel/template'
@@ -2190,26 +2200,29 @@ snapshots:
       csstype: 3.2.3
       lodash-es: 4.17.23
 
-  react-dock@0.8.0(@types/react@19.2.14)(react@19.2.4):
+  react-dock@0.8.0(@types/react@19.2.14)(react@18.3.1):
     dependencies:
       '@types/lodash-es': 4.17.12
       '@types/react': 19.2.14
       lodash-es: 4.17.23
-      react: 19.2.4
+      react: 18.3.1
 
-  react-dom@19.2.4(react@19.2.4):
+  react-dom@18.3.1(react@18.3.1):
     dependencies:
-      react: 19.2.4
-      scheduler: 0.27.0
+      loose-envify: 1.4.0
+      react: 18.3.1
+      scheduler: 0.23.2
 
-  react-json-tree@0.20.0(@types/react@19.2.14)(react@19.2.4):
+  react-json-tree@0.20.0(@types/react@19.2.14)(react@18.3.1):
     dependencies:
       '@types/lodash': 4.17.23
       '@types/react': 19.2.14
-      react: 19.2.4
+      react: 18.3.1
       react-base16-styling: 0.10.0
 
-  react@19.2.4: {}
+  react@18.3.1:
+    dependencies:
+      loose-envify: 1.4.0
 
   readable-stream@2.3.8:
     dependencies:
@@ -2264,7 +2277,9 @@ snapshots:
     dependencies:
       xmlchars: 2.2.0
 
-  scheduler@0.27.0: {}
+  scheduler@0.23.2:
+    dependencies:
+      loose-envify: 1.4.0
 
   semver@6.3.1:
     optional: true

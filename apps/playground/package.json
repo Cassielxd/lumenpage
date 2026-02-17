@@ -14,7 +14,6 @@
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-commands": "workspace:*",
     "lumenpage-history": "workspace:*",
-    "prosemirror-inputrules": "^1.4.0",
     "lumenpage-keymap": "workspace:*",
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",
@@ -26,9 +25,10 @@
   "devDependencies": {
     "prosemirror-dev-tools": "^4.3.0",
     "prosemirror-view": "^1.41.6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.3",
     "@vitejs/plugin-vue": "^5.2.0"
   }
 }
-
