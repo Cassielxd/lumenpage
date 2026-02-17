@@ -60,9 +60,12 @@ export class CanvasEditorView {
     const resolveCanvasConfig = (key, fallback = undefined) =>
       canvasConfig?.[key] ?? fallback;
 
+    const debugConfig = resolveCanvasConfig("debug", {});
     // 初始化 DOM，样式与无障碍。
     const dom = resolveCanvasConfig("elements") ?? createDefaultDom();
     const settings = { ...DEFAULT_SETTINGS, ...(resolveCanvasConfig("settings") || {}) };
+    settings.debugLayout = debugConfig?.layout === true;
+    const basePageWidth = settings.pageWidth;
     const applyStyles = resolveCanvasConfig("applyDefaultStyles", true);
 
     if (applyStyles) {
@@ -192,6 +195,14 @@ export class CanvasEditorView {
 
 
     // 文本/坐标辅助。
+    const resolvePageWidth = () => {
+      const width = dom.scrollArea?.clientWidth ?? 0;
+      if (!Number.isFinite(width) || width <= 0) {
+        return basePageWidth;
+      }
+      return Math.min(basePageWidth, width);
+    };
+
     const getText = () => {
       const getTextProp = resolveCanvasConfig("getText");
       if (getTextProp) {
@@ -256,7 +267,6 @@ export class CanvasEditorView {
       return nodeViewsByBlockId.get(blockId)?.view ?? null;
     };
 
-    const debugConfig = resolveCanvasConfig("debug", {});
     const logSelection = debugConfig?.selection
       ? createSelectionLogger({ getText, docPosToTextOffset, clampOffset })
       : () => {};
@@ -358,6 +368,7 @@ export class CanvasEditorView {
       },
       setInputPosition,
       syncNodeViewOverlays,
+      resolvePageWidth,
       getPendingChangeSummary: () => pendingChangeSummary,
       clearPendingChangeSummary: () => {
         pendingChangeSummary = null;
@@ -895,6 +906,25 @@ export class CanvasEditorView {
   }
 
   // 文档位置 -> 视口坐标。
+  // 判断光标是否到达文本块边界。
+  endOfTextblock(dir = "forward", state = undefined) {
+    const targetState = state || this.state;
+    const selection = targetState?.selection;
+    const cursor = selection?.$cursor || selection?.$from;
+    if (!cursor) {
+      return false;
+    }
+    const isBackward = dir === "backward" || dir === "left" || dir === "up";
+    const isForward = dir === "forward" || dir === "right" || dir === "down";
+    if (isBackward) {
+      return cursor.parentOffset === 0;
+    }
+    if (isForward) {
+      return cursor.parentOffset === cursor.parent.content.size;
+    }
+    return false;
+  }
+
   coordsAtPos(pos) {
     if (!this.state?.doc) {
       return null;

@@ -38,6 +38,7 @@ export const createRenderSync = ({
   syncNodeViewOverlays,
   getPendingChangeSummary,
   clearPendingChangeSummary,
+  resolvePageWidth,
 }) => {
   const updateStatus = () => {
     const layout = getLayout();
@@ -133,6 +134,13 @@ export const createRenderSync = ({
 
   const updateLayout = () => {
     const changeSummary = getPendingChangeSummary?.() ?? null;
+    const nextPageWidth = resolvePageWidth?.();
+    if (Number.isFinite(nextPageWidth) && nextPageWidth > 0) {
+      if (layoutPipeline.settings.pageWidth !== nextPageWidth) {
+        layoutPipeline.settings.pageWidth = nextPageWidth;
+        layoutPipeline.clearCache?.();
+      }
+    }
     const layout = layoutPipeline.layoutFromDoc(getEditorState().doc, {
       previousLayout: getLayout?.() ?? null,
       changeSummary,

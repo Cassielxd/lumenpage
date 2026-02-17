@@ -1,4 +1,5 @@
 ﻿import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig({
+  plugins: [vue()],
   resolve: {
     alias: {
       "lumenpage-view-canvas": path.resolve(
@@ -15,6 +17,7 @@ export default defineConfig({
       "lumenpage-state": path.resolve(workspaceRoot, "packages/state/dist/index.js"),
       "lumenpage-commands": path.resolve(workspaceRoot, "packages/commands/dist/index.js"),
       "lumenpage-history": path.resolve(workspaceRoot, "packages/history/dist/index.js"),
+      "lumenpage-keymap": path.resolve(workspaceRoot, "packages/keymap/dist/index.js"),
       "lumenpage-model": path.resolve(workspaceRoot, "packages/model/dist/index.js"),
       "lumenpage-transform": path.resolve(workspaceRoot, "packages/transform/dist/index.js"),
       "lumenpage-view-types": path.resolve(workspaceRoot, "packages/view-types/dist/index.js"),
@@ -45,6 +48,7 @@ export default defineConfig({
       "lumenpage-state",
       "lumenpage-commands",
       "lumenpage-history",
+      "lumenpage-keymap",
       "lumenpage-model",
       "lumenpage-transform",
       "lumenpage-view-types",

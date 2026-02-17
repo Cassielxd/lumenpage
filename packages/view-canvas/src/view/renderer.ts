@@ -156,6 +156,7 @@ export class Renderer {
   pageCache: Map<number, any>;
   pageCanvases: Array<{ canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
   lastDpr: number;
+  lastLayoutDebug: string | null;
   nodeViewProvider: ((line: any) => any) | null;
 
   constructor(pageLayer, overlayCanvas, settings, registry = null) {
@@ -180,6 +181,7 @@ export class Renderer {
     this.pageCanvases = [];
 
     this.lastDpr = 1;
+    this.lastLayoutDebug = null;
 
     this.nodeViewProvider = null;
   }
@@ -284,6 +286,11 @@ export class Renderer {
         const canvas = document.createElement("canvas");
 
         canvas.className = "page-canvas";
+        canvas.style.position = "absolute";
+        canvas.style.left = "0";
+        canvas.style.top = "0";
+        canvas.style.pointerEvents = "none";
+        canvas.style.willChange = "transform";
 
         this.pageLayer.appendChild(canvas);
 
@@ -537,6 +544,22 @@ export class Renderer {
 
     const pageX = Math.max(0, (clientWidth - layout.pageWidth) / 2);
 
+    if (this.settings?.debugLayout) {
+      const signature = `${clientWidth}|${layout.pageWidth}|${layout.pageAlign}|${layout.pageOffsetX}|${pageX}`;
+      if (signature !== this.lastLayoutDebug) {
+        this.lastLayoutDebug = signature;
+        const viewportRect = viewport.getBoundingClientRect?.();
+        const layerRect = this.pageLayer.getBoundingClientRect?.();
+        console.log("[layout]", {
+          clientWidth,
+          pageWidth: layout.pageWidth,
+          pageX,
+          viewportRect,
+          pageLayerRect: layerRect,
+        });
+      }
+    }
+
     const pageSpan = layout.pageHeight + layout.pageGap;
 
     const visible = getVisiblePages(layout, scrollTop, clientHeight);
@@ -585,6 +608,18 @@ export class Renderer {
       const ctx = canvasEntry.ctx;
 
       const pageTop = pageIndex * pageSpan - scrollTop;
+
+      if (this.settings?.debugLayout && i === 0) {
+        const rect = canvas.getBoundingClientRect?.();
+        console.log("[layout-canvas]", {
+          pageIndex,
+          pageX,
+          pageTop,
+          canvasLeft: canvas.style.left,
+          canvasTop: canvas.style.top,
+          rect,
+        });
+      }
 
       canvas.width = Math.max(1, Math.floor(layout.pageWidth * dpr));
 

@@ -26,7 +26,7 @@
                              "lumenpage-state":  "workspace:*",
                              "lumenpage-transform":  "workspace:*",
                              "prosemirror-inputrules":  "^1.4.0",
-                             "prosemirror-keymap":  "^1.2.2"
+                             "lumenpage-keymap":  "workspace:*"
                          },
     "devDependencies":  {
                             "typescript":  "^5.5.4",
@@ -34,6 +34,6 @@
                             "lumenpage-state":  "workspace:*",
                             "lumenpage-transform":  "workspace:*",
                             "prosemirror-inputrules":  "^1.4.0",
-                            "prosemirror-keymap":  "^1.2.2"
+                            "lumenpage-keymap":  "workspace:*"
                         }
 }

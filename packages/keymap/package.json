@@ -1,0 +1,36 @@
+{
+  "name": "lumenpage-keymap",
+  "version": "1.2.3",
+  "description": "Keymap plugin for ProseMirror",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/prosemirror/prosemirror-keymap.git"
+  },
+  "dependencies": {
+    "lumenpage-state": "workspace:*",
+    "lumenpage-view-types": "workspace:*",
+    "w3c-keyname": "^2.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

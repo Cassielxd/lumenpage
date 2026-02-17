@@ -9,8 +9,9 @@
       "lumenpage-kit-basic": ["../../packages/kit-basic/dist/index.d.ts"],
       "lumenpage-node-paragraph": ["../../packages/node-paragraph/dist/index.d.ts"],
       "lumenpage-node-heading": ["../../packages/node-heading/dist/index.d.ts"],
-      "lumenpage-node-table": ["../../packages/node-table/dist/index.d.ts"]
+      "lumenpage-node-table": ["../../packages/node-table/dist/index.d.ts"],
+      "lumenpage-keymap": ["../../packages/keymap/dist/index.d.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "src/**/*.vue"]
 }

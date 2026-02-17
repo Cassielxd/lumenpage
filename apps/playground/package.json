@@ -15,15 +15,20 @@
     "lumenpage-commands": "workspace:*",
     "lumenpage-history": "workspace:*",
     "prosemirror-inputrules": "^1.4.0",
-    "prosemirror-keymap": "^1.2.2",
+    "lumenpage-keymap": "workspace:*",
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",
-    "lumenpage-transform": "workspace:*"
+    "lumenpage-transform": "workspace:*",
+    "vue": "^3.5.0",
+    "tdesign-vue-next": "^1.8.0",
+    "tdesign-icons-vue-next": "^0.3.4"
   },
   "devDependencies": {
     "prosemirror-dev-tools": "^4.3.0",
     "prosemirror-view": "^1.41.6",
     "typescript": "^5.5.4",
-    "vite": "^5.4.3"
+    "vite": "^5.4.3",
+    "@vitejs/plugin-vue": "^5.2.0"
   }
 }
+
