@@ -1,10 +1,11 @@
 /*
- * 文件说明：将文档内容转换为 runs。
- * 主要职责：把 PM 文档/段落/文本转换为带样式的 runs，并维护全局偏移。
+ * runs 生成器：将文档/段落/文本转换为带样式的 runs，并维护全局偏移。
  */
+
 
 const styleCache = new Map();
 
+// 根据 marks 生成样式并缓存。
 const buildStyle = (baseFont, marks, settings = null) => {
   let bold = false;
 
@@ -92,6 +93,7 @@ const buildStyle = (baseFont, marks, settings = null) => {
 
   return style;
 };
+// 合并连续文本 run。
 const appendRun = (runs, run) => {
   const last = runs[runs.length - 1];
 
@@ -106,6 +108,7 @@ const appendRun = (runs, run) => {
   runs.push(run);
 };
 
+// 将局部 run 偏移映射为全局偏移。
 const applyRunOffset = (runs, offset) => {
   if (!offset) {
     return;
@@ -122,6 +125,7 @@ const applyRunOffset = (runs, offset) => {
   }
 };
 
+// 写入 block 元信息。
 const applyBlockMeta = (runs, meta) => {
   if (!meta) {
     return;
@@ -146,6 +150,7 @@ const applyBlockMeta = (runs, meta) => {
   }
 };
 
+// 文本块转 runs。
 export function textblockToRuns(
   block,
 
@@ -163,6 +168,7 @@ export function textblockToRuns(
 
   let offset = 0;
 
+  // 子节点可能是文本或 hard_break。
   block.forEach((child) => {
     if (!child.isText) {
       if (child.type?.name === "hard_break") {
@@ -225,6 +231,7 @@ export function textblockToRuns(
   return { runs, length: offset, blockType, blockId, blockAttrs, blockStart };
 }
 
+// 文档转 runs。
 export function docToRuns(doc, settings, registry = null) {
   if (doc?.isTextblock) {
     const local = textblockToRuns(doc, settings, doc.type?.name, 0, doc.attrs, 0);
@@ -236,6 +243,7 @@ export function docToRuns(doc, settings, registry = null) {
 
   let offset = 0;
 
+  // 允许节点自定义 toRuns，否则走默认文本块流程。
   doc.forEach((block, _pos, index) => {
     let local = null;
 
@@ -303,6 +311,7 @@ export function docToRuns(doc, settings, registry = null) {
   return { runs, length: offset };
 }
 
+// 纯文本转 runs。
 export function textToRuns(text, settings) {
   const runs = [];
 

@@ -318,7 +318,6 @@ const editorState = createCanvasState({
   canvasConfig: {
     settings,
     nodeRegistry,
-    getText: (doc) => docToText(doc),
     commands: {
       basicCommands,
       runCommand,
@@ -332,15 +331,15 @@ const dispatchTransaction = (tr) => {
   if (!view) {
     return;
   }
-  if (devtoolsView) {
-    try {
-      devtoolsView.dispatch(tr);
-    } catch (error) {
-      console.warn("Devtools dispatch failed", error);
-    }
-  }
   const nextState = applyTransaction(view.state, tr);
   view.updateState(nextState);
+  if (devtoolsView) {
+    try {
+      devtoolsView.updateState(nextState);
+    } catch (error) {
+      console.warn("Devtools update failed", error);
+    }
+  }
 };
 
 view = new CanvasEditorView(viewport, {

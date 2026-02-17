@@ -22,15 +22,15 @@ export const schema = new Schema({
   nodes: {
     doc: { content: "block+" },
 
+    paragraph: paragraphNodeSpec,
+
+    heading: headingNodeSpec,
+
     blockquote: blockquoteNodeSpec,
 
     code_block: codeBlockNodeSpec,
 
     horizontal_rule: horizontalRuleNodeSpec,
-
-    paragraph: paragraphNodeSpec,
-
-    heading: headingNodeSpec,
 
     ...listNodeSpecs,
 
@@ -181,7 +181,7 @@ export function docToText(doc) {
     }
 
     if (node.type.name === "horizontal_rule") {
-      return "----";
+      return " ";
     }
 
     return node.textBetween(0, node.content.size, "\n");

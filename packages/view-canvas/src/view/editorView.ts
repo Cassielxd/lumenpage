@@ -3,6 +3,7 @@ import { NodeSelection, TextSelection } from "lumenpage-state";
 
 import {
   applyTransaction,
+  docToOffsetText,
   createChangeEvent,
   createEditorOps,
   createSelectionLogger,
@@ -99,6 +100,7 @@ export class CanvasEditorView {
 
     let layout = null;
     let layoutIndex = null;
+    let pendingChangeSummary = null;
     let rafId = 0;
     let caretOffset = 0;
     let caretRect = null;
@@ -198,7 +200,7 @@ export class CanvasEditorView {
       if (!this.state?.doc) {
         return "";
       }
-      return this.state.doc.textBetween(0, this.state.doc.content.size, "\n");
+      return docToOffsetText(this.state.doc);
     };
 
     const setInputPosition = (x, y) => {
@@ -356,6 +358,10 @@ export class CanvasEditorView {
       },
       setInputPosition,
       syncNodeViewOverlays,
+      getPendingChangeSummary: () => pendingChangeSummary,
+      clearPendingChangeSummary: () => {
+        pendingChangeSummary = null;
+      },
     });
 
     const { updateStatus, scheduleRender, updateCaret, updateLayout, syncAfterStateChange } =
@@ -377,6 +383,7 @@ export class CanvasEditorView {
       if (onChange) {
         onChange(changeEvent);
       }
+      pendingChangeSummary = changeEvent.summary || null;
       this.updateState(nextState);
       if (shouldScroll) {
         this.scrollIntoView();
@@ -807,6 +814,9 @@ export class CanvasEditorView {
       getLayout: () => layout,
       getLayoutIndex: () => layoutIndex,
       getRafId: () => rafId,
+      setPendingChangeSummary: (value) => {
+        pendingChangeSummary = value;
+      },
       dispatchTransaction,
       updateLayout,
       updatePluginViews,
@@ -877,6 +887,7 @@ export class CanvasEditorView {
     if (this._internals.onChange) {
       this._internals.onChange(changeEvent);
     }
+    this._internals.setPendingChangeSummary?.(changeEvent.summary || null);
     this.updateState(nextState);
     if (shouldScroll) {
       this.scrollIntoView();

@@ -1,8 +1,9 @@
 /*
- * 文件说明：行分割器。
- * 主要职责：根据字符宽度与排版宽度，把 runs 断行并计算每行宽度/高度。
+ * 行分割器：根据测量宽度把 runs 断行，输出 line 列表。
  */
 
+
+// 追加字符段，尽量合并相邻同样式 run。
 const appendRunSegment = (
   runs,
 
@@ -72,6 +73,7 @@ const appendRunSegment = (
 
 /* ���й������ַ�������������ÿ������� */
 
+// 将 runs 按宽度拆分为行。
 export function breakLines(
   runs,
 
@@ -119,6 +121,7 @@ export function breakLines(
 
   let lineBlockStart = null;
 
+  // 固化当前行并重置行状态。
   const pushLine = (endOffset) => {
     lines.push({
       text: lineText,
@@ -157,6 +160,7 @@ export function breakLines(
     lineBlockStart = null;
   };
 
+  // 补齐行级 block 元信息。
   const ensureLineMeta = (run) => {
     if (!lineBlockType) {
       lineBlockType = run.blockType || currentBlockType;
@@ -174,6 +178,7 @@ export function breakLines(
 
   const limit = maxWidth + wrapTolerance;
 
+  // 遍历所有 runs，按宽度累积并断行。
   for (const run of runs) {
     if (run.blockType) {
       currentBlockType = run.blockType;
@@ -203,9 +208,11 @@ export function breakLines(
 
     let offsetCursor = run.start;
 
+    // 支持自定义分词（如中文分词或 UAX 规则）。
     const segments = typeof segmentText === "function" ? segmentText(run.text) : null;
     const tokens = segments || run.text.match(/\S+|\s+/g) || [];
 
+    // 按字符追加到当前行，必要时强制换行。
     const appendChars = (text, allowWrap) => {
       for (let i = 0; i < text.length; i += 1) {
         const ch = text[i];

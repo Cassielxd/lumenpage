@@ -1,8 +1,7 @@
 import type { CanvasNodeView } from "../view/nodeView";
 
 /*
- * ļ˵ڵȾע
- * Ҫְ𣺰ڵͷַ layout/render ʵ֡
+ * 节点渲染注册表：按节点类型挂载布局/渲染实现。
  */
 
 export type NodeLayoutResult = {
@@ -19,6 +18,7 @@ export type ContainerStyle = {
   [key: string]: any;
 };
 
+// 节点渲染接口：可覆盖 runs、分块布局与容器渲染。
 export type NodeRenderer = {
   toRuns?: (node: any, settings: any, registry?: any) => any;
   layoutBlock?: (ctx: any) => NodeLayoutResult;
@@ -33,20 +33,24 @@ export type NodeRenderer = {
 export class NodeRendererRegistry {
   renderers;
 
+  // 初始化注册表。
   constructor() {
     this.renderers = new Map();
   }
 
+  // 注册节点渲染器。
   register(typeName, renderer) {
     this.renderers.set(typeName, renderer);
 
     return this;
   }
 
+  // 获取节点渲染器。
   get(typeName) {
     return this.renderers.get(typeName);
   }
 
+  // 判断是否已注册。
   has(typeName) {
     return this.renderers.has(typeName);
   }

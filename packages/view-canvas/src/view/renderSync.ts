@@ -36,6 +36,8 @@ export const createRenderSync = ({
   setRafId,
   setInputPosition,
   syncNodeViewOverlays,
+  getPendingChangeSummary,
+  clearPendingChangeSummary,
 }) => {
   const updateStatus = () => {
     const layout = getLayout();
@@ -130,7 +132,13 @@ export const createRenderSync = ({
   };
 
   const updateLayout = () => {
-    const layout = layoutPipeline.layoutFromDoc(getEditorState().doc);
+    const changeSummary = getPendingChangeSummary?.() ?? null;
+    const layout = layoutPipeline.layoutFromDoc(getEditorState().doc, {
+      previousLayout: getLayout?.() ?? null,
+      changeSummary,
+      docPosToTextOffset,
+    });
+    clearPendingChangeSummary?.();
     setLayout(layout);
     if (typeof buildLayoutIndex === "function") {
       setLayoutIndex(buildLayoutIndex(layout));

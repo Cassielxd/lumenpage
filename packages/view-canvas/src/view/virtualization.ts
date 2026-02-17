@@ -3,6 +3,7 @@
  * 主要职责：根据滚动位置返回可见页区间。
  */
 
+// 计算当前滚动区域内的可见页范围。
 export function getVisiblePages(layout, scrollTop, viewportHeight) {
   if (!layout || layout.pages.length === 0) {
     return { startIndex: 0, endIndex: -1 };

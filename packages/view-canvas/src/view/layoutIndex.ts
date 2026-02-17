@@ -1,5 +1,6 @@
 import { findLineForOffset, offsetAtX, getCaretFromPoint } from "./caret";
 
+// 根据 layout 构建行索引，便于快速定位。
 export const buildLayoutIndex = (layout) => {
   if (!layout) {
     return null;
@@ -30,6 +31,7 @@ export const buildLayoutIndex = (layout) => {
   };
 };
 
+// 二分查找最接近的行条目。
 const binarySearchClosest = (lines, target) => {
   let low = 0;
   let high = lines.length - 1;
@@ -60,6 +62,7 @@ const binarySearchClosest = (lines, target) => {
   return best;
 };
 
+// 在索引中获取 offset 对应的行。
 export const getLineAtOffset = (layoutIndex, offset) => {
   if (!layoutIndex || !layoutIndex.lines || layoutIndex.lines.length === 0) {
     return null;
@@ -70,6 +73,7 @@ export const getLineAtOffset = (layoutIndex, offset) => {
   return binarySearchClosest(layoutIndex.lines, clamped);
 };
 
+// 优先使用索引查找行，必要时回退遍历。
 export const findLineForOffsetIndexed = (layout, offset, textLength, layoutIndex = null) => {
   if (!layoutIndex) {
     return findLineForOffset(layout, offset, textLength);
@@ -87,8 +91,10 @@ export const findLineForOffsetIndexed = (layout, offset, textLength, layoutIndex
   };
 };
 
+// 基于 x 计算行内偏移（索引版）。
 export const offsetAtXIndexed = (layout, line, x) => offsetAtX(layout.font, line, x);
 
+// 基于坐标计算文本偏移（索引版）。
 export const posAtCoordsIndexed = (
   layout,
   x,

@@ -21,6 +21,65 @@ const getVideoTextLength = () => 1;
 
 const getHorizontalRuleTextLength = () => 1;
 
+
+const serializeTableToText = (tableNode) => {
+  const rows = [];
+  tableNode.forEach((row) => {
+    const cells = [];
+    row.forEach((cell) => {
+      cells.push(cell.textBetween(0, cell.content.size, "\n"));
+    });
+    rows.push(cells.join("\t"));
+  });
+  return rows.join("\n");
+};
+
+const serializeContainerToText = (node) => {
+  const parts = [];
+  node.forEach((child, _pos, index) => {
+    parts.push(serializeNodeToText(child));
+    if (index < node.childCount - 1) {
+      parts.push("\n");
+    }
+  });
+  return parts.join("");
+};
+
+const serializeListToText = (listNode) => {
+  const items = [];
+  listNode.forEach((item, index) => {
+    items.push(serializeContainerToText(item));
+    if (index < listNode.childCount - 1) {
+      items.push("\n");
+    }
+  });
+  return items.join("");
+};
+
+const serializeNodeToText = (node) => {
+  if (node.type.name === "table") {
+    return serializeTableToText(node);
+  }
+
+  if (node.type.name === "image" || node.type.name === "video" || node.type.name === "horizontal_rule") {
+    return " ";
+  }
+
+  if (node.type.name === "blockquote") {
+    return serializeContainerToText(node);
+  }
+
+  if (node.type.name === "bullet_list" || node.type.name === "ordered_list") {
+    return serializeListToText(node);
+  }
+
+  if (node.type.name === "list_item") {
+    return serializeContainerToText(node);
+  }
+
+  return node.textBetween(0, node.content.size, "\n");
+};
+
 const getContainerTextLength = (node) => {
   let length = 0;
   node.forEach((child, _pos, index) => {
@@ -87,6 +146,17 @@ function getNodeTextLength(node) {
 }
 
 const getBlockTextLength = (node) => getNodeTextLength(node);
+
+export const docToOffsetText = (doc) => {
+  const parts = [];
+  doc.forEach((node, _pos, index) => {
+    parts.push(serializeNodeToText(node));
+    if (index < doc.childCount - 1) {
+      parts.push("\n");
+    }
+  });
+  return parts.join("");
+};
 
 const mapOffsetInTextblock = (node, nodePos, offset) => {
   const textStart = nodePos + 1;
