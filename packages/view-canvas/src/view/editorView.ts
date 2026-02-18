@@ -45,6 +45,7 @@ import { getCanvasConfig } from "./canvasConfig";
 export class CanvasEditorView {
   dom;
   state;
+  commands;
   _internals;
   overlayHost;
 
@@ -126,6 +127,43 @@ export class CanvasEditorView {
       redo: commandConfig.basicCommands?.redo ?? noopCommand,
     };
     const setBlockAlign = commandConfig.setBlockAlign ?? (() => noopCommand);
+    const viewCommandConfig = commandConfig.viewCommands;
+    const resolvedViewCommands =
+      typeof viewCommandConfig === "function"
+        ? viewCommandConfig({ schema, basicCommands, setBlockAlign })
+        : viewCommandConfig;
+    const commandMap =
+      resolvedViewCommands && typeof resolvedViewCommands === "object" ? resolvedViewCommands : {};
+    const runViewCommand = (cmd, args) => {
+      if (typeof cmd !== "function") {
+        return false;
+      }
+      if (args.length > 0) {
+        const maybe = cmd(...args);
+        if (typeof maybe === "function") {
+          return runCommand(maybe, this.state, this.dispatch.bind(this), this);
+        }
+        if (typeof maybe === "boolean") {
+          return maybe;
+        }
+      }
+      if (cmd.length >= 2) {
+        return runCommand(cmd, this.state, this.dispatch.bind(this), this);
+      }
+      const maybe = cmd();
+      if (typeof maybe === "function") {
+        return runCommand(maybe, this.state, this.dispatch.bind(this), this);
+      }
+      if (typeof maybe === "boolean") {
+        return maybe;
+      }
+      return false;
+    };
+    this.commands = {};
+    for (const [name, cmd] of Object.entries(commandMap)) {
+      this.commands[name] = (...args) => runViewCommand(cmd, args);
+    }
+    this.commands.run = (cmd, ...args) => runViewCommand(cmd, args);
 
     // NodeView 管理。
     const nodeViews = new Map();
@@ -886,22 +924,6 @@ export class CanvasEditorView {
     const dispatchTransaction = this._internals.dispatchTransaction;
     if (dispatchTransaction) {
       dispatchTransaction(tr);
-      return;
-    }
-    const prevState = this.state;
-    const nextState = applyTransaction(prevState, tr);
-    const shouldScroll = tr?.scrolledIntoView;
-    const changeEvent = createChangeEvent(tr, prevState, nextState);
-    if (changeEvent?.summary?.blocks?.ids?.length) {
-      this._internals.layoutPipeline?.invalidateBlocks(changeEvent.summary.blocks.ids);
-    }
-    if (this._internals.onChange) {
-      this._internals.onChange(changeEvent);
-    }
-    this._internals.setPendingChangeSummary?.(changeEvent.summary || null);
-    this.updateState(nextState);
-    if (shouldScroll) {
-      this.scrollIntoView();
     }
   }
 
@@ -1095,3 +1117,25 @@ export class CanvasEditorView {
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

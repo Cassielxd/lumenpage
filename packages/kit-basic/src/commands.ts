@@ -4,11 +4,14 @@
   joinForward,
   splitBlock,
   setBlockType,
+  toggleMark,
+  wrapIn,
 } from "lumenpage-commands";
 
 import { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
+import { liftTarget } from "lumenpage-transform";
 
 const getCurrentBlockAttrs = (state) => {
   const parent = state.selection.$from.parent;
@@ -79,6 +82,32 @@ export const changeParagraphIndent = (delta) => (state, dispatch) =>
     return { ...attrs, indent: Math.max(0, (attrs.indent || 0) + delta) };
   });
 
+const resolveBlockAttrs = (state, nodeName, attrs) => {
+  const base = getCurrentBlockAttrs(state);
+
+  if (nodeName === "heading" && typeof attrs === "number") {
+    return { ...base, level: attrs };
+  }
+
+  if (attrs && typeof attrs === "object") {
+    return { ...base, ...attrs };
+  }
+
+  return base;
+};
+
+export const setBlockTypeByName = (nodeName, attrs = null) => (state, dispatch) => {
+  const type = state.schema.nodes[nodeName];
+
+  if (!type) {
+    return false;
+  }
+
+  const resolvedAttrs = resolveBlockAttrs(state, nodeName, attrs);
+
+  return setBlockType(type, resolvedAttrs)(state, dispatch);
+};
+
 export const setHeadingLevel = (level) => (state, dispatch) => {
   const type = state.schema.nodes.heading;
 
@@ -92,15 +121,7 @@ export const setHeadingLevel = (level) => (state, dispatch) => {
 };
 
 export const setParagraph = () => (state, dispatch) => {
-  const type = state.schema.nodes.paragraph;
-
-  if (!type) {
-    return false;
-  }
-
-  const attrs = { ...getCurrentBlockAttrs(state) };
-
-  return setBlockType(type, attrs)(state, dispatch);
+  return setBlockTypeByName("paragraph")(state, dispatch);
 };
 
 export const basicCommands: Record<string, Command> = {
@@ -117,6 +138,96 @@ export const basicCommands: Record<string, Command> = {
   redo,
 };
 
+export const createViewCommands = () => {
+  const wrapInNode = (nodeName) => (state, dispatch, view) => {
+    const type = state.schema.nodes[nodeName];
+    if (!type) {
+      return false;
+    }
+    return wrapIn(type)(state, dispatch, view);
+  };
+
+  const toggleMarkByName = (markName, attrs = null) => (state, dispatch, view) => {
+    const type = state.schema.marks[markName];
+    if (!type) {
+      return false;
+    }
+    return toggleMark(type, attrs)(state, dispatch, view);
+  };
+
+  const insertNode = (nodeName, attrs = null) => (state, dispatch) => {
+    const type = state.schema.nodes[nodeName];
+    if (!type) {
+      return false;
+    }
+    const node = type.create(attrs || undefined);
+    const tr = state.tr.replaceSelectionWith(node);
+    if (dispatch) {
+      dispatch(tr.scrollIntoView());
+    }
+    return true;
+  };
+
+  const toggleCodeBlock = () => (state, dispatch, view) => {
+    const type = state.schema.nodes.code_block;
+    if (!type) {
+      return false;
+    }
+    const { $from, $to } = state.selection;
+    if ($from?.parent?.type === type) {
+      return setParagraph()(state, dispatch);
+    }
+    const command = setBlockType(type);
+    if (command(state, dispatch, view)) {
+      return true;
+    }
+    const range = $from?.blockRange?.($to);
+    if (!range) {
+      return false;
+    }
+    const target = liftTarget(range);
+    if (target == null) {
+      return false;
+    }
+    if (dispatch) {
+      const tr = state.tr.lift(range, target);
+      dispatch(tr.scrollIntoView());
+    }
+    return setBlockType(type)(state, dispatch, view);
+  };
+
+  return {
+    undo: basicCommands.undo,
+    redo: basicCommands.redo,
+    setBlockType: (nodeName, attrs) => setBlockTypeByName(nodeName, attrs),
+    setParagraph: setParagraph(),
+    setHeading: (level) => setHeadingLevel(level),
+    alignLeft: setBlockAlign("left"),
+    alignCenter: setBlockAlign("center"),
+    alignRight: setBlockAlign("right"),
+    toggleBold: toggleMarkByName("strong"),
+    toggleItalic: toggleMarkByName("em"),
+    toggleUnderline: toggleMarkByName("underline"),
+    toggleStrike: toggleMarkByName("strike"),
+    toggleInlineCode: toggleMarkByName("code"),
+    toggleLink: (attrs) => toggleMarkByName("link", attrs),
+    toggleBlockquote: wrapInNode("blockquote"),
+    toggleCodeBlock: toggleCodeBlock(),
+    insertHorizontalRule: insertNode("horizontal_rule"),
+    toggleBulletList: wrapInNode("bullet_list"),
+    toggleOrderedList: wrapInNode("ordered_list"),
+    indent: changeParagraphIndent(1),
+    outdent: changeParagraphIndent(-1),
+    insertImage: (attrs) => insertNode("image", attrs),
+    insertVideo: (attrs) => insertNode("video", attrs),
+  };
+};
+
 export function runCommand(command, state, dispatch) {
   return command(state, dispatch);
 }
+
+
+
+
+

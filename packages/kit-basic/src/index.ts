@@ -54,4 +54,10 @@ export {
   changeParagraphIndent,
   setHeadingLevel,
   setParagraph,
+  setBlockTypeByName,
+  createViewCommands,
 } from "./commands";
+
+
+
+

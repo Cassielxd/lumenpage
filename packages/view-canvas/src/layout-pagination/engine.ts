@@ -509,9 +509,9 @@ export class LayoutPipeline {
           return true;
         }
         const availableHeight = pageHeight - margin.bottom - cursorY;
-        if (page.lines.length > 0 && remainingHeight > availableHeight) {
+        if (remainingHeight > availableHeight) {
           let splitResult = null;
-          if (canSplit && availableHeight > 0) {
+          if (canSplit) {
             if (splitBlock) {
               splitResult = splitBlock({
                 node: block,
@@ -531,8 +531,11 @@ export class LayoutPipeline {
               if (maxLines < remainingLines.length) {
                 const visibleLines = remainingLines.slice(0, maxLines);
                 const lastLine = visibleLines[visibleLines.length - 1];
-                const visibleLength =
+                const firstLine = visibleLines[0];
+                const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
+                const endOffset =
                   typeof lastLine?.end === "number" ? lastLine.end : remainingLength;
+                const visibleLength = Math.max(0, endOffset - startOffset);
                 const visibleHeight = visibleLines.length * lineHeightValue;
                 const overflowLines = remainingLines.slice(maxLines);
                 const overflowLength = Math.max(0, remainingLength - visibleLength);
