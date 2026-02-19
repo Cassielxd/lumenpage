@@ -1,14 +1,18 @@
-﻿import {
+import {
+  chainCommands,
+  createParagraphNear,
   deleteSelection,
   joinBackward,
   joinForward,
+  liftEmptyBlock,
+  newlineInCode,
   splitBlock,
   setBlockType,
   toggleMark,
   wrapIn,
 } from "lumenpage-commands";
 
-import { Command } from "lumenpage-state";
+import type { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
 import { liftTarget } from "lumenpage-transform";
@@ -82,6 +86,22 @@ export const changeParagraphIndent = (delta) => (state, dispatch) =>
     return { ...attrs, indent: Math.max(0, (attrs.indent || 0) + delta) };
   });
 
+export const setParagraphSpacing = (
+  key: "spacingBefore" | "spacingAfter",
+  value: number | null
+) =>
+  (state, dispatch) =>
+    updateBlocks(state, dispatch, (node, attrs) => {
+      if (node.type.name !== "paragraph" && node.type.name !== "heading") {
+        return null;
+      }
+      if (value == null) {
+        return { ...attrs, [key]: null };
+      }
+      const next = Math.max(0, value);
+      return { ...attrs, [key]: next };
+    });
+
 const resolveBlockAttrs = (state, nodeName, attrs) => {
   const base = getCurrentBlockAttrs(state);
 
@@ -132,6 +152,8 @@ export const basicCommands: Record<string, Command> = {
   joinForward,
 
   splitBlock,
+
+  enter: chainCommands(newlineInCode, createParagraphNear, liftEmptyBlock, splitBlock),
 
   undo,
 
@@ -220,6 +242,10 @@ export const createViewCommands = () => {
     outdent: changeParagraphIndent(-1),
     insertImage: (attrs) => insertNode("image", attrs),
     insertVideo: (attrs) => insertNode("video", attrs),
+    setParagraphSpacingBefore: (value) => setParagraphSpacing("spacingBefore", value),
+    setParagraphSpacingAfter: (value) => setParagraphSpacing("spacingAfter", value),
+    clearParagraphSpacingBefore: () => setParagraphSpacing("spacingBefore", null),
+    clearParagraphSpacingAfter: () => setParagraphSpacing("spacingAfter", null),
   };
 };
 

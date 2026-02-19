@@ -10,18 +10,22 @@ const hasIdAttr = (node) =>
 export const createBlockIdTransaction = (state) => {
   let tr = state.tr;
   let changed = false;
+  const usedIds = new Set<string>();
 
   state.doc.descendants((node, pos) => {
     if (!node.isBlock || !hasIdAttr(node)) {
       return;
     }
 
-    if (node.attrs?.id) {
+    const existingId = node.attrs?.id;
+    if (existingId && !usedIds.has(existingId)) {
+      usedIds.add(existingId);
       return;
     }
 
     const id = createBlockId();
     tr = tr.setNodeMarkup(pos, undefined, { ...node.attrs, id }, node.marks);
+    usedIds.add(id);
     changed = true;
   });
 

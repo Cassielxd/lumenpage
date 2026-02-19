@@ -37,6 +37,8 @@ import { baseKeymap } from "lumenpage-commands";
 import { keymap } from "lumenpage-keymap";
 import { CanvasEditorView, createCanvasState } from "lumenpage-view-canvas";
 import { history } from "lumenpage-history";
+import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
+import { gapCursor } from "lumenpage-gapcursor";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { initialDocJson } from "./initialDoc";
 
@@ -45,6 +47,19 @@ const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
+
+const resolveDebugFlag = (key: string) => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get(key);
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+};
 
 const settings = {
   pageWidth: 816,
@@ -56,11 +71,16 @@ const settings = {
     bottom: 72,
     left: 72,
   },
-  lineHeight: 22,
+  lineHeight: 26,
+  blockSpacing: 8,
+  paragraphSpacingBefore: 0,
+  paragraphSpacingAfter: 8,
   font: "16px Arial",
   wrapTolerance: 2,
   pageBuffer: 1,
   maxPageCache: 16,
+  debugPerf: resolveDebugFlag("debugPerf"),
+  disablePageReuse: false,
 };
 
 const nodeRegistry = createDefaultNodeRendererRegistry();
@@ -69,15 +89,26 @@ onMounted(() => {
   if (!editorHost.value) {
     return;
   }
+  const enableInputRules = resolveDebugFlag("inputRules");
+  const enableGapCursor = resolveDebugFlag("gapCursor");
+  const plugins = [history(), keymap(baseKeymap)];
+  if (enableInputRules) {
+    const rules = [ellipsis, emDash, ...smartQuotes].filter(Boolean);
+    plugins.push(inputRules({ rules }));
+  }
+  if (enableGapCursor) {
+    plugins.push(gapCursor());
+  }
   const editorState = createCanvasState({
     schema,
     createDocFromText,
     json: initialDocJson,
-    plugins: [history(), keymap(baseKeymap)],
+    plugins,
     canvasConfig: {
       settings,
       nodeRegistry,
-      debug: { layout: true },
+      layoutWorker: { enabled: false, modules: ["lumenpage-kit-basic"] },
+      debug: { layout: true, selection: true, delete: true },
       commands: {
         basicCommands,
         runCommand,

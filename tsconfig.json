@@ -39,6 +39,15 @@
     },
     {
       "path": "packages/kit-basic"
+    },
+    {
+      "path": "packages/inputrules"
+    },
+    {
+      "path": "packages/gapcursor"
+    },
+    {
+      "path": "packages/collab"
     }
   ]
 }

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <t-header class="toolbar">
     <div class="toolbar-left">
       <div class="toolbar-group">
@@ -141,6 +141,61 @@
       </div>
     </div>
     <div class="toolbar-right">
+      <t-popup trigger="click" placement="bottom-right">
+        <template #content>
+          <div class="settings-panel">
+            <div class="settings-row">
+              <span class="settings-label">行高</span>
+              <t-select
+                v-model="lineHeightMultiplier"
+                size="small"
+                class="settings-select"
+                :options="resolvedLineHeightOptions"
+              />
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">段间距</span>
+              <t-select
+                v-model="blockSpacing"
+                size="small"
+                class="settings-select"
+                :options="resolvedBlockSpacingOptions"
+              />
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">段前</span>
+              <t-select
+                v-model="paragraphSpacingBefore"
+                size="small"
+                class="settings-select"
+                :options="resolvedParagraphSpacingOptions"
+              />
+              <t-button size="small" variant="text" @click="applySpacingBeforeToSelection">
+                作用当前段
+              </t-button>
+              <t-button size="small" variant="text" @click="clearSpacingBeforeForSelection">
+                清除
+              </t-button>
+            </div>
+            <div class="settings-row">
+              <span class="settings-label">段后</span>
+              <t-select
+                v-model="paragraphSpacingAfter"
+                size="small"
+                class="settings-select"
+                :options="resolvedParagraphSpacingOptions"
+              />
+              <t-button size="small" variant="text" @click="applySpacingAfterToSelection">
+                作用当前段
+              </t-button>
+              <t-button size="small" variant="text" @click="clearSpacingAfterForSelection">
+                清除
+              </t-button>
+            </div>
+          </div>
+        </template>
+        <t-button size="small" variant="outline">设置</t-button>
+      </t-popup>
       <span ref="statusEl" class="status">0 pages</span>
     </div>
   </t-header>
@@ -168,6 +223,129 @@ const resolvedBlockTypeOptions = computed(
 );
 
 const blockType = ref("paragraph");
+const lineHeightMultiplier = ref(1.5);
+const blockSpacing = ref(8);
+const paragraphSpacingBefore = ref(0);
+const paragraphSpacingAfter = ref(8);
+
+const getFontPx = (font: string | undefined) => {
+  if (!font) {
+    return 16;
+  }
+  const match = /(\d+(?:\.\d+)?)px/.exec(font);
+  if (match) {
+    return Number.parseFloat(match[1]);
+  }
+  return 16;
+};
+
+const getCurrentLineHeightMultiplier = () => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings) {
+    return lineHeightMultiplier.value;
+  }
+  const fontPx = getFontPx(settings.font);
+  const multiplier = Number((settings.lineHeight / fontPx).toFixed(2));
+  return Number.isFinite(multiplier) ? multiplier : lineHeightMultiplier.value;
+};
+
+const baseLineHeightOptions = [
+  { label: "1", value: 1 },
+  { label: "1.5", value: 1.5 },
+  { label: "2", value: 2 },
+];
+
+const resolvedLineHeightOptions = computed(() => {
+  const current = getCurrentLineHeightMultiplier();
+  const exists = baseLineHeightOptions.some((option) => option.value === current);
+  if (exists) {
+    return baseLineHeightOptions;
+  }
+  return [{ label: `当前 ${current}`, value: current }, ...baseLineHeightOptions];
+});
+
+const baseBlockSpacingOptions = [
+  { label: "0", value: 0 },
+  { label: "6", value: 6 },
+  { label: "12", value: 12 },
+  { label: "18", value: 18 },
+];
+
+const getCurrentBlockSpacing = () => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings) {
+    return blockSpacing.value;
+  }
+  const value = Number(settings.blockSpacing ?? 0);
+  return Number.isFinite(value) ? value : blockSpacing.value;
+};
+
+const resolvedBlockSpacingOptions = computed(() => {
+  const current = getCurrentBlockSpacing();
+  const exists = baseBlockSpacingOptions.some((option) => option.value === current);
+  if (exists) {
+    return baseBlockSpacingOptions;
+  }
+  return [{ label: `当前 ${current}`, value: current }, ...baseBlockSpacingOptions];
+});
+
+const baseParagraphSpacingOptions = [
+  { label: "0", value: 0 },
+  { label: "6", value: 6 },
+  { label: "12", value: 12 },
+  { label: "18", value: 18 },
+  { label: "24", value: 24 },
+];
+
+const getCurrentParagraphSpacing = (key: "paragraphSpacingBefore" | "paragraphSpacingAfter") => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings) {
+    return key === "paragraphSpacingBefore"
+      ? paragraphSpacingBefore.value
+      : paragraphSpacingAfter.value;
+  }
+  const value = Number(settings[key] ?? 0);
+  return Number.isFinite(value)
+    ? value
+    : key === "paragraphSpacingBefore"
+      ? paragraphSpacingBefore.value
+      : paragraphSpacingAfter.value;
+};
+
+const getSelectionParagraphSpacing = (
+  key: "spacingBefore" | "spacingAfter",
+  fallbackKey: "paragraphSpacingBefore" | "paragraphSpacingAfter"
+) => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  const selection = view?.state?.selection;
+  const parent = selection?.$from?.parent;
+  if (!settings || !parent) {
+    return getCurrentParagraphSpacing(fallbackKey);
+  }
+  if (parent.type?.name !== "paragraph" && parent.type?.name !== "heading") {
+    return getCurrentParagraphSpacing(fallbackKey);
+  }
+  const raw = parent.attrs?.[key];
+  if (Number.isFinite(raw)) {
+    return Number(raw);
+  }
+  return Number(settings[fallbackKey] ?? 0);
+};
+
+const resolvedParagraphSpacingOptions = computed(() => {
+  const beforeValue = getSelectionParagraphSpacing("spacingBefore", "paragraphSpacingBefore");
+  const afterValue = getSelectionParagraphSpacing("spacingAfter", "paragraphSpacingAfter");
+  const unique = new Set<number>([beforeValue, afterValue, ...baseParagraphSpacingOptions.map((o) => o.value)]);
+  const options = Array.from(unique).sort((a, b) => a - b);
+  return options.map((value) => ({
+    label: String(value),
+    value,
+  }));
+});
 
 const getCommands = () => props.editorView?.commands || null;
 const run = (name: string, ...args: unknown[]) => {
@@ -187,7 +365,12 @@ const toggleUnderline = () => run("toggleUnderline");
 const toggleStrike = () => run("toggleStrike");
 const toggleInlineCode = () => run("toggleInlineCode");
 const toggleBlockquote = () => run("toggleBlockquote");
-const toggleCodeBlock = () => run("toggleCodeBlock");
+const toggleCodeBlock = () => {
+  if (run("toggleCodeBlock")) {
+    return true;
+  }
+  return run("setBlockType", "code_block");
+};
 const insertHorizontalRule = () => run("insertHorizontalRule");
 const toggleBulletList = () => run("toggleBulletList");
 const toggleOrderedList = () => run("toggleOrderedList");
@@ -256,6 +439,114 @@ watch(blockType, (value) => {
 
 const statusEl = ref<HTMLElement | null>(null);
 
+const applyLineHeightMultiplier = (value: number) => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings || !Number.isFinite(value)) {
+    return;
+  }
+  const fontPx = getFontPx(settings.font);
+  const nextLineHeight = Math.max(1, Math.round(fontPx * value));
+  settings.lineHeight = nextLineHeight;
+  view?._internals?.layoutPipeline?.clearCache?.();
+  const inputEl = view?._internals?.dom?.input;
+  if (inputEl) {
+    inputEl.style.height = `${nextLineHeight}px`;
+    inputEl.style.lineHeight = `${nextLineHeight}px`;
+  }
+  const worker = view?._internals?.layoutWorker;
+  worker?.resetSettings?.(settings).catch(() => null);
+  view?._internals?.updateLayout?.();
+  view?._internals?.updateCaret?.(true);
+  view?._internals?.scheduleRender?.();
+};
+
+const applyBlockSpacing = (value: number) => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings || !Number.isFinite(value)) {
+    return;
+  }
+  settings.blockSpacing = Math.max(0, Math.round(value));
+  view?._internals?.layoutPipeline?.clearCache?.();
+  const worker = view?._internals?.layoutWorker;
+  worker?.resetSettings?.(settings).catch(() => null);
+  view?._internals?.updateLayout?.();
+  view?._internals?.updateCaret?.(true);
+  view?._internals?.scheduleRender?.();
+};
+
+const applyParagraphSpacing = (key: "paragraphSpacingBefore" | "paragraphSpacingAfter", value: number) => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  const settings = view?._internals?.settings;
+  if (!settings || !Number.isFinite(value)) {
+    return;
+  }
+  settings[key] = Math.max(0, Math.round(value));
+  view?._internals?.layoutPipeline?.clearCache?.();
+  const worker = view?._internals?.layoutWorker;
+  worker?.resetSettings?.(settings).catch(() => null);
+  view?._internals?.updateLayout?.();
+  view?._internals?.updateCaret?.(true);
+  view?._internals?.scheduleRender?.();
+};
+
+const applySpacingBeforeToSelection = () => {
+  run("setParagraphSpacingBefore", paragraphSpacingBefore.value);
+};
+
+const applySpacingAfterToSelection = () => {
+  run("setParagraphSpacingAfter", paragraphSpacingAfter.value);
+};
+
+const clearSpacingBeforeForSelection = () => {
+  run("clearParagraphSpacingBefore");
+};
+
+const clearSpacingAfterForSelection = () => {
+  run("clearParagraphSpacingAfter");
+};
+
+const syncSpacingFromSelection = () => {
+  const before = getSelectionParagraphSpacing("spacingBefore", "paragraphSpacingBefore");
+  const after = getSelectionParagraphSpacing("spacingAfter", "paragraphSpacingAfter");
+  paragraphSpacingBefore.value = before;
+  paragraphSpacingAfter.value = after;
+};
+
+watch(
+  () => props.editorView,
+  () => {
+    lineHeightMultiplier.value = getCurrentLineHeightMultiplier();
+    blockSpacing.value = getCurrentBlockSpacing();
+    syncSpacingFromSelection();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.editorView?.state?.selection?.head,
+  () => {
+    syncSpacingFromSelection();
+  }
+);
+
+watch(lineHeightMultiplier, (value) => {
+  applyLineHeightMultiplier(value);
+});
+
+watch(blockSpacing, (value) => {
+  applyBlockSpacing(value);
+});
+
+watch(paragraphSpacingBefore, (value) => {
+  applyParagraphSpacing("paragraphSpacingBefore", value);
+});
+
+watch(paragraphSpacingAfter, (value) => {
+  applyParagraphSpacing("paragraphSpacingAfter", value);
+});
+
 defineExpose({ statusEl });
 </script>
 
@@ -285,6 +576,7 @@ defineExpose({ statusEl });
 .toolbar-right {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .toolbar-group {
@@ -314,5 +606,29 @@ defineExpose({ statusEl });
 .status {
   font-size: 12px;
   color: #8f959e;
+}
+
+.settings-panel {
+  padding: 10px 12px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: 12px;
+  color: #4e5969;
+}
+
+.settings-select {
+  width: 90px;
 }
 </style>

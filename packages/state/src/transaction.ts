@@ -45,7 +45,8 @@ export class Transaction extends Transform {
   time: number
 
   private curSelection: Selection
-  // 褰撳墠閫夊尯鏈夋晥鐨勬楠よ鏁?  private curSelectionFor = 0
+  // Tracks the step count at which curSelection is valid.
+  private curSelectionFor = 0
   // 浣嶅瓧娈碉紝鐢ㄤ簬璺熻釜姝や簨鍔℃洿鏂颁簡鐘舵€佺殑鍝簺鏂归潰
   private updated = 0
   // 鐢ㄤ簬瀛樺偍浜嬪姟鍏冩暟鎹睘鎬х殑瀵硅薄

@@ -1,4 +1,4 @@
-﻿import { Command } from "lumenpage-state";
+import type { Command } from "lumenpage-state";
 
 const noopCommand: Command = () => false;
 

@@ -2,8 +2,21 @@
         ReplaceStep, ReplaceAroundStep, replaceStep} from "lumenpage-transform"
 import {Slice, Fragment, Node, NodeType, Attrs, MarkType, ResolvedPos, ContentMatch} from "lumenpage-model"
 import {Selection, EditorState, Transaction, TextSelection, NodeSelection,
-        SelectionRange, AllSelection, Command} from "lumenpage-state"
+        SelectionRange, AllSelection} from "lumenpage-state"
+import type {Command} from "lumenpage-state"
 import type { EditorView } from "lumenpage-view-types"
+
+function hasIdAttr(node: Node): boolean {
+  return !!node?.type?.spec?.attrs && Object.prototype.hasOwnProperty.call(node.type.spec.attrs, "id")
+}
+
+function clearSplitNodeId(tr: Transaction, splitPos: number) {
+  let $pos = tr.doc.resolve(splitPos)
+  let nodeAfter = $pos.nodeAfter
+  if (!nodeAfter || !nodeAfter.isBlock || !hasIdAttr(nodeAfter) || nodeAfter.attrs?.id == null) return
+  let attrs = Object.assign({}, nodeAfter.attrs, {id: null})
+  tr.setNodeMarkup(splitPos, nodeAfter.type, attrs, nodeAfter.marks)
+}
 
 /// Delete the selection, if there is one.
 export const deleteSelection: Command = (state, dispatch) => {
@@ -359,7 +372,9 @@ export function splitBlockAs(
     let {$from, $to} = state.selection
     if (state.selection instanceof NodeSelection && state.selection.node.isBlock) {
       if (!$from.parentOffset || !canSplit(state.doc, $from.pos)) return false
-      if (dispatch) dispatch(state.tr.split($from.pos).scrollIntoView())
+      let tr = state.tr.split($from.pos)
+      clearSplitNodeId(tr, $from.pos)
+      if (dispatch) dispatch(tr.scrollIntoView())
       return true
     }
 
@@ -392,6 +407,7 @@ export function splitBlockAs(
     }
     if (!can) return false
     tr.split(splitPos, types.length, types)
+    clearSplitNodeId(tr, splitPos)
     if (!atEnd && atStart && $from.node(splitDepth).type != deflt) {
       let first = tr.mapping.map($from.before(splitDepth)), $first = tr.doc.resolve(first)
       if (deflt && $from.node(splitDepth - 1).canReplaceWith($first.index(), $first.index() + 1, deflt))

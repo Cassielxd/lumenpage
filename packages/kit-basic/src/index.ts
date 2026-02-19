@@ -1,4 +1,4 @@
-﻿export {
+export {
   schema,
   createDocFromText,
   docToText,
@@ -17,8 +17,7 @@ import { bulletListRenderer, orderedListRenderer } from "lumenpage-node-list";
 import { imageRenderer } from "lumenpage-node-image";
 import { videoRenderer } from "lumenpage-node-video";
 
-export const createDefaultNodeRendererRegistry = () => {
-  const registry = new NodeRendererRegistry();
+export const registerNodeRenderers = (registry: NodeRendererRegistry) => {
   registry.register("blockquote", blockquoteRenderer);
   registry.register("code_block", codeBlockRenderer);
   registry.register("horizontal_rule", horizontalRuleRenderer);
@@ -31,6 +30,9 @@ export const createDefaultNodeRendererRegistry = () => {
   registry.register("video", videoRenderer);
   return registry;
 };
+
+export const createDefaultNodeRendererRegistry = () =>
+  registerNodeRenderers(new NodeRendererRegistry());
 
 export {
   paragraphRenderer,
