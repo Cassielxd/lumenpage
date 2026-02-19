@@ -179,7 +179,7 @@ export const imageRenderer = {
     container.style.transform = "translate(0px, 0px)";
     container.style.width = "0";
     container.style.height = "0";
-    container.style.pointerEvents = "auto";
+    container.style.pointerEvents = "none";
     container.style.overflow = "hidden";
     container.style.background = "#f3f4f6";
     host.appendChild(container);

@@ -36,6 +36,8 @@ const resolveMetrics = (settings: any) => ({
 });
 
 export const codeBlockRenderer = {
+  allowSplit: true,
+
   layoutBlock({ node, settings }: { node: any; settings: any }) {
     const metrics = resolveMetrics(settings);
     const codeSettings = {
@@ -75,16 +77,24 @@ export const codeBlockRenderer = {
       settings.segmentText
     );
 
-    for (const line of lines) {
+    const lineHeight = settings.lineHeight;
+
+    const totalLines = lines.length;
+    lines.forEach((line, lineIndex) => {
       line.x = settings.margin.left + metrics.padding;
       line.blockType = "code_block";
-      line.blockAttrs = { ...(line.blockAttrs || {}), ...blockAttrs };
-    }
+      line.blockAttrs = {
+        ...(line.blockAttrs || {}),
+        ...blockAttrs,
+        codeBlockLineIndex: lineIndex,
+        codeBlockLineCount: totalLines,
+      };
+    });
 
     return {
       lines,
       length: runsResult.length || 0,
-      height: lines.length * settings.lineHeight,
+      height: lines.length * lineHeight,
       blockAttrs,
     };
   },
@@ -97,11 +107,38 @@ export const codeBlockRenderer = {
     const x = pageX + layout.margin.left;
     const y = pageTop + line.y;
     const height = line.lineHeight ?? layout.lineHeight;
+    const lineIndex = Number.isFinite(line.blockAttrs?.codeBlockLineIndex)
+      ? line.blockAttrs.codeBlockLineIndex
+      : 0;
+    const lineCount = Number.isFinite(line.blockAttrs?.codeBlockLineCount)
+      ? line.blockAttrs.codeBlockLineCount
+      : 1;
+    const isFirst = lineIndex === 0;
+    const isLast = lineIndex === Math.max(0, lineCount - 1);
+    const isPageTop = line.y <= layout.margin.top + 0.5;
 
     ctx.fillStyle = background;
     ctx.fillRect(x, y, width, height);
+
     ctx.strokeStyle = borderColor;
-    ctx.strokeRect(x, y, width, height);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    // left/right borders on every line to keep vertical continuity
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y + height);
+    ctx.moveTo(x + width, y);
+    ctx.lineTo(x + width, y + height);
+    // top border on first line or when the block continues on a new page
+    if (isFirst || isPageTop) {
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + width, y);
+    }
+    // bottom border only on last line
+    if (isLast) {
+      ctx.moveTo(x, y + height);
+      ctx.lineTo(x + width, y + height);
+    }
+    ctx.stroke();
 
     if (defaultRender) {
       defaultRender(line, pageX, pageTop, layout);

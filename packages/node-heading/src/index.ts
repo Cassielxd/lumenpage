@@ -19,6 +19,10 @@ export const headingNodeSpec: NodeSpec = {
     level: { default: 1 },
 
     align: { default: "left" },
+
+    spacingBefore: { default: null },
+
+    spacingAfter: { default: null },
   },
 
   parseDOM: [
@@ -31,6 +35,9 @@ export const headingNodeSpec: NodeSpec = {
         level: 1,
 
         align: dom.style.textAlign || "left",
+
+        spacingBefore: Number.parseFloat(dom.style.marginTop || "") || null,
+        spacingAfter: Number.parseFloat(dom.style.marginBottom || "") || null,
       }),
     },
 
@@ -43,6 +50,9 @@ export const headingNodeSpec: NodeSpec = {
         level: 2,
 
         align: dom.style.textAlign || "left",
+
+        spacingBefore: Number.parseFloat(dom.style.marginTop || "") || null,
+        spacingAfter: Number.parseFloat(dom.style.marginBottom || "") || null,
       }),
     },
 
@@ -55,6 +65,9 @@ export const headingNodeSpec: NodeSpec = {
         level: 3,
 
         align: dom.style.textAlign || "left",
+
+        spacingBefore: Number.parseFloat(dom.style.marginTop || "") || null,
+        spacingAfter: Number.parseFloat(dom.style.marginBottom || "") || null,
       }),
     },
   ],
@@ -63,8 +76,21 @@ export const headingNodeSpec: NodeSpec = {
     const level = Math.max(1, Math.min(3, Number(node.attrs.level) || 1));
 
     const align = node.attrs.align || "left";
+    const spacingBefore = node.attrs.spacingBefore;
+    const spacingAfter = node.attrs.spacingAfter;
 
-    const attrs = align !== "left" ? { style: `text-align:${align}` } : {};
+    const styles = [];
+    if (align !== "left") {
+      styles.push(`text-align:${align}`);
+    }
+    if (Number.isFinite(spacingBefore)) {
+      styles.push(`margin-top:${spacingBefore}px`);
+    }
+    if (Number.isFinite(spacingAfter)) {
+      styles.push(`margin-bottom:${spacingAfter}px`);
+    }
+
+    const attrs = styles.length > 0 ? { style: styles.join(";") } : {};
 
     if (node.attrs?.id) {
       attrs["data-node-id"] = node.attrs.id;
@@ -100,7 +126,13 @@ export const headingRenderer = {
 
     const { font, lineHeight } = getHeadingStyle(level, settings.font);
 
-    const runs = textblockToRuns(node, { ...settings, font }, node.type.name, null, node.attrs);
+    const runs = textblockToRuns(
+      node,
+      { ...settings, font },
+      node.type.name,
+      node.attrs?.id ?? null,
+      node.attrs
+    );
 
     return { ...runs, blockAttrs: { ...node.attrs, lineHeight } };
   },

@@ -181,6 +181,7 @@ const layoutList = (node, settings, registry, ordered) => {
         markerGap,
         markerWidth,
         markerFont,
+        markerText,
         itemIndex: index,
       };
       if (lineIndex === 0) {
@@ -242,6 +243,106 @@ const renderListMarker = ({ ctx, line, pageX, pageTop, layout }) => {
 export const bulletListRenderer = {
   allowSplit: true,
 
+  splitBlock({ lines, length, availableHeight, lineHeight }) {
+    if (!lines || lines.length === 0) {
+      return null;
+    }
+
+    const getLineHeight = (line) =>
+      Number.isFinite(line?.lineHeight) ? line.lineHeight : lineHeight || 0;
+
+    const groups: Array<{ lines: any[]; height: number }> = [];
+    let currentIndex: number | null = null;
+    let currentLines: any[] = [];
+    let currentHeight = 0;
+
+    for (const line of lines) {
+      const index = Number.isFinite(line?.blockAttrs?.itemIndex)
+        ? line.blockAttrs.itemIndex
+        : 0;
+      if (currentIndex === null) {
+        currentIndex = index;
+      }
+      if (index !== currentIndex) {
+        groups.push({ lines: currentLines, height: currentHeight });
+        currentLines = [];
+        currentHeight = 0;
+        currentIndex = index;
+      }
+      const lh = getLineHeight(line);
+      currentLines.push(line);
+      currentHeight += lh;
+    }
+    if (currentLines.length) {
+      groups.push({ lines: currentLines, height: currentHeight });
+    }
+
+    let usedHeight = 0;
+    let cutIndex = 0;
+    for (; cutIndex < groups.length; cutIndex += 1) {
+      const nextHeight = usedHeight + groups[cutIndex].height;
+      if (nextHeight > availableHeight) {
+        break;
+      }
+      usedHeight = nextHeight;
+    }
+
+    // 没有任何完整列表项能放下，退化为按行拆分，保证布局推进。
+    if (cutIndex === 0) {
+      const maxLines = Math.max(
+        1,
+        Math.floor(availableHeight / Math.max(1, lineHeight || getLineHeight(lines[0]) || 1))
+      );
+      if (maxLines >= lines.length) {
+        return null;
+      }
+      const visibleLines = lines.slice(0, maxLines);
+      const overflowLines = lines.slice(maxLines);
+      const firstLine = visibleLines[0];
+      const lastLine = visibleLines[visibleLines.length - 1];
+      const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
+      const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
+      const visibleLength = Math.max(0, endOffset - startOffset);
+      const visibleHeight = visibleLines.reduce((sum, line) => sum + getLineHeight(line), 0);
+      const overflowHeight = overflowLines.reduce((sum, line) => sum + getLineHeight(line), 0);
+      return {
+        lines: visibleLines,
+        length: visibleLength,
+        height: visibleHeight,
+        overflow: {
+          lines: overflowLines,
+          length: Math.max(0, length - visibleLength),
+          height: overflowHeight,
+        },
+      };
+    }
+
+    const visibleGroups = groups.slice(0, cutIndex);
+    const overflowGroups = groups.slice(cutIndex);
+    const visibleLines = visibleGroups.flatMap((group) => group.lines);
+    const overflowLines = overflowGroups.flatMap((group) => group.lines);
+    const visibleHeight = visibleGroups.reduce((sum, group) => sum + group.height, 0);
+    const overflowHeight = overflowGroups.reduce((sum, group) => sum + group.height, 0);
+    const firstLine = visibleLines[0];
+    const lastLine = visibleLines[visibleLines.length - 1];
+    const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
+    const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
+    const visibleLength = Math.max(0, endOffset - startOffset);
+
+    return {
+      lines: visibleLines,
+      length: visibleLength,
+      height: visibleHeight,
+      overflow: overflowLines.length
+        ? {
+            lines: overflowLines,
+            length: Math.max(0, length - visibleLength),
+            height: overflowHeight,
+          }
+        : undefined,
+    };
+  },
+
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, false);
   },
@@ -254,6 +355,8 @@ export const bulletListRenderer = {
 
 export const orderedListRenderer = {
   allowSplit: true,
+
+  splitBlock: bulletListRenderer.splitBlock,
 
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, true);

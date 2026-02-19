@@ -19,6 +19,10 @@ export const paragraphNodeSpec: NodeSpec = {
     align: { default: "left" },
 
     indent: { default: 0 },
+
+    spacingBefore: { default: null },
+
+    spacingAfter: { default: null },
   },
 
   parseDOM: [
@@ -32,13 +36,16 @@ export const paragraphNodeSpec: NodeSpec = {
 
         const indent = Number.parseFloat(indentValue) || 0;
 
-        return { align, indent, id: readIdAttr(dom) };
+        const spacingBefore = Number.parseFloat(dom.style.marginTop || "") || null;
+        const spacingAfter = Number.parseFloat(dom.style.marginBottom || "") || null;
+
+        return { align, indent, id: readIdAttr(dom), spacingBefore, spacingAfter };
       },
     },
   ],
 
   toDOM(node) {
-    const { align, indent, id } = node.attrs;
+    const { align, indent, id, spacingBefore, spacingAfter } = node.attrs;
 
     const styles = [];
 
@@ -48,6 +55,14 @@ export const paragraphNodeSpec: NodeSpec = {
 
     if (indent) {
       styles.push(`text-indent:${indent}px`);
+    }
+
+    if (Number.isFinite(spacingBefore)) {
+      styles.push(`margin-top:${spacingBefore}px`);
+    }
+
+    if (Number.isFinite(spacingAfter)) {
+      styles.push(`margin-bottom:${spacingAfter}px`);
     }
 
     const attrs = styles.length > 0 ? { style: styles.join(";") } : {};
@@ -64,7 +79,7 @@ export const paragraphRenderer = {
   allowSplit: true,
 
   toRuns(node, settings) {
-    return textblockToRuns(node, settings, node.type.name, null, node.attrs);
+    return textblockToRuns(node, settings, node.type.name, node.attrs?.id ?? null, node.attrs);
   },
 
   renderLine({ defaultRender, line, pageX, pageTop, layout }) {

@@ -295,6 +295,8 @@ export const tableRenderer = {
               padding,
 
               paddingY,
+              tableSliceFromPrev: false,
+              tableSliceHasNext: false,
             },
 
             cellWidth: maxCellWidth,
@@ -342,18 +344,40 @@ export const tableRenderer = {
 
       blockType: "table",
 
-      blockAttrs: { rows, cols, rowHeights, colWidth, tableWidth, padding },
+      blockAttrs: {
+        rows,
+        cols,
+        rowHeights,
+        colWidth,
+        tableWidth,
+        padding,
+        paddingY,
+        tableSliceFromPrev: false,
+        tableSliceHasNext: false,
+      },
     };
   },
 
-  splitBlock({ lines, length, availableHeight }) {
+  splitBlock({ lines, length, availableHeight, blockAttrs }) {
     if (!lines || lines.length === 0) {
       return null;
     }
 
     const firstAttrs = lines[0].blockAttrs || {};
 
-    const fullRowHeights = Array.isArray(firstAttrs.rowHeights) ? firstAttrs.rowHeights : [];
+    let fullRowHeights = Array.isArray(firstAttrs.rowHeights) ? firstAttrs.rowHeights : [];
+    if (fullRowHeights.length === 0) {
+      const fallbackLine = lines.find((line) => Array.isArray(line?.blockAttrs?.rowHeights));
+      if (fallbackLine?.blockAttrs?.rowHeights) {
+        fullRowHeights = fallbackLine.blockAttrs.rowHeights;
+      }
+    }
+    if (fullRowHeights.length === 0 && Array.isArray(blockAttrs?.rowHeights)) {
+      fullRowHeights = blockAttrs.rowHeights;
+    }
+    if (fullRowHeights.length === 0 && Array.isArray(lines[0]?.tableMeta?.rowHeights)) {
+      fullRowHeights = lines[0].tableMeta.rowHeights;
+    }
 
     if (fullRowHeights.length === 0) {
       return null;
@@ -367,7 +391,8 @@ export const tableRenderer = {
 
     const padding = Number.isFinite(firstAttrs.padding) ? firstAttrs.padding : 0;
 
-    const paddingY = Number.isFinite(firstAttrs.paddingY) ? firstAttrs.paddingY : 0;
+    const paddingY =
+      Number.isFinite(firstAttrs.paddingY) ? firstAttrs.paddingY : blockAttrs?.paddingY ?? 0;
 
     const rowOffset = lines.reduce((minRow, line) => {
       const rowIndex = line.blockAttrs?.rowIndex;
@@ -403,7 +428,17 @@ export const tableRenderer = {
     }
 
     if (visibleRowCount === 0) {
-      return null;
+      const fullHeight = sumHeights(baseRowHeights);
+      return {
+        lines: [],
+        length: 0,
+        height: 0,
+        overflow: {
+          lines,
+          length,
+          height: fullHeight,
+        },
+      };
     }
 
     const visibleRowHeights = baseRowHeights.slice(0, visibleRowCount);
@@ -428,11 +463,18 @@ export const tableRenderer = {
       }
     }
 
-    const remapLines = (sourceLines, rowIndexOffset, rowHeights, relativeYOffset) =>
-      sourceLines.map((line) => {
-        const { tableMeta: _tableMeta, ...lineCopy } = line;
+      const remapLines = (
+        sourceLines,
+        rowIndexOffset,
+        rowHeights,
+        relativeYOffset,
+        sliceFromPrev,
+        sliceHasNext
+      ) =>
+        sourceLines.map((line) => {
+          const { tableMeta: _tableMeta, ...lineCopy } = line;
 
-        const attrs = lineCopy.blockAttrs ? { ...lineCopy.blockAttrs } : {};
+          const attrs = lineCopy.blockAttrs ? { ...lineCopy.blockAttrs } : {};
 
         const originalRowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : 0;
 
@@ -446,13 +488,15 @@ export const tableRenderer = {
 
         attrs.colWidth = colWidth;
 
-        attrs.tableWidth = tableWidth;
+          attrs.tableWidth = tableWidth;
 
-        attrs.padding = padding;
+          attrs.padding = padding;
 
-        attrs.paddingY = paddingY;
+          attrs.paddingY = paddingY;
+          attrs.tableSliceFromPrev = !!sliceFromPrev;
+          attrs.tableSliceHasNext = !!sliceHasNext;
 
-        lineCopy.blockAttrs = attrs;
+          lineCopy.blockAttrs = attrs;
 
         if (typeof lineCopy.relativeY === "number") {
           lineCopy.relativeY = lineCopy.relativeY - relativeYOffset;
@@ -461,30 +505,34 @@ export const tableRenderer = {
         return lineCopy;
       });
 
-    const visibleLines = remapLines(
-      visibleLinesRaw,
+      const visibleLines = remapLines(
+        visibleLinesRaw,
 
-      resolvedRowOffset,
+        resolvedRowOffset,
 
-      visibleRowHeights,
+        visibleRowHeights,
 
-      baseOffsetY
-    );
+        baseOffsetY,
+        resolvedRowOffset > 0,
+        overflowRowHeights.length > 0
+      );
 
-    const overflowLines = remapLines(
-      overflowLinesRaw,
+      const overflowLines = remapLines(
+        overflowLinesRaw,
 
-      resolvedRowOffset + visibleRowCount,
+        resolvedRowOffset + visibleRowCount,
 
-      overflowRowHeights,
+        overflowRowHeights,
 
-      overflowOffsetY
-    );
+        overflowOffsetY,
+        true,
+        false
+      );
 
-    const applyTableMeta = (sliceLines, rowHeights) => {
-      if (sliceLines.length === 0) {
-        return;
-      }
+      const applyTableMeta = (sliceLines, rowHeights, sliceFromPrev, sliceHasNext) => {
+        if (sliceLines.length === 0) {
+          return;
+        }
 
       const tableHeight = rowHeights.reduce((sum, h) => sum + h, 0);
 
@@ -503,19 +551,33 @@ export const tableRenderer = {
 
         padding,
 
-        paddingY,
+          paddingY,
 
-        tableTop: 0,
+          tableTop: 0,
+          continuedFromPrev: !!sliceFromPrev,
+          continuesAfter: !!sliceHasNext,
+        };
       };
-    };
 
-    applyTableMeta(visibleLines, visibleRowHeights);
+      applyTableMeta(
+        visibleLines,
+        visibleRowHeights,
+        resolvedRowOffset > 0,
+        overflowRowHeights.length > 0
+      );
 
-    applyTableMeta(overflowLines, overflowRowHeights);
+      applyTableMeta(overflowLines, overflowRowHeights, true, false);
 
-    const visibleLength = visibleLinesRaw.reduce((max, line) => {
-      return Number.isFinite(line.end) ? Math.max(max, line.end) : max;
+    const visibleStart = visibleLinesRaw.reduce((min, line) => {
+      const start = Number.isFinite(line.start) ? line.start : 0;
+      return Math.min(min, start);
+    }, Number.POSITIVE_INFINITY);
+    const visibleEnd = visibleLinesRaw.reduce((max, line) => {
+      const end = Number.isFinite(line.end) ? line.end : 0;
+      return Math.max(max, end);
     }, 0);
+    const normalizedStart = Number.isFinite(visibleStart) ? visibleStart : 0;
+    const visibleLength = Math.max(0, visibleEnd - normalizedStart);
 
     const visibleHeight = sumHeights(visibleRowHeights);
 
@@ -543,41 +605,64 @@ export const tableRenderer = {
   /* ȾıԸĬȾ */
 
   renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-    if (line.tableMeta) {
-      const tableX = pageX + layout.margin.left;
+      if (line.tableMeta) {
+        const tableX = pageX + layout.margin.left;
 
-      const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
+        const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
 
-      const tableTop = line.tableMeta.tableTop || 0;
+        const tableTop = line.tableMeta.tableTop || 0;
 
-      const tableY = pageTop + line.y - relativeY + tableTop;
+        const tableY = pageTop + line.y - relativeY + tableTop;
 
-      const { rows, cols, rowHeights, tableWidth, colWidth, tableHeight } = line.tableMeta;
+        const {
+          rows,
+          cols,
+          rowHeights,
+          tableWidth,
+          colWidth,
+          tableHeight,
+          continuedFromPrev,
+          continuesAfter,
+        } = line.tableMeta;
 
-      ctx.save();
+        ctx.save();
 
-      ctx.strokeStyle = "#6b7280";
+        ctx.strokeStyle = "#6b7280";
 
-      ctx.lineWidth = 1;
-
-      ctx.strokeRect(tableX, tableY, tableWidth, tableHeight);
-
-      let y = tableY;
-
-      for (let r = 0; r < rows - 1; r += 1) {
-        y += rowHeights[r];
+        ctx.lineWidth = 1;
 
         ctx.beginPath();
-
-        ctx.moveTo(tableX, y);
-
-        ctx.lineTo(tableX + tableWidth, y);
-
+        // outer borders
+        ctx.moveTo(tableX, tableY);
+        ctx.lineTo(tableX, tableY + tableHeight);
+        ctx.moveTo(tableX + tableWidth, tableY);
+        ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
+        if (!continuedFromPrev) {
+          ctx.moveTo(tableX, tableY);
+          ctx.lineTo(tableX + tableWidth, tableY);
+        }
+        if (!continuesAfter) {
+          ctx.moveTo(tableX, tableY + tableHeight);
+          ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
+        }
         ctx.stroke();
-      }
 
-      for (let c = 1; c < cols; c += 1) {
-        const x = tableX + c * colWidth;
+        let y = tableY;
+
+        for (let r = 0; r < rows - 1; r += 1) {
+          y += rowHeights[r];
+
+          ctx.beginPath();
+
+          ctx.moveTo(tableX, y);
+
+          ctx.lineTo(tableX + tableWidth, y);
+
+          ctx.stroke();
+        }
+
+        for (let c = 1; c < cols; c += 1) {
+          const x = tableX + c * colWidth;
 
         ctx.beginPath();
 
