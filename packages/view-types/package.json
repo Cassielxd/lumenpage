@@ -1,6 +1,6 @@
 ﻿{
   "name": "lumenpage-view-types",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Shared editor view types",
   "type": "module",
   "main": "dist/index.js",
@@ -9,7 +9,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.js",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     }
   },
   "files": [
@@ -25,3 +28,4 @@
     "typescript": "^5.5.4"
   }
 }
+

@@ -10,9 +10,13 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "dev:app": "pnpm -C apps/playground dev"
+    "dev:app": "pnpm -C apps/playground dev",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.7",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   }

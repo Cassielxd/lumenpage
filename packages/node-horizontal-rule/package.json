@@ -1,6 +1,6 @@
-{
+﻿{
   "name": "lumenpage-node-horizontal-rule",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -8,7 +8,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.js",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     }
   },
   "files": [
@@ -26,3 +29,4 @@
     "typescript": "^5.5.4"
   }
 }
+

@@ -1,19 +1,26 @@
 ﻿{
-  "name": "lumenpage-commands",
+  "name": "lumenpage-inputrules",
   "version": "0.0.1",
-  "description": "Editing commands for ProseMirror",
+  "description": "Automatic transforms on text input for LumenPage",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./src/index.ts",
+      "development": "./src/index.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
-      "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.json --pretty false --noEmit"
   },
   "sideEffects": false,
   "license": "MIT",
@@ -26,13 +33,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/prosemirror/prosemirror-commands.git"
+    "url": "git://github.com/prosemirror/prosemirror-inputrules.git"
   },
   "dependencies": {
-    "lumenpage-model": "workspace:*",
-    "lumenpage-transform": "workspace:*",
     "lumenpage-state": "workspace:*",
-    "lumenpage-view-types": "workspace:*"
+    "lumenpage-transform": "workspace:*",
+    "lumenpage-view-types": "workspace:*",
+    "lumenpage-model": "workspace:*"
   }
 }
 

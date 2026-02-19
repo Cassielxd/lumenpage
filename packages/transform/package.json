@@ -1,14 +1,19 @@
-{
+﻿{
   "name": "lumenpage-transform",
-  "version": "1.11.0",
+  "version": "0.0.1",
   "description": "ProseMirror document transformations",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    "import": "./dist/index.js",
-    "require": "./dist/index.cjs"
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "sideEffects": false,
   "license": "MIT",
@@ -27,3 +32,4 @@
     "lumenpage-model": "workspace:*"
   }
 }
+
