@@ -201,6 +201,56 @@ export function textblockToRuns(
       return;
     }
 
+    if (text.includes("\n")) {
+      const parts = text.split("\n");
+      parts.forEach((part, index) => {
+        if (part.length > 0) {
+          const run = {
+            type: "text",
+
+            text: part,
+
+            start: offset,
+
+            end: offset + part.length,
+
+            style,
+
+            styleKey,
+
+            blockType,
+
+            blockId,
+
+            blockAttrs,
+
+            blockStart,
+          };
+
+          appendRun(runs, run);
+
+          offset += part.length;
+        }
+        if (index < parts.length - 1) {
+          runs.push({
+            type: "break",
+
+            offset,
+
+            blockType,
+
+            blockId,
+
+            blockAttrs,
+
+            blockStart,
+          });
+          offset += 1;
+        }
+      });
+      return;
+    }
+
     const run = {
       type: "text",
 

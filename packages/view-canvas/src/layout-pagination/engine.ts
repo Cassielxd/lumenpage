@@ -1,11 +1,17 @@
-/*
- * Layout pipeline for pagination.
+﻿/*
+ * 分页布局管线。
  */
 
 import { docToRuns, textblockToRuns, textToRuns } from "./textRuns";
 import { breakLines } from "./lineBreaker";
 
+const now = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 
+
+// 变更摘要：用于增量布局复用。
 type LayoutChangeSummary = {
   docChanged?: boolean;
   blocks?: {
@@ -14,6 +20,7 @@ type LayoutChangeSummary = {
   };
 };
 
+// 布局输出：分页结果 + 版式参数。
 type LayoutResult = {
   pages: Array<{ lines: any[] }>;
   pageHeight: number;
@@ -25,16 +32,31 @@ type LayoutResult = {
   totalHeight: number;
 };
 
+// 布局输入：上一版布局 + 变更摘要。
 type LayoutFromDocOptions = {
   previousLayout?: LayoutResult | null;
   changeSummary?: LayoutChangeSummary | null;
   docPosToTextOffset?: (doc: any, pos: number) => number;
 };
 
-// 创建新的页面容器（索引 + 行列表）。
+
+// 创建新的分页容器。
 function newPage(index) {
-  return { index, lines: [] };
+  return { index, lines: [], rootIndexMin: null, rootIndexMax: null };
 }
+
+// 标记复用页，渲染阶段可跳过签名计算。
+const markReusedPages = (pages) => {
+  if (!Array.isArray(pages)) {
+    return pages;
+  }
+  for (const page of pages) {
+    if (page) {
+      page.__reused = true;
+    }
+  }
+  return pages;
+};
 
 // 克隆行对象，避免引用共享。
 const cloneLine = (line) => ({
@@ -42,7 +64,7 @@ const cloneLine = (line) => ({
   runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
 });
 
-// 计算行的水平起始位置（对齐 + 缩进）。
+// 计算行的水平位置（对齐 + 首行缩进）。
 const computeLineX = (line, settings) => {
   const { pageWidth, margin } = settings;
   const maxWidth = pageWidth - margin.left - margin.right;
@@ -63,7 +85,7 @@ const computeLineX = (line, settings) => {
   return x;
 };
 
-// 将行内偏移从块内偏移转换为全局偏移。
+// 将块内偏移转换为文档全局偏移。
 const adjustLineOffsets = (line, blockStart) => {
   if (typeof line.start === "number") {
     line.start += blockStart;
@@ -124,7 +146,7 @@ const hashString = (hash, value) => {
   return hash;
 };
 
-// 生成页面签名，用于页级对齐判断。
+// 生成页签名，用于判断页是否等价。
 const getPageSignature = (page) => {
   let hash = 0;
   if (!page?.lines) {
@@ -154,7 +176,7 @@ const getPageSignature = (page) => {
   return hash;
 };
 
-// 判断两个页面是否等价（行数 + 签名）。
+// 判断页面是否等价（行数 + 签名）。
 const arePagesEquivalent = (nextPage, prevPage) => {
   if (!nextPage || !prevPage) {
     return false;
@@ -167,7 +189,7 @@ const arePagesEquivalent = (nextPage, prevPage) => {
   return getPageSignature(nextPage) === getPageSignature(prevPage);
 };
 
-// 在旧布局中查找块锚点（rootIndex/blockId/blockStart）。
+// 在旧布局中定位锚点行（增量复用）。
 const findBlockAnchor = (layout, options) => {
   if (!layout?.pages?.length) {
     return null;
@@ -179,13 +201,13 @@ const findBlockAnchor = (layout, options) => {
     const page = layout.pages[p];
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
-      if (Number.isFinite(rootIndex) && line.rootIndex === rootIndex) {
-        return { pageIndex: p, lineIndex: l, line };
-      }
       if (blockId && line.blockId === blockId) {
         return { pageIndex: p, lineIndex: l, line };
       }
       if (Number.isFinite(blockStart) && line.blockStart === blockStart) {
+        return { pageIndex: p, lineIndex: l, line };
+      }
+      if (Number.isFinite(rootIndex) && line.rootIndex === rootIndex) {
         return { pageIndex: p, lineIndex: l, line };
       }
     }
@@ -193,7 +215,33 @@ const findBlockAnchor = (layout, options) => {
   return null;
 };
 
-// 计算根级块的起始文档位置。
+// 查找块在旧布局中的首次出现位置（用于跨页块回退对齐）。
+const findBlockFirstOccurrence = (layout, options) => {
+  if (!layout?.pages?.length) {
+    return null;
+  }
+  const rootIndex = options?.rootIndex;
+  const blockId = options?.blockId;
+  const blockStart = options?.blockStart;
+  for (let p = 0; p < layout.pages.length; p += 1) {
+    const page = layout.pages[p];
+    for (let l = 0; l < page.lines.length; l += 1) {
+      const line = page.lines[l];
+      if (blockId && line.blockId === blockId) {
+        return { pageIndex: p, lineIndex: l, line };
+      }
+      if (Number.isFinite(blockStart) && line.blockStart === blockStart) {
+        return { pageIndex: p, lineIndex: l, line };
+      }
+      if (Number.isFinite(rootIndex) && line.rootIndex === rootIndex) {
+        return { pageIndex: p, lineIndex: l, line };
+      }
+    }
+  }
+  return null;
+};
+
+// 计算顶层块的起始文档位置。
 const getDocChildStartPos = (doc, targetIndex) => {
   let pos = 0;
   for (let i = 0; i < targetIndex && i < doc.childCount; i += 1) {
@@ -234,33 +282,83 @@ export class LayoutPipeline {
     this.blockCache.clear();
   }
 
-
-  // 分页布局主入口：生成 layout，支持增量复用。
+  // 分页布局主入口：生成布局并尝试增量复用。
   layoutFromDoc(doc, options: LayoutFromDocOptions = {}) {
-    // 分页布局主入口：从文档生成 pages/lines，并在可对齐时做增量复用。
-    const baseSettings = this.settings;
+    // 基础设置（保留原引用用于性能汇报）。
+    const baseSettingsRaw = this.settings;
+    const disablePageReuse = !!baseSettingsRaw.disablePageReuse;
+    const debugPerf = !!baseSettingsRaw.debugPerf;
+    // 性能统计（可选）。
+    const perf = debugPerf
+      ? {
+          start: now(),
+          blocks: 0,
+          cachedBlocks: 0,
+          lines: 0,
+          pages: 0,
+          measureCalls: 0,
+          measureChars: 0,
+          reusedPages: 0,
+          breakLinesMs: 0,
+          layoutLeafMs: 0,
+        }
+      : null;
+    // 包装测量函数以统计调用次数。
+    const baseMeasure = baseSettingsRaw.measureTextWidth;
+    const measureTextWidth = debugPerf
+      ? (font, text) => {
+          perf.measureCalls += 1;
+          perf.measureChars += text ? text.length : 0;
+          return baseMeasure(font, text);
+        }
+      : baseMeasure;
+    // 布局过程中使用的设置。
+    const baseSettings = debugPerf
+      ? { ...baseSettingsRaw, measureTextWidth }
+      : baseSettingsRaw;
+    // 固定版式参数。
     const { pageHeight, pageGap, margin, lineHeight, font } = baseSettings;
+    const blockSpacing = Number.isFinite(baseSettings.blockSpacing)
+      ? baseSettings.blockSpacing
+      : 0;
+    const paragraphSpacingBefore = Number.isFinite(baseSettings.paragraphSpacingBefore)
+      ? baseSettings.paragraphSpacingBefore
+      : 0;
+    const paragraphSpacingAfter = Number.isFinite(baseSettings.paragraphSpacingAfter)
+      ? baseSettings.paragraphSpacingAfter
+      : 0;
     const rootMarginLeft = margin.left;
-
-    const previousLayout = options?.previousLayout ?? null;
-    const changeSummary = options?.changeSummary ?? null;
+    // 增量复用所需输入。
+    const previousLayout = disablePageReuse ? null : options?.previousLayout ?? null;
+    const changeSummary = disablePageReuse ? null : options?.changeSummary ?? null;
     const docPosToTextOffset = options?.docPosToTextOffset ?? null;
-
+    // 输出页集合。
     let pages = [];
+    // 当前页索引与页容器。
     let pageIndex = 0;
     let page = newPage(pageIndex);
+    // 当前页内的纵向游标。
     let cursorY = margin.top;
+    // 文档级文本偏移（用于选区定位）。
     let textOffset = 0;
-
+    // 增量布局起始块索引。
     let startBlockIndex = 0;
+    // 变更范围结束索引（之后可尝试页复用）。
     let syncAfterIndex = null;
+    // 是否满足页级复用条件。
     let canSync = false;
+    // 是否已走过变更范围。
     let passedChangedRange = false;
+    // 一旦决定复用尾页则停止继续布局。
     let shouldStop = false;
+    // 从该页索引开始复用剩余页面。
     let syncFromIndex = null;
-
-    // 尝试增量布局：定位变更起点，计算可复用的起始页。
-    // 尝试增量布局：定位变更起点，计算可复用的起始页。
+    // 是否从锚点开始增量布局（用于对齐块首位置）。
+    let resumeFromAnchor = false;
+    let resumeHasPrefixLines = false;
+    let resumeAnchorTargetY: { y: number; relativeY: number } | null = null;
+    let resumeAnchorApplied = false;
+    // 增量布局：在旧布局中定位锚点。
     if (previousLayout && changeSummary?.docChanged && typeof docPosToTextOffset === "function") {
       const settingsMatch =
         previousLayout.pageHeight === pageHeight &&
@@ -307,24 +405,57 @@ export class LayoutPipeline {
           });
 
           if (anchor) {
-            pages = previousLayout.pages.slice(0, anchor.pageIndex);
-            pageIndex = anchor.pageIndex;
+            const firstOccurrence = findBlockFirstOccurrence(previousLayout, {
+              rootIndex: startIndexOld,
+              blockId,
+              blockStart: startOffset,
+            });
+            const anchorRef = firstOccurrence || anchor;
+            const anchorPage = previousLayout.pages[anchorRef.pageIndex];
+            const anchorLines = anchorPage?.lines || [];
+            let anchorLineIndex = anchorRef.lineIndex;
+            if (anchorLines.length > 0) {
+              const matchIndex = anchorLines.findIndex((line) => {
+                if (blockId && line.blockId === blockId) {
+                  return true;
+                }
+                if (Number.isFinite(startOffset) && line.blockStart === startOffset) {
+                  return true;
+                }
+                if (Number.isFinite(startIndexOld) && line.rootIndex === startIndexOld) {
+                  return true;
+                }
+                return false;
+              });
+              if (matchIndex >= 0) {
+                anchorLineIndex = matchIndex;
+              }
+            }
+            const anchorLine = anchorLines[anchorLineIndex] || anchorRef.line;
+            const reusedLines = anchorLines.slice(0, anchorLineIndex);
+            pages = markReusedPages(previousLayout.pages.slice(0, anchorRef.pageIndex));
+            pageIndex = anchorRef.pageIndex;
             page = newPage(pageIndex);
-            page.lines = previousLayout.pages[anchor.pageIndex].lines.slice(0, anchor.lineIndex);
-            cursorY = Number.isFinite(anchor.line?.y) ? anchor.line.y : margin.top;
+            page.lines = reusedLines;
+            const anchorY = Number.isFinite(anchorLine?.y) ? anchorLine.y : margin.top;
+            const anchorRelativeY = Number.isFinite(anchorLine?.relativeY) ? anchorLine.relativeY : 0;
+            cursorY = anchorY;
+            resumeAnchorTargetY = { y: anchorY, relativeY: anchorRelativeY };
             textOffset = Number.isFinite(startOffset) ? startOffset : 0;
             startBlockIndex = startIndexNew;
             syncAfterIndex = Number.isFinite(lastIndexNew) ? lastIndexNew : null;
             canSync = Number.isFinite(syncAfterIndex);
             passedChangedRange = canSync && startBlockIndex > syncAfterIndex;
+            resumeFromAnchor = true;
+            resumeHasPrefixLines = reusedLines.length > 0;
+            resumeAnchorApplied = false;
           }
         }
       }
     }
-
-    // 尝试页级对齐并决定是否复用剩余页。
+    // 判断是否可在变更范围之后复用尾页。
     const maybeSync = () => {
-      // 需要变更区已处理完且布局设置不变。
+    // 必须已处理完变更范围且版式一致。
       if (!canSync || !passedChangedRange || !previousLayout) {
         return false;
       }
@@ -339,8 +470,7 @@ export class LayoutPipeline {
       shouldStop = true;
       return true;
     };
-
-    // 封装收页逻辑，必要时触发对齐复用。
+    // 收尾当前页，必要时触发复用并停止。
     const finalizePage = () => {
       pages.push(page);
       if (maybeSync()) {
@@ -351,16 +481,23 @@ export class LayoutPipeline {
       cursorY = margin.top;
       return false;
     };
-
-    // 布局叶子块，输出行并处理分页拆分。
+    // 布局叶子块（段落/标题/图片/表格等）。
     const layoutLeafBlock = (block, context) => {
       if (shouldStop) {
         return true;
       }
 
+      const leafStart = perf ? now() : 0;
+
+      if (perf) {
+        perf.blocks += 1;
+      }
+
       const renderer = this.registry?.get(block.type.name);
       const blockId = block.attrs?.id ?? null;
       const blockSettings = resolveSettingsWithIndent(baseSettings, context.indent);
+      const blockTypeName = block.type?.name;
+      const isTopLevel = !context?.containerStack || context.containerStack.length === 0;
 
       let blockLines = [];
       let blockLength = 0;
@@ -368,12 +505,37 @@ export class LayoutPipeline {
       let blockAttrs = block.attrs || null;
       let blockLineHeight = null;
 
+      let spacingBefore =
+        Number.isFinite(blockAttrs?.spacingBefore)
+          ? blockAttrs.spacingBefore
+          : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
+            ? paragraphSpacingBefore
+            : blockSpacing;
+      const spacingAfter =
+        Number.isFinite(blockAttrs?.spacingAfter)
+          ? blockAttrs.spacingAfter
+          : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
+            ? paragraphSpacingAfter
+            : blockSpacing;
+      if (resumeFromAnchor && !resumeAnchorApplied && context.rootIndex === startBlockIndex) {
+        if (resumeAnchorTargetY && Number.isFinite(resumeAnchorTargetY.y)) {
+          const relativeY = Number.isFinite(resumeAnchorTargetY.relativeY)
+            ? resumeAnchorTargetY.relativeY
+            : 0;
+          cursorY = Math.max(margin.top, resumeAnchorTargetY.y - spacingBefore - relativeY);
+          resumeAnchorApplied = true;
+        }
+      }
+
       const cacheKey = blockId != null ? `${blockId}:${context.indent}` : null;
       const rendererCacheable = renderer?.cacheLayout !== false;
       const canUseCache = rendererCacheable && cacheKey !== null;
       const cached = canUseCache ? this.blockCache.get(cacheKey) : null;
 
       if (cached && cached.node === block) {
+        if (perf) {
+          perf.cachedBlocks += 1;
+        }
         blockLines = cached.lines || [];
         blockLength = cached.length || 0;
         blockHeight = cached.height || 0;
@@ -426,6 +588,8 @@ export class LayoutPipeline {
             blockLineHeight = runsResult.blockAttrs.lineHeight;
           }
 
+        if (perf) {
+          const breakStart = now();
           blockLines = breakLines(
             runs,
             blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
@@ -433,11 +597,24 @@ export class LayoutPipeline {
             length,
             blockSettings.wrapTolerance || 0,
             blockSettings.minLineWidth || 0,
-            blockSettings.measureTextWidth,
+            measureTextWidth,
             blockSettings.segmentText
           );
-          blockHeight = blockLines.length * (blockLineHeight || lineHeight);
+          perf.breakLinesMs += now() - breakStart;
+        } else {
+          blockLines = breakLines(
+            runs,
+            blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
+            blockSettings.font,
+            length,
+            blockSettings.wrapTolerance || 0,
+            blockSettings.minLineWidth || 0,
+            measureTextWidth,
+            blockSettings.segmentText
+          );
         }
+        blockHeight = blockLines.length * (blockLineHeight || lineHeight);
+      }
 
         if (canUseCache) {
           this.blockCache.set(cacheKey, {
@@ -478,21 +655,34 @@ export class LayoutPipeline {
 
       const blockStart = textOffset;
       const containerStack = context.containerStack;
-
-      // 将行写入当前页并补齐坐标、偏移、容器信息。
-      const placeLines = (linesToPlace) => {
-        linesToPlace.forEach((line, lineIndex) => {
-          const lineCopy = cloneLine(line);
-          lineCopy.blockType = lineCopy.blockType || block.type.name;
-          lineCopy.blockId = lineCopy.blockId ?? blockId;
-          lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
-          lineCopy.rootIndex = context.rootIndex;
-          adjustLineOffsets(lineCopy, blockStart);
-          if (typeof lineCopy.relativeY === "number") {
-            lineCopy.y = cursorY + lineCopy.relativeY;
-          } else {
-            lineCopy.y = cursorY + lineIndex * lineHeightValue;
-          }
+      // 将行写入当前页并补齐坐标/偏移/容器信息。
+        const placeLines = (linesToPlace) => {
+          const seenListItems = new Set<string>();
+          linesToPlace.forEach((line, lineIndex) => {
+            const lineCopy = cloneLine(line);
+            lineCopy.blockType = lineCopy.blockType || block.type.name;
+            lineCopy.blockId = lineCopy.blockId ?? blockId;
+            lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
+            lineCopy.rootIndex = context.rootIndex;
+            adjustLineOffsets(lineCopy, blockStart);
+            if (
+              lineCopy.blockAttrs &&
+              (lineCopy.blockType === "bullet_list" || lineCopy.blockType === "ordered_list")
+            ) {
+              const itemIndex = lineCopy.blockAttrs.itemIndex;
+              const key = `${lineCopy.blockStart ?? "0"}:${itemIndex ?? "0"}`;
+              if (!seenListItems.has(key)) {
+                seenListItems.add(key);
+              } else {
+                // 跨页续行不显示 marker，避免看起来像新列表。
+                lineCopy.listMarker = null;
+              }
+            }
+            if (typeof lineCopy.relativeY === "number") {
+              lineCopy.y = cursorY + lineCopy.relativeY;
+            } else {
+              lineCopy.y = cursorY + lineIndex * lineHeightValue;
+            }
           lineCopy.lineHeight = lineHeightValue;
           if (typeof lineCopy.x !== "number") {
             lineCopy.x = computeLineX(lineCopy, blockSettings);
@@ -501,17 +691,79 @@ export class LayoutPipeline {
             lineCopy.containers = containerStack;
           }
           page.lines.push(lineCopy);
+          if (Number.isFinite(lineCopy.rootIndex)) {
+            if (page.rootIndexMin == null || lineCopy.rootIndex < page.rootIndexMin) {
+              page.rootIndexMin = lineCopy.rootIndex;
+            }
+            if (page.rootIndexMax == null || lineCopy.rootIndex > page.rootIndexMax) {
+              page.rootIndexMax = lineCopy.rootIndex;
+            }
+          }
         });
+        if (perf) {
+          perf.lines += linesToPlace.length;
+        }
       };
 
-      while (remainingLines.length > 0) {
-        if (shouldStop) {
-          return true;
-        }
-        const availableHeight = pageHeight - margin.bottom - cursorY;
-        if (remainingHeight > availableHeight) {
-          let splitResult = null;
-          if (canSplit) {
+        while (remainingLines.length > 0) {
+          if (shouldStop) {
+            return true;
+          }
+          if (remainingLines === safeLines && spacingBefore > 0) {
+          if (cursorY + spacingBefore > pageHeight - margin.bottom) {
+            if (finalizePage()) {
+              return true;
+            }
+          }
+          cursorY += spacingBefore;
+          }
+          const availableHeight = pageHeight - margin.bottom - cursorY;
+          if (remainingHeight > availableHeight) {
+            const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
+            if (availableHeight < lineHeightValue) {
+              if (finalizePage()) {
+                return true;
+              }
+              if (fullAvailableHeight >= lineHeightValue) {
+                continue;
+              }
+              // 单行高度超出整页，强制放入一行避免死循环。
+              const forcedLine = remainingLines[0];
+              if (!forcedLine) {
+                break;
+              }
+              const forcedStart =
+                typeof forcedLine?.start === "number" ? forcedLine.start : 0;
+              const forcedEnd =
+                typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
+              const forcedLength = Math.max(0, forcedEnd - forcedStart);
+              const forcedHeight = Number.isFinite(forcedLine?.lineHeight)
+                ? forcedLine.lineHeight
+                : lineHeightValue;
+              placeLines([forcedLine]);
+              cursorY += forcedHeight;
+              remainingLines = remainingLines.slice(1);
+              remainingLength = Math.max(0, remainingLength - forcedLength);
+              remainingHeight = Math.max(0, remainingHeight - forcedHeight);
+              if (finalizePage()) {
+                return true;
+              }
+              continue;
+            }
+            if (!canSplit) {
+              if (page.lines.length === 0) {
+                // 不可拆分且本页为空时，强制放入，避免死循环。
+                placeLines(remainingLines);
+                cursorY += remainingHeight;
+                remainingLines = [];
+                break;
+              }
+              if (finalizePage()) {
+                return true;
+              }
+              continue;
+            }
+            let splitResult = null;
             if (splitBlock) {
               splitResult = splitBlock({
                 node: block,
@@ -524,6 +776,7 @@ export class LayoutPipeline {
                 registry: this.registry,
                 indent: context.indent,
                 containerStack,
+                blockAttrs,
               });
             }
             if (!splitResult) {
@@ -552,13 +805,56 @@ export class LayoutPipeline {
                 };
               }
             }
-          }
-          if (splitResult && splitResult.lines.length > 0) {
-            placeLines(splitResult.lines);
-            cursorY += splitResult.height;
-            if (finalizePage()) {
-              return true;
+            if (
+              splitResult &&
+              splitResult.lines.length === 0 &&
+              splitResult.overflow &&
+              splitResult.overflow.lines.length > 0
+            ) {
+              if (page.lines.length === 0 && remainingLines.length > 0) {
+                const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
+                if (remainingHeight <= fullAvailableHeight) {
+                  if (finalizePage()) {
+                    return true;
+                  }
+                  continue;
+                }
+                const forcedLine = remainingLines[0];
+                if (!forcedLine) {
+                  break;
+                }
+                const forcedStart =
+                  typeof forcedLine?.start === "number" ? forcedLine.start : 0;
+                const forcedEnd =
+                  typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
+                const forcedLength = Math.max(0, forcedEnd - forcedStart);
+                const forcedHeight = Number.isFinite(forcedLine?.lineHeight)
+                  ? forcedLine.lineHeight
+                  : lineHeightValue;
+                placeLines([forcedLine]);
+                cursorY += forcedHeight;
+                remainingLines = remainingLines.slice(1);
+                remainingLength = Math.max(0, remainingLength - forcedLength);
+                remainingHeight = Math.max(0, remainingHeight - forcedHeight);
+                if (finalizePage()) {
+                  return true;
+                }
+                continue;
+              }
+              if (finalizePage()) {
+                return true;
+              }
+              remainingLines = splitResult.overflow.lines;
+              remainingLength = splitResult.overflow.length;
+              remainingHeight = splitResult.overflow.height;
+              continue;
             }
+            if (splitResult && splitResult.lines.length > 0) {
+              placeLines(splitResult.lines);
+              cursorY += splitResult.height;
+              if (finalizePage()) {
+                return true;
+              }
             if (splitResult.overflow && splitResult.overflow.lines.length > 0) {
               remainingLines = splitResult.overflow.lines;
               remainingLength = splitResult.overflow.length;
@@ -580,16 +876,22 @@ export class LayoutPipeline {
 
       textOffset += blockLength;
 
+      if (spacingAfter > 0) {
+        cursorY += spacingAfter;
+      }
       if (cursorY + lineHeight > pageHeight - margin.bottom) {
         if (finalizePage()) {
           return true;
         }
       }
 
+      if (perf) {
+        perf.layoutLeafMs += now() - leafStart;
+      }
+
       return shouldStop;
     };
-
-    // 遍历容器节点，维护缩进与容器样式栈。
+    // 深度优先遍历块结构。
     const walkBlocks = (node, context) => {
       if (shouldStop) {
         return true;
@@ -638,15 +940,25 @@ export class LayoutPipeline {
 
       return shouldStop;
     };
-
-    // 从变更起点开始重排，必要时继续到文档末尾。
+    // 从增量起点布局到文档末尾（或直到触发复用）。
     for (let index = startBlockIndex; index < doc.childCount; index += 1) {
       if (shouldStop) {
         break;
       }
       const block = doc.child(index);
+      const renderer = this.registry?.get(block.type.name);
+      const isLeaf =
+        renderer?.layoutBlock || renderer?.toRuns || block.isTextblock || block.isAtom;
       if (walkBlocks(block, { indent: 0, containerStack: [], rootIndex: index })) {
         break;
+      }
+      if (!isLeaf && blockSpacing > 0 && index < doc.childCount - 1) {
+        cursorY += blockSpacing;
+        if (cursorY + lineHeight > pageHeight - margin.bottom) {
+          if (finalizePage()) {
+            break;
+          }
+        }
       }
       if (index < doc.childCount - 1) {
         textOffset += 1;
@@ -659,12 +971,39 @@ export class LayoutPipeline {
     if (!shouldStop && page.lines.length > 0) {
       pages.push(page);
     }
-
+    // 若触发复用，追加旧布局剩余页。
     if (shouldStop && previousLayout && syncFromIndex != null) {
-      pages.push(...previousLayout.pages.slice(syncFromIndex + 1));
+      if (perf) {
+        perf.reusedPages =
+          previousLayout.pages.length - Math.min(previousLayout.pages.length, syncFromIndex + 1);
+      }
+      pages.push(...markReusedPages(previousLayout.pages.slice(syncFromIndex + 1)));
     }
-
+    // 计算总高度用于滚动。
     const totalHeight = pages.length * pageHeight + Math.max(0, pages.length - 1) * pageGap;
+
+    if (perf) {
+      perf.pages = pages.length;
+      const duration = now() - perf.start;
+      const cacheHitRate =
+        perf.blocks > 0 ? Math.round((perf.cachedBlocks / perf.blocks) * 100) : 0;
+      const summary = {
+        ms: Math.round(duration),
+        pages: perf.pages,
+        blocks: perf.blocks,
+        blockCacheHitRate: `${cacheHitRate}%`,
+        lines: perf.lines,
+        measureCalls: perf.measureCalls,
+        measureChars: perf.measureChars,
+        reusedPages: perf.reusedPages,
+        breakLinesMs: Math.round(perf.breakLinesMs),
+        layoutLeafMs: Math.round(perf.layoutLeafMs),
+      };
+      if (baseSettingsRaw?.__perf) {
+        baseSettingsRaw.__perf.layout = summary;
+      }
+      console.debug("[layout-perf]", summary);
+    }
 
     return {
       pages,
@@ -677,14 +1016,12 @@ export class LayoutPipeline {
       totalHeight,
     };
   }
-
-  // 纯文本布局入口。
+  // 纯文本分页入口。
   layoutFromText(text) {
     const { runs, length } = textToRuns(text, this.settings);
     return this.layoutFromRuns(runs, length);
   }
-
-  // 运行级布局入口（直接从 runs 断行分页）。
+  // 运行段分页入口（直接按运行段断行分页）。
   layoutFromRuns(runs, totalLength) {
     const { pageHeight, pageGap, margin, lineHeight, font } = this.settings;
     const maxWidth = this.settings.pageWidth - margin.left - margin.right;
@@ -701,6 +1038,7 @@ export class LayoutPipeline {
     );
 
     const pages = [];
+    // 当前页索引与页容器。
     let pageIndex = 0;
     let page = newPage(pageIndex);
     let y = margin.top;
@@ -725,7 +1063,7 @@ export class LayoutPipeline {
     if (page.lines.length > 0) {
       pages.push(page);
     }
-
+    // 计算总高度用于滚动。
     const totalHeight = pages.length * pageHeight + Math.max(0, pages.length - 1) * pageGap;
 
     return {
@@ -740,3 +1078,13 @@ export class LayoutPipeline {
     };
   }
 }
+
+
+
+
+
+
+
+
+
+

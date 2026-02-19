@@ -95,6 +95,26 @@ export function breakLines(
     throw new Error("measureTextWidth is required to break lines.");
   }
 
+  const widthCache = new Map();
+  const MAX_WIDTH_CACHE = 4000;
+
+  const getWidth = (font, text) => {
+    const key = `${font}\n${text}`;
+    const cached = widthCache.get(key);
+    if (typeof cached === "number") {
+      return cached;
+    }
+    const width = measureTextWidth(font, text);
+    widthCache.set(key, width);
+    if (widthCache.size > MAX_WIDTH_CACHE) {
+      const oldestKey = widthCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        widthCache.delete(oldestKey);
+      }
+    }
+    return width;
+  };
+
   const lines = [];
 
   let lineStart = 0;
@@ -216,7 +236,7 @@ export function breakLines(
     const appendChars = (text, allowWrap) => {
       for (let i = 0; i < text.length; i += 1) {
         const ch = text[i];
-        const w = measureTextWidth(style.font || baseFont, ch);
+        const w = getWidth(style.font || baseFont, ch);
         if (allowWrap && lineWidth + w > limit && lineText.length > 0) {
           pushLine(offsetCursor);
           lineStart = offsetCursor;
@@ -248,7 +268,7 @@ export function breakLines(
         typeof token === "string"
           ? tokenText.trim().length === 0
           : token.isWhitespace ?? tokenText.trim().length === 0;
-      const tokenWidth = measureTextWidth(style.font || baseFont, tokenText);
+      const tokenWidth = getWidth(style.font || baseFont, tokenText);
 
       if (isWhitespace) {
         if (lineText.length === 0) {

@@ -1,4 +1,5 @@
-﻿import { Plugin, PluginKey } from "lumenpage-state";
+import { Plugin, PluginKey } from "lumenpage-state";
+import type { LayoutWorkerConfig } from "./layoutWorkerClient";
 
 export type CanvasConfig = {
   settings?: any;
@@ -6,6 +7,7 @@ export type CanvasConfig = {
   applyDefaultStyles?: boolean;
   nodeRegistry?: any;
   commands?: any;
+  layoutWorker?: LayoutWorkerConfig;
   getText?: (doc: any) => string;
   parseHtmlToSlice?: (html: string) => any;
   statusElement?: HTMLElement;
