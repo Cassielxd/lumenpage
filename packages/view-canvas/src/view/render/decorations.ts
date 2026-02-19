@@ -21,6 +21,7 @@ export type DecorationTextSegment = {
 export type DecorationWidget = {
   x: number;
   y: number;
+  height?: number;
   decoration: CanvasDecoration;
 };
 
@@ -191,7 +192,7 @@ export const buildDecorationDrawData = ({
       if (!rect) {
         continue;
       }
-      widgets.push({ x: rect.x, y: rect.y, decoration });
+      widgets.push({ x: rect.x, y: rect.y, height: rect.height, decoration });
       continue;
     }
 

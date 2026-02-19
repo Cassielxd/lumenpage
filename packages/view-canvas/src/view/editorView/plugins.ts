@@ -2,7 +2,7 @@
   let domEventHandlers = new Map();
   let pluginViews = [];
 
-  // 汇总插件 props + 传入 editorProps。
+  // 汇总插件 props + 传入 editorProps（保持与 ProseMirror 优先级一致）。
   const getEditorPropsList = (state = getState?.()) => {
     const list = [];
     const plugins = state?.plugins ?? [];
@@ -17,10 +17,11 @@
     return list;
   };
 
-  // 调度 EditorProps 中的 handler（返回 true 即截断）。
+  // 调度 EditorProps 中的 handler（从后往前，返回 true 即截断）。
   const dispatchEditorProp = (name, ...args) => {
     const propsList = getEditorPropsList();
-    for (const props of propsList) {
+    for (let i = propsList.length - 1; i >= 0; i -= 1) {
+      const props = propsList[i];
       const handler = props?.[name];
       if (typeof handler === "function" && handler(view, ...args)) {
         return true;
@@ -29,11 +30,12 @@
     return false;
   };
 
-  // 收集 handleDOMEvents 并按事件名分组。
+  // 收集 handleDOMEvents 并按事件名分组（从后往前保持优先级）。
   const collectHandleDomEvents = (state = getState?.()) => {
     const events = new Map();
     const propsList = getEditorPropsList(state);
-    for (const props of propsList) {
+    for (let i = propsList.length - 1; i >= 0; i -= 1) {
+      const props = propsList[i];
       const handleDomEvents = props?.handleDOMEvents;
       if (!handleDomEvents) {
         continue;
@@ -65,16 +67,11 @@
     const events = collectHandleDomEvents(state);
     for (const [eventName, handlers] of events.entries()) {
       const listener = (event) => {
-        let handled = false;
         for (const handler of handlers) {
           if (handler(view, event)) {
-            handled = true;
-            break;
+            event.preventDefault();
+            return;
           }
-        }
-        if (handled) {
-          event.preventDefault();
-          event.stopPropagation();
         }
       };
       domRoot.addEventListener(eventName, listener, true);

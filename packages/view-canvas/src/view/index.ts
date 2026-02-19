@@ -1,4 +1,4 @@
-﻿export { Renderer } from "./renderer";
+export { Renderer } from "./renderer";
 export { CanvasRenderer } from "./render/canvasRenderer";
 export { createRenderSync } from "./renderSync";
 export { createSelectionMovement } from "./selectionMovement";
@@ -28,3 +28,4 @@ export {
 } from "./collaborationPlugin";
 export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
 export { createCanvasState } from "./canvasState";
+export { type LayoutWorkerConfig } from "./layoutWorkerClient";

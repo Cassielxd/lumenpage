@@ -117,6 +117,11 @@ export const getLineAtOffset = (layoutIndex, offset) => {
     return null;
   }
 
+  const emptyHit = layoutIndex.emptyLineByOffset?.get?.(offset);
+  if (emptyHit) {
+    return emptyHit;
+  }
+
   const clamped = Math.max(0, Math.min(offset, layoutIndex.maxOffset));
 
   return binarySearchClosest(layoutIndex.lines, clamped);

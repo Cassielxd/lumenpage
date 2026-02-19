@@ -7,20 +7,31 @@ export const buildLayoutIndex = (layout) => {
   }
 
   const items = [];
+  const firstLineByBlockId = new Map();
+  const emptyLineByOffset = new Map();
   let maxOffset = 0;
 
   for (let p = 0; p < layout.pages.length; p += 1) {
     const page = layout.pages[p];
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
-      items.push({
+      const item = {
         pageIndex: p,
         lineIndex: l,
         line,
         start: line.start,
         end: line.end,
         mid: (line.start + line.end) / 2,
-      });
+      };
+      items.push(item);
+      const blockId = line?.blockId;
+      if (blockId && !firstLineByBlockId.has(blockId)) {
+        firstLineByBlockId.set(blockId, item);
+      }
+      if (line.start === line.end && Number.isFinite(line.start)) {
+        // Keep the latest empty line for a given offset to favor newly inserted lines.
+        emptyLineByOffset.set(line.start, item);
+      }
       maxOffset = Math.max(maxOffset, line.end ?? 0);
     }
   }
@@ -28,6 +39,8 @@ export const buildLayoutIndex = (layout) => {
   return {
     maxOffset,
     lines: items,
+    firstLineByBlockId,
+    emptyLineByOffset,
   };
 };
 
@@ -68,9 +81,22 @@ export const getLineAtOffset = (layoutIndex, offset) => {
     return null;
   }
 
+  const emptyHit = layoutIndex.emptyLineByOffset?.get?.(offset);
+  if (emptyHit) {
+    return emptyHit;
+  }
+
   const clamped = Math.max(0, Math.min(offset, layoutIndex.maxOffset));
 
   return binarySearchClosest(layoutIndex.lines, clamped);
+};
+
+// 鎸夌粰瀹氱殑 blockId 鑾峰彇鏈€鏃╁嚭鐜扮殑琛岄」銆?
+export const getFirstLineForBlockId = (layoutIndex, blockId) => {
+  if (!layoutIndex?.firstLineByBlockId || !blockId) {
+    return null;
+  }
+  return layoutIndex.firstLineByBlockId.get(blockId) || null;
 };
 
 // 优先使用索引查找行，必要时回退遍历。

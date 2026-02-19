@@ -38,6 +38,9 @@ export const DEFAULT_SETTINGS = {
     onlyWhenFocused: true,
     types: ["paragraph", "heading", "image", "video", "blockquote", "code_block", "horizontal_rule"],
   },
+  blockSpacing: 8,
+  paragraphSpacingBefore: 0,
+  paragraphSpacingAfter: 8,
   dropCursor: {
     color: "#2563eb",
     width: 2,
@@ -51,6 +54,7 @@ export const DEFAULT_SETTINGS = {
     longPressDelay: 450,
     tapMoveThreshold: 12,
   },
+  debugPerf: false,
   measureTextWidth,
 };
 

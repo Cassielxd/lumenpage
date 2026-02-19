@@ -23,6 +23,8 @@ export const createInputHandlers = ({
   setPendingPreferredUpdate,
   editorHandlers,
 }) => {
+  const runTextInputHandler = (from, to, text) =>
+    !!editorHandlers?.handleTextInput?.(from, to, text);
   const runUndo = () => {
     runCommand(basicCommands.undo, getEditorState(), dispatchTransaction);
   };
@@ -40,6 +42,9 @@ export const createInputHandlers = ({
       return;
     }
     if (event.inputType == "insertCompositionText") {
+      if (!getIsComposing()) {
+        setIsComposing(true);
+      }
       return;
     }
 
@@ -50,13 +55,27 @@ export const createInputHandlers = ({
     switch (event.inputType) {
       case "insertText":
       case "insertReplacementText":
-        event.preventDefault();
-        insertTextWithBreaks(event.data || "");
+        {
+          const state = getEditorState();
+          const text = event.data || "";
+          if (runTextInputHandler(state.selection.from, state.selection.to, text)) {
+            event.preventDefault();
+            return;
+          }
+          event.preventDefault();
+          insertTextWithBreaks(text);
+        }
         break;
       case "insertLineBreak":
       case "insertParagraph":
-        event.preventDefault();
-        insertText("\n");
+        {
+          const state = getEditorState();
+          const handled = runCommand(basicCommands.enter, state, dispatchTransaction);
+          event.preventDefault();
+          if (!handled) {
+            insertText("\n");
+          }
+        }
         break;
       case "insertFromPaste":
         event.preventDefault();
@@ -86,7 +105,7 @@ export const createInputHandlers = ({
       event.preventDefault();
       return;
     }
-    if (event.isComposing) {
+    if (event.isComposing || event.keyCode === 229) {
       return;
     }
 
@@ -202,7 +221,10 @@ export const createInputHandlers = ({
     if (!supportsBeforeInput && !metaKey && !event.altKey) {
       if (event.key === "Enter") {
         event.preventDefault();
-        insertText("\n");
+        const handled = runCommand(basicCommands.enter, getEditorState(), dispatchTransaction);
+        if (!handled) {
+          insertText("\n");
+        }
         return;
       }
 
@@ -217,11 +239,34 @@ export const createInputHandlers = ({
         deleteText("forward");
         return;
       }
+    }
+  };
 
-      if (event.key.length === 1) {
+  const handleKeyPress = (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    if (editorHandlers?.handleKeyPress?.(event)) {
+      event.preventDefault();
+      return;
+    }
+    if (event.isComposing) {
+      return;
+    }
+    if (event.charCode === 0) {
+      return;
+    }
+    if (supportsBeforeInput || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    if (event.key.length === 1) {
+      const state = getEditorState();
+      if (runTextInputHandler(state.selection.from, state.selection.to, event.key)) {
         event.preventDefault();
-        insertText(event.key);
+        return;
       }
+      event.preventDefault();
+      insertText(event.key);
     }
   };
 
@@ -267,6 +312,8 @@ export const createInputHandlers = ({
       insertTextWithBreaks(text);
     }
     inputEl.value = "";
+    // Ensure layout/selection sync after IME commit.
+    setPendingPreferredUpdate(true);
   };
 
   const handlePaste = (event) => {
@@ -306,6 +353,9 @@ export const createInputHandlers = ({
       event.preventDefault();
       return;
     }
+    if (event.inputType === "insertCompositionText") {
+      return;
+    }
     if (getIsComposing()) {
       return;
     }
@@ -315,6 +365,7 @@ export const createInputHandlers = ({
   return {
     handleBeforeInput,
     handleKeyDown,
+    handleKeyPress,
     handleCompositionStart,
     handleCompositionUpdate,
     handleCompositionEnd,

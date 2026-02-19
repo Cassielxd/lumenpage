@@ -7,6 +7,7 @@ type InputBridgeHandlers = {
   onBeforeInput?: (event: InputEvent) => void;
   onInput?: (event: InputEvent) => void;
   onKeyDown?: (event: KeyboardEvent) => void;
+  onKeyPress?: (event: KeyboardEvent) => void;
   onCompositionStart?: (event: CompositionEvent) => void;
   onCompositionUpdate?: (event: CompositionEvent) => void;
   onCompositionEnd?: (event: CompositionEvent) => void;
@@ -24,6 +25,8 @@ export function attachInputBridge(
   const onInput = (event) => handlers.onInput?.(event);
 
   const onKeyDown = (event) => handlers.onKeyDown?.(event);
+
+  const onKeyPress = (event) => handlers.onKeyPress?.(event);
 
   const onCompositionStart = (event) => handlers.onCompositionStart?.(event);
 
@@ -43,6 +46,8 @@ export function attachInputBridge(
 
   textarea.addEventListener("keydown", onKeyDown);
 
+  textarea.addEventListener("keypress", onKeyPress);
+
   textarea.addEventListener("compositionstart", onCompositionStart);
 
   textarea.addEventListener("compositionupdate", onCompositionUpdate);
@@ -61,6 +66,8 @@ export function attachInputBridge(
     textarea.removeEventListener("input", onInput);
 
     textarea.removeEventListener("keydown", onKeyDown);
+
+    textarea.removeEventListener("keypress", onKeyPress);
 
     textarea.removeEventListener("compositionstart", onCompositionStart);
 

@@ -1,5 +1,5 @@
 ﻿import { DOMParser as PMDOMParser } from "lumenpage-model";
-import { NodeSelection, TextSelection } from "lumenpage-state";
+import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
 
 import {
   applyTransaction,
@@ -22,10 +22,11 @@ import { createPointerHandlers } from "./input/pointerHandlers";
 import { createTouchHandlers } from "./input/touchHandlers";
 import { createHtmlParser } from "./htmlParser";
 import { createRenderSync } from "./renderSync";
+import { createLayoutWorkerClient } from "./layoutWorkerClient";
 import { createSelectionMovement } from "./selectionMovement";
 import { coordsAtPos, posAtCoords } from "./posIndex";
 import { selectionToRects, activeBlockToRects } from "./render/selection";
-import { buildLayoutIndex, getLineAtOffset } from "./layoutIndex";
+import { buildLayoutIndex, getFirstLineForBlockId, getLineAtOffset } from "./layoutIndex";
 
 import { Renderer } from "./renderer";
 import {
@@ -48,6 +49,7 @@ export class CanvasEditorView {
   commands;
   _internals;
   overlayHost;
+  composing;
 
   constructor(place, props) {
     const viewProps = props ?? {};
@@ -62,10 +64,13 @@ export class CanvasEditorView {
       canvasConfig?.[key] ?? fallback;
 
     const debugConfig = resolveCanvasConfig("debug", {});
-    // 初始化 DOM，样式与无障碍。
+    // 鍒濆鍖?DOM銆佹牱寮忎笌鏃犻殰纰嶉厤缃€?
     const dom = resolveCanvasConfig("elements") ?? createDefaultDom();
     const settings = { ...DEFAULT_SETTINGS, ...(resolveCanvasConfig("settings") || {}) };
     settings.debugLayout = debugConfig?.layout === true;
+    if (settings.debugPerf) {
+      settings.__perf = { layout: null, render: null };
+    }
     const basePageWidth = settings.pageWidth;
     const applyStyles = resolveCanvasConfig("applyDefaultStyles", true);
 
@@ -94,23 +99,52 @@ export class CanvasEditorView {
     this.dom = dom.root;
     this.overlayHost = dom.overlayHost ?? null;
 
+    if (settings.debugPerf) {
+      const host = dom.overlayHost ?? dom.root;
+      const panel = document.createElement("div");
+      panel.className = "lumenpage-perf-panel";
+      panel.style.position = "absolute";
+      panel.style.right = "12px";
+      panel.style.top = "12px";
+      panel.style.zIndex = "10";
+      panel.style.background = "rgba(15, 23, 42, 0.85)";
+      panel.style.color = "#e2e8f0";
+      panel.style.font = "12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace";
+      panel.style.padding = "8px 10px";
+      panel.style.borderRadius = "6px";
+      panel.style.pointerEvents = "none";
+      panel.style.whiteSpace = "pre";
+      panel.textContent = "perf: waiting...";
+      host.appendChild(panel);
+      settings.perfPanelEl = panel;
+    }
+
     const nodeRegistry = resolveCanvasConfig("nodeRegistry") ?? null;
+    const layoutWorkerConfig = resolveCanvasConfig("layoutWorker") ?? null;
+
+    const layoutWorkerClient = createLayoutWorkerClient({
+      settings,
+      schema,
+      config: layoutWorkerConfig,
+    });
     const nodeViewFactories = viewProps.nodeViews ?? null;
     const status = resolveCanvasConfig("statusElement") ?? document.createElement("div");
 
-    // 布局与渲染管线。
+    // 甯冨眬涓庢覆鏌撶绾裤€?
     const layoutPipeline = new LayoutPipeline(settings, nodeRegistry);
     const renderer = new Renderer(dom.pageLayer, dom.overlayCanvas, settings, nodeRegistry);
 
     let layout = null;
     let layoutIndex = null;
     let pendingChangeSummary = null;
+    let pendingSteps = null;
     let rafId = 0;
     let caretOffset = 0;
     let caretRect = null;
     let preferredX = null;
     let pendingPreferredUpdate = true;
     let isComposing = false;
+    this.composing = false;
     const editorProps = viewProps;
     const commandConfig = resolveCanvasConfig("commands", {});
     const onChange = resolveCanvasConfig("onChange", null);
@@ -123,6 +157,7 @@ export class CanvasEditorView {
       joinBackward: commandConfig.basicCommands?.joinBackward ?? noopCommand,
       joinForward: commandConfig.basicCommands?.joinForward ?? noopCommand,
       splitBlock: commandConfig.basicCommands?.splitBlock ?? noopCommand,
+      enter: commandConfig.basicCommands?.enter ?? noopCommand,
       undo: commandConfig.basicCommands?.undo ?? noopCommand,
       redo: commandConfig.basicCommands?.redo ?? noopCommand,
     };
@@ -165,7 +200,7 @@ export class CanvasEditorView {
     }
     this.commands.run = (cmd, ...args) => runViewCommand(cmd, args);
 
-    // NodeView 管理。
+    // NodeView 绠＄悊銆?
     const nodeViews = new Map();
     const nodeViewsByBlockId = new Map();
     let selectedNodeViewKey = null;
@@ -193,27 +228,14 @@ export class CanvasEditorView {
       if (!layout || !layoutIndex || nodeViewsByBlockId.size === 0) {
         return;
       }
-      const lineItems = layoutIndex.lines || [];
-      if (lineItems.length === 0) {
-        return;
-      }
       const scrollTop = dom.scrollArea.scrollTop;
       const viewportWidth = dom.scrollArea.clientWidth;
       const viewportHeight = dom.scrollArea.clientHeight;
       const pageSpan = layout.pageHeight + layout.pageGap;
       const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
 
-      const firstLineByBlockId = new Map();
-      for (const item of lineItems) {
-        const blockId = item.line?.blockId;
-        if (!blockId || firstLineByBlockId.has(blockId)) {
-          continue;
-        }
-        firstLineByBlockId.set(blockId, item);
-      }
-
       for (const [blockId, entry] of nodeViewsByBlockId) {
-        const item = firstLineByBlockId.get(blockId);
+        const item = getFirstLineForBlockId(layoutIndex, blockId);
         if (!item) {
           entry.view?.syncDOM?.({ visible: false });
           continue;
@@ -232,7 +254,7 @@ export class CanvasEditorView {
     };
 
 
-    // 文本/坐标辅助。
+    // 鏍规嵁瑙嗗彛瀹藉害璁＄畻瀹為檯椤甸潰瀹藉害銆?
     const resolvePageWidth = () => {
       const width = dom.scrollArea?.clientWidth ?? 0;
       if (!Number.isFinite(width) || width <= 0) {
@@ -313,6 +335,9 @@ export class CanvasEditorView {
           console.log("[delete]", phase, payload);
         }
       : () => {};
+    const debugLog = debugConfig?.selection
+      ? (label, payload) => console.log(`[selection:${label}]`, payload)
+      : () => {};
 
 
     const editorPropHandlers = createEditorPropHandlers({
@@ -361,6 +386,7 @@ export class CanvasEditorView {
       },
       applyTransaction,
       layoutPipeline,
+      layoutWorker: layoutWorkerClient,
       renderer,
       spacer: dom.spacer,
       scrollArea: dom.scrollArea,
@@ -411,12 +437,22 @@ export class CanvasEditorView {
       clearPendingChangeSummary: () => {
         pendingChangeSummary = null;
       },
+      getPendingSteps: () => pendingSteps,
+      clearPendingSteps: () => {
+        pendingSteps = null;
+      },
     });
 
     const { updateStatus, scheduleRender, updateCaret, updateLayout, syncAfterStateChange } =
       renderSync;
 
-    // 统一派发 Transaction 的入口。
+    layoutWorkerClient?.whenReady?.().then(() => {
+      if (layoutWorkerClient?.isActive?.()) {
+        updateLayout();
+      }
+    }).catch(() => null);
+
+    // 缁熶竴娲惧彂 Transaction 鐨勫叆鍙ｃ€?
     const dispatchTransaction = (tr) => {
       if (viewProps?.dispatchTransaction) {
         viewProps.dispatchTransaction(tr);
@@ -433,6 +469,7 @@ export class CanvasEditorView {
         onChange(changeEvent);
       }
       pendingChangeSummary = changeEvent.summary || null;
+      pendingSteps = changeEvent.steps || null;
       this.updateState(nextState);
       if (shouldScroll) {
         this.scrollIntoView();
@@ -452,13 +489,23 @@ export class CanvasEditorView {
         return;
       }
 
-      const tr = this.state.tr.setSelection(
-        TextSelection.create(this.state.doc, anchorPos, headPos)
-      );
+      let selection;
+      try {
+        selection = TextSelection.create(this.state.doc, anchorPos, headPos);
+      } catch (error) {
+        selection = Selection.near(this.state.doc.resolve(headPos), headPos < anchorPos ? -1 : 1);
+      }
+      const tr = this.state.tr.setSelection(selection);
+      debugLog("setSelectionOffsets", {
+        anchorOffset,
+        headOffset,
+        anchorPos,
+        headPos,
+      });
       dispatchTransaction(tr);
     };
 
-    // 文本编辑操作集合。
+    // 缂栬緫鎿嶄綔灏佽锛堟彃鍏?鍒犻櫎/閫夊尯锛夈€?
     const { setCaretOffset, insertText, insertTextWithBreaks, deleteSelectionIfNeeded, deleteText } =
       createEditorOps({
         getEditorState: () => this.state,
@@ -473,12 +520,13 @@ export class CanvasEditorView {
         getCaretOffset: () => caretOffset,
         getText,
         setSelectionOffsets,
+        docPosToTextOffset,
         textOffsetToDocPos,
         createSelectionStateAtOffset,
         logDelete,
       });
 
-    // HTML 解析器（粘贴/拖拽时使用）。
+    // HTML 瑙ｆ瀽閰嶇疆锛堢矘璐?瀵煎叆锛夈€?
     const parseHtmlToSlice =
       resolveCanvasConfig("parseHtmlToSlice") ??
       (schema
@@ -508,7 +556,7 @@ export class CanvasEditorView {
       setSelectionOffsets,
     });
 
-    // 指针/鼠标事件。
+    // 鎸囬拡浜嬩欢澶勭悊锛堥紶鏍?瑙︽帶锛夈€?
     const { handlePointerDown, handlePointerMove, handlePointerUp } = createPointerHandlers({
       getLayout: () => layout,
       scrollArea: dom.scrollArea,
@@ -526,6 +574,8 @@ export class CanvasEditorView {
     const editorHandlers = {
       handleBeforeInput: (event) => dispatchEditorProp("handleBeforeInput", event),
       handleKeyDown: (event) => dispatchEditorProp("handleKeyDown", event),
+      handleKeyPress: (event) => dispatchEditorProp("handleKeyPress", event),
+      handleTextInput: (from, to, text) => dispatchEditorProp("handleTextInput", from, to, text),
       handleCompositionStart: (event) => dispatchEditorProp("handleCompositionStart", event),
       handleCompositionUpdate: (event) => dispatchEditorProp("handleCompositionUpdate", event),
       handleCompositionEnd: (event) => dispatchEditorProp("handleCompositionEnd", event),
@@ -540,6 +590,7 @@ export class CanvasEditorView {
     const {
       handleBeforeInput,
       handleKeyDown,
+      handleKeyPress,
       handleCompositionStart,
       handleCompositionUpdate,
       handleCompositionEnd,
@@ -566,6 +617,7 @@ export class CanvasEditorView {
       getIsComposing: () => isComposing,
       setIsComposing: (value) => {
         isComposing = value;
+        this.composing = value;
       },
       inputEl: dom.input,
       parseHtmlToSlice,
@@ -574,6 +626,10 @@ export class CanvasEditorView {
       },
       editorHandlers,
     });
+    const resetComposing = () => {
+      isComposing = false;
+      this.composing = false;
+    };
 
     const { handleCopy, handleCut } = createClipboardHandlers({
       getEditorState: () => this.state,
@@ -588,6 +644,7 @@ export class CanvasEditorView {
       onBeforeInput: handleBeforeInput,
       onInput: handleInput,
       onKeyDown: handleKeyDown,
+      onKeyPress: handleKeyPress,
       onCompositionStart: handleCompositionStart,
       onCompositionUpdate: handleCompositionUpdate,
       onCompositionEnd: handleCompositionEnd,
@@ -785,6 +842,7 @@ export class CanvasEditorView {
     const onClickFocus = (event) => {
       const coords = getEventCoords(event);
       const pos = getDocPosFromCoords(coords);
+      debugLog("click", { pos, coords });
       if (dispatchEditorProp("handleClick", pos, event)) {
         event.preventDefault();
         return;
@@ -820,6 +878,7 @@ export class CanvasEditorView {
 
     dom.input.addEventListener("focus", updateStatus);
     dom.input.addEventListener("blur", updateStatus);
+    dom.input.addEventListener("blur", resetComposing);
     dom.scrollArea.addEventListener("scroll", onScroll);
     dom.scrollArea.addEventListener("pointerdown", handlePointerDown);
     dom.scrollArea.addEventListener("pointermove", handlePointerMove);
@@ -846,7 +905,7 @@ export class CanvasEditorView {
 
     initPluginViews();
 
-    // 初始布局与渲染。
+    // 鍒濆甯冨眬涓庢覆鏌撱€?
     updateLayout();
     syncNodeViews();
     syncAfterStateChange();
@@ -858,6 +917,7 @@ export class CanvasEditorView {
       renderer,
       onChange,
       layoutPipeline,
+      layoutWorker: layoutWorkerClient,
       renderSync,
       getText,
       getLayout: () => layout,
@@ -885,6 +945,7 @@ export class CanvasEditorView {
       onClickFocus,
       onDoubleClick,
       onRootFocus,
+      resetComposing,
       handlePointerDown,
       handlePointerMove,
       handlePointerUp,
@@ -901,7 +962,7 @@ export class CanvasEditorView {
     };
   }
 
-  // 外部更新 state 时调用。
+  // 澶栭儴鏇存柊 state 鏃惰皟鐢ㄣ€?
   updateState(state) {
     const prev = this.state;
     this.state = state;
@@ -916,7 +977,7 @@ export class CanvasEditorView {
     this._internals.updateA11yStatus?.();
   }
 
-  // 直接派发 Transaction。
+  // 鐩存帴娲惧彂 Transaction銆?
   dispatch(tr) {
     if (!tr) {
       return;
@@ -927,8 +988,8 @@ export class CanvasEditorView {
     }
   }
 
-  // 文档位置 -> 视口坐标。
-  // 判断光标是否到达文本块边界。
+  // 鍒ゆ柇鍏夋爣鏄惁鍒拌揪鏂囨湰鍧楄竟鐣屻€?
+
   endOfTextblock(dir = "forward", state = undefined) {
     const targetState = state || this.state;
     const selection = targetState?.selection;
@@ -947,6 +1008,7 @@ export class CanvasEditorView {
     return false;
   }
 
+  // 鏂囨。浣嶇疆 -> 瑙嗗彛鍧愭爣銆?
   coordsAtPos(pos) {
     if (!this.state?.doc) {
       return null;
@@ -975,7 +1037,7 @@ export class CanvasEditorView {
     };
   }
 
-  // 视口坐标 -> 文档位置。
+  // 瑙嗗彛鍧愭爣 -> 鏂囨。浣嶇疆銆?
   posAtCoords(coords) {
     if (!coords || !this.state?.doc) {
       return null;
@@ -1004,7 +1066,7 @@ export class CanvasEditorView {
     return textOffsetToDocPos(this.state.doc, offset);
   }
 
-  // 滚动到选区或指定位置。
+  // 灏嗘寚瀹氫綅缃粴鍔ㄥ埌鍙鍖哄煙銆?
   scrollIntoView(pos?: number) {
     if (!this.state?.doc) {
       return;
@@ -1036,6 +1098,9 @@ export class CanvasEditorView {
     const viewportHeight = scrollArea.clientHeight;
     const currentScrollTop = scrollArea.scrollTop;
     let nextScrollTop = currentScrollTop;
+    if (rect.y >= 0 && rect.y + rect.height <= viewportHeight) {
+      return;
+    }
     if (rect.y < margin) {
       nextScrollTop = Math.max(0, currentScrollTop + rect.y - margin);
     } else if (rect.y + rect.height > viewportHeight - margin) {
@@ -1049,12 +1114,12 @@ export class CanvasEditorView {
     }
   }
 
-  // 聚焦输入层。
+  // 鑱氱劍杈撳叆灞傘€?
   focus() {
     this._internals.dom.input.focus();
   }
 
-  // 移除事件监听与 DOM。
+  // 绉婚櫎浜嬩欢鐩戝惉涓?DOM銆?
   destroy() {
     const {
       dom,
@@ -1079,6 +1144,7 @@ export class CanvasEditorView {
       destroyNodeViews,
       destroyPluginViews,
       clearDomEventHandlers,
+      layoutWorker: layoutWorkerClient,
       getRafId,
     } = this._internals;
 
@@ -1086,8 +1152,10 @@ export class CanvasEditorView {
     destroyNodeViews?.();
     destroyPluginViews?.();
     clearDomEventHandlers?.();
+    layoutWorkerClient?.destroy?.();
     dom.input.removeEventListener("focus", this._internals.renderSync.updateStatus);
     dom.input.removeEventListener("blur", this._internals.renderSync.updateStatus);
+    dom.input.removeEventListener("blur", resetComposing);
     dom.scrollArea.removeEventListener("scroll", onScroll);
     dom.scrollArea.removeEventListener("pointerdown", handlePointerDown);
     dom.scrollArea.removeEventListener("pointermove", handlePointerMove);
@@ -1117,6 +1185,8 @@ export class CanvasEditorView {
     }
   }
 }
+
+
 
 
 

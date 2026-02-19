@@ -72,15 +72,24 @@ export function findLineForOffset(layout, offset, textLength) {
 
   const clamped = Math.max(0, Math.min(offset, textLength));
 
+  let emptyHit = null;
   for (let p = 0; p < layout.pages.length; p += 1) {
     const page = layout.pages[p];
-
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
-
       if (line.start === line.end && clamped === line.start) {
-        return { pageIndex: p, lineIndex: l, line };
+        emptyHit = { pageIndex: p, lineIndex: l, line };
       }
+    }
+  }
+  if (emptyHit) {
+    return emptyHit;
+  }
+
+  for (let p = 0; p < layout.pages.length; p += 1) {
+    const page = layout.pages[p];
+    for (let l = 0; l < page.lines.length; l += 1) {
+      const line = page.lines[l];
 
       if (clamped >= line.start && clamped < line.end) {
         return { pageIndex: p, lineIndex: l, line };

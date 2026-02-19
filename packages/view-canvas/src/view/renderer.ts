@@ -8,6 +8,11 @@ import { getVisiblePages } from "./virtualization";
 import { measureTextWidth, getFontSize } from "./measure";
 import { type DecorationDrawData } from "./render/decorations";
 
+const now = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
@@ -143,9 +148,29 @@ const drawDecorationWidgets = (ctx, widgets) => {
   for (const widget of widgets) {
     const render = widget.decoration?.spec?.render;
     if (typeof render === "function") {
-      render(ctx, widget.x, widget.y);
+      render(ctx, widget.x, widget.y, widget.height);
     }
   }
+};
+
+const resolveChangedRootIndexRange = (changeSummary) => {
+  const before = changeSummary?.blocks?.before || {};
+  const after = changeSummary?.blocks?.after || {};
+  const candidates = [
+    before.fromIndex,
+    before.toIndex,
+    after.fromIndex,
+    after.toIndex,
+  ].filter((value) => Number.isFinite(value));
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return {
+    min: Math.min(...candidates),
+    max: Math.max(...candidates),
+  };
 };
 export class Renderer {
   pageLayer: HTMLElement;
@@ -158,6 +183,10 @@ export class Renderer {
   lastDpr: number;
   lastLayoutDebug: string | null;
   nodeViewProvider: ((line: any) => any) | null;
+  lastPerfLog: number;
+  lastLayoutVersion: number | null;
+  lastViewportWidth: number;
+  lastViewportHeight: number;
 
   constructor(pageLayer, overlayCanvas, settings, registry = null) {
     this.pageLayer = pageLayer;
@@ -184,6 +213,10 @@ export class Renderer {
     this.lastLayoutDebug = null;
 
     this.nodeViewProvider = null;
+    this.lastPerfLog = 0;
+    this.lastLayoutVersion = null;
+    this.lastViewportWidth = 0;
+    this.lastViewportHeight = 0;
   }
 
   setNodeViewProvider(provider) {
@@ -193,6 +226,10 @@ export class Renderer {
 
   /* Page signature cache helper. */
   getPageSignature(page) {
+    if (page && typeof page.__signature === "number") {
+      return page.__signature;
+    }
+
     let hash = 0;
 
     for (const line of page.lines) {
@@ -211,6 +248,8 @@ export class Renderer {
       hash = hashNumber(hash, line.lineHeight);
 
       hash = hashString(hash, line.blockType || "");
+      hash = hashString(hash, line.blockId || "");
+      hash = hashNumber(hash, line.blockStart);
 
       hash = hashString(hash, line.text || "");
 
@@ -229,6 +268,10 @@ export class Renderer {
           hash = hashNumber(hash, run.underline ? 1 : 0);
         }
       }
+    }
+
+    if (page) {
+      page.__signature = hash;
     }
 
     return hash;
@@ -520,6 +563,21 @@ export class Renderer {
       return;
     }
 
+    const perfStart = this.settings?.debugPerf ? now() : 0;
+    let signatureMs = 0;
+    let renderPagesMs = 0;
+    let compositeMs = 0;
+    let overlayMs = 0;
+
+    const layoutVersion = typeof layout.__version === "number" ? layout.__version : null;
+    const forceRedraw = !!layout.__forceRedraw;
+    if (forceRedraw) {
+      this.pageCache.clear();
+      layout.__forceRedraw = false;
+    }
+    if (layoutVersion !== this.lastLayoutVersion) {
+      this.lastLayoutVersion = layoutVersion;
+    }
     const { clientWidth, clientHeight, scrollTop } = viewport;
 
     const dpr = window.devicePixelRatio || 1;
@@ -530,13 +588,14 @@ export class Renderer {
       this.lastDpr = dpr;
     }
 
-    this.overlayCanvas.width = Math.max(1, Math.floor(clientWidth * dpr));
-
-    this.overlayCanvas.height = Math.max(1, Math.floor(clientHeight * dpr));
-
-    this.overlayCanvas.style.width = `${clientWidth}px`;
-
-    this.overlayCanvas.style.height = `${clientHeight}px`;
+    if (clientWidth !== this.lastViewportWidth || clientHeight !== this.lastViewportHeight) {
+      this.overlayCanvas.width = Math.max(1, Math.floor(clientWidth * dpr));
+      this.overlayCanvas.height = Math.max(1, Math.floor(clientHeight * dpr));
+      this.overlayCanvas.style.width = `${clientWidth}px`;
+      this.overlayCanvas.style.height = `${clientHeight}px`;
+      this.lastViewportWidth = clientWidth;
+      this.lastViewportHeight = clientHeight;
+    }
 
     this.overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -584,21 +643,53 @@ export class Renderer {
 
     pageIndices.sort((a, b) => a - b);
 
+    let redrawCount = 0;
+    let cachedPages = 0;
+    const changedRange = resolveChangedRootIndexRange(layout.__changeSummary);
+
     for (let i = 0; i < pageIndices.length; i += 1) {
       const pageIndex = pageIndices[i];
 
       const entry = this.getPageCache(pageIndex, layout, dpr);
 
-      const signature = this.getPageSignature(layout.pages[pageIndex]);
+      let signature = entry.signature;
+      const page = layout.pages[pageIndex];
+      const hasCachedSignature =
+        typeof signature === "number" || (page && typeof page.__signature === "number");
+      const canSkipSignature =
+        !forceRedraw &&
+        hasCachedSignature &&
+        (page?.__reused === true ||
+          (changedRange &&
+            page &&
+            Number.isFinite(page.rootIndexMax) &&
+            page.rootIndexMax < changedRange.min));
 
-      if (entry.signature !== signature) {
+      if (!canSkipSignature) {
+        const sigStart = this.settings?.debugPerf ? now() : 0;
+        signature = this.getPageSignature(page);
+        if (this.settings?.debugPerf) {
+          signatureMs += now() - sigStart;
+        }
+      } else if (signature == null && page && typeof page.__signature === "number") {
+        signature = page.__signature;
+      }
+
+      if (forceRedraw || entry.signature !== signature) {
         entry.signature = signature;
 
         entry.dirty = true;
       }
 
       if (entry.dirty) {
+        redrawCount += 1;
+        const renderStart = this.settings?.debugPerf ? now() : 0;
         this.renderPage(pageIndex, layout, entry);
+        if (this.settings?.debugPerf) {
+          renderPagesMs += now() - renderStart;
+        }
+      } else {
+        cachedPages += 1;
       }
 
       const canvasEntry = this.pageCanvases[i];
@@ -621,20 +712,30 @@ export class Renderer {
         });
       }
 
-      canvas.width = Math.max(1, Math.floor(layout.pageWidth * dpr));
-
-      canvas.height = Math.max(1, Math.floor(layout.pageHeight * dpr));
-
-      canvas.style.width = `${layout.pageWidth}px`;
-
-      canvas.style.height = `${layout.pageHeight}px`;
-
-      canvas.style.left = `${pageX}px`;
-
-      canvas.style.top = `${pageTop}px`;
+      const nextWidth = Math.max(1, Math.floor(layout.pageWidth * dpr));
+      const nextHeight = Math.max(1, Math.floor(layout.pageHeight * dpr));
+      if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+        canvas.width = nextWidth;
+        canvas.height = nextHeight;
+      }
+      if (canvas.style.width !== `${layout.pageWidth}px`) {
+        canvas.style.width = `${layout.pageWidth}px`;
+      }
+      if (canvas.style.height !== `${layout.pageHeight}px`) {
+        canvas.style.height = `${layout.pageHeight}px`;
+      }
+      const nextLeft = `${pageX}px`;
+      const nextTop = `${pageTop}px`;
+      if (canvas.style.left !== nextLeft) {
+        canvas.style.left = nextLeft;
+      }
+      if (canvas.style.top !== nextTop) {
+        canvas.style.top = nextTop;
+      }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+      const compositeStart = this.settings?.debugPerf ? now() : 0;
       ctx.clearRect(0, 0, layout.pageWidth, layout.pageHeight);
 
       ctx.drawImage(
@@ -656,13 +757,16 @@ export class Renderer {
 
         entry.height
       );
+      if (this.settings?.debugPerf) {
+        compositeMs += now() - compositeStart;
+      }
     }
 
     const maxCache = this.settings.maxPageCache ?? Math.max(activePages.size * 2, 12);
 
     this.enforceCacheLimit(activePages, maxCache);
 
-
+    const overlayStart = this.settings?.debugPerf ? now() : 0;
     const decorationData = decorations;
     if (decorationData) {
       drawDecorationRects(this.overlayCtx, decorationData.inlineRects);
@@ -722,6 +826,56 @@ export class Renderer {
         this.overlayCtx.fillStyle = "#111827";
 
         this.overlayCtx.fillRect(caret.x, caret.y, 1, caret.height);
+      }
+    }
+
+    if (this.settings?.debugPerf) {
+      overlayMs += now() - overlayStart;
+      const elapsed = now() - perfStart;
+      const sinceLast = now() - this.lastPerfLog;
+      if (!this.lastPerfLog || sinceLast > 250) {
+        this.lastPerfLog = now();
+        const summary = {
+          ms: Math.round(elapsed),
+          activePages: activePages.size,
+          redrawPages: redrawCount,
+          cachedPages,
+          cacheSize: this.pageCache.size,
+          signatureMs: Math.round(signatureMs),
+          renderPagesMs: Math.round(renderPagesMs),
+          compositeMs: Math.round(compositeMs),
+          overlayMs: Math.round(overlayMs),
+        };
+        if (this.settings?.__perf) {
+          this.settings.__perf.render = summary;
+        }
+        const panel = this.settings?.perfPanelEl;
+        if (panel) {
+          const layoutPerf = this.settings.__perf?.layout;
+          panel.textContent = [
+            "layout",
+            `  ms: ${layoutPerf?.ms ?? "-"}`,
+            `  pages: ${layoutPerf?.pages ?? "-"}`,
+            `  blocks: ${layoutPerf?.blocks ?? "-"}`,
+            `  cache: ${layoutPerf?.blockCacheHitRate ?? "-"}`,
+            `  lines: ${layoutPerf?.lines ?? "-"}`,
+            `  measure: ${layoutPerf?.measureCalls ?? "-"}`,
+            `  reused: ${layoutPerf?.reusedPages ?? "-"}`,
+            `  breakLinesMs: ${layoutPerf?.breakLinesMs ?? "-"}`,
+            `  layoutLeafMs: ${layoutPerf?.layoutLeafMs ?? "-"}`,
+            "render",
+            `  ms: ${summary.ms}`,
+            `  active: ${summary.activePages}`,
+            `  redraw: ${summary.redrawPages}`,
+            `  cached: ${summary.cachedPages}`,
+            `  cacheSize: ${summary.cacheSize}`,
+            `  signatureMs: ${summary.signatureMs}`,
+            `  renderPagesMs: ${summary.renderPagesMs}`,
+            `  compositeMs: ${summary.compositeMs}`,
+            `  overlayMs: ${summary.overlayMs}`,
+          ].join("\n");
+        }
+        console.debug("[render-perf]", summary);
       }
     }
   }

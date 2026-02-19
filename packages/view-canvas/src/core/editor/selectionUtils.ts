@@ -1,8 +1,13 @@
-﻿import { TextSelection } from "lumenpage-state";
+﻿import { Selection, TextSelection } from "lumenpage-state";
 
 export const createSelectionStateAtOffset = (editorState, textOffsetToDocPos, offset) => {
   const pos = textOffsetToDocPos(editorState.doc, offset);
-  const selection = TextSelection.create(editorState.doc, pos);
+  let selection;
+  try {
+    selection = TextSelection.create(editorState.doc, pos);
+  } catch (error) {
+    selection = Selection.near(editorState.doc.resolve(pos));
+  }
   return editorState.apply(editorState.tr.setSelection(selection));
 };
 
@@ -41,3 +46,5 @@ export const createSelectionLogger = ({ getText, docPosToTextOffset, clampOffset
     });
   };
 };
+
+

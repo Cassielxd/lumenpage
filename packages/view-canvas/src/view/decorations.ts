@@ -11,7 +11,7 @@ export type DecorationSpec = {
   underline?: DecorationUnderline;
   borderColor?: string;
   borderWidth?: number;
-  render?: (ctx: CanvasRenderingContext2D, x: number, y: number) => void;
+  render?: (ctx: CanvasRenderingContext2D, x: number, y: number, height?: number) => void;
   side?: -1 | 1;
 };
 
@@ -33,7 +33,7 @@ export class Decoration {
 
   static widget(
     pos: number,
-    render: (ctx: CanvasRenderingContext2D, x: number, y: number) => void,
+    render: (ctx: CanvasRenderingContext2D, x: number, y: number, height?: number) => void,
     spec: DecorationSpec = {}
   ): CanvasDecoration {
     return {

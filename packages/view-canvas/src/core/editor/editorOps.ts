@@ -9,6 +9,7 @@ export const createEditorOps = ({
   getCaretOffset,
   getText,
   setSelectionOffsets,
+  docPosToTextOffset,
   textOffsetToDocPos,
   createSelectionStateAtOffset,
   logDelete,
@@ -23,8 +24,24 @@ export const createEditorOps = ({
     }
 
     if (text === "\n") {
+      const prevState = getEditorState();
+      const prevHead = prevState.selection.head;
       pendingPreferredUpdateRef.set(true);
-      runCommand(basicCommands.splitBlock, getEditorState(), dispatchTransaction);
+      const enterCommand = basicCommands.enter || basicCommands.splitBlock;
+      const handled = runCommand(enterCommand, getEditorState(), dispatchTransaction);
+      if (!handled) {
+        const state = getEditorState();
+        const tr = state.tr.insertText("\n", state.selection.from, state.selection.to);
+        dispatchTransaction(tr);
+      }
+      const nextState = getEditorState();
+      if (nextState.selection.head === prevHead && typeof docPosToTextOffset === "function") {
+        const prevOffset = docPosToTextOffset(nextState.doc, prevHead);
+        const nextOffset = Math.min(prevOffset + 1, getText().length);
+        if (nextOffset !== prevOffset) {
+          setSelectionOffsets(nextOffset, nextOffset, true);
+        }
+      }
       return;
     }
 
@@ -87,6 +104,25 @@ export const createEditorOps = ({
         return;
       }
       if (textValue[caretOffset - 1] === "\n") {
+        const doc = getEditorState().doc;
+        const fromPos = textOffsetToDocPos(doc, caretOffset - 1);
+        const toPos = textOffsetToDocPos(doc, caretOffset);
+        const $from = doc.resolve(fromPos);
+        const $to = doc.resolve(toPos);
+        if ($from.parent === $to.parent && $from.parent.isTextblock) {
+          let tr = getEditorState().tr.setSelection(
+            TextSelection.create(getEditorState().doc, toPos)
+          );
+          tr = tr.delete(fromPos, toPos);
+          pendingPreferredUpdateRef.set(true);
+          dispatchTransaction(tr);
+          logDelete("after", {
+            caretOffset: getCaretOffset(),
+            textLength: getText().length,
+            lastChar: getText().slice(-1) || null,
+          });
+          return;
+        }
         pendingPreferredUpdateRef.set(true);
         const selectionState = createSelectionStateAtOffset(
           getEditorState(),
@@ -127,6 +163,25 @@ export const createEditorOps = ({
       return;
     }
     if (textValue[caretOffset] === "\n") {
+      const doc = getEditorState().doc;
+      const fromPos = textOffsetToDocPos(doc, caretOffset);
+      const toPos = textOffsetToDocPos(doc, caretOffset + 1);
+      const $from = doc.resolve(fromPos);
+      const $to = doc.resolve(toPos);
+      if ($from.parent === $to.parent && $from.parent.isTextblock) {
+        let tr = getEditorState().tr.setSelection(
+          TextSelection.create(getEditorState().doc, fromPos)
+        );
+        tr = tr.delete(fromPos, toPos);
+        pendingPreferredUpdateRef.set(true);
+        dispatchTransaction(tr);
+        logDelete("after", {
+          caretOffset: getCaretOffset(),
+          textLength: getText().length,
+          lastChar: getText().slice(-1) || null,
+        });
+        return;
+      }
       pendingPreferredUpdateRef.set(true);
       const selectionState = createSelectionStateAtOffset(
         getEditorState(),
