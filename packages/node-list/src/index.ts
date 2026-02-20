@@ -1,4 +1,4 @@
-import { breakLines, docToRuns } from "lumenpage-view-canvas";
+import { breakLines, docToRuns, textblockToRuns } from "lumenpage-view-canvas";
 import { type NodeSpec } from "lumenpage-model";
 
 const serializeListItemToText = (itemNode) =>
@@ -86,7 +86,7 @@ export const listNodeSpecs: Record<string, NodeSpec> = {
   },
 
   list_item: {
-    content: "paragraph+",
+    content: "block+",
 
     parseDOM: [{ tag: "li" }],
 
@@ -128,61 +128,288 @@ const offsetLine = (line, delta) => {
   return line;
 };
 
+const resolveSettingsWithIndent = (settings, indent) => {
+  if (!indent) {
+    return settings;
+  }
+  return {
+    ...settings,
+    margin: {
+      ...settings.margin,
+      left: settings.margin.left + indent,
+    },
+  };
+};
+
+const computeLineX = (line, settings) => {
+  const { pageWidth, margin } = settings;
+  const maxWidth = pageWidth - margin.left - margin.right;
+  const align = line.blockAttrs?.align || "left";
+  const indent = line.blockAttrs?.indent || 0;
+  let x = margin.left;
+
+  if (align === "center") {
+    x += Math.max(0, (maxWidth - line.width) / 2);
+  } else if (align === "right") {
+    x += Math.max(0, maxWidth - line.width);
+  }
+
+  if (indent && line.blockStart === line.start) {
+    x += indent;
+  }
+
+  return x;
+};
+
+const applyContainerStack = (line, containerStack) => {
+  if (containerStack && containerStack.length) {
+    line.containers = containerStack;
+  }
+  return line;
+};
+
+const layoutLeafInList = ({
+  node,
+  settings,
+  registry,
+  context,
+  blockStartOffset,
+  baseY,
+  listMeta,
+}) => {
+  const renderer = registry?.get(node.type.name);
+  const blockSettings = resolveSettingsWithIndent(settings, context.indent);
+  const blockId = node.attrs?.id ?? null;
+  let blockAttrs = node.attrs || null;
+  let blockLineHeight = null;
+  let result = null;
+
+  if (renderer?.layoutBlock) {
+    result = renderer.layoutBlock({
+      node,
+      availableHeight: Number.POSITIVE_INFINITY,
+      measureTextWidth: blockSettings.measureTextWidth,
+      settings: blockSettings,
+      registry,
+      indent: context.indent,
+      containerStack: context.containerStack,
+    });
+  } else {
+    const runsResult = renderer?.toRuns
+      ? renderer.toRuns(node, blockSettings, registry)
+      : node.isTextblock
+        ? textblockToRuns(
+            node,
+            blockSettings,
+            node.type.name,
+            blockId,
+            node.attrs,
+            0
+          )
+        : docToRuns(node, blockSettings, registry);
+
+    const { runs, length } = runsResult;
+    if (runsResult?.blockAttrs) {
+      blockAttrs = runsResult.blockAttrs;
+    }
+    if (runsResult?.blockAttrs?.lineHeight) {
+      blockLineHeight = runsResult.blockAttrs.lineHeight;
+    }
+
+    const lines = breakLines(
+      runs,
+      blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
+      blockSettings.font,
+      length,
+      blockSettings.wrapTolerance || 0,
+      blockSettings.minLineWidth || 0,
+      blockSettings.measureTextWidth,
+      blockSettings.segmentText
+    );
+    result = { lines, length, height: lines.length * (blockLineHeight || settings.lineHeight) };
+  }
+
+  const lines = result?.lines?.length
+    ? result.lines
+    : [{ text: "", start: 0, end: 0, width: 0, runs: [] }];
+  const length = result?.length ?? 0;
+  const lineHeightValue =
+    Number.isFinite(blockAttrs?.lineHeight) ? blockAttrs.lineHeight : settings.lineHeight;
+
+  let height = Number.isFinite(result?.height)
+    ? result.height
+    : lines.length * lineHeightValue;
+
+  const adjustedLines = lines.map((line, lineIndex) => {
+    const lineCopy = {
+      ...line,
+      runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
+    };
+    lineCopy.blockType = lineCopy.blockType || node.type.name;
+    lineCopy.blockId = lineCopy.blockId ?? blockId;
+    lineCopy.blockAttrs = { ...(blockAttrs || {}), ...(lineCopy.blockAttrs || {}), ...(listMeta || {}) };
+    if (lineCopy.blockStart == null) {
+      lineCopy.blockStart = blockStartOffset;
+    }
+    offsetLine(lineCopy, blockStartOffset);
+    const localRelY =
+      typeof lineCopy.relativeY === "number" ? lineCopy.relativeY : lineIndex * lineHeightValue;
+    lineCopy.relativeY = baseY + localRelY;
+    lineCopy.lineHeight = lineCopy.lineHeight ?? lineHeightValue;
+    if (typeof lineCopy.x !== "number") {
+      lineCopy.x = computeLineX(lineCopy, blockSettings);
+    }
+    const indentOffset = blockSettings.margin.left - settings.margin.left;
+    if (lineCopy.tableMeta && Number.isFinite(indentOffset)) {
+      lineCopy.tableMeta = {
+        ...lineCopy.tableMeta,
+        tableXOffset: (lineCopy.tableMeta.tableXOffset ?? 0) + indentOffset,
+      };
+    }
+    applyContainerStack(lineCopy, context.containerStack);
+    return lineCopy;
+  });
+
+  if (!Number.isFinite(height) || height <= 0) {
+    const maxY = adjustedLines.reduce((max, line) => {
+      const relY = typeof line.relativeY === "number" ? line.relativeY - baseY : 0;
+      const lh = Number.isFinite(line.lineHeight) ? line.lineHeight : lineHeightValue;
+      return Math.max(max, relY + lh);
+    }, 0);
+    height = maxY;
+  }
+
+  return { lines: adjustedLines, length, height };
+};
+
+const layoutNodeInList = ({
+  node,
+  settings,
+  registry,
+  context,
+  startOffset,
+  baseY,
+  blockSpacing,
+  listMeta,
+}) => {
+  const renderer = registry?.get(node.type.name);
+  const isLeaf =
+    renderer?.layoutBlock || renderer?.toRuns || node.isTextblock || node.isAtom;
+
+  if (isLeaf) {
+    return layoutLeafInList({
+      node,
+      settings,
+      registry,
+      context,
+      blockStartOffset: startOffset,
+      baseY,
+      listMeta,
+    });
+  }
+
+  const style = renderer?.getContainerStyle
+    ? renderer.getContainerStyle({ node, settings, registry })
+    : null;
+  const indent = Number.isFinite(style?.indent) ? style.indent : 0;
+  const shouldPush = indent > 0 || renderer?.renderContainer || style;
+  const nextContext = shouldPush
+    ? {
+        indent: context.indent + indent,
+        containerStack: [
+          ...context.containerStack,
+          {
+            ...style,
+            type: node.type.name,
+            offset: context.indent,
+            indent,
+            baseX: settings.margin.left + context.indent,
+          },
+        ],
+      }
+    : context;
+
+  let offset = startOffset;
+  let y = baseY;
+  let height = 0;
+  const lines = [];
+
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    const childResult = layoutNodeInList({
+      node: child,
+      settings,
+      registry,
+      context: nextContext,
+      startOffset: offset,
+      baseY: y,
+      blockSpacing,
+      listMeta,
+    });
+    lines.push(...childResult.lines);
+    offset += childResult.length;
+    y += childResult.height;
+    height += childResult.height;
+    if (i < node.childCount - 1) {
+      offset += 1;
+      if (blockSpacing > 0) {
+        y += blockSpacing;
+        height += blockSpacing;
+      }
+    }
+  }
+
+  return { lines, length: offset - startOffset, height };
+};
+
 const layoutList = (node, settings, registry, ordered) => {
   const lines = [];
   let offset = 0;
+  let cursorY = 0;
   const font = settings.font;
   const lineHeight = settings.lineHeight;
   const listIndent = settings.listIndent ?? 24;
   const markerGap = settings.listMarkerGap ?? 8;
   const markerFont = settings.listMarkerFont || font;
-  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const blockSpacing = Number.isFinite(settings.blockSpacing) ? settings.blockSpacing : 0;
 
   node.forEach((item, _pos, index) => {
     if (item.type.name !== "list_item") {
       return;
     }
 
-    const runsResult = docToRuns(item, settings, registry);
-    const { runs, length } = runsResult;
-
     const markerText = ordered ? `${(node.attrs?.order || 1) + index}.` : "-";
     const markerWidth = settings.measureTextWidth
       ? settings.measureTextWidth(markerFont, markerText)
       : 0;
-    const contentWidth = Math.max(0, maxWidth - listIndent - markerGap - markerWidth);
+    const contentIndent = listIndent + markerGap + markerWidth;
+    const listMeta = {
+      listType: ordered ? "ordered" : "bullet",
+      listIndent,
+      markerGap,
+      markerWidth,
+      markerFont,
+      markerText,
+      itemIndex: index,
+    };
 
-    const itemLines = breakLines(
-      runs,
-      contentWidth,
-      font,
-      length,
-      settings.wrapTolerance || 0,
-      settings.minLineWidth || 0,
-      settings.measureTextWidth,
-      settings.segmentText
-    );
+    const itemResult = layoutNodeInList({
+      node: item,
+      settings,
+      registry,
+      context: { indent: contentIndent, containerStack: [] },
+      startOffset: offset,
+      baseY: cursorY,
+      blockSpacing,
+      listMeta,
+    });
 
-    const resolvedLines = itemLines.length
-      ? itemLines
-      : [{ text: "", start: 0, end: 0, width: 0, runs: [] }];
-
-    resolvedLines.forEach((line, lineIndex) => {
+    itemResult.lines.forEach((line, lineIndex) => {
       const lineCopy = {
         ...line,
         runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
-      };
-      offsetLine(lineCopy, offset);
-      lineCopy.x = settings.margin.left + listIndent + markerGap + markerWidth;
-      lineCopy.blockType = node.type.name;
-      lineCopy.blockAttrs = {
-        listType: ordered ? "ordered" : "bullet",
-        listIndent,
-        markerGap,
-        markerWidth,
-        markerFont,
-        markerText,
-        itemIndex: index,
+        blockType: node.type.name,
+        blockAttrs: { ...(line.blockAttrs || {}), ...listMeta },
       };
       if (lineIndex === 0) {
         lineCopy.listMarker = {
@@ -195,7 +422,8 @@ const layoutList = (node, settings, registry, ordered) => {
       lines.push(lineCopy);
     });
 
-    offset += length;
+    offset += itemResult.length;
+    cursorY += itemResult.height;
     if (index < node.childCount - 1) {
       offset += 1;
     }
@@ -204,7 +432,7 @@ const layoutList = (node, settings, registry, ordered) => {
   return {
     lines,
     length: offset,
-    height: lines.length * lineHeight,
+    height: Math.max(cursorY, lines.length * lineHeight),
     blockType: node.type.name,
     blockAttrs: {
       listType: ordered ? "ordered" : "bullet",
@@ -216,7 +444,21 @@ const layoutList = (node, settings, registry, ordered) => {
 };
 
 const renderListMarker = ({ ctx, line, pageX, pageTop, layout }) => {
-  const marker = line.listMarker;
+  let marker = line.listMarker;
+  if (
+    !marker &&
+    line?.blockAttrs?.markerText &&
+    Number.isFinite(line?.blockAttrs?.markerWidth) &&
+    line?.blockAttrs?.markerGap != null &&
+    (line?.blockStart == null || line?.start == null || line.blockStart === line.start)
+  ) {
+    marker = {
+      text: line.blockAttrs.markerText,
+      width: line.blockAttrs.markerWidth,
+      gap: line.blockAttrs.markerGap,
+      font: line.blockAttrs.markerFont || layout.font,
+    };
+  }
   if (!marker) {
     return;
   }

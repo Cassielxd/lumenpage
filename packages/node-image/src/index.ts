@@ -182,6 +182,7 @@ export const imageRenderer = {
     container.style.pointerEvents = "none";
     container.style.overflow = "hidden";
     container.style.background = "#f3f4f6";
+    container.style.outline = "none";
     host.appendChild(container);
 
     const image = createImageElement(node);
@@ -221,6 +222,12 @@ export const imageRenderer = {
       },
       destroy() {
         container.remove();
+      },
+      selectNode() {
+        container.style.outline = "2px solid #3b82f6";
+      },
+      deselectNode() {
+        container.style.outline = "none";
       },
     };
   },

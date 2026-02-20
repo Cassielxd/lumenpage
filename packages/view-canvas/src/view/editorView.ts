@@ -25,6 +25,8 @@ import { createRenderSync } from "./renderSync";
 import { createLayoutWorkerClient } from "./layoutWorkerClient";
 import { createSelectionMovement } from "./selectionMovement";
 import { coordsAtPos, posAtCoords } from "./posIndex";
+import { getCaretFromPoint } from "./caret";
+import { GapCursor } from "lumenpage-gapcursor";
 import { selectionToRects, activeBlockToRects } from "./render/selection";
 import { buildLayoutIndex, getFirstLineForBlockId, getLineAtOffset } from "./layoutIndex";
 
@@ -67,6 +69,10 @@ export class CanvasEditorView {
     // 鍒濆鍖?DOM銆佹牱寮忎笌鏃犻殰纰嶉厤缃€?
     const dom = resolveCanvasConfig("elements") ?? createDefaultDom();
     const settings = { ...DEFAULT_SETTINGS, ...(resolveCanvasConfig("settings") || {}) };
+    const tablePanel = resolveCanvasConfig("tablePaginationPanelEl") ?? null;
+    if (tablePanel) {
+      settings.tablePaginationPanelEl = tablePanel;
+    }
     settings.debugLayout = debugConfig?.layout === true;
     if (settings.debugPerf) {
       settings.__perf = { layout: null, render: null };
@@ -205,6 +211,7 @@ export class CanvasEditorView {
     const nodeViewsByBlockId = new Map();
     let selectedNodeViewKey = null;
     let lastNodeViewDecorations = null;
+    let skipNextClickSelection = false;
 
     const getNodeViewKey = (node, pos) => {
       const id = node?.attrs?.id;
@@ -476,9 +483,18 @@ export class CanvasEditorView {
       }
     };
 
-    const setSelectionOffsets = (anchorOffset, headOffset, updatePreferred) => {
+    const setSelectionOffsets = (anchorOffset, headOffset, updatePreferred, forceText = false) => {
       if (!Number.isFinite(anchorOffset) || !Number.isFinite(headOffset)) {
         return;
+      }
+
+      const currentSelection = this.state.selection;
+      if (!forceText && currentSelection instanceof NodeSelection) {
+        const anchorPos = textOffsetToDocPos(this.state.doc, anchorOffset);
+        const headPos = textOffsetToDocPos(this.state.doc, headOffset);
+        if (anchorPos === currentSelection.anchor && headPos === currentSelection.head) {
+          return;
+        }
       }
 
       pendingPreferredUpdate = updatePreferred;
@@ -503,6 +519,136 @@ export class CanvasEditorView {
         headPos,
       });
       dispatchTransaction(tr);
+    };
+
+    const setSelectionFromHit = (hit, event) => {
+      if (!hit || !hit.line || event?.shiftKey) {
+        return false;
+      }
+      const line = hit.line;
+      const selectableTypes = new Set(["image", "video", "horizontal_rule"]);
+      if (!selectableTypes.has(line.blockType)) {
+        return false;
+      }
+      const findPosByBlockId = (blockId) => {
+        if (!blockId || !this.state?.doc) {
+          return null;
+        }
+        let found = null;
+        this.state.doc.descendants((node, pos) => {
+          if (node?.attrs?.id === blockId) {
+            found = pos;
+            return false;
+          }
+          return true;
+        });
+        return found;
+      };
+      let pos = null;
+      const blockId = line.blockId;
+      if (blockId && nodeViewsByBlockId.has(blockId)) {
+        pos = nodeViewsByBlockId.get(blockId)?.pos ?? null;
+      }
+      if (!Number.isFinite(pos)) {
+        pos = findPosByBlockId(blockId);
+      }
+      if (!Number.isFinite(pos)) {
+        const blockStart = Number.isFinite(line.blockStart) ? line.blockStart : hit.offset;
+        pos = textOffsetToDocPos(this.state.doc, blockStart);
+      }
+      if (!Number.isFinite(pos)) {
+        return false;
+      }
+      const $pos = this.state.doc.resolve(pos);
+      let node = $pos.nodeAfter;
+      let selectPos = pos;
+      if (blockId) {
+        if (node?.attrs?.id !== blockId && $pos.nodeBefore?.attrs?.id === blockId) {
+          selectPos = pos - $pos.nodeBefore.nodeSize;
+          node = $pos.nodeBefore;
+        }
+      }
+      if (!node || !NodeSelection.isSelectable(node)) {
+        const prev = $pos.nodeBefore;
+        if (prev && NodeSelection.isSelectable(prev)) {
+          selectPos = pos - prev.nodeSize;
+          node = prev;
+        }
+      }
+      if (!node || !NodeSelection.isSelectable(node)) {
+        return false;
+      }
+      const tr = this.state.tr.setSelection(NodeSelection.create(this.state.doc, selectPos));
+      dispatchTransaction(tr);
+      skipNextClickSelection = true;
+      return true;
+    };
+
+    const setGapCursorAtCoords = (x, y, hit, event) => {
+      if (!layout || event?.shiftKey) {
+        return false;
+      }
+      if (hit?.line?.blockType) {
+        const type = hit.line.blockType;
+        if (type === "image" || type === "video" || type === "horizontal_rule") {
+          return false;
+        }
+      }
+      const pageSpan = layout.pageHeight + layout.pageGap;
+      const absoluteY = y + dom.scrollArea.scrollTop;
+      const pageIndex = Math.floor(absoluteY / pageSpan);
+      if (pageIndex < 0 || pageIndex >= layout.pages.length) {
+        return false;
+      }
+      const page = layout.pages[pageIndex];
+      const localY = absoluteY - pageIndex * pageSpan;
+      const lines = page.lines || [];
+      const lineAtY = lines.find((line) => {
+        const lineHeight = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+        return localY >= line.y && localY < line.y + lineHeight;
+      });
+      if (lineAtY) {
+        return false;
+      }
+      let above = null;
+      let below = null;
+      for (const line of lines) {
+        const lineHeight = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+        const bottom = line.y + lineHeight;
+        if (bottom <= localY) {
+          if (!above || bottom > above.bottom) {
+            above = { line, bottom };
+          }
+        }
+        if (line.y >= localY) {
+          if (!below || line.y < below.top) {
+            below = { line, top: line.y };
+          }
+        }
+      }
+      if (!above || !below) {
+        return false;
+      }
+      const targetOffset = Number.isFinite(below.line.blockStart)
+        ? below.line.blockStart
+        : Number.isFinite(above.line.end)
+          ? above.line.end
+          : null;
+      if (!Number.isFinite(targetOffset)) {
+        return false;
+      }
+      const pos = textOffsetToDocPos(this.state.doc, targetOffset);
+      if (!Number.isFinite(pos)) {
+        return false;
+      }
+      const $pos = this.state.doc.resolve(pos);
+      if (!GapCursor.valid($pos)) {
+        return false;
+      }
+      const tr = this.state.tr.setSelection(new GapCursor($pos));
+      dispatchTransaction(tr);
+      skipNextClickSelection = true;
+      return true;
     };
 
     // 缂栬緫鎿嶄綔灏佽锛堟彃鍏?鍒犻櫎/閫夊尯锛夈€?
@@ -563,7 +709,36 @@ export class CanvasEditorView {
       inputEl: dom.input,
       getText,
       posAtCoords,
-      setSelectionOffsets,
+      getHitAtCoords: (x, y) =>
+        getCaretFromPoint(
+          layout,
+          x,
+          y,
+          dom.scrollArea.scrollTop,
+          dom.scrollArea.clientWidth,
+          getText().length
+        ),
+      setSelectionOffsets: (anchor, head, updatePreferred) =>
+        setSelectionOffsets(anchor, head, updatePreferred, true),
+      setSelectionFromHit,
+      setGapCursorAtCoords,
+      shouldDeferSelection: (hit, hitOffset) => {
+        if (!layout || !Number.isFinite(hitOffset)) {
+          return false;
+        }
+        if (hit?.line?.blockType) {
+          const type = hit.line.blockType;
+          if (type === "image" || type === "video" || type === "horizontal_rule") {
+            return false;
+          }
+        }
+        const pos = textOffsetToDocPos(this.state.doc, hitOffset);
+        if (!Number.isFinite(pos)) {
+          return false;
+        }
+        const $pos = this.state.doc.resolve(pos);
+        return GapCursor.valid($pos);
+      },
       getSelectionAnchorOffset: () =>
         getSelectionAnchorOffset(this.state, docPosToTextOffset, clampOffset),
       setPreferredX: (value) => {
@@ -843,6 +1018,11 @@ export class CanvasEditorView {
       const coords = getEventCoords(event);
       const pos = getDocPosFromCoords(coords);
       debugLog("click", { pos, coords });
+      if (skipNextClickSelection) {
+        skipNextClickSelection = false;
+        dom.input.focus();
+        return;
+      }
       if (dispatchEditorProp("handleClick", pos, event)) {
         event.preventDefault();
         return;
@@ -1155,7 +1335,7 @@ export class CanvasEditorView {
     layoutWorkerClient?.destroy?.();
     dom.input.removeEventListener("focus", this._internals.renderSync.updateStatus);
     dom.input.removeEventListener("blur", this._internals.renderSync.updateStatus);
-    dom.input.removeEventListener("blur", resetComposing);
+    dom.input.removeEventListener("blur", this._internals.resetComposing);
     dom.scrollArea.removeEventListener("scroll", onScroll);
     dom.scrollArea.removeEventListener("pointerdown", handlePointerDown);
     dom.scrollArea.removeEventListener("pointermove", handlePointerMove);

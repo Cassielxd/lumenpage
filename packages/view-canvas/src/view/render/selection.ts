@@ -4,7 +4,11 @@ import { measureTextWidth } from "../measure";
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
-const isImageLine = (line) => line?.imageMeta || line?.blockType === "image";
+const isImageLine = (line) =>
+  line?.imageMeta ||
+  line?.blockType === "image" ||
+  line?.blockType === "video" ||
+  line?.blockType === "horizontal_rule";
 
 const offsetToX = (line, offset, layout) => {
   if (!line.runs || line.runs.length === 0) {
@@ -168,7 +172,12 @@ export function selectionToRects(
 
       const lineEnd = line.end;
 
-      if (maxOffset <= lineStart || minOffset >= lineEnd) {
+      const isEmptyLine = lineStart === lineEnd;
+      if (isEmptyLine) {
+        if (minOffset > lineStart || maxOffset < lineEnd) {
+          continue;
+        }
+      } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
         continue;
       }
 
@@ -176,19 +185,18 @@ export function selectionToRects(
 
       const end = Math.min(maxOffset, lineEnd);
 
-      if (end <= start) {
-        continue;
-      }
-
       const isImage = isImageLine(line);
 
+      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
       const xStart = isImage ? 0 : offsetToX(line, start, layout);
-
-      const xEnd = isImage
+      let xEnd = isImage
         ? Math.max(xStart, line.width || 0)
         : offsetToX(line, end, layout);
+      if (isEmptyLine) {
+        xEnd = Math.max(xEnd, line.width || availableWidth);
+      }
 
-      const width = xEnd - xStart;
+      const width = Math.max(0, xEnd - xStart);
 
       if (width <= 0) {
         continue;
@@ -220,7 +228,12 @@ export function selectionToRects(
 
       const lineEnd = line.end;
 
-      if (maxOffset <= lineStart || minOffset >= lineEnd) {
+      const isEmptyLine = lineStart === lineEnd;
+      if (isEmptyLine) {
+        if (minOffset > lineStart || maxOffset < lineEnd) {
+          continue;
+        }
+      } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
         continue;
       }
 
@@ -228,19 +241,18 @@ export function selectionToRects(
 
       const end = Math.min(maxOffset, lineEnd);
 
-      if (end <= start) {
-        continue;
-      }
-
       const isImage = isImageLine(line);
 
+      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
       const xStart = isImage ? 0 : offsetToX(line, start, layout);
-
-      const xEnd = isImage
+      let xEnd = isImage
         ? Math.max(xStart, line.width || 0)
         : offsetToX(line, end, layout);
+      if (isEmptyLine) {
+        xEnd = Math.max(xEnd, line.width || availableWidth);
+      }
 
-      const width = xEnd - xStart;
+      const width = Math.max(0, xEnd - xStart);
 
       if (width <= 0) {
         continue;

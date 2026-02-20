@@ -318,6 +318,7 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
     pageIndex,
 
     lineIndex: page.lines.indexOf(line),
+    line,
   };
 }
 

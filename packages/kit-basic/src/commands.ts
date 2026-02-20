@@ -161,6 +161,38 @@ export const basicCommands: Record<string, Command> = {
 };
 
 export const createViewCommands = () => {
+  const toggleList = (nodeName) => (state, dispatch, view) => {
+    const type = state.schema.nodes[nodeName];
+    if (!type) {
+      return false;
+    }
+    const { $from, $to } = state.selection;
+    let range = null;
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      const node = $from.node(depth);
+      if (node.type.name !== "list_item") {
+        continue;
+      }
+      const parent = $from.node(depth - 1);
+      if (parent?.type?.name !== nodeName) {
+        continue;
+      }
+      range = $from.blockRange($to, (n) => n.type.name === "list_item");
+      break;
+    }
+    if (range) {
+      const target = liftTarget(range);
+      if (target == null) {
+        return false;
+      }
+      if (dispatch) {
+        const tr = state.tr.lift(range, target);
+        dispatch(tr.scrollIntoView());
+      }
+      return true;
+    }
+    return wrapIn(type)(state, dispatch, view);
+  };
   const wrapInNode = (nodeName) => (state, dispatch, view) => {
     const type = state.schema.nodes[nodeName];
     if (!type) {
@@ -236,8 +268,8 @@ export const createViewCommands = () => {
     toggleBlockquote: wrapInNode("blockquote"),
     toggleCodeBlock: toggleCodeBlock(),
     insertHorizontalRule: insertNode("horizontal_rule"),
-    toggleBulletList: wrapInNode("bullet_list"),
-    toggleOrderedList: wrapInNode("ordered_list"),
+    toggleBulletList: toggleList("bullet_list"),
+    toggleOrderedList: toggleList("ordered_list"),
     indent: changeParagraphIndent(1),
     outdent: changeParagraphIndent(-1),
     insertImage: (attrs) => insertNode("image", attrs),

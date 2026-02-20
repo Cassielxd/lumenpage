@@ -10,35 +10,37 @@ export default defineConfig(({ mode }) => {
   const useSrc = mode !== "production";
   const entry = (pkg: string) =>
     path.resolve(workspaceRoot, `packages/${pkg}/${useSrc ? "src/index.ts" : "dist/index.js"}`);
+  const entryPath = (pkg: string, file: string) =>
+    path.resolve(workspaceRoot, `packages/${pkg}/${useSrc ? `src/${file}` : `dist/${file}`}`);
 
   return {
     plugins: [vue()],
     worker: { format: "es" },
     resolve: {
-      alias: {
-        "lumenpage-view-canvas": entry("view-canvas"),
-        "lumenpage-state": entry("state"),
-        "lumenpage-commands": entry("commands"),
-        "lumenpage-history": entry("history"),
-        "lumenpage-keymap": entry("keymap"),
-        "lumenpage-model": entry("model"),
-        "lumenpage-transform": entry("transform"),
-        "lumenpage-view-types": entry("view-types"),
-        "lumenpage-kit-basic": entry("kit-basic"),
-        "lumenpage-inputrules": entry("inputrules"),
-        "lumenpage-gapcursor": entry("gapcursor"),
-        "lumenpage-collab": entry("collab"),
-        "lumenpage-node-paragraph": entry("node-paragraph"),
-        "lumenpage-node-heading": entry("node-heading"),
-        "lumenpage-node-table": entry("node-table"),
-        "lumenpage-node-list": entry("node-list"),
-        "lumenpage-node-image": entry("node-image"),
-        "lumenpage-node-video": entry("node-video"),
-        "lumenpage-node-hard-break": entry("node-hard-break"),
-        "lumenpage-node-horizontal-rule": entry("node-horizontal-rule"),
-        "lumenpage-node-code-block": entry("node-code-block"),
-        "lumenpage-node-blockquote": entry("node-blockquote"),
-      },
+      alias: [
+        { find: /^lumenpage-view-canvas$/, replacement: entry("view-canvas") },
+        { find: /^lumenpage-state$/, replacement: entry("state") },
+        { find: /^lumenpage-commands$/, replacement: entry("commands") },
+        { find: /^lumenpage-history$/, replacement: entry("history") },
+        { find: /^lumenpage-keymap$/, replacement: entry("keymap") },
+        { find: /^lumenpage-model$/, replacement: entry("model") },
+        { find: /^lumenpage-transform$/, replacement: entry("transform") },
+        { find: /^lumenpage-view-types$/, replacement: entry("view-types") },
+        { find: /^lumenpage-kit-basic$/, replacement: entry("kit-basic") },
+        { find: /^lumenpage-inputrules$/, replacement: entry("inputrules") },
+        { find: /^lumenpage-gapcursor$/, replacement: entry("gapcursor") },
+        { find: /^lumenpage-collab$/, replacement: entry("collab") },
+        { find: /^lumenpage-node-paragraph$/, replacement: entry("node-paragraph") },
+        { find: /^lumenpage-node-heading$/, replacement: entry("node-heading") },
+        { find: /^lumenpage-node-table$/, replacement: entry("node-table") },
+        { find: /^lumenpage-node-list$/, replacement: entry("node-list") },
+        { find: /^lumenpage-node-image$/, replacement: entry("node-image") },
+        { find: /^lumenpage-node-video$/, replacement: entry("node-video") },
+        { find: /^lumenpage-node-hard-break$/, replacement: entry("node-hard-break") },
+        { find: /^lumenpage-node-horizontal-rule$/, replacement: entry("node-horizontal-rule") },
+        { find: /^lumenpage-node-code-block$/, replacement: entry("node-code-block") },
+        { find: /^lumenpage-node-blockquote$/, replacement: entry("node-blockquote") },
+      ],
     },
     server: {
       fs: {

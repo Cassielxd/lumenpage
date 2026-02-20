@@ -153,6 +153,98 @@ const drawDecorationWidgets = (ctx, widgets) => {
   }
 };
 
+// 构建表格分页调试信息（只统计可见页）
+const buildTablePaginationDebug = (layout, visibleRange) => {
+  if (!layout?.pages?.length) {
+    return "";
+  }
+  const lines = [];
+  // 仅输出可见页范围，避免页面太多时调试面板刷屏
+  const start =
+    typeof visibleRange?.startIndex === "number" ? visibleRange.startIndex : 0;
+  const end =
+    typeof visibleRange?.endIndex === "number"
+      ? visibleRange.endIndex
+      : layout.pages.length - 1;
+  for (let p = start; p <= end; p += 1) {
+    if (p < 0 || p >= layout.pages.length) {
+      continue;
+    }
+    const page = layout.pages[p];
+    if (!page?.lines?.length) {
+      continue;
+    }
+    // 以 blockStart / blockId 为 key 聚合同一张表格在该页的切片信息
+    const groups = new Map();
+    for (const line of page.lines) {
+      if (line?.blockType !== "table") {
+        continue;
+      }
+      const key =
+        line.blockId ?? (Number.isFinite(line.blockStart) ? line.blockStart : line.start ?? 0);
+      if (!groups.has(key)) {
+        groups.set(key, {
+          blockStart:
+            Number.isFinite(line.blockStart) ? line.blockStart : Number.isFinite(key) ? key : null,
+          minRow: Number.POSITIVE_INFINITY,
+          maxRow: -1,
+          rows: null,
+          sliceFromPrev: false,
+          sliceHasNext: false,
+          tableHeight: null,
+        });
+      }
+      const entry = groups.get(key);
+      const attrs = line.blockAttrs || {};
+      const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : 0;
+      entry.minRow = Math.min(entry.minRow, rowIndex);
+      entry.maxRow = Math.max(entry.maxRow, rowIndex);
+      if (Number.isFinite(attrs.rows)) {
+        entry.rows = attrs.rows;
+      }
+      // blockAttrs / tableMeta 任意一方标记切片都视作跨页
+      if (attrs.tableSliceFromPrev) {
+        entry.sliceFromPrev = true;
+      }
+      if (attrs.tableSliceHasNext) {
+        entry.sliceHasNext = true;
+      }
+      if (line.tableMeta?.continuedFromPrev) {
+        entry.sliceFromPrev = true;
+      }
+      if (line.tableMeta?.continuesAfter) {
+        entry.sliceHasNext = true;
+      }
+      if (Number.isFinite(line.tableMeta?.tableHeight)) {
+        entry.tableHeight = line.tableMeta.tableHeight;
+      }
+    }
+    if (groups.size === 0) {
+      continue;
+    }
+    lines.push(`Page ${p + 1}`);
+    let index = 1;
+    for (const entry of groups.values()) {
+      const minRow = Number.isFinite(entry.minRow) ? entry.minRow + 1 : 1;
+      const maxRow = Number.isFinite(entry.maxRow) ? entry.maxRow + 1 : minRow;
+      const rows = Number.isFinite(entry.rows) ? entry.rows : "?";
+      const slice =
+        entry.sliceFromPrev || entry.sliceHasNext
+          ? `${entry.sliceFromPrev ? "cont" : "start"}-${entry.sliceHasNext ? "cont" : "end"}`
+          : "full";
+      const height = Number.isFinite(entry.tableHeight)
+        ? `, height: ${Math.round(entry.tableHeight)}`
+        : "";
+      const startInfo = Number.isFinite(entry.blockStart) ? `, start: ${entry.blockStart}` : "";
+      lines.push(
+        `  Table ${index}: rows ${minRow}-${maxRow} / ${rows}, slice: ${slice}${height}${startInfo}`
+      );
+      index += 1;
+    }
+  }
+  return lines.join("\n");
+};
+
 const resolveChangedRootIndexRange = (changeSummary) => {
   const before = changeSummary?.blocks?.before || {};
   const after = changeSummary?.blocks?.after || {};
@@ -633,6 +725,11 @@ export class Renderer {
 
     for (let i = startIndex; i <= endIndex; i += 1) {
       activePages.add(i);
+    }
+    const tablePanel = this.settings?.tablePaginationPanelEl;
+    if (tablePanel) {
+      const summary = buildTablePaginationDebug(layout, visible);
+      tablePanel.textContent = summary || "No table slices on visible pages.";
     }
 
     this.prunePageCache(layout.pages.length);

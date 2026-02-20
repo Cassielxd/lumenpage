@@ -68,12 +68,17 @@ const moduleLoaders: Record<string, () => Promise<any>> = {
   "lumenpage-kit-basic": () => import("lumenpage-kit-basic"),
 };
 
-const loadModule = (specifier: string) => {
+const loadModule = async (specifier: string) => {
   const loader = moduleLoaders[specifier];
-  if (loader) {
-    return loader();
+  try {
+    if (loader) {
+      return await loader();
+    }
+    return await import(/* @vite-ignore */ specifier);
+  } catch (error: any) {
+    console.debug("[layout-worker] module-load-failed", specifier, error?.message || String(error));
+    throw error;
   }
-  return import(/* @vite-ignore */ specifier);
 };
 
 const createMeasureTextWidth = (font: string) => {
@@ -231,6 +236,16 @@ const handleLayout = (message: LayoutMessage) => {
     currentDoc = doc;
     const canReuse = message.version === lastVersion + 1;
     const baseLayout = canReuse ? previousLayout : null;
+    if (settings.debugPerf) {
+      console.debug("[layout-worker]", {
+        messageVersion: message.version,
+        lastVersion,
+        canReuse,
+        prevPages: previousLayout?.pages?.length ?? 0,
+        hasDoc,
+        hasSteps,
+      });
+    }
     const layout = layoutPipeline.layoutFromDoc(doc, {
       previousLayout: baseLayout,
       changeSummary: message.changeSummary,

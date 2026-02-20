@@ -4,7 +4,11 @@ export const createPointerHandlers = ({
   inputEl,
   getText,
   posAtCoords,
+  getHitAtCoords,
   setSelectionOffsets,
+  setSelectionFromHit,
+  setGapCursorAtCoords,
+  shouldDeferSelection,
   getSelectionAnchorOffset,
   setPreferredX,
 }) => {
@@ -26,6 +30,16 @@ export const createPointerHandlers = ({
     const rect = scrollArea.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    const hit = typeof getHitAtCoords === "function"
+      ? getHitAtCoords(x, y)
+      : null;
+    if (typeof setGapCursorAtCoords === "function") {
+      const handled = setGapCursorAtCoords(x, y, hit, event);
+      if (handled) {
+        inputEl.focus();
+        return;
+      }
+    }
     const hitOffset = posAtCoords(
       layout,
       x,
@@ -34,6 +48,19 @@ export const createPointerHandlers = ({
       scrollArea.clientWidth,
       getText().length
     );
+
+    if (typeof shouldDeferSelection === "function" && shouldDeferSelection(hit, hitOffset, event)) {
+      inputEl.focus();
+      return;
+    }
+
+    if (hit && typeof setSelectionFromHit === "function") {
+      const handled = setSelectionFromHit(hit, event);
+      if (handled) {
+        inputEl.focus();
+        return;
+      }
+    }
 
     if (hitOffset !== null) {
       setPreferredX(null);

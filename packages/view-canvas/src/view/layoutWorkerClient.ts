@@ -175,9 +175,15 @@ export const createLayoutWorkerClient = ({ settings, schema, config }: {
   const handleInitResult = (message: InitResultMessage) => {
     if (message.ok) {
       ready = true;
+      if (settings?.debugPerf) {
+        console.debug("[layout-worker-client] ready");
+      }
       initResolve?.(true);
     } else {
       failed = true;
+      if (settings?.debugPerf) {
+        console.debug("[layout-worker-client] init-failed", message.error || "");
+      }
       initReject?.(new Error(message.error || "Layout worker init failed"));
     }
   };
@@ -234,7 +240,13 @@ export const createLayoutWorkerClient = ({ settings, schema, config }: {
 
   worker = createWorker();
   if (!worker) {
+    if (settings?.debugPerf) {
+      console.debug("[layout-worker-client] create-failed");
+    }
     return null;
+  }
+  if (settings?.debugPerf) {
+    console.debug("[layout-worker-client] created");
   }
   attachWorkerHandlers(worker);
   initWorker(settings);

@@ -16,9 +16,14 @@
 
     <EditorToolbar ref="toolbarRef" :editorView="view" />
 
-    <t-content class="editor-area">
-      <div ref="editorHost" class="editor-host"></div>
-    </t-content>
+  <t-content class="editor-area">
+    <div ref="editorHost" class="editor-host"></div>
+    <div
+      v-if="debugTablePagination"
+      ref="tableDebugPanel"
+      class="table-debug-panel"
+    ></div>
+  </t-content>
   </t-layout>
 </template>
 
@@ -47,6 +52,7 @@ const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
+const tableDebugPanel = ref<HTMLElement | null>(null);
 
 const resolveDebugFlag = (key: string) => {
   if (typeof window === "undefined") {
@@ -60,6 +66,8 @@ const resolveDebugFlag = (key: string) => {
   const normalized = value.trim().toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
+
+const debugTablePagination = resolveDebugFlag("debugTablePagination");
 
 const settings = {
   pageWidth: 816,
@@ -116,9 +124,13 @@ onMounted(() => {
         viewCommands: createViewCommands(),
       },
       statusElement: toolbarRef.value?.statusEl?.value || undefined,
+      tablePaginationPanelEl: debugTablePagination ? tableDebugPanel.value || undefined : undefined,
     },
   });
   view.value = new CanvasEditorView(editorHost.value, { state: editorState });
+  if (debugTablePagination && tableDebugPanel.value) {
+    tableDebugPanel.value.textContent = "Waiting for table pagination...";
+  }
 });
 
 onBeforeUnmount(() => {
@@ -186,6 +198,7 @@ onBeforeUnmount(() => {
   padding: 0;
   background: #f5f6f8;
   overflow: hidden;
+  position: relative;
 }
 
 .editor-host {
@@ -206,5 +219,25 @@ onBeforeUnmount(() => {
 .editor-host .lumenpage-viewport {
   width: 100%;
   height: 100%;
+}
+
+.table-debug-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  width: 320px;
+  max-height: 45vh;
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 12px;
+  line-height: 1.4;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  overflow: auto;
+  white-space: pre-wrap;
+  pointer-events: auto;
+  user-select: text;
+  z-index: 10;
 }
 </style>

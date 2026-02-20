@@ -185,6 +185,7 @@ export const videoRenderer = {
     container.style.pointerEvents = "none";
     container.style.overflow = "hidden";
     container.style.background = "#000";
+    container.style.outline = "none";
     host.appendChild(container);
 
     let mediaEl: HTMLVideoElement | HTMLIFrameElement | null = null;
@@ -245,6 +246,12 @@ export const videoRenderer = {
       },
       destroy() {
         container.remove();
+      },
+      selectNode() {
+        container.style.outline = "2px solid #3b82f6";
+      },
+      deselectNode() {
+        container.style.outline = "none";
       },
     };
   },

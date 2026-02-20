@@ -6,9 +6,9 @@
 - 组合输入（composition）在多浏览器的一致性行为
 
 ## Schema 与结构能力
-- list_item 允许 block+（当前只允许 paragraph+）
-- table_cell 允许 block+（当前只允许 paragraph+）
-- 深层嵌套结构（list → blockquote → table 等）
+- list_item 允许 block+（已完成）
+- table_cell 允许 block+（已完成）
+- 深层嵌套结构（list → blockquote → table 等）：列表内嵌表格/引用已支持
 
 ## 表格能力（prosemirror-tables 对齐）
 - 行/列插入与删除

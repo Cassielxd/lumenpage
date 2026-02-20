@@ -1,4 +1,5 @@
 import { buildDecorationDrawData } from "./render/decorations";
+import { NodeSelection } from "lumenpage-state";
 export const createRenderSync = ({
   getEditorState,
   setEditorState,
@@ -122,6 +123,12 @@ export const createRenderSync = ({
     if (!layout) {
       return;
     }
+    const selection = getEditorState().selection;
+    if (selection instanceof NodeSelection) {
+      setCaretRect(null);
+      setInputPosition?.(-9999, -9999);
+      return;
+    }
 
     const caretRect = coordsAtPos(
       layout,
@@ -201,6 +208,15 @@ export const createRenderSync = ({
           applyLayout(layout, version, changeSummary);
         });
       return;
+    }
+    if (layoutPipeline.settings?.debugPerf) {
+      const prevLayout = getLayout?.() ?? null;
+      console.debug("[render-sync]", {
+        version,
+        prevLayoutPages: prevLayout?.pages?.length ?? 0,
+        hasSteps,
+        hasChangeSummary: !!changeSummary,
+      });
     }
     const layout = layoutPipeline.layoutFromDoc(getEditorState().doc, {
       previousLayout: getLayout?.() ?? null,
