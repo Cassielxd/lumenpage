@@ -42,9 +42,18 @@ flowchart TD
 - **Cursor / selection** must stay consistent across `pos` and `offset` or
   you'll see jumpy caret, wrong selection, or phantom deletes.
 
+## Extension Point
+- Node specs can provide `offsetMapping` hooks:
+  - `toText`
+  - `getTextLength`
+  - `mapOffsetToPos`
+  - `mapPosToOffset`
+- Current project maps table/list/blockquote/image/video/horizontal_rule via
+  schema-level `offsetMapping` instead of hard-coding per-node logic in
+  editor core.
+
 ## Typical Flow
 1. User input (keyboard / pointer) yields a `pos`.
 2. `pos` is converted to `offset` for layout lookup.
 3. Layout produces `line` and `coords`.
 4. Rendering draws at `coords`, while editing commands mutate by `pos`.
-

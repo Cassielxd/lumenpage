@@ -16,6 +16,36 @@ import type { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
 import { liftTarget } from "lumenpage-transform";
+import {
+  addTableRowAfter,
+  addTableRowBefore,
+  deleteTableRow,
+  addTableColumnAfter,
+  addTableColumnBefore,
+  deleteTableColumn,
+  goToNextTableCell,
+  goToPreviousTableCell,
+  mergeTableCellRight,
+  splitTableCell,
+  selectCurrentAndNextTableCell,
+  selectCurrentAndBelowTableCell,
+  mergeSelectedTableCells,
+} from "lumenpage-node-table";
+export {
+  addTableRowAfter,
+  addTableRowBefore,
+  deleteTableRow,
+  addTableColumnAfter,
+  addTableColumnBefore,
+  deleteTableColumn,
+  goToNextTableCell,
+  goToPreviousTableCell,
+  mergeTableCellRight,
+  splitTableCell,
+  selectCurrentAndNextTableCell,
+  selectCurrentAndBelowTableCell,
+  mergeSelectedTableCells,
+};
 
 const getCurrentBlockAttrs = (state) => {
   const parent = state.selection.$from.parent;
@@ -160,6 +190,29 @@ export const basicCommands: Record<string, Command> = {
   redo,
 };
 
+const insertTextCommand =
+  (text: string): Command =>
+  (state, dispatch) => {
+    if (!dispatch) {
+      return true;
+    }
+    const tr = state.tr.insertText(text, state.selection.from, state.selection.to);
+    dispatch(tr);
+    return true;
+  };
+
+export const createCanvasEditorKeymap = () => ({
+  "Mod-z": undo,
+  "Shift-Mod-z": redo,
+  "Mod-y": redo,
+  "Shift-Mod-l": setBlockAlign("left"),
+  "Shift-Mod-c": setBlockAlign("center"),
+  "Shift-Mod-e": setBlockAlign("center"),
+  "Shift-Mod-r": setBlockAlign("right"),
+  Tab: chainCommands(goToNextTableCell, insertTextCommand("  ")),
+  "Shift-Tab": goToPreviousTableCell,
+});
+
 export const createViewCommands = () => {
   const toggleList = (nodeName) => (state, dispatch, view) => {
     const type = state.schema.nodes[nodeName];
@@ -278,6 +331,19 @@ export const createViewCommands = () => {
     setParagraphSpacingAfter: (value) => setParagraphSpacing("spacingAfter", value),
     clearParagraphSpacingBefore: () => setParagraphSpacing("spacingBefore", null),
     clearParagraphSpacingAfter: () => setParagraphSpacing("spacingAfter", null),
+    addTableRowAfter,
+    addTableRowBefore,
+    deleteTableRow,
+    addTableColumnAfter,
+    addTableColumnBefore,
+    deleteTableColumn,
+    goToNextTableCell,
+    goToPreviousTableCell,
+    mergeTableCellRight,
+    splitTableCell,
+    selectTableCellsRight: selectCurrentAndNextTableCell,
+    selectTableCellsDown: selectCurrentAndBelowTableCell,
+    mergeSelectedTableCells,
   };
 };
 

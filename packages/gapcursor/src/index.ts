@@ -61,7 +61,16 @@ function handleClick(view: EditorView, pos: number, event: MouseEvent) {
   let state = (view as any).state as EditorState
   let $pos = state.doc.resolve(pos)
   if (!GapCursor.valid($pos)) return false
-  let clickPos = view.posAtCoords({left: event.clientX, top: event.clientY})
+  const scrollArea = (view as any)?._internals?.dom?.scrollArea
+  const localLeft = scrollArea ? event.clientX - scrollArea.getBoundingClientRect().left : event.clientX
+  const localTop = scrollArea ? event.clientY - scrollArea.getBoundingClientRect().top : event.clientY
+  const raw = view.posAtCoords({left: localLeft, top: localTop, clientX: event.clientX, clientY: event.clientY})
+  const clickPos =
+    typeof raw == "number"
+      ? {pos: raw, inside: -1}
+      : raw && typeof raw.pos == "number"
+        ? raw
+        : null
   if (clickPos && clickPos.inside > -1 && NodeSelection.isSelectable(state.doc.nodeAt(clickPos.inside)!)) return false
   view.dispatch(state.tr.setSelection(new GapCursor($pos)))
   return true

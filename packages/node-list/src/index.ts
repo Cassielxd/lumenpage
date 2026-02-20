@@ -1,8 +1,81 @@
-import { breakLines, docToRuns, textblockToRuns } from "lumenpage-view-canvas";
+﻿import { breakLines, docToRuns, textblockToRuns } from "lumenpage-view-canvas";
 import { type NodeSpec } from "lumenpage-model";
 
 const serializeListItemToText = (itemNode) =>
   itemNode.textBetween(0, itemNode.content.size, "\n");
+
+const serializeContainerToText = (node, helpers) => {
+  const parts = [];
+  node.forEach((child, _pos, index) => {
+    parts.push(helpers.serializeNodeToText(child));
+    if (index < node.childCount - 1) {
+      parts.push("\n");
+    }
+  });
+  return parts.join("");
+};
+
+const getContainerTextLength = (node, helpers) => {
+  let length = 0;
+  node.forEach((child, _pos, index) => {
+    length += helpers.getNodeTextLength(child);
+    if (index < node.childCount - 1) {
+      length += 1;
+    }
+  });
+  return length;
+};
+
+const mapOffsetInContainer = (node, nodePos, offset, helpers) => {
+  let remaining = offset;
+  let innerPos = nodePos + 1;
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    const childPos = innerPos;
+    const textLength = helpers.getNodeTextLength(child);
+    if (remaining <= textLength) {
+      return helpers.mapOffsetInNode(child, childPos, remaining);
+    }
+    remaining -= textLength;
+    if (i < node.childCount - 1) {
+      if (remaining === 0) {
+        return childPos + child.nodeSize - 1;
+      }
+      remaining -= 1;
+    }
+    innerPos += child.nodeSize;
+  }
+  return nodePos + node.nodeSize - 1;
+};
+
+const mapPosInContainer = (node, nodePos, pos, helpers) => {
+  let offset = 0;
+  let innerPos = nodePos + 1;
+  for (let i = 0; i < node.childCount; i += 1) {
+    const child = node.child(i);
+    const childPos = innerPos;
+    if (pos <= childPos) {
+      return offset;
+    }
+    if (pos < childPos + child.nodeSize) {
+      return offset + helpers.mapPosInNode(child, childPos, pos);
+    }
+    offset += helpers.getNodeTextLength(child);
+    if (i < node.childCount - 1) {
+      offset += 1;
+    }
+    innerPos += child.nodeSize;
+  }
+  return offset;
+};
+
+const containerOffsetMapping = {
+  toText: (node, helpers) => serializeContainerToText(node, helpers),
+  getTextLength: (node, helpers) => getContainerTextLength(node, helpers),
+  mapOffsetToPos: (node, nodePos, offset, helpers) =>
+    mapOffsetInContainer(node, nodePos, offset, helpers),
+  mapPosToOffset: (node, nodePos, pos, helpers) => mapPosInContainer(node, nodePos, pos, helpers),
+};
 
 export const serializeListToText = (listNode) => {
   const items = [];
@@ -25,6 +98,7 @@ export const listNodeSpecs: Record<string, NodeSpec> = {
     attrs: {
       id: { default: null },
     },
+    offsetMapping: containerOffsetMapping,
 
     parseDOM: [
       {
@@ -55,6 +129,7 @@ export const listNodeSpecs: Record<string, NodeSpec> = {
 
       order: { default: 1 },
     },
+    offsetMapping: containerOffsetMapping,
 
     parseDOM: [
       {
@@ -87,6 +162,7 @@ export const listNodeSpecs: Record<string, NodeSpec> = {
 
   list_item: {
     content: "block+",
+    offsetMapping: containerOffsetMapping,
 
     parseDOM: [{ tag: "li" }],
 
@@ -490,101 +566,129 @@ export const bulletListRenderer = {
       return null;
     }
 
-    const getLineHeight = (line) =>
-      Number.isFinite(line?.lineHeight) ? line.lineHeight : lineHeight || 0;
+    const getLineHeightValue = (line) =>
+      Number.isFinite(line?.lineHeight) ? line.lineHeight : Math.max(1, lineHeight || 1);
 
-    const groups: Array<{ lines: any[]; height: number }> = [];
-    let currentIndex: number | null = null;
-    let currentLines: any[] = [];
-    let currentHeight = 0;
-
+    const normalized = [];
+    let fallbackY = 0;
     for (const line of lines) {
-      const index = Number.isFinite(line?.blockAttrs?.itemIndex)
-        ? line.blockAttrs.itemIndex
+      const lh = getLineHeightValue(line);
+      const relY = Number.isFinite(line?.relativeY) ? line.relativeY : fallbackY;
+      normalized.push({ line, relY, lh, bottom: relY + lh });
+      fallbackY = relY + lh;
+    }
+
+    const cloneAndNormalize = (entries) => {
+      if (!entries.length) {
+        return { lines: [], height: 0 };
+      }
+      const top = entries[0].relY;
+      const bottom = entries[entries.length - 1].bottom;
+      const sliceLines = entries.map((entry) => ({
+        ...entry.line,
+        runs: entry.line.runs ? entry.line.runs.map((run) => ({ ...run })) : entry.line.runs,
+        relativeY: entry.relY - top,
+      }));
+      return {
+        lines: sliceLines,
+        height: Math.max(0, bottom - top),
+      };
+    };
+
+    const groups = [];
+    let currentIndex = null;
+    let currentEntries = [];
+    for (const entry of normalized) {
+      const index = Number.isFinite(entry?.line?.blockAttrs?.itemIndex)
+        ? entry.line.blockAttrs.itemIndex
         : 0;
       if (currentIndex === null) {
         currentIndex = index;
       }
       if (index !== currentIndex) {
-        groups.push({ lines: currentLines, height: currentHeight });
-        currentLines = [];
-        currentHeight = 0;
+        groups.push({
+          entries: currentEntries,
+          top: currentEntries[0].relY,
+          bottom: currentEntries[currentEntries.length - 1].bottom,
+        });
+        currentEntries = [];
         currentIndex = index;
       }
-      const lh = getLineHeight(line);
-      currentLines.push(line);
-      currentHeight += lh;
+      currentEntries.push(entry);
     }
-    if (currentLines.length) {
-      groups.push({ lines: currentLines, height: currentHeight });
+    if (currentEntries.length) {
+      groups.push({
+        entries: currentEntries,
+        top: currentEntries[0].relY,
+        bottom: currentEntries[currentEntries.length - 1].bottom,
+      });
     }
 
-    let usedHeight = 0;
     let cutIndex = 0;
     for (; cutIndex < groups.length; cutIndex += 1) {
-      const nextHeight = usedHeight + groups[cutIndex].height;
+      const nextHeight = groups[cutIndex].bottom - groups[0].top;
       if (nextHeight > availableHeight) {
         break;
       }
-      usedHeight = nextHeight;
     }
 
-    // 没有任何完整列表项能放下，退化为按行拆分，保证布局推进。
     if (cutIndex === 0) {
-      const maxLines = Math.max(
-        1,
-        Math.floor(availableHeight / Math.max(1, lineHeight || getLineHeight(lines[0]) || 1))
-      );
-      if (maxLines >= lines.length) {
+      let visibleCount = 0;
+      for (; visibleCount < normalized.length; visibleCount += 1) {
+        const nextHeight = normalized[visibleCount].bottom - normalized[0].relY;
+        if (nextHeight > availableHeight) {
+          break;
+        }
+      }
+      visibleCount = Math.max(1, visibleCount);
+      if (visibleCount >= normalized.length) {
         return null;
       }
-      const visibleLines = lines.slice(0, maxLines);
-      const overflowLines = lines.slice(maxLines);
-      const firstLine = visibleLines[0];
-      const lastLine = visibleLines[visibleLines.length - 1];
+
+      const visibleEntries = normalized.slice(0, visibleCount);
+      const overflowEntries = normalized.slice(visibleCount);
+      const visible = cloneAndNormalize(visibleEntries);
+      const overflow = cloneAndNormalize(overflowEntries);
+      const firstLine = visible.lines[0];
+      const lastLine = visible.lines[visible.lines.length - 1];
       const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
       const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
       const visibleLength = Math.max(0, endOffset - startOffset);
-      const visibleHeight = visibleLines.reduce((sum, line) => sum + getLineHeight(line), 0);
-      const overflowHeight = overflowLines.reduce((sum, line) => sum + getLineHeight(line), 0);
       return {
-        lines: visibleLines,
+        lines: visible.lines,
         length: visibleLength,
-        height: visibleHeight,
+        height: visible.height,
         overflow: {
-          lines: overflowLines,
+          lines: overflow.lines,
           length: Math.max(0, length - visibleLength),
-          height: overflowHeight,
+          height: overflow.height,
         },
       };
     }
 
-    const visibleGroups = groups.slice(0, cutIndex);
-    const overflowGroups = groups.slice(cutIndex);
-    const visibleLines = visibleGroups.flatMap((group) => group.lines);
-    const overflowLines = overflowGroups.flatMap((group) => group.lines);
-    const visibleHeight = visibleGroups.reduce((sum, group) => sum + group.height, 0);
-    const overflowHeight = overflowGroups.reduce((sum, group) => sum + group.height, 0);
-    const firstLine = visibleLines[0];
-    const lastLine = visibleLines[visibleLines.length - 1];
+    const visibleEntries = groups.slice(0, cutIndex).flatMap((group) => group.entries);
+    const overflowEntries = groups.slice(cutIndex).flatMap((group) => group.entries);
+    const visible = cloneAndNormalize(visibleEntries);
+    const overflow = cloneAndNormalize(overflowEntries);
+    const firstLine = visible.lines[0];
+    const lastLine = visible.lines[visible.lines.length - 1];
     const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
     const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
     const visibleLength = Math.max(0, endOffset - startOffset);
 
     return {
-      lines: visibleLines,
+      lines: visible.lines,
       length: visibleLength,
-      height: visibleHeight,
-      overflow: overflowLines.length
+      height: visible.height,
+      overflow: overflow.lines.length
         ? {
-            lines: overflowLines,
+            lines: overflow.lines,
             length: Math.max(0, length - visibleLength),
-            height: overflowHeight,
+            height: overflow.height,
           }
         : undefined,
     };
   },
-
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, false);
   },
@@ -609,4 +713,5 @@ export const orderedListRenderer = {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
+
 

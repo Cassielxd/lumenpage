@@ -19,6 +19,13 @@
       "development": "./src/core/index.ts",
       "import": "./dist/core/index.js",
       "require": "./dist/core/index.js"
+    },
+    "./mapping": {
+      "types": "./src/mapping/offsetMapping.ts",
+      "default": "./dist/mapping/offsetMapping.js",
+      "development": "./src/mapping/offsetMapping.ts",
+      "import": "./dist/mapping/offsetMapping.js",
+      "require": "./dist/mapping/offsetMapping.js"
     }
   },
   "files": [

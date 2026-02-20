@@ -1,5 +1,4 @@
-﻿import { createEditorState } from "../core";
-import { canvasConfigKey, createCanvasConfigPlugin, type CanvasConfig } from "./canvasConfig";
+import { createEditorState } from "../core";
 
 type CanvasStateOptions = {
   schema?: any;
@@ -8,24 +7,25 @@ type CanvasStateOptions = {
   doc?: any;
   json?: any;
   plugins?: any[];
-  historyPlugin?: any;
-  ensureBlockIds?: boolean;
-  canvasConfig?: CanvasConfig;
 };
 
-const hasCanvasConfigPlugin = (plugins: any[] = []) =>
-  plugins.some((plugin) => plugin?.spec?.key === canvasConfigKey);
-
 export const createCanvasState = (options: CanvasStateOptions = {}) => {
-  const { plugins = [], canvasConfig, ...stateOptions } = options;
-  const nextPlugins = plugins.slice();
-
-  if (!hasCanvasConfigPlugin(nextPlugins)) {
-    nextPlugins.push(createCanvasConfigPlugin(canvasConfig || {}));
+  const legacyOptions = options as Record<string, any>;
+  if ("canvasConfig" in legacyOptions) {
+    throw new Error(
+      "canvasConfig option has been removed. Pass createCanvasConfigPlugin(canvasConfig) in plugins."
+    );
   }
+  if ("historyPlugin" in legacyOptions || "ensureBlockIds" in legacyOptions) {
+    throw new Error(
+      "historyPlugin/ensureBlockIds options have been removed. Pass explicit plugins instead."
+    );
+  }
+
+  const { plugins = [], ...stateOptions } = options;
 
   return createEditorState({
     ...stateOptions,
-    plugins: nextPlugins,
+    plugins,
   });
 };

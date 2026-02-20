@@ -26,7 +26,6 @@ import { createLayoutWorkerClient } from "./layoutWorkerClient";
 import { createSelectionMovement } from "./selectionMovement";
 import { coordsAtPos, posAtCoords } from "./posIndex";
 import { getCaretFromPoint } from "./caret";
-import { GapCursor } from "lumenpage-gapcursor";
 import { selectionToRects, activeBlockToRects } from "./render/selection";
 import { buildLayoutIndex, getFirstLineForBlockId, getLineAtOffset } from "./layoutIndex";
 
@@ -62,6 +61,11 @@ export class CanvasEditorView {
     this.state = editorState;
 
     const canvasConfig = getCanvasConfig(editorState) ?? {};
+    if ("collaboration" in canvasConfig || "remoteSelections" in canvasConfig) {
+      throw new Error(
+        "canvasConfig.collaboration/remoteSelections have been removed. Use createCollaborationPlugin() instead."
+      );
+    }
     const resolveCanvasConfig = (key, fallback = undefined) =>
       canvasConfig?.[key] ?? fallback;
 
@@ -72,6 +76,13 @@ export class CanvasEditorView {
     const tablePanel = resolveCanvasConfig("tablePaginationPanelEl") ?? null;
     if (tablePanel) {
       settings.tablePaginationPanelEl = tablePanel;
+    }
+    const paginationDebugBuilder =
+      resolveCanvasConfig("paginationDebugBuilder") ??
+      resolveCanvasConfig("tablePaginationDebugBuilder") ??
+      null;
+    if (typeof paginationDebugBuilder === "function") {
+      settings.paginationDebugBuilder = paginationDebugBuilder;
     }
     settings.debugLayout = debugConfig?.layout === true;
     if (settings.debugPerf) {
@@ -84,11 +95,11 @@ export class CanvasEditorView {
       applyDefaultStyles(dom, settings);
     }
 
-    const attributes =
+    const initialAttributes =
       typeof viewProps.attributes === "function"
         ? viewProps.attributes(editorState)
         : viewProps.attributes;
-    applyDefaultA11y(dom, attributes);
+    applyDefaultA11y(dom, initialAttributes);
 
     const schema = editorState.schema;
     const a11yStatus = createA11yStatusElement(dom.root);
@@ -151,7 +162,7 @@ export class CanvasEditorView {
     let pendingPreferredUpdate = true;
     let isComposing = false;
     this.composing = false;
-    const editorProps = viewProps;
+    let editorProps = viewProps;
     const commandConfig = resolveCanvasConfig("commands", {});
     const onChange = resolveCanvasConfig("onChange", null);
     const noopCommand = () => false;
@@ -212,6 +223,12 @@ export class CanvasEditorView {
     let selectedNodeViewKey = null;
     let lastNodeViewDecorations = null;
     let skipNextClickSelection = false;
+    const configuredNodeSelectionTypes = resolveCanvasConfig("nodeSelectionTypes", null);
+    const defaultNodeSelectionTypes = new Set(
+      Array.isArray(configuredNodeSelectionTypes) && configuredNodeSelectionTypes.length > 0
+        ? configuredNodeSelectionTypes
+        : ["image", "video", "horizontal_rule"]
+    );
 
     const getNodeViewKey = (node, pos) => {
       const id = node?.attrs?.id;
@@ -317,6 +334,28 @@ export class CanvasEditorView {
       return textOffsetToDocPos(this.state.doc, offset);
     };
 
+    const isInSpecialStructureAtPos =
+      resolveCanvasConfig("isInSpecialStructureAtPos") ??
+      ((state, pos) => isInNodeTypeAtPos(state, pos, "table"));
+    const shouldAutoAdvanceAfterEnter = resolveCanvasConfig("shouldAutoAdvanceAfterEnter", null);
+
+    const isInNodeTypeAtPos = (state, pos, nodeTypeName) => {
+      if (!state?.doc || !Number.isFinite(pos) || !nodeTypeName) {
+        return false;
+      }
+      try {
+        const $pos = state.doc.resolve(pos);
+        for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+          if ($pos.node(depth)?.type?.name === nodeTypeName) {
+            return true;
+          }
+        }
+      } catch (_error) {
+        return false;
+      }
+      return false;
+    };
+
     const getNodeViewAtCoords = (coords) => {
       if (!layoutIndex) {
         return null;
@@ -350,6 +389,7 @@ export class CanvasEditorView {
     const editorPropHandlers = createEditorPropHandlers({
       view: this,
       editorProps,
+      getEditorProps: () => editorProps,
       getState: () => this.state,
       domRoot: dom.root,
     });
@@ -357,6 +397,7 @@ export class CanvasEditorView {
     const {
       getEditorPropsList,
       dispatchEditorProp,
+      queryEditorProp,
       refreshDomEventHandlers,
       clearDomEventHandlers,
       updatePluginViews,
@@ -364,16 +405,52 @@ export class CanvasEditorView {
       init: initPluginViews,
     } = editorPropHandlers;
 
-    let dragHandlers = null;
+    const resolveAttributes = (state) => {
+      const attrs = {};
+      const mergedAttrs = attrs as Record<string, any>;
+      const propsList = getEditorPropsList?.(state) ?? [];
+      for (const props of propsList) {
+        let value = props?.attributes;
+        if (typeof value === "function") {
+          value = value(state);
+        }
+        if (!value || typeof value !== "object") {
+          continue;
+        }
+        if (typeof mergedAttrs.class === "string" && typeof value.class === "string") {
+          mergedAttrs.class = `${mergedAttrs.class} ${value.class}`.trim();
+        }
+        Object.assign(mergedAttrs, value);
+      }
+      return mergedAttrs;
+    };
 
-    const collaborationConfig = resolveCanvasConfig("collaboration") ?? null;
-    const remoteSelections = resolveCanvasConfig("remoteSelections") ?? null;
+    const resolveEditable = (state) => {
+      const propsList = getEditorPropsList?.(state) ?? [];
+      for (const props of propsList) {
+        let value = props?.editable;
+        if (typeof value === "function") {
+          value = value(state);
+        }
+        if (value != null) {
+          return value !== false;
+        }
+      }
+      return true;
+    };
+
+    const applyViewAttributes = (state) => {
+      const attrs = resolveAttributes(state);
+      applyDefaultA11y(dom, attrs);
+      const editable = resolveEditable(state);
+      dom.input.readOnly = !editable;
+      dom.root.setAttribute("aria-readonly", editable ? "false" : "true");
+    };
+
+    let dragHandlers = null;
 
     const { getDecorations } = createDecorationResolver({
       viewProps,
-      collaborationConfig,
-      remoteSelections,
-      settings,
       getEditorPropsList,
       getDropDecoration: () => dragHandlers?.getDropDecoration?.() ?? null,
       getState: () => this.state,
@@ -461,8 +538,8 @@ export class CanvasEditorView {
 
     // 缁熶竴娲惧彂 Transaction 鐨勫叆鍙ｃ€?
     const dispatchTransaction = (tr) => {
-      if (viewProps?.dispatchTransaction) {
-        viewProps.dispatchTransaction(tr);
+      if (editorProps?.dispatchTransaction) {
+        editorProps.dispatchTransaction(tr);
         return;
       }
       const prevState = this.state;
@@ -525,25 +602,52 @@ export class CanvasEditorView {
       if (!hit || !hit.line || event?.shiftKey) {
         return false;
       }
-      const line = hit.line;
-      const selectableTypes = new Set(["image", "video", "horizontal_rule"]);
-      if (!selectableTypes.has(line.blockType)) {
+      const target = resolveNodeSelectionTarget(hit, event);
+      if (!target) {
         return false;
       }
-      const findPosByBlockId = (blockId) => {
-        if (!blockId || !this.state?.doc) {
-          return null;
+      const tr = this.state.tr.setSelection(NodeSelection.create(this.state.doc, target.pos));
+      dispatchTransaction(tr);
+      skipNextClickSelection = true;
+      return true;
+    };
+
+    const createSelectionBetweenFromProps = (anchorPos, headPos) => {
+      const $anchor = this.state.doc.resolve(anchorPos);
+      const $head = this.state.doc.resolve(headPos);
+      return queryEditorProp("createSelectionBetween", $anchor, $head);
+    };
+
+    const createSelectionBetween = (anchorPos, headPos) => {
+      const fromProps = createSelectionBetweenFromProps(anchorPos, headPos);
+      if (fromProps) {
+        return fromProps;
+      }
+      const $anchor = this.state.doc.resolve(anchorPos);
+      const $head = this.state.doc.resolve(headPos);
+      return TextSelection.between($anchor, $head);
+    };
+
+    const findPosByBlockId = (blockId) => {
+      if (!blockId || !this.state?.doc) {
+        return null;
+      }
+      let found = null;
+      this.state.doc.descendants((node, pos) => {
+        if (node?.attrs?.id === blockId) {
+          found = pos;
+          return false;
         }
-        let found = null;
-        this.state.doc.descendants((node, pos) => {
-          if (node?.attrs?.id === blockId) {
-            found = pos;
-            return false;
-          }
-          return true;
-        });
-        return found;
-      };
+        return true;
+      });
+      return found;
+    };
+
+    const resolveNodeSelectionTarget = (hit, event = null) => {
+      if (!hit?.line) {
+        return null;
+      }
+      const line = hit.line;
       let pos = null;
       const blockId = line.blockId;
       if (blockId && nodeViewsByBlockId.has(blockId)) {
@@ -557,8 +661,9 @@ export class CanvasEditorView {
         pos = textOffsetToDocPos(this.state.doc, blockStart);
       }
       if (!Number.isFinite(pos)) {
-        return false;
+        return null;
       }
+
       const $pos = this.state.doc.resolve(pos);
       let node = $pos.nodeAfter;
       let selectPos = pos;
@@ -576,23 +681,31 @@ export class CanvasEditorView {
         }
       }
       if (!node || !NodeSelection.isSelectable(node)) {
-        return false;
+        return null;
       }
-      const tr = this.state.tr.setSelection(NodeSelection.create(this.state.doc, selectPos));
-      dispatchTransaction(tr);
-      skipNextClickSelection = true;
-      return true;
+
+      const decision = queryEditorProp("isNodeSelectionTarget", {
+        node,
+        pos: selectPos,
+        hit,
+        event,
+      });
+      if (decision === false) {
+        return null;
+      }
+      if (decision !== true && !defaultNodeSelectionTypes.has(node.type?.name)) {
+        return null;
+      }
+
+      return { node, pos: selectPos };
     };
 
     const setGapCursorAtCoords = (x, y, hit, event) => {
       if (!layout || event?.shiftKey) {
         return false;
       }
-      if (hit?.line?.blockType) {
-        const type = hit.line.blockType;
-        if (type === "image" || type === "video" || type === "horizontal_rule") {
-          return false;
-        }
+      if (resolveNodeSelectionTarget(hit, event)) {
+        return false;
       }
       const pageSpan = layout.pageHeight + layout.pageGap;
       const absoluteY = y + dom.scrollArea.scrollTop;
@@ -641,11 +754,11 @@ export class CanvasEditorView {
       if (!Number.isFinite(pos)) {
         return false;
       }
-      const $pos = this.state.doc.resolve(pos);
-      if (!GapCursor.valid($pos)) {
+      const gapSelection = createSelectionBetweenFromProps(pos, pos);
+      if (!gapSelection) {
         return false;
       }
-      const tr = this.state.tr.setSelection(new GapCursor($pos));
+      const tr = this.state.tr.setSelection(gapSelection);
       dispatchTransaction(tr);
       skipNextClickSelection = true;
       return true;
@@ -670,6 +783,11 @@ export class CanvasEditorView {
         textOffsetToDocPos,
         createSelectionStateAtOffset,
         logDelete,
+        isInSpecialStructureAtPos,
+        shouldAutoAdvanceAfterEnter:
+          typeof shouldAutoAdvanceAfterEnter === "function"
+            ? shouldAutoAdvanceAfterEnter
+            : undefined,
       });
 
     // HTML 瑙ｆ瀽閰嶇疆锛堢矘璐?瀵煎叆锛夈€?
@@ -726,18 +844,14 @@ export class CanvasEditorView {
         if (!layout || !Number.isFinite(hitOffset)) {
           return false;
         }
-        if (hit?.line?.blockType) {
-          const type = hit.line.blockType;
-          if (type === "image" || type === "video" || type === "horizontal_rule") {
-            return false;
-          }
+        if (resolveNodeSelectionTarget(hit)) {
+          return false;
         }
         const pos = textOffsetToDocPos(this.state.doc, hitOffset);
         if (!Number.isFinite(pos)) {
           return false;
         }
-        const $pos = this.state.doc.resolve(pos);
-        return GapCursor.valid($pos);
+        return !!createSelectionBetweenFromProps(pos, pos);
       },
       getSelectionAnchorOffset: () =>
         getSelectionAnchorOffset(this.state, docPosToTextOffset, clampOffset),
@@ -760,6 +874,9 @@ export class CanvasEditorView {
       handleCut: (event) => dispatchEditorProp("handleCut", event),
     };
 
+    const transformCopied = (slice) => queryEditorProp("transformCopied", slice) ?? slice;
+    const transformPasted = (slice) => queryEditorProp("transformPasted", slice) ?? slice;
+
     const supportsBeforeInput = "onbeforeinput" in dom.input;
 
     const {
@@ -776,7 +893,6 @@ export class CanvasEditorView {
       dispatchTransaction,
       runCommand,
       basicCommands,
-      setBlockAlign,
       insertText,
       insertTextWithBreaks,
       deleteText,
@@ -796,6 +912,7 @@ export class CanvasEditorView {
       },
       inputEl: dom.input,
       parseHtmlToSlice,
+      transformPasted,
       setPendingPreferredUpdate: (value) => {
         pendingPreferredUpdate = value;
       },
@@ -813,6 +930,7 @@ export class CanvasEditorView {
         pendingPreferredUpdate = value;
       },
       editorHandlers,
+      transformCopied,
     });
 
     const detachInputBridge = attachInputBridge(dom.input, {
@@ -1004,6 +1122,18 @@ export class CanvasEditorView {
 
       const entry = resolveNodeViewEntry(nodeView);
       if (entry?.node && NodeSelection.isSelectable(entry.node)) {
+        const decision = queryEditorProp("isNodeSelectionTarget", {
+          node: entry.node,
+          pos: entry.pos,
+          hit: null,
+          event,
+        });
+        if (
+          decision !== true &&
+          (decision === false || !defaultNodeSelectionTypes.has(entry.node.type?.name))
+        ) {
+          return false;
+        }
         const tr = this.state.tr.setSelection(
           NodeSelection.create(this.state.doc, entry.pos)
         );
@@ -1084,6 +1214,7 @@ export class CanvasEditorView {
     window.addEventListener("resize", onResize);
 
     initPluginViews();
+    applyViewAttributes(this.state);
 
     // 鍒濆甯冨眬涓庢覆鏌撱€?
     updateLayout();
@@ -1103,6 +1234,10 @@ export class CanvasEditorView {
       getLayout: () => layout,
       getLayoutIndex: () => layoutIndex,
       getRafId: () => rafId,
+      getEditorProps: () => editorProps,
+      setEditorProps: (value) => {
+        editorProps = value ?? {};
+      },
       setPendingChangeSummary: (value) => {
         pendingChangeSummary = value;
       },
@@ -1139,6 +1274,7 @@ export class CanvasEditorView {
       handleDrop,
       handleDragEnd,
       refreshDomEventHandlers,
+      applyViewAttributes,
     };
   }
 
@@ -1154,6 +1290,23 @@ export class CanvasEditorView {
     }
     this._internals.syncNodeViews?.();
     this._internals.syncAfterStateChange();
+    this._internals.updateA11yStatus?.();
+    this._internals.applyViewAttributes?.(state);
+  }
+
+  setProps(props: Record<string, any> = {}) {
+    const prevProps = this._internals.getEditorProps?.() ?? {};
+    const nextProps = { ...prevProps, ...(props || {}) };
+    this._internals.setEditorProps?.(nextProps);
+
+    if (Object.prototype.hasOwnProperty.call(props, "state") && props.state) {
+      this.updateState(props.state);
+    }
+
+    this._internals.refreshDomEventHandlers?.(this.state);
+    this._internals.applyViewAttributes?.(this.state);
+    this._internals.syncNodeViews?.();
+    this._internals.scheduleRender?.();
     this._internals.updateA11yStatus?.();
   }
 
@@ -1226,8 +1379,16 @@ export class CanvasEditorView {
     if (!layout) {
       return null;
     }
-    const x = coords.left ?? coords.x;
-    const y = coords.top ?? coords.y;
+    let x = null;
+    let y = null;
+    if (Number.isFinite(coords?.clientX) && Number.isFinite(coords?.clientY)) {
+      const rect = this._internals.dom.scrollArea.getBoundingClientRect();
+      x = coords.clientX - rect.left;
+      y = coords.clientY - rect.top;
+    } else {
+      x = coords.left ?? coords.x;
+      y = coords.top ?? coords.y;
+    }
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
       return null;
     }
@@ -1243,7 +1404,29 @@ export class CanvasEditorView {
     if (offset == null) {
       return null;
     }
-    return textOffsetToDocPos(this.state.doc, offset);
+    const pos = textOffsetToDocPos(this.state.doc, offset);
+    if (
+      Number.isFinite(coords?.clientX) &&
+      Number.isFinite(coords?.clientY)
+    ) {
+      let inside = -1;
+      try {
+        const $pos = this.state.doc.resolve(pos);
+        const after = $pos.nodeAfter;
+        if (after && NodeSelection.isSelectable(after)) {
+          inside = pos;
+        } else {
+          const before = $pos.nodeBefore;
+          if (before && NodeSelection.isSelectable(before)) {
+            inside = pos - before.nodeSize;
+          }
+        }
+      } catch (_error) {
+        inside = -1;
+      }
+      return { pos, inside };
+    }
+    return pos;
   }
 
   // 灏嗘寚瀹氫綅缃粴鍔ㄥ埌鍙鍖哄煙銆?
@@ -1297,6 +1480,10 @@ export class CanvasEditorView {
   // 鑱氱劍杈撳叆灞傘€?
   focus() {
     this._internals.dom.input.focus();
+  }
+
+  get editable() {
+    return this._internals?.dom?.input?.readOnly !== true;
   }
 
   // 绉婚櫎浜嬩欢鐩戝惉涓?DOM銆?

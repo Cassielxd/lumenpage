@@ -1,10 +1,24 @@
-/*
- * 文件说明：表格节点渲染配置。
- * 主要职责：计算单元格布局、行高与单元格文本 runs。
- */
+﻿/*
+ * 鏂囦欢璇存槑锛氳〃鏍艰妭鐐规覆鏌撻厤缃€? * 涓昏鑱岃矗锛氳绠楀崟鍏冩牸甯冨眬銆佽楂樹笌鍗曞厓鏍兼枃鏈?runs銆? */
 
 import { type NodeSpec } from "lumenpage-model";
 import { docToRuns, textblockToRuns, breakLines } from "lumenpage-view-canvas";
+export {
+  addTableRowAfter,
+  addTableRowBefore,
+  deleteTableRow,
+  addTableColumnAfter,
+  addTableColumnBefore,
+  deleteTableColumn,
+  goToNextTableCell,
+  goToPreviousTableCell,
+  mergeTableCellRight,
+  splitTableCell,
+  selectCurrentAndNextTableCell,
+  selectCurrentAndBelowTableCell,
+  mergeSelectedTableCells,
+} from "./commands";
+export { CellSelection } from "./cellSelection";
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -87,6 +101,178 @@ export const serializeTableToText = (tableNode) => {
 
 export const getTableTextLength = (tableNode) => serializeTableToText(tableNode).length;
 
+const serializeCellToText = (cell, helpers) => {
+  if (!cell || cell.childCount === 0) {
+    return "";
+  }
+  const parts = [];
+  for (let i = 0; i < cell.childCount; i += 1) {
+    parts.push(helpers?.serializeNodeToText ? helpers.serializeNodeToText(cell.child(i)) : "");
+    if (i < cell.childCount - 1) {
+      parts.push("\n");
+    }
+  }
+  return parts.join("");
+};
+
+const getCellTextLength = (cell, helpers) => {
+  if (!cell || cell.childCount === 0) {
+    return 0;
+  }
+  let length = 0;
+  for (let i = 0; i < cell.childCount; i += 1) {
+    if (helpers?.getNodeTextLength) {
+      length += helpers.getNodeTextLength(cell.child(i));
+    } else {
+      length += cell.child(i).textContent.length;
+    }
+    if (i < cell.childCount - 1) {
+      length += 1;
+    }
+  }
+  return length;
+};
+
+const mapOffsetInCell = (cell, cellPos, offset, helpers) => {
+  let remaining = offset;
+  let innerPos = cellPos + 1;
+  for (let i = 0; i < cell.childCount; i += 1) {
+    const block = cell.child(i);
+    const blockPos = innerPos;
+    const textLength = helpers?.getNodeTextLength
+      ? helpers.getNodeTextLength(block)
+      : block.textContent.length;
+    if (remaining <= textLength) {
+      return helpers?.mapOffsetInNode
+        ? helpers.mapOffsetInNode(block, blockPos, remaining)
+        : blockPos + Math.max(0, remaining);
+    }
+    remaining -= textLength;
+    if (i < cell.childCount - 1) {
+      if (remaining === 0) {
+        return blockPos + block.nodeSize - 1;
+      }
+      remaining -= 1;
+    }
+    innerPos += block.nodeSize;
+  }
+  return cellPos + cell.nodeSize - 1;
+};
+
+const mapPosInCell = (cell, cellPos, pos, helpers) => {
+  let offset = 0;
+  let innerPos = cellPos + 1;
+  for (let i = 0; i < cell.childCount; i += 1) {
+    const block = cell.child(i);
+    const blockPos = innerPos;
+    if (pos <= blockPos) {
+      return offset;
+    }
+    if (pos < blockPos + block.nodeSize) {
+      return helpers?.mapPosInNode ? offset + helpers.mapPosInNode(block, blockPos, pos) : offset;
+    }
+    offset += helpers?.getNodeTextLength ? helpers.getNodeTextLength(block) : block.textContent.length;
+    if (i < cell.childCount - 1) {
+      offset += 1;
+    }
+    innerPos += block.nodeSize;
+  }
+  return offset;
+};
+
+const tableOffsetMapping = {
+  toText: (tableNode, helpers) => {
+    const rows = [];
+    tableNode.forEach((row) => {
+      const cells = [];
+      row.forEach((cell) => {
+        if (helpers?.serializeNodeToText) {
+          cells.push(serializeCellToText(cell, helpers));
+        } else {
+          cells.push(cell.textBetween(0, cell.content.size, "\n"));
+        }
+      });
+      rows.push(cells.join("\t"));
+    });
+    return rows.join("\n");
+  },
+  getTextLength: (tableNode, helpers) => {
+    let length = 0;
+    tableNode.forEach((row, _rowPos, rowIndex) => {
+      row.forEach((cell, _cellPos, cellIndex) => {
+        length += helpers?.getNodeTextLength ? getCellTextLength(cell, helpers) : cell.textBetween(0, cell.content.size, "\n").length;
+        if (cellIndex < row.childCount - 1) {
+          length += 1;
+        }
+      });
+      if (rowIndex < tableNode.childCount - 1) {
+        length += 1;
+      }
+    });
+    return length;
+  },
+  mapOffsetToPos: (table, tablePos, offset, helpers) => {
+    let remaining = offset;
+    let rowPos = tablePos + 1;
+    for (let r = 0; r < table.childCount; r += 1) {
+      const row = table.child(r);
+      const rowStart = rowPos + 1;
+      let cellPos = rowStart;
+      for (let c = 0; c < row.childCount; c += 1) {
+        const cell = row.child(c);
+        const cellLength = getCellTextLength(cell, helpers);
+        if (remaining <= cellLength) {
+          return mapOffsetInCell(cell, cellPos, remaining, helpers);
+        }
+        remaining -= cellLength;
+        if (c < row.childCount - 1) {
+          if (remaining === 0) {
+            return cellPos + cell.nodeSize - 1;
+          }
+          remaining -= 1;
+        }
+        cellPos += cell.nodeSize;
+      }
+      if (r < table.childCount - 1) {
+        if (remaining === 0) {
+          return rowPos + row.nodeSize - 1;
+        }
+        remaining -= 1;
+      }
+      rowPos += row.nodeSize;
+    }
+    return tablePos + table.nodeSize - 1;
+  },
+  mapPosToOffset: (table, tablePos, pos, helpers) => {
+    let offset = 0;
+    let rowPos = tablePos + 1;
+    for (let r = 0; r < table.childCount; r += 1) {
+      const row = table.child(r);
+      const rowStart = rowPos + 1;
+      let cellPos = rowStart;
+      for (let c = 0; c < row.childCount; c += 1) {
+        const cell = row.child(c);
+        if (pos <= cellPos) {
+          return offset;
+        }
+        if (pos < cellPos + cell.nodeSize) {
+          return offset + mapPosInCell(cell, cellPos, pos, helpers);
+        }
+        offset += getCellTextLength(cell, helpers);
+        if (c < row.childCount - 1) {
+          offset += 1;
+        }
+        cellPos += cell.nodeSize;
+      }
+      if (r < table.childCount - 1) {
+        offset += 1;
+      }
+      rowPos += row.nodeSize;
+    }
+    return offset;
+  },
+};
+
 export const tableNodeSpecs: Record<string, NodeSpec> = {
   table: {
     group: "block",
@@ -96,6 +282,7 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
     attrs: {
       id: { default: null },
     },
+    offsetMapping: tableOffsetMapping,
 
     parseDOM: [
       {
@@ -127,12 +314,41 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
   },
 
   table_cell: {
+    attrs: {
+      colspan: { default: 1 },
+      rowspan: { default: 1 },
+    },
+
     content: "block+",
 
-    parseDOM: [{ tag: "td" }, { tag: "th" }],
+    parseDOM: [
+      {
+        tag: "td",
+        getAttrs: (dom) => ({
+          colspan: Math.max(1, Number.parseInt(dom.getAttribute("colspan") || "1", 10) || 1),
+          rowspan: Math.max(1, Number.parseInt(dom.getAttribute("rowspan") || "1", 10) || 1),
+        }),
+      },
+      {
+        tag: "th",
+        getAttrs: (dom) => ({
+          colspan: Math.max(1, Number.parseInt(dom.getAttribute("colspan") || "1", 10) || 1),
+          rowspan: Math.max(1, Number.parseInt(dom.getAttribute("rowspan") || "1", 10) || 1),
+        }),
+      },
+    ],
 
-    toDOM() {
-      return ["td", 0];
+    toDOM(node) {
+      const attrs: Record<string, number> = {};
+      const colspan = Number.isFinite(node.attrs?.colspan) ? node.attrs.colspan : 1;
+      const rowspan = Number.isFinite(node.attrs?.rowspan) ? node.attrs.rowspan : 1;
+      if (colspan > 1) {
+        attrs.colspan = colspan;
+      }
+      if (rowspan > 1) {
+        attrs.rowspan = rowspan;
+      }
+      return ["td", attrs, 0];
     },
   },
 };
@@ -143,7 +359,12 @@ const getTableShape = (node) => {
   let cols = 0;
 
   node.forEach((row) => {
-    cols = Math.max(cols, row.childCount);
+    let logicalCols = 0;
+    row.forEach((cell) => {
+      const span = Number.isFinite(cell?.attrs?.colspan) ? cell.attrs.colspan : 1;
+      logicalCols += Math.max(1, span);
+    });
+    cols = Math.max(cols, logicalCols);
   });
 
   return {
@@ -423,7 +644,7 @@ const layoutCell = (cell, settings, registry, maxWidth, cellBaseX) => {
   const cellSettings = {
     ...settings,
     pageWidth: maxWidth,
-    margin: { ...settings.margin, left: 0, right: 0 },
+    margin: { ...settings.margin, left: 0, right: 0, top: 0, bottom: 0 },
   };
   const blockSpacing = Number.isFinite(settings.blockSpacing) ? settings.blockSpacing : 0;
 
@@ -442,7 +663,7 @@ const layoutCell = (cell, settings, registry, maxWidth, cellBaseX) => {
 export const tableRenderer = {
   allowSplit: true,
 
-  /* 񲼾֣㵥Ԫıиߣɱб */
+  /* 癫季郑愕ピ毙高Ｉ毙?*/
 
   layoutBlock({ node, settings, registry }) {
     const { rows, cols } = getTableShape(node);
@@ -459,38 +680,58 @@ export const tableRenderer = {
 
     const maxCellWidth = Math.max(0, colWidth - padding * 2);
 
-    // 每行最终高度、行内最大行数、内容实际高度：用于分页与行内拆分判断
+    // Row metrics used by pagination/splitting.
     const rowHeights = [];
     const rowMaxLines = [];
     const rowContentHeights = [];
 
-    // 暂存每个 cell 的布局结果（行内拆分会用到）
+    // Cache per-cell layouts for row split operations.
     const cellLayouts = [];
+    const spanCarry: number[] = [];
 
     let tableOffset = 0;
 
     for (let r = 0; r < rows; r += 1) {
       const row = node.child(r);
+      for (let i = 0; i < spanCarry.length; i += 1) {
+        if (spanCarry[i] > 0) {
+          spanCarry[i] -= 1;
+        }
+      }
 
       const rowCells = [];
 
       let maxContentHeight = 0;
 
-      for (let c = 0; c < cols; c += 1) {
-        const cell = c < row.childCount ? row.child(c) : null;
-
-        const cellBaseX = settings.margin.left + c * colWidth + padding;
-        const cellLayout = layoutCell(cell, settings, registry, maxCellWidth, cellBaseX);
+      let logicalCol = 0;
+      for (let c = 0; c < row.childCount; c += 1) {
+        while (spanCarry[logicalCol] > 0) {
+          logicalCol += 1;
+        }
+        const cell = row.child(c);
+        const colspan = Number.isFinite(cell?.attrs?.colspan) ? Math.max(1, cell.attrs.colspan) : 1;
+        const rowspan = Number.isFinite(cell?.attrs?.rowspan) ? Math.max(1, cell.attrs.rowspan) : 1;
+        if (rowspan > 1) {
+          for (let dc = 0; dc < colspan; dc += 1) {
+            spanCarry[logicalCol + dc] = Math.max(spanCarry[logicalCol + dc] || 0, rowspan);
+          }
+        }
+        const cellContentWidth = Math.max(0, colWidth * colspan - padding * 2);
+        const cellBaseX = settings.margin.left + logicalCol * colWidth + padding;
+        const cellLayout = layoutCell(cell, settings, registry, cellContentWidth, cellBaseX);
 
         const cellLength = cellLayout.length || 0;
 
-        // 行高度由本行内最高的 cell 内容决定
+        // 琛岄珮搴︾敱鏈鍐呮渶楂樼殑 cell 鍐呭鍐冲畾
         maxContentHeight = Math.max(maxContentHeight, cellLayout.height || 0);
 
         rowCells.push({
           rowIndex: r,
 
           colIndex: c,
+          colStart: logicalCol,
+          colspan,
+          rowspan,
 
           startOffset: tableOffset,
 
@@ -501,13 +742,13 @@ export const tableRenderer = {
 
         tableOffset += cellLength;
 
-        if (c < cols - 1) {
+        if (c < row.childCount - 1) {
           tableOffset += 1;
         }
+        logicalCol += colspan;
       }
 
-      // 记录行内容高度（不含上下 padding）
-      rowContentHeights[r] = maxContentHeight;
+      // 璁板綍琛屽唴瀹归珮搴︼紙涓嶅惈涓婁笅 padding锛?      rowContentHeights[r] = maxContentHeight;
 
       const rowContentHeight = maxContentHeight + paddingY * 2;
       rowHeights[r] = Math.max(rowContentHeight, minRowHeight);
@@ -520,12 +761,40 @@ export const tableRenderer = {
       }
     }
 
-    // 生成可绘制的“行文本/元素”列表（带上 cell 对应位置）
+    // Build renderable lines with mapped cell positions.
     const lines = [];
 
     let tableTop = 0;
 
     const tableHeight = rowHeights.reduce((sum, h) => sum + h, 0);
+    const rowTops = [];
+    {
+      let cursor = 0;
+      for (let r = 0; r < rows; r += 1) {
+        rowTops[r] = cursor;
+        cursor += rowHeights[r] || 0;
+      }
+    }
+    const tableCells = [];
+    for (let r = 0; r < rows; r += 1) {
+      const rowCells = cellLayouts[r] || [];
+      for (const cell of rowCells) {
+        const spanRows = Math.max(1, Number.isFinite(cell.rowspan) ? cell.rowspan : 1);
+        let cellHeight = 0;
+        for (let rr = 0; rr < spanRows; rr += 1) {
+          const rowHeight = rowHeights[r + rr];
+          if (Number.isFinite(rowHeight)) {
+            cellHeight += rowHeight;
+          }
+        }
+        tableCells.push({
+          x: (cell.colStart ?? cell.colIndex) * colWidth,
+          y: rowTops[r] || 0,
+          width: colWidth * Math.max(1, Number.isFinite(cell.colspan) ? cell.colspan : 1),
+          height: cellHeight,
+        });
+      }
+    }
 
     for (let r = 0; r < rows; r += 1) {
       const rowCells = cellLayouts[r];
@@ -542,11 +811,12 @@ export const tableRenderer = {
         settings.pageHeight - settings.margin.top - settings.margin.bottom
       );
 
-      // 当单行超过整页高度时，顶端对齐（避免居中导致切分位置不稳定）
+      // 褰撳崟琛岃秴杩囨暣椤甸珮搴︽椂锛岄《绔榻愶紙閬垮厤灞呬腑瀵艰嚧鍒囧垎浣嶇疆涓嶇ǔ瀹氾級
       const shouldTopAlign =
         fullAvailableHeight > 0 && rowHeights[r] > fullAvailableHeight;
 
-      const rowInset = shouldTopAlign ? paddingY : paddingY + rowExtra / 2;
+      // Keep cell content top-aligned for stable baseline/caret behavior.
+      const rowInset = paddingY;
 
       for (const cell of rowCells) {
         const cellLines = cell.layout.lines?.length
@@ -566,7 +836,8 @@ export const tableRenderer = {
               }))
             : cellLine.runs;
 
-          const cellBaseX = settings.margin.left + cell.colIndex * colWidth + padding;
+          const cellBaseX = settings.margin.left + (cell.colStart ?? cell.colIndex) * colWidth + padding;
+          const cellWidthWithSpan = Math.max(0, colWidth * (cell.colspan ?? 1) - padding * 2);
           const line = {
             ...cellLine,
             runs: adjustedRuns,
@@ -582,16 +853,21 @@ export const tableRenderer = {
               rows,
               cols,
               rowIndex: r,
-              colIndex: cell.colIndex,
+              colIndex: cell.colStart ?? cell.colIndex,
+              colspan: cell.colspan ?? 1,
               colWidth,
               rowHeights,
               tableWidth,
               padding,
               paddingY,
+              sliceGroup: "table",
+              sliceFromPrev: false,
+              sliceHasNext: false,
+              sliceRowSplit: false,
               tableSliceFromPrev: false,
               tableSliceHasNext: false,
             },
-            cellWidth: maxCellWidth,
+            cellWidth: cellWidthWithSpan,
             cellPadding: padding,
             cellPaddingY: paddingY,
           };
@@ -601,6 +877,7 @@ export const tableRenderer = {
               rows,
               cols,
               rowHeights,
+              cells: tableCells,
               colWidth,
               tableWidth,
               tableHeight,
@@ -634,6 +911,10 @@ export const tableRenderer = {
         tableWidth,
         padding,
         paddingY,
+        sliceGroup: "table",
+        sliceFromPrev: false,
+        sliceHasNext: false,
+        sliceRowSplit: false,
         tableSliceFromPrev: false,
         tableSliceHasNext: false,
       },
@@ -647,7 +928,7 @@ export const tableRenderer = {
 
     const firstAttrs = lines[0].blockAttrs || {};
 
-    // 从 blockAttrs / tableMeta 中恢复完整行高（用于切片）
+    // Recover full row heights for slicing.
     let fullRowHeights = Array.isArray(firstAttrs.rowHeights) ? firstAttrs.rowHeights : [];
     if (fullRowHeights.length === 0) {
       const fallbackLine = lines.find((line) => Array.isArray(line?.blockAttrs?.rowHeights));
@@ -677,7 +958,7 @@ export const tableRenderer = {
     const paddingY =
       Number.isFinite(firstAttrs.paddingY) ? firstAttrs.paddingY : blockAttrs?.paddingY ?? 0;
 
-    // 当前切片在原表格里的行偏移
+    // Row offset of current slice within original table.
     const rowOffset = lines.reduce((minRow, line) => {
       const rowIndex = line.blockAttrs?.rowIndex;
 
@@ -695,7 +976,7 @@ export const tableRenderer = {
 
     const baseOffsetY = resolvedRowOffset > 0 ? sumHeights(fullRowHeights, resolvedRowOffset) : 0;
 
-    // 将原行索引、相对 Y 偏移等映射到“当前切片”的坐标系
+    // Remap source lines into current slice coordinate space.
     const remapLines = (
       sourceLines,
       rowIndexOffset,
@@ -727,10 +1008,12 @@ export const tableRenderer = {
         attrs.padding = padding;
 
         attrs.paddingY = paddingY;
-        // 供分页逻辑与渲染阶段识别当前是否为跨页切片
+        attrs.sliceGroup = "table";
+        attrs.sliceFromPrev = !!sliceFromPrev;
+        attrs.sliceHasNext = !!sliceHasNext;
+        attrs.sliceRowSplit = !!rowSplitFlag;
         attrs.tableSliceFromPrev = !!sliceFromPrev;
         attrs.tableSliceHasNext = !!sliceHasNext;
-        // 供后续分页继续识别“行内拆分”
         attrs.tableRowSplit = !!rowSplitFlag;
 
         lineCopy.blockAttrs = attrs;
@@ -742,7 +1025,7 @@ export const tableRenderer = {
         return lineCopy;
       });
 
-    // 为当前切片首行写入 tableMeta（用于渲染边框、调试面板）
+    // 涓哄綋鍓嶅垏鐗囬琛屽啓鍏?tableMeta锛堢敤浜庢覆鏌撹竟妗嗐€佽皟璇曢潰鏉匡級
     const applyTableMeta = (
       sliceLines,
       rowHeights,
@@ -782,7 +1065,7 @@ export const tableRenderer = {
       };
     };
 
-    // 计算本页能完整容纳的行数
+    // 璁＄畻鏈〉鑳藉畬鏁村绾崇殑琛屾暟
     let visibleRowCount = 0;
     let accumulatedHeight = 0;
 
@@ -798,12 +1081,18 @@ export const tableRenderer = {
       visibleRowCount += 1;
     }
 
-    // 继承上一页切片状态，确保后续分页不中断
+    // 缁ф壙涓婁竴椤靛垏鐗囩姸鎬侊紝纭繚鍚庣画鍒嗛〉涓嶄腑鏂?
     const inheritedSliceFromPrev = lines.some(
-      (line) => line?.blockAttrs?.tableSliceFromPrev || line?.tableMeta?.continuedFromPrev
+      (line) =>
+        line?.blockAttrs?.sliceFromPrev ||
+        line?.blockAttrs?.tableSliceFromPrev ||
+        line?.tableMeta?.continuedFromPrev
     );
     const inheritedRowSplit = lines.some(
-      (line) => line?.blockAttrs?.tableRowSplit || line?.tableMeta?.rowSplit
+      (line) =>
+        line?.blockAttrs?.sliceRowSplit ||
+        line?.blockAttrs?.tableRowSplit ||
+        line?.tableMeta?.rowSplit
     );
 
     if (visibleRowCount === 0) {
@@ -811,7 +1100,7 @@ export const tableRenderer = {
       const fullAvailableHeight = settings
         ? Math.max(0, settings.pageHeight - settings.margin.top - settings.margin.bottom)
         : availableHeight;
-      // 若整行能放入“新页”，但当前页放不下，则把整表切到下一页
+      // If row fits on a fresh page but not current page, push it to next page.
       const canFitOnFreshPage =
         fullAvailableHeight > 0 && firstRowHeight > 0 && firstRowHeight <= fullAvailableHeight;
       if (canFitOnFreshPage) {
@@ -827,7 +1116,7 @@ export const tableRenderer = {
           },
         };
       }
-      // 处理“单行超页高”的行内拆分：只在接近页底时触发
+      // 澶勭悊鈥滃崟琛岃秴椤甸珮鈥濈殑琛屽唴鎷嗗垎锛氬彧鍦ㄦ帴杩戦〉搴曟椂瑙﹀彂
       const spacingAllowance = Math.max(0, settings?.blockSpacing || 0);
       const effectiveAvailableHeight = Math.max(0, availableHeight - paddingY);
       const effectiveFullHeight = Math.max(0, fullAvailableHeight - paddingY);
@@ -837,7 +1126,7 @@ export const tableRenderer = {
         firstRowHeight > fullAvailableHeight &&
         effectiveAvailableHeight >= effectiveFullHeight - spacingAllowance
       ) {
-        // 在当前页可容纳高度处切分该行
+        // 鍦ㄥ綋鍓嶉〉鍙绾抽珮搴﹀鍒囧垎璇ヨ
         const cutHeight = Math.max(1, Math.min(effectiveAvailableHeight, firstRowHeight));
         const cutY = baseOffsetY + cutHeight;
         const visibleLinesRaw = [];
@@ -891,7 +1180,7 @@ export const tableRenderer = {
           true
         );
 
-        // 标记当前页为“行内拆分”的起始切片
+        // 鏍囪褰撳墠椤典负鈥滆鍐呮媶鍒嗏€濈殑璧峰鍒囩墖
         applyTableMeta(
           visibleLines,
           visibleRowHeights,
@@ -900,7 +1189,7 @@ export const tableRenderer = {
           true,
           false
         );
-        // 标记溢出切片是否还需要继续分页
+        // Mark overflow slice continuation state.
         applyTableMeta(
           overflowLines,
           overflowRowHeights,
@@ -949,7 +1238,7 @@ export const tableRenderer = {
       };
     }
 
-    // 常规按“整行”分页
+    // Regular row-based pagination.
     const visibleRowHeights = baseRowHeights.slice(0, visibleRowCount);
 
     const overflowRowHeights = baseRowHeights.slice(visibleRowCount);
@@ -1028,10 +1317,11 @@ export const tableRenderer = {
         hasOverflow
       );
 
-    // 最后一页需要清理“还有后续”的标记
+    // 鏈€鍚庝竴椤甸渶瑕佹竻鐞嗏€滆繕鏈夊悗缁€濈殑鏍囪
     if (!hasOverflow) {
       for (const line of visibleLines) {
         if (line?.blockAttrs) {
+          line.blockAttrs.sliceHasNext = false;
           line.blockAttrs.tableSliceHasNext = false;
         }
       }
@@ -1063,88 +1353,132 @@ export const tableRenderer = {
     };
   },
 
-  /* ȾıԸĬȾ */
+  /* 染谋愿默染 */
 
   renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-      if (line?.blockAttrs?.listType) {
-        renderListMarker({ ctx, line, pageX, pageTop, layout });
-      }
-      if (line.tableMeta) {
-        const tableXOffset = Number.isFinite(line.tableMeta?.tableXOffset)
-          ? line.tableMeta.tableXOffset
-          : 0;
-        const tableX = pageX + layout.margin.left + tableXOffset;
+    if (line?.blockAttrs?.listType) {
+      renderListMarker({ ctx, line, pageX, pageTop, layout });
+    }
+    if (line.tableMeta) {
+      const tableXOffset = Number.isFinite(line.tableMeta?.tableXOffset)
+        ? line.tableMeta.tableXOffset
+        : 0;
+      const tableX = pageX + layout.margin.left + tableXOffset;
+      const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
+      const tableTop = line.tableMeta.tableTop || 0;
+      const tableY = pageTop + line.y - relativeY + tableTop;
 
-        const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
+      const {
+        rows,
+        cols,
+        rowHeights,
+        tableWidth,
+        colWidth,
+        tableHeight,
+        continuedFromPrev,
+        continuesAfter,
+        rowSplit,
+        sliceBreak,
+        cells,
+      } = line.tableMeta;
 
-        const tableTop = line.tableMeta.tableTop || 0;
+      const suppressTop = !!rowSplit && !!continuedFromPrev;
+      const suppressBottom = !!rowSplit && !!continuesAfter;
+      const forceTop = !rowSplit && !!sliceBreak && !!continuedFromPrev;
+      const forceBottom = !rowSplit && !!sliceBreak && !!continuesAfter;
+      const showTop = !suppressTop && (!continuedFromPrev || forceTop);
+      const showBottom = !suppressBottom && (!continuesAfter || forceBottom);
 
-        const tableY = pageTop + line.y - relativeY + tableTop;
+      ctx.save();
+      ctx.strokeStyle = "#6b7280";
+      ctx.lineWidth = 1;
 
-        const {
-          rows,
-          cols,
-          rowHeights,
-          tableWidth,
-          colWidth,
-          tableHeight,
-          continuedFromPrev,
-          continuesAfter,
-          rowSplit,
-          sliceBreak,
-        } = line.tableMeta;
+      if (Array.isArray(cells) && cells.length > 0) {
+        const hSegments = new Map();
+        const vSegments = new Map();
+        const toKey = (value) => Number(value).toFixed(3);
+        const addH = (y, x1, x2) => {
+          const start = Math.min(x1, x2);
+          const end = Math.max(x1, x2);
+          const key = `${toKey(y)}:${toKey(start)}:${toKey(end)}`;
+          if (!hSegments.has(key)) {
+            hSegments.set(key, { y, x1: start, x2: end });
+          }
+        };
+        const addV = (x, y1, y2) => {
+          const start = Math.min(y1, y2);
+          const end = Math.max(y1, y2);
+          const key = `${toKey(x)}:${toKey(start)}:${toKey(end)}`;
+          if (!vSegments.has(key)) {
+            vSegments.set(key, { x, y1: start, y2: end });
+          }
+        };
 
-        ctx.save();
+        for (const cell of cells) {
+          const x1 = tableX + (Number.isFinite(cell.x) ? cell.x : 0);
+          const y1 = tableY + (Number.isFinite(cell.y) ? cell.y : 0);
+          const x2 = x1 + (Number.isFinite(cell.width) ? cell.width : 0);
+          const y2 = y1 + (Number.isFinite(cell.height) ? cell.height : 0);
+          addH(y1, x1, x2);
+          addH(y2, x1, x2);
+          addV(x1, y1, y2);
+          addV(x2, y1, y2);
+        }
 
-        ctx.strokeStyle = "#6b7280";
-
-        ctx.lineWidth = 1;
-
+        const topY = tableY;
+        const bottomY = tableY + tableHeight;
+        const epsilon = 0.5;
+        ctx.beginPath();
+        for (const segment of hSegments.values()) {
+          const isTopEdge = Math.abs(segment.y - topY) <= epsilon;
+          const isBottomEdge = Math.abs(segment.y - bottomY) <= epsilon;
+          if (isTopEdge && !showTop) {
+            continue;
+          }
+          if (isBottomEdge && !showBottom) {
+            continue;
+          }
+          ctx.moveTo(segment.x1, segment.y);
+          ctx.lineTo(segment.x2, segment.y);
+        }
+        for (const segment of vSegments.values()) {
+          ctx.moveTo(segment.x, segment.y1);
+          ctx.lineTo(segment.x, segment.y2);
+        }
+        ctx.stroke();
+      } else {
         ctx.beginPath();
         // outer borders
         ctx.moveTo(tableX, tableY);
         ctx.lineTo(tableX, tableY + tableHeight);
         ctx.moveTo(tableX + tableWidth, tableY);
         ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
-        const suppressTop = !!rowSplit && !!continuedFromPrev;
-        const suppressBottom = !!rowSplit && !!continuesAfter;
-        const forceTop = !rowSplit && !!sliceBreak && !!continuedFromPrev;
-        const forceBottom = !rowSplit && !!sliceBreak && !!continuesAfter;
-
-        if (!suppressTop && (!continuedFromPrev || forceTop)) {
+        if (showTop) {
           ctx.moveTo(tableX, tableY);
           ctx.lineTo(tableX + tableWidth, tableY);
         }
-        if (!suppressBottom && (!continuesAfter || forceBottom)) {
+        if (showBottom) {
           ctx.moveTo(tableX, tableY + tableHeight);
           ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
         }
         ctx.stroke();
 
         let y = tableY;
-
         for (let r = 0; r < rows - 1; r += 1) {
           y += rowHeights[r];
-
           ctx.beginPath();
-
           ctx.moveTo(tableX, y);
-
           ctx.lineTo(tableX + tableWidth, y);
-
           ctx.stroke();
         }
 
         for (let c = 1; c < cols; c += 1) {
           const x = tableX + c * colWidth;
-
-        ctx.beginPath();
-
-        ctx.moveTo(x, tableY);
-
-        ctx.lineTo(x, tableY + tableHeight);
-
-        ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x, tableY);
+          ctx.lineTo(x, tableY + tableHeight);
+          ctx.stroke();
+        }
       }
 
       ctx.restore();
@@ -1153,6 +1487,10 @@ export const tableRenderer = {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
+
+
+
+
 
 
 

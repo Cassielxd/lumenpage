@@ -4,7 +4,7 @@ import { LayoutPipeline } from "./engine";
 import { NodeRendererRegistry } from "./nodeRegistry";
 import { Schema } from "lumenpage-model";
 import { Step } from "lumenpage-transform";
-import { docPosToTextOffset } from "../core/editor/offsetMapping";
+import { docPosToTextOffset } from "../mapping/offsetMapping";
 import { createSegmentText } from "../view/segmenter";
 
 type SegmenterOptions = {

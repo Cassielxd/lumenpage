@@ -34,6 +34,7 @@ export const createClipboardHandlers = ({
   dispatchTransaction,
   setPendingPreferredUpdate,
   editorHandlers,
+  transformCopied,
 }) => {
   const handleCopy = (event) => {
     if (event.defaultPrevented) {
@@ -48,8 +49,11 @@ export const createClipboardHandlers = ({
       return;
     }
 
-    const slice = state.selection.content();
-    const text = state.doc.textBetween(state.selection.from, state.selection.to, "\n");
+    const selectionSlice = state.selection.content();
+    const slice = transformCopied?.(selectionSlice) ?? selectionSlice;
+    const text =
+      slice?.content?.textBetween?.(0, slice.content.size, "\n\n") ??
+      state.doc.textBetween(state.selection.from, state.selection.to, "\n");
     const html = serializeSliceToHtml(slice, state.schema);
     const json = slice?.toJSON?.() ?? null;
 

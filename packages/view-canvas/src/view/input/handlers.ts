@@ -3,7 +3,6 @@ export const createInputHandlers = ({
   dispatchTransaction,
   runCommand,
   basicCommands,
-  setBlockAlign,
   insertText,
   insertTextWithBreaks,
   deleteText,
@@ -20,6 +19,7 @@ export const createInputHandlers = ({
   setIsComposing,
   inputEl,
   parseHtmlToSlice,
+  transformPasted,
   setPendingPreferredUpdate,
   editorHandlers,
 }) => {
@@ -111,44 +111,6 @@ export const createInputHandlers = ({
 
     const metaKey = event.ctrlKey || event.metaKey;
 
-    if (metaKey && event.shiftKey) {
-      if (event.key === "L") {
-        event.preventDefault();
-        runCommand(setBlockAlign("left"), getEditorState(), dispatchTransaction);
-        return;
-      }
-
-      if (event.key === "C" || event.key === "E") {
-        event.preventDefault();
-        runCommand(setBlockAlign("center"), getEditorState(), dispatchTransaction);
-        return;
-      }
-
-      if (event.key === "R") {
-        event.preventDefault();
-        runCommand(setBlockAlign("right"), getEditorState(), dispatchTransaction);
-        return;
-      }
-    }
-
-    if (metaKey) {
-      if (event.key === "z" || event.key === "Z") {
-        event.preventDefault();
-        if (event.shiftKey) {
-          runRedo();
-        } else {
-          runUndo();
-        }
-        return;
-      }
-
-      if (event.key === "y" || event.key === "Y") {
-        event.preventDefault();
-        runRedo();
-        return;
-      }
-    }
-
     switch (event.key) {
       case "ArrowLeft": {
         event.preventDefault();
@@ -210,10 +172,6 @@ export const createInputHandlers = ({
         }
         break;
       }
-      case "Tab":
-        event.preventDefault();
-        insertText("  ");
-        break;
       default:
         break;
     }
@@ -328,7 +286,8 @@ export const createInputHandlers = ({
     const html = event.clipboardData?.getData("text/html") || "";
     if (html) {
       try {
-        const slice = parseHtmlToSlice(html);
+        const parsedSlice = parseHtmlToSlice(html);
+        const slice = transformPasted?.(parsedSlice) ?? parsedSlice;
         const editorState = getEditorState();
         const tr = editorState.tr.replaceSelection(slice);
         setPendingPreferredUpdate(true);

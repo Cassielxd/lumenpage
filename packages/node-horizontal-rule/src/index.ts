@@ -6,6 +6,13 @@ export const horizontalRuleNodeSpec: NodeSpec = {
   group: "block",
   atom: true,
   selectable: true,
+  offsetMapping: {
+    toText: () => " ",
+    getTextLength: () => 1,
+    mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
+      offset <= 0 ? nodePos : nodePos + node.nodeSize,
+    mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),
+  },
   attrs: {
     id: { default: null },
   },

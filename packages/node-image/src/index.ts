@@ -41,10 +41,18 @@ const createImageElement = (node) => {
 
 export const serializeImageToText = () => " ";
 
+const leafOffsetMapping = {
+  toText: () => " ",
+  getTextLength: () => 1,
+  mapOffsetToPos: (node, nodePos, offset) => (offset <= 0 ? nodePos : nodePos + node.nodeSize),
+  mapPosToOffset: (_node, nodePos, pos) => (pos <= nodePos ? 0 : 1),
+};
+
 export const imageNodeSpec: NodeSpec = {
   group: "block",
 
   atom: true,
+  offsetMapping: leafOffsetMapping,
 
   attrs: {
     id: { default: null },

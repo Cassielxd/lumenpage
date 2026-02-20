@@ -294,6 +294,99 @@ const getDocChildStartPos = (doc, targetIndex) => {
   return pos;
 };
 
+const defaultIsReuseSensitiveNode = (node) => node?.type?.name === "table";
+
+const defaultIsReuseSensitiveLine = (line) => line?.blockType === "table";
+
+const hasTopLevelSensitiveNodeInRange = (doc, fromIndex, toIndex, isSensitiveNode) => {
+  if (!doc || !Number.isFinite(fromIndex) || !Number.isFinite(toIndex)) {
+    return false;
+  }
+  const from = Math.max(0, Math.min(doc.childCount - 1, fromIndex));
+  const to = Math.max(0, Math.min(doc.childCount - 1, toIndex));
+  if (to < from) {
+    return false;
+  }
+  for (let i = from; i <= to; i += 1) {
+    if (isSensitiveNode(doc.child(i)) === true) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const hasAnyTopLevelSensitiveNode = (doc, isSensitiveNode) => {
+  if (!doc?.childCount) {
+    return false;
+  }
+  for (let i = 0; i < doc.childCount; i += 1) {
+    if (isSensitiveNode(doc.child(i)) === true) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const previousLayoutHasSensitiveLine = (previousLayout, isSensitiveLine) => {
+  const pages = previousLayout?.pages;
+  if (!Array.isArray(pages)) {
+    return false;
+  }
+  for (const page of pages) {
+    for (const line of page?.lines || []) {
+      if (isSensitiveLine(line) === true) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+const shouldDisableReuseForSensitiveChange = (
+  doc,
+  changeSummary,
+  previousLayout,
+  options: {
+    isSensitiveNode?: (node: any) => boolean;
+    isSensitiveLine?: (line: any) => boolean;
+  } = {}
+) => {
+  const isSensitiveNode =
+    typeof options?.isSensitiveNode === "function"
+      ? options.isSensitiveNode
+      : defaultIsReuseSensitiveNode;
+  const isSensitiveLine =
+    typeof options?.isSensitiveLine === "function"
+      ? options.isSensitiveLine
+      : defaultIsReuseSensitiveLine;
+  if (!changeSummary?.docChanged) {
+    return false;
+  }
+  const before = changeSummary.blocks?.before || {};
+  const after = changeSummary.blocks?.after || {};
+  const candidates = [
+    before.fromIndex,
+    before.toIndex,
+    after.fromIndex,
+    after.toIndex,
+  ].filter((value) => Number.isFinite(value));
+
+  if (candidates.length === 0) {
+    return (
+      hasAnyTopLevelSensitiveNode(doc, isSensitiveNode) ||
+      previousLayoutHasSensitiveLine(previousLayout, isSensitiveLine)
+    );
+  }
+
+  const minIndex = Math.min(...candidates);
+  const maxIndex = Math.max(...candidates);
+  if (hasTopLevelSensitiveNodeInRange(doc, minIndex, maxIndex, isSensitiveNode)) {
+    return true;
+  }
+  // Handle sensitive-structure deletion: current range may no longer include the removed node.
+  return previousLayoutHasSensitiveLine(previousLayout, isSensitiveLine);
+};
+
 
 export class LayoutPipeline {
   settings;
@@ -332,6 +425,36 @@ export class LayoutPipeline {
     // 基础设置（保留原引用用于性能汇报）。
     const baseSettingsRaw = this.settings;
     let disablePageReuse = !!baseSettingsRaw.disablePageReuse;
+    if (!disablePageReuse) {
+      const changeSummary = options?.changeSummary ?? null;
+      const previousLayout = options?.previousLayout ?? null;
+      const defaultDecision = shouldDisableReuseForSensitiveChange(
+        doc,
+        changeSummary,
+        previousLayout
+      );
+      const customGuard = baseSettingsRaw?.shouldDisablePageReuseForChange;
+      if (typeof customGuard === "function") {
+        try {
+          const customDecision = customGuard({
+            doc,
+            changeSummary,
+            previousLayout,
+            defaultDecision,
+            shouldDisableReuseForSensitiveChange,
+          });
+          if (customDecision === true || customDecision === false) {
+            disablePageReuse = customDecision;
+          } else {
+            disablePageReuse = defaultDecision;
+          }
+        } catch (_error) {
+          disablePageReuse = defaultDecision;
+        }
+      } else {
+        disablePageReuse = defaultDecision;
+      }
+    }
     const debugPerf = !!baseSettingsRaw.debugPerf;
     // 性能统计（可选）。
     const perf = debugPerf

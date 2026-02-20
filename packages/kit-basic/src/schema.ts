@@ -1,6 +1,7 @@
 
 
 import { Schema } from "lumenpage-model";
+import { docToOffsetText } from "lumenpage-view-canvas";
 import { paragraphNodeSpec } from "lumenpage-node-paragraph";
 import { blockquoteNodeSpec } from "lumenpage-node-blockquote";
 import { headingNodeSpec } from "lumenpage-node-heading";
@@ -10,11 +11,11 @@ import {
   serializeTableToText,
   tableNodeSpecs,
 } from "lumenpage-node-table";
-import { listNodeSpecs, serializeListToText } from "lumenpage-node-list";
-import { imageNodeSpec, serializeImageToText } from "lumenpage-node-image";
+import { listNodeSpecs } from "lumenpage-node-list";
+import { imageNodeSpec } from "lumenpage-node-image";
 import { horizontalRuleNodeSpec } from "lumenpage-node-horizontal-rule";
 import { hardBreakNodeSpec } from "lumenpage-node-hard-break";
-import { videoNodeSpec, serializeVideoToText } from "lumenpage-node-video";
+import { videoNodeSpec } from "lumenpage-node-video";
 
 export { serializeTableToText, getTableTextLength };
 
@@ -161,39 +162,5 @@ export function createDocFromText(text = "") {
 }
 
 export function docToText(doc) {
-  let result = "";
-
-  const serializeBlock = (node) => {
-    if (node.type.name === "table") {
-      return serializeTableToText(node);
-    }
-
-    if (node.type.name === "bullet_list" || node.type.name === "ordered_list") {
-      return serializeListToText(node);
-    }
-
-    if (node.type.name === "image") {
-      return serializeImageToText();
-    }
-
-    if (node.type.name === "video") {
-      return serializeVideoToText();
-    }
-
-    if (node.type.name === "horizontal_rule") {
-      return " ";
-    }
-
-    return node.textBetween(0, node.content.size, "\n");
-  };
-
-  doc.forEach((node, _pos, index) => {
-    result += serializeBlock(node);
-
-    if (index < doc.childCount - 1) {
-      result += "\n";
-    }
-  });
-
-  return result;
+  return docToOffsetText(doc);
 }

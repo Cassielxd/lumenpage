@@ -1,26 +1,26 @@
-﻿export const createEditorPropHandlers = ({ view, editorProps, getState, domRoot }) => {
+export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, getState, domRoot }) => {
   let domEventHandlers = new Map();
   let pluginViews = [];
 
-  // 汇总插件 props + 传入 editorProps（保持与 ProseMirror 优先级一致）。
   const getEditorPropsList = (state = getState?.()) => {
     const list = [];
+    const currentEditorProps =
+      typeof getEditorProps === "function" ? getEditorProps() : editorProps;
+    if (currentEditorProps) {
+      list.push(currentEditorProps);
+    }
     const plugins = state?.plugins ?? [];
     for (const plugin of plugins) {
       if (plugin?.props) {
         list.push(plugin.props);
       }
     }
-    if (editorProps) {
-      list.push(editorProps);
-    }
     return list;
   };
 
-  // 调度 EditorProps 中的 handler（从后往前，返回 true 即截断）。
   const dispatchEditorProp = (name, ...args) => {
     const propsList = getEditorPropsList();
-    for (let i = propsList.length - 1; i >= 0; i -= 1) {
+    for (let i = 0; i < propsList.length; i += 1) {
       const props = propsList[i];
       const handler = props?.[name];
       if (typeof handler === "function" && handler(view, ...args)) {
@@ -30,11 +30,24 @@
     return false;
   };
 
-  // 收集 handleDOMEvents 并按事件名分组（从后往前保持优先级）。
+  const queryEditorProp = (name, ...args) => {
+    const propsList = getEditorPropsList();
+    for (let i = 0; i < propsList.length; i += 1) {
+      const props = propsList[i];
+      const valueOrHandler = props?.[name];
+      const value =
+        typeof valueOrHandler === "function" ? valueOrHandler(view, ...args) : valueOrHandler;
+      if (value != null) {
+        return value;
+      }
+    }
+    return null;
+  };
+
   const collectHandleDomEvents = (state = getState?.()) => {
     const events = new Map();
     const propsList = getEditorPropsList(state);
-    for (let i = propsList.length - 1; i >= 0; i -= 1) {
+    for (let i = 0; i < propsList.length; i += 1) {
       const props = propsList[i];
       const handleDomEvents = props?.handleDOMEvents;
       if (!handleDomEvents) {
@@ -53,7 +66,6 @@
     return events;
   };
 
-  // 清空旧的 DOM 事件绑定。
   const clearDomEventHandlers = () => {
     for (const [eventName, handler] of domEventHandlers.entries()) {
       domRoot.removeEventListener(eventName, handler, true);
@@ -61,7 +73,6 @@
     domEventHandlers = new Map();
   };
 
-  // 重新挂载 DOM 事件（支持插件动态更新）。
   const refreshDomEventHandlers = (state = getState?.()) => {
     clearDomEventHandlers();
     const events = collectHandleDomEvents(state);
@@ -69,7 +80,6 @@
       const listener = (event) => {
         for (const handler of handlers) {
           if (handler(view, event)) {
-            event.preventDefault();
             return;
           }
         }
@@ -79,7 +89,6 @@
     }
   };
 
-  // 创建插件视图实例。
   const createPluginViews = (state) => {
     const views = [];
     const plugins = state?.plugins ?? [];
@@ -96,7 +105,6 @@
     return views;
   };
 
-  // 销毁插件视图。
   const destroyPluginViews = () => {
     for (const entry of pluginViews) {
       entry.view?.destroy?.();
@@ -104,7 +112,6 @@
     pluginViews = [];
   };
 
-  // 更新插件视图（插件集变化时重建）。
   const updatePluginViews = (prevState, nextState) => {
     const prevPlugins = prevState?.plugins ?? [];
     const nextPlugins = nextState?.plugins ?? [];
@@ -124,7 +131,6 @@
     }
   };
 
-  // 初始化插件视图与事件绑定。
   const init = () => {
     const state = getState?.();
     pluginViews = createPluginViews(state);
@@ -134,6 +140,7 @@
   return {
     getEditorPropsList,
     dispatchEditorProp,
+    queryEditorProp,
     refreshDomEventHandlers,
     clearDomEventHandlers,
     updatePluginViews,

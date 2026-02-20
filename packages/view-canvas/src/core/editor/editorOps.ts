@@ -13,6 +13,13 @@ export const createEditorOps = ({
   textOffsetToDocPos,
   createSelectionStateAtOffset,
   logDelete,
+  isInSpecialStructureAtPos = (_state, _pos) => false,
+  shouldAutoAdvanceAfterEnter = ({ prevState, nextState, prevHead }) => {
+    const specialStructureChanged =
+      isInSpecialStructureAtPos(prevState, prevHead) ||
+      isInSpecialStructureAtPos(nextState, nextState.selection.head);
+    return !specialStructureChanged && nextState.selection.head === prevHead;
+  },
 }) => {
   const setCaretOffset = (offset, updatePreferred) => {
     setSelectionOffsets(offset, offset, updatePreferred);
@@ -35,7 +42,9 @@ export const createEditorOps = ({
         dispatchTransaction(tr);
       }
       const nextState = getEditorState();
-      if (nextState.selection.head === prevHead && typeof docPosToTextOffset === "function") {
+      const shouldAdvance =
+        shouldAutoAdvanceAfterEnter({ prevState, nextState, prevHead }) === true;
+      if (shouldAdvance && typeof docPosToTextOffset === "function") {
         const prevOffset = docPosToTextOffset(nextState.doc, prevHead);
         const nextOffset = Math.min(prevOffset + 1, getText().length);
         if (nextOffset !== prevOffset) {

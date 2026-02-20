@@ -1,7 +1,5 @@
 import { EditorState, TextSelection } from "lumenpage-state";
 
-import { createBlockIdPlugin, createBlockIdTransaction } from "./blockIdPlugin";
-
 type CreateEditorStateOptions = {
   schema?: any;
   createDocFromText?: (text: string) => any;
@@ -9,8 +7,6 @@ type CreateEditorStateOptions = {
   doc?: any;
   json?: any;
   plugins?: any[];
-  historyPlugin?: any;
-  ensureBlockIds?: boolean;
 };
 
 export function createEditorState({
@@ -25,11 +21,19 @@ export function createEditorState({
   json = null,
 
   plugins = [],
-
-  historyPlugin = null,
-
-  ensureBlockIds = true,
 }: CreateEditorStateOptions = {}) {
+  const legacyOptions = arguments[0] as Record<string, any> | undefined;
+  if (legacyOptions && "historyPlugin" in legacyOptions) {
+    throw new Error(
+      "historyPlugin option has been removed. Pass history() through plugins explicitly."
+    );
+  }
+  if (legacyOptions && "ensureBlockIds" in legacyOptions) {
+    throw new Error(
+      "ensureBlockIds option has been removed. Add createBlockIdPlugin() and an explicit init transaction."
+    );
+  }
+
   if (!schema) {
     throw new Error("schema is required to create editor state.");
   }
@@ -50,12 +54,6 @@ export function createEditorState({
 
   const selection = TextSelection.create(resolvedDoc, resolvedDoc.content.size);
 
-  const resolvedPlugins = [
-    ...(historyPlugin ? [historyPlugin] : []),
-    ...(ensureBlockIds ? [createBlockIdPlugin()] : []),
-    ...plugins,
-  ];
-
   const state = EditorState.create({
     schema,
 
@@ -63,15 +61,8 @@ export function createEditorState({
 
     selection,
 
-    plugins: resolvedPlugins,
+    plugins,
   });
-
-  if (ensureBlockIds) {
-    const tr = createBlockIdTransaction(state);
-    if (tr) {
-      return state.apply(tr);
-    }
-  }
 
   return state;
 }

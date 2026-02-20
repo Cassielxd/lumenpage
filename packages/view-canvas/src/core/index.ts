@@ -11,7 +11,7 @@ export { breakLines } from "../layout-pagination";
 
 export { NodeRendererRegistry } from "../layout-pagination";
 
-export { textOffsetToDocPos, docPosToTextOffset, docToOffsetText } from "./editor/offsetMapping";
+export { textOffsetToDocPos, docPosToTextOffset, docToOffsetText } from "../mapping/offsetMapping";
 export {
   createSelectionStateAtOffset,
   getSelectionOffsets,

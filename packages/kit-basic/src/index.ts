@@ -58,6 +58,20 @@ export {
   setParagraph,
   setBlockTypeByName,
   createViewCommands,
+  createCanvasEditorKeymap,
+  addTableRowAfter,
+  addTableRowBefore,
+  deleteTableRow,
+  addTableColumnAfter,
+  addTableColumnBefore,
+  deleteTableColumn,
+  goToNextTableCell,
+  goToPreviousTableCell,
+  mergeTableCellRight,
+  splitTableCell,
+  selectCurrentAndNextTableCell,
+  selectCurrentAndBelowTableCell,
+  mergeSelectedTableCells,
 } from "./commands";
 
 

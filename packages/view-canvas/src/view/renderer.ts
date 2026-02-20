@@ -245,6 +245,20 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
   return lines.join("\n");
 };
 
+const buildPaginationDebugSummary = (settings, layout, visibleRange) => {
+  const customBuilder =
+    settings?.paginationDebugBuilder || settings?.tablePaginationDebugBuilder || null;
+  if (typeof customBuilder === "function") {
+    const summary = customBuilder(layout, visibleRange, {
+      defaultBuilder: buildTablePaginationDebug,
+    });
+    if (typeof summary === "string") {
+      return summary;
+    }
+  }
+  return buildTablePaginationDebug(layout, visibleRange);
+};
+
 const resolveChangedRootIndexRange = (changeSummary) => {
   const before = changeSummary?.blocks?.before || {};
   const after = changeSummary?.blocks?.after || {};
@@ -728,7 +742,7 @@ export class Renderer {
     }
     const tablePanel = this.settings?.tablePaginationPanelEl;
     if (tablePanel) {
-      const summary = buildTablePaginationDebug(layout, visible);
+      const summary = buildPaginationDebugSummary(this.settings, layout, visible);
       tablePanel.textContent = summary || "No table slices on visible pages.";
     }
 
