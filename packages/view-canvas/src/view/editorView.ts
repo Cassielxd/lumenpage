@@ -121,12 +121,13 @@ export class CanvasEditorView {
         ? new Set(configuredNodeSelectionTypes)
         : null;
     let getDecorations = null;
+    let queryEditorProp: (name: string, ...args: any[]) => any = () => null;
     const nodeViewManager = createNodeViewManager({
       view: this,
       getState: () => this.state,
       nodeRegistry,
       nodeViewFactories,
-      getNodeViewFactories: () => editorProps?.nodeViews ?? null,
+      getNodeViewFactories: () => queryEditorProp("nodeViews") ?? editorProps?.nodeViews ?? null,
       getDecorations: () => getDecorations?.(),
       defaultNodeSelectionTypes,
       logNodeSelection: debugConfig?.selection
@@ -185,13 +186,14 @@ export class CanvasEditorView {
     const {
       getEditorPropsList,
       dispatchEditorProp,
-      queryEditorProp,
+      queryEditorProp: queryEditorPropFromHandlers,
       refreshDomEventHandlers,
       clearDomEventHandlers,
       updatePluginViews,
       destroyPluginViews,
       init: initPluginViews,
     } = editorPropHandlers;
+    queryEditorProp = queryEditorPropFromHandlers;
 
     const { applyViewAttributes } = createViewAttributeApplier({
       dom,
@@ -324,6 +326,7 @@ export class CanvasEditorView {
     });
     const {
       setSelectionFromHit,
+      setNodeSelectionAtPos,
       resolveGapSelectionAtPos,
       resolveNodeSelectionTarget,
       setGapCursorAtCoords,
@@ -422,11 +425,16 @@ export class CanvasEditorView {
       posAtCoords,
       setSelectionOffsets,
       setSelectionFromHit,
+      setNodeSelectionAtPos,
       setGapCursorAtCoords,
       resolveNodeSelectionTarget,
       resolveGapSelectionAtPos,
       getSelectionAnchorOffset: () =>
         getSelectionAnchorOffset(this.state, docPosToTextOffset, clampOffset),
+      getSelectionRangeOffsets: () =>
+        getSelectionOffsets(this.state, docPosToTextOffset, clampOffset),
+      setSkipNextClickSelection: (value) => nodeViewManager.setSkipNextClickSelection(value),
+      getState: () => this.state,
       setPreferredX: (value) => {
         preferredX = value;
       },

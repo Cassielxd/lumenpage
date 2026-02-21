@@ -29,6 +29,7 @@ export const createDragHandlers = ({
   let dragState = null;
   let dropDecoration = null;
   let dropPos = null;
+  let internalDragging = false;
 
   // 解析 drop cursor 样式。
   const resolveDropCursorStyle = () => {
@@ -103,6 +104,108 @@ export const createDragHandlers = ({
     return isMac ? event.altKey : event.ctrlKey;
   };
 
+  const commitInternalDrop = ({ dropTargetPos, event }) => {
+    if (!Number.isFinite(dropTargetPos) || !dragState?.slice) {
+      dragState = null;
+      internalDragging = false;
+      clearDropDecoration();
+      return false;
+    }
+
+    const isCopy = isDragCopy(event);
+    const moved = !isCopy;
+    const state = getState();
+    let tr = state.tr;
+
+    if (moved) {
+      const { from, to } = dragState;
+      if (dropTargetPos >= from && dropTargetPos <= to) {
+        dragState = null;
+        internalDragging = false;
+        clearDropDecoration();
+        return true;
+      }
+      tr = tr.deleteRange(from, to);
+      const mappedPos = tr.mapping.map(dropTargetPos, -1);
+      tr = tr.replaceRange(mappedPos, mappedPos, dragState.slice);
+    } else {
+      tr = tr.replaceRange(dropTargetPos, dropTargetPos, dragState.slice);
+    }
+
+    setPendingPreferredUpdate(true);
+    dispatchTransaction(tr.scrollIntoView());
+    dragState = null;
+    internalDragging = false;
+    clearDropDecoration();
+    return true;
+  };
+
+  // 由 pointer 手势触发的内部拖拽入口（不依赖浏览器原生 dragstart）。
+  const startInternalDragFromSelection = (event) => {
+    if (internalDragging) {
+      return true;
+    }
+    const state = getState?.();
+    if (!state?.selection || state.selection.empty) {
+      return false;
+    }
+    const slice = state.selection.content();
+    dragState = {
+      slice,
+      from: state.selection.from,
+      to: state.selection.to,
+    };
+    internalDragging = true;
+    return true;
+  };
+
+  // 由节点位置触发内部拖拽（用于图片/视频等原子节点句柄）。
+  const startInternalDragFromNodePos = (nodePos, _event) => {
+    if (internalDragging) {
+      return true;
+    }
+    if (!Number.isFinite(nodePos)) {
+      return false;
+    }
+    const state = getState?.();
+    const node = state?.doc?.nodeAt?.(nodePos);
+    if (!state?.doc || !node) {
+      return false;
+    }
+    const from = nodePos;
+    const to = nodePos + node.nodeSize;
+    const slice = state.doc.slice(from, to);
+    if (!slice || slice.size === 0) {
+      return false;
+    }
+    dragState = { slice, from, to };
+    internalDragging = true;
+    return true;
+  };
+
+  const updateInternalDrag = (event, coords) => {
+    if (!internalDragging || !dragState) {
+      return false;
+    }
+    const point = coords || getEventCoords(event);
+    const nextDropPos = getDocPosFromCoords(point);
+    if (Number.isFinite(nextDropPos)) {
+      setDropDecoration(nextDropPos);
+    } else {
+      clearDropDecoration();
+    }
+    return true;
+  };
+
+  const finishInternalDrag = (event, coords) => {
+    if (!internalDragging || !dragState) {
+      return false;
+    }
+    const point = coords || getEventCoords(event);
+    const dropTargetPos = getDocPosFromCoords(point) ?? getState().selection.head;
+    return commitInternalDrop({ dropTargetPos, event });
+  };
+
   // 开始拖拽：写入剪贴数据。
   const handleDragStart = (event) => {
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
@@ -113,15 +216,38 @@ export const createDragHandlers = ({
       return;
     }
     const state = getState?.();
-    if (!state?.selection || state.selection.empty) {
+    if (!state?.selection) {
       event.preventDefault();
       return;
     }
-    const slice = state.selection.content();
+
+    let from = state.selection.from;
+    let to = state.selection.to;
+    let slice = state.selection.content();
+
+    if (state.selection.empty) {
+      const fromProps = queryEditorProp?.("resolveDragNodePos", event);
+      const fallbackTarget = event?.target?.closest?.("[data-lumen-drag-pos]");
+      const fallbackAttr = fallbackTarget?.getAttribute?.("data-lumen-drag-pos");
+      const nodePos = Number.isFinite(fromProps) ? fromProps : Number(fallbackAttr);
+      const node = Number.isFinite(nodePos) ? state.doc.nodeAt(nodePos) : null;
+      if (!node || !Number.isFinite(nodePos)) {
+        event.preventDefault();
+        return;
+      }
+      from = nodePos;
+      to = nodePos + node.nodeSize;
+      slice = state.doc.slice(from, to);
+      if (!slice || slice.size === 0) {
+        event.preventDefault();
+        return;
+      }
+    }
+
     const serializedText = clipboardTextSerializer?.(slice) ?? null;
     const text = typeof serializedText === "string"
       ? serializedText
-      : state.doc.textBetween(state.selection.from, state.selection.to, "\n");
+      : state.doc.textBetween(from, to, "\n");
     const html = serializeSliceToHtml(slice, state.schema);
     const json = slice?.toJSON?.() ?? null;
 
@@ -138,8 +264,8 @@ export const createDragHandlers = ({
 
     dragState = {
       slice,
-      from: state.selection.from,
-      to: state.selection.to,
+      from,
+      to,
     };
   };
 
@@ -279,5 +405,10 @@ export const createDragHandlers = ({
     handleDragEnd,
     clearDropDecoration,
     getDropDecoration: () => dropDecoration,
+    startInternalDragFromSelection,
+    startInternalDragFromNodePos,
+    updateInternalDrag,
+    finishInternalDrag,
+    isInternalDragging: () => internalDragging,
   };
 };

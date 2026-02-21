@@ -1,4 +1,4 @@
-import { type NodeSpec } from "lumenpage-model";
+﻿import { type NodeSpec } from "lumenpage-model";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -53,30 +53,12 @@ export const videoNodeSpec: NodeSpec = {
     },
   ],
   toDOM(node) {
-    const attrs: Record<string, unknown> = {
-      src: node.attrs?.src || "",
-    };
-
-    if (node.attrs?.id) {
-      attrs["data-node-id"] = node.attrs.id;
-    }
-
-    if (node.attrs?.width) {
-      attrs.width = node.attrs.width;
-    }
-
-    if (node.attrs?.height) {
-      attrs.height = node.attrs.height;
-    }
-
-    if (node.attrs?.poster) {
-      attrs.poster = node.attrs.poster;
-    }
-
-    if (node.attrs?.embed) {
-      return ["iframe", attrs];
-    }
-
+    const attrs: Record<string, unknown> = { src: node.attrs?.src || "" };
+    if (node.attrs?.id) attrs["data-node-id"] = node.attrs.id;
+    if (node.attrs?.width) attrs.width = node.attrs.width;
+    if (node.attrs?.height) attrs.height = node.attrs.height;
+    if (node.attrs?.poster) attrs.poster = node.attrs.poster;
+    if (node.attrs?.embed) return ["iframe", attrs];
     attrs.controls = true;
     return ["video", attrs];
   },
@@ -112,9 +94,8 @@ const createMediaElement = (node: any) => {
   video.src = attrs.src || "";
   video.controls = true;
   video.playsInline = true;
-  if (attrs.poster) {
-    video.poster = attrs.poster;
-  }
+  video.draggable = false;
+  if (attrs.poster) video.poster = attrs.poster;
   return video;
 };
 
@@ -131,15 +112,8 @@ export const videoRenderer = {
       runs: [],
       x: settings.margin.left,
       blockType: "video",
-      blockAttrs: {
-        lineHeight: height,
-        width,
-        height,
-      },
-      videoMeta: {
-        width,
-        height,
-      },
+      blockAttrs: { lineHeight: height, width, height },
+      videoMeta: { width, height },
     };
 
     return {
@@ -154,9 +128,7 @@ export const videoRenderer = {
   renderLine({ ctx, line, pageX, pageTop }: any) {
     const width = line.videoMeta?.width ?? line.width ?? 0;
     const height = line.videoMeta?.height ?? line.lineHeight ?? 0;
-    if (width <= 0 || height <= 0) {
-      return;
-    }
+    if (width <= 0 || height <= 0) return;
 
     const x = pageX + line.x;
     const y = pageTop + line.y;
@@ -179,11 +151,9 @@ export const videoRenderer = {
     ctx.fill();
   },
 
-  createNodeView(node: any, view: any) {
-    const host = resolveOverlayHost(view);
-    if (!host) {
-      return null;
-    }
+  createNodeView(node: any, _view: any, _getPos: () => number) {
+    const host = resolveOverlayHost(_view);
+    if (!host) return null;
 
     const container = document.createElement("div");
     container.className = "lumenpage-video-overlay";
@@ -192,7 +162,7 @@ export const videoRenderer = {
     container.style.width = "0";
     container.style.height = "0";
     container.style.pointerEvents = "none";
-    container.style.overflow = "hidden";
+    container.style.overflow = "visible";
     container.style.background = "#000";
     container.style.outline = "none";
     host.appendChild(container);
@@ -201,12 +171,11 @@ export const videoRenderer = {
     let currentNode = node;
 
     const mountMedia = (nextNode: any) => {
-      if (mediaEl) {
-        mediaEl.remove();
-      }
+      if (mediaEl) mediaEl.remove();
       mediaEl = createMediaElement(nextNode) as HTMLVideoElement | HTMLIFrameElement;
       mediaEl.style.width = "100%";
       mediaEl.style.height = "100%";
+      mediaEl.style.pointerEvents = "auto";
       container.appendChild(mediaEl);
     };
 
@@ -217,18 +186,13 @@ export const videoRenderer = {
         mountMedia(nextNode);
         return;
       }
-
       if (mediaEl instanceof HTMLVideoElement) {
         const src = nextNode.attrs?.src || "";
-        if (mediaEl.src !== src) {
-          mediaEl.src = src;
-        }
+        if (mediaEl.src !== src) mediaEl.src = src;
         mediaEl.poster = nextNode.attrs?.poster || "";
       } else {
         const src = nextNode.attrs?.src || "";
-        if (mediaEl.src !== src) {
-          mediaEl.src = src;
-        }
+        if (mediaEl.src !== src) mediaEl.src = src;
       }
     };
 
@@ -236,9 +200,7 @@ export const videoRenderer = {
 
     return {
       update(nextNode: any) {
-        if (nextNode.type !== currentNode.type) {
-          return false;
-        }
+        if (nextNode.type !== currentNode.type) return false;
         currentNode = nextNode;
         updateMedia(nextNode);
         return true;

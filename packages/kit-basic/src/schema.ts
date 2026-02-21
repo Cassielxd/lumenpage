@@ -19,29 +19,45 @@ import { videoNodeSpec } from "lumenpage-node-video";
 
 export { serializeTableToText, getTableTextLength };
 
+const withIdAttr = (spec) => ({
+  ...spec,
+  attrs: {
+    id: { default: null },
+    ...(spec?.attrs || {}),
+  },
+});
+
+const withIdAttrsForRecord = (specs) => {
+  const next = {};
+  for (const [name, spec] of Object.entries(specs || {})) {
+    next[name] = withIdAttr(spec);
+  }
+  return next;
+};
+
 export const schema = new Schema({
   nodes: {
     doc: { content: "block+" },
 
-    paragraph: paragraphNodeSpec,
+    paragraph: withIdAttr(paragraphNodeSpec),
 
-    heading: headingNodeSpec,
+    heading: withIdAttr(headingNodeSpec),
 
-    blockquote: blockquoteNodeSpec,
+    blockquote: withIdAttr(blockquoteNodeSpec),
 
-    code_block: codeBlockNodeSpec,
+    code_block: withIdAttr(codeBlockNodeSpec),
 
-    horizontal_rule: horizontalRuleNodeSpec,
+    horizontal_rule: withIdAttr(horizontalRuleNodeSpec),
 
-    ...listNodeSpecs,
+    ...withIdAttrsForRecord(listNodeSpecs),
 
-    ...tableNodeSpecs,
+    ...withIdAttrsForRecord(tableNodeSpecs),
 
-    image: imageNodeSpec,
+    image: withIdAttr(imageNodeSpec),
 
-    video: videoNodeSpec,
+    video: withIdAttr(videoNodeSpec),
 
-    hard_break: hardBreakNodeSpec,
+    hard_break: withIdAttr(hardBreakNodeSpec),
 
     text: { group: "inline" },
   },

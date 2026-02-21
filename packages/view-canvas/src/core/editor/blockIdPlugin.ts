@@ -13,7 +13,7 @@ export const createBlockIdTransaction = (state) => {
   const usedIds = new Set<string>();
 
   state.doc.descendants((node, pos) => {
-    if (!node.isBlock || !hasIdAttr(node)) {
+    if (!hasIdAttr(node)) {
       return;
     }
 

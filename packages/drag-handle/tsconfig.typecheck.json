@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "paths": {
+      "lumenpage-state": ["../state/src/index.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"]
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { type NodeSpec } from "lumenpage-model";
+﻿import { type NodeSpec } from "lumenpage-model";
 
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
@@ -36,6 +36,7 @@ const createImageElement = (node) => {
   img.style.width = "100%";
   img.style.height = "100%";
   img.style.objectFit = "contain";
+  img.style.pointerEvents = "auto";
   return img;
 };
 
@@ -50,59 +51,33 @@ const leafOffsetMapping = {
 
 export const imageNodeSpec: NodeSpec = {
   group: "block",
-
   atom: true,
   offsetMapping: leafOffsetMapping,
-
   attrs: {
     id: { default: null },
-
     src: { default: "" },
-
     alt: { default: "" },
-
     width: { default: null },
-
     height: { default: null },
   },
-
   parseDOM: [
     {
       tag: "img[src]",
-
       getAttrs: (dom) => ({
         id: readIdAttr(dom),
-
         src: dom.getAttribute("src") || "",
-
         alt: dom.getAttribute("alt") || "",
-
         width: dom.getAttribute("width"),
-
         height: dom.getAttribute("height"),
       }),
     },
   ],
-
   toDOM(node) {
     const attrs: Record<string, unknown> = { src: node.attrs?.src || "" };
-
-    if (node.attrs?.id) {
-      attrs["data-node-id"] = node.attrs.id;
-    }
-
-    if (node.attrs?.alt) {
-      attrs.alt = node.attrs.alt;
-    }
-
-    if (node.attrs?.width) {
-      attrs.width = node.attrs.width;
-    }
-
-    if (node.attrs?.height) {
-      attrs.height = node.attrs.height;
-    }
-
+    if (node.attrs?.id) attrs["data-node-id"] = node.attrs.id;
+    if (node.attrs?.alt) attrs.alt = node.attrs.alt;
+    if (node.attrs?.width) attrs.width = node.attrs.width;
+    if (node.attrs?.height) attrs.height = node.attrs.height;
     return ["img", attrs];
   },
 };
@@ -126,17 +101,8 @@ export const imageRenderer = {
       runs: [],
       x: settings.margin.left,
       blockType: "image",
-      blockAttrs: {
-        lineHeight: height,
-        width,
-        height,
-      },
-      imageMeta: {
-        src: attrs.src || "",
-        alt: attrs.alt || "",
-        width,
-        height,
-      },
+      blockAttrs: { lineHeight: height, width, height },
+      imageMeta: { src: attrs.src || "", alt: attrs.alt || "", width, height },
     };
 
     return {
@@ -150,9 +116,7 @@ export const imageRenderer = {
 
   renderLine({ ctx, line, pageX, pageTop, layout }) {
     const meta = line.imageMeta;
-    if (!meta) {
-      return;
-    }
+    if (!meta) return;
 
     const x = pageX + line.x;
     const y = pageTop + line.y;
@@ -175,11 +139,9 @@ export const imageRenderer = {
     }
   },
 
-  createNodeView(node, view) {
-    const host = resolveOverlayHost(view);
-    if (!host) {
-      return null;
-    }
+  createNodeView(node, _view, _getPos) {
+    const host = resolveOverlayHost(_view);
+    if (!host) return null;
 
     const container = document.createElement("div");
     container.className = "lumenpage-image-overlay";
@@ -188,7 +150,7 @@ export const imageRenderer = {
     container.style.width = "0";
     container.style.height = "0";
     container.style.pointerEvents = "none";
-    container.style.overflow = "hidden";
+    container.style.overflow = "visible";
     container.style.background = "#f3f4f6";
     container.style.outline = "none";
     host.appendChild(container);
@@ -200,20 +162,14 @@ export const imageRenderer = {
 
     const updateImage = (nextNode) => {
       const src = nextNode.attrs?.src || "";
-      if (image.src !== src) {
-        image.src = src;
-      }
+      if (image.src !== src) image.src = src;
       const alt = nextNode.attrs?.alt || "";
-      if (image.alt !== alt) {
-        image.alt = alt;
-      }
+      if (image.alt !== alt) image.alt = alt;
     };
 
     return {
       update(nextNode) {
-        if (nextNode.type !== currentNode.type) {
-          return false;
-        }
+        if (nextNode.type !== currentNode.type) return false;
         currentNode = nextNode;
         updateImage(nextNode);
         return true;

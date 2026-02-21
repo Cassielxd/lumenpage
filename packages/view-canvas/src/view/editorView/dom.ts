@@ -36,7 +36,6 @@ export const DEFAULT_SETTINGS = {
   blockSelection: {
     enabled: true,
     onlyWhenFocused: true,
-    types: ["paragraph", "heading", "image", "video", "blockquote", "code_block", "horizontal_rule"],
   },
   blockSpacing: 8,
   paragraphSpacingBefore: 0,
@@ -68,6 +67,9 @@ export const createDefaultDom = () => {
 
   const scrollArea = document.createElement("div");
   scrollArea.className = "lumenpage-scroll-area";
+  // 画布编辑器使用虚拟选区，开启 draggable 以触发原生 dragstart 事件，
+  // 再由内部拖拽管线接管数据写入与移动/复制语义。
+  scrollArea.draggable = true;
 
   const spacer = document.createElement("div");
   spacer.className = "lumenpage-spacer";

@@ -1,5 +1,5 @@
-﻿{
-  "name": "lumenpage-node-image",
+{
+  "name": "lumenpage-drag-handle",
   "version": "0.0.1",
   "type": "module",
   "main": "src/index.ts",
@@ -22,12 +22,10 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
   },
   "dependencies": {
-    "lumenpage-view-canvas": "workspace:*",
-    "lumenpage-model": "workspace:*",
-    "lumenpage-state": "workspace:*"
+    "lumenpage-state": "workspace:*",
+    "lumenpage-view-canvas": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
   }
 }
-

@@ -52,7 +52,12 @@ export type EditorProps<T = any> = {
     | {
         enabled?: boolean;
         types?: string[];
+        excludeTypes?: string[];
       };
+  resolveDragNodePos?: (
+    view: EditorView,
+    event: PointerEvent | DragEvent | MouseEvent | Event
+  ) => number | null | undefined;
   handleScrollToSelection?: (view: EditorView) => boolean;
   handleDrop?: (view: EditorView, event: DragEvent, slice?: any, moved?: boolean) => boolean;
   handleCopy?: (view: EditorView, event: ClipboardEvent) => boolean;

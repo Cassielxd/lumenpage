@@ -273,8 +273,257 @@ export function selectionToRects(
   return rects;
 }
 
+const isTableCellSelection = (selection) => {
+  const json = selection?.toJSON?.();
+  return json?.type === "table_cell";
+};
+
+const resolveTableCellPoint = (doc, pos) => {
+  if (!doc || !Number.isFinite(pos)) {
+    return null;
+  }
+  let $pos = null;
+  try {
+    $pos = doc.resolve(pos);
+  } catch (_error) {
+    return null;
+  }
+  let tableDepth = -1;
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    if ($pos.node(depth)?.type?.name === "table") {
+      tableDepth = depth;
+      break;
+    }
+  }
+  if (tableDepth < 0) {
+    return null;
+  }
+  if (tableDepth + 1 > $pos.depth || $pos.node(tableDepth + 1)?.type?.name !== "table_row") {
+    return null;
+  }
+  if (tableDepth + 2 > $pos.depth || $pos.node(tableDepth + 2)?.type?.name !== "table_cell") {
+    return null;
+  }
+  const tableNode = $pos.node(tableDepth);
+  const tablePos = $pos.start(tableDepth) - 1;
+  return {
+    tableNode,
+    tablePos,
+    rowIndex: $pos.index(tableDepth),
+    colIndex: $pos.index(tableDepth + 1),
+  };
+};
+
+export const tableCellSelectionToRects = ({
+  layout,
+  selection,
+  doc,
+  scrollTop,
+  viewportWidth,
+  layoutIndex,
+  docPosToTextOffset,
+}) => {
+  if (!layout || !selection || !doc || !isTableCellSelection(selection)) {
+    return [];
+  }
+  const anchorPoint = resolveTableCellPoint(doc, selection.anchor);
+  const headPoint = resolveTableCellPoint(doc, selection.head);
+  if (!anchorPoint || !headPoint) {
+    return [];
+  }
+  if (anchorPoint.tablePos !== headPoint.tablePos) {
+    return [];
+  }
+
+  const minRow = Math.min(anchorPoint.rowIndex, headPoint.rowIndex);
+  const maxRow = Math.max(anchorPoint.rowIndex, headPoint.rowIndex);
+  const minCol = Math.min(anchorPoint.colIndex, headPoint.colIndex);
+  const maxCol = Math.max(anchorPoint.colIndex, headPoint.colIndex);
+
+  const tableFromPos = anchorPoint.tablePos + 1;
+  const tableToPos = anchorPoint.tablePos + anchorPoint.tableNode.nodeSize - 1;
+  const tableFromOffset = docPosToTextOffset(doc, tableFromPos);
+  const tableToOffset = docPosToTextOffset(doc, tableToPos);
+  const offsetMin = Math.min(tableFromOffset, tableToOffset);
+  const offsetMax = Math.max(tableFromOffset, tableToOffset);
+
+  const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
+  const pageSpan = layout.pageHeight + layout.pageGap;
+  const cellMap = new Map();
+  const lineItems = layoutIndex?.lines || [];
+
+  for (const item of lineItems) {
+    const line = item?.line;
+    if (!line || line.blockType !== "table") {
+      continue;
+    }
+    const lineStart = Number.isFinite(line.start) ? line.start : null;
+    const lineEnd = Number.isFinite(line.end) ? line.end : null;
+    if (lineStart != null && lineEnd != null) {
+      if (lineEnd < offsetMin || lineStart > offsetMax) {
+        continue;
+      }
+    }
+
+    const attrs = line.blockAttrs || {};
+    const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : null;
+    const colIndex = Number.isFinite(attrs.colIndex) ? attrs.colIndex : null;
+    if (rowIndex == null || colIndex == null) {
+      continue;
+    }
+    if (rowIndex < minRow || rowIndex > maxRow || colIndex < minCol || colIndex > maxCol) {
+      continue;
+    }
+
+    const paddingX = Number.isFinite(line.cellPadding)
+      ? line.cellPadding
+      : Number.isFinite(attrs.padding)
+      ? attrs.padding
+      : 0;
+    const paddingY = Number.isFinite(line.cellPaddingY)
+      ? line.cellPaddingY
+      : Number.isFinite(attrs.paddingY)
+      ? attrs.paddingY
+      : 0;
+    const lineHeight = getLineHeight(line, layout);
+    const contentWidth = Number.isFinite(line.cellWidth)
+      ? line.cellWidth
+      : Number.isFinite(attrs.colWidth)
+      ? attrs.colWidth
+      : line.width || 0;
+    const cellOuterWidth = Math.max(0, contentWidth + paddingX * 2 + 1);
+    const x = pageX + (line.x || 0) - paddingX;
+    const y = item.pageIndex * pageSpan - scrollTop + line.y;
+    const top = y - paddingY;
+    const bottom = y + lineHeight + paddingY;
+    const left = x;
+    const right = x + cellOuterWidth;
+    const key = `${item.pageIndex}:${rowIndex}:${colIndex}`;
+    const prev = cellMap.get(key);
+    if (!prev) {
+      cellMap.set(key, { left, top, right, bottom });
+      continue;
+    }
+    prev.left = Math.min(prev.left, left);
+    prev.top = Math.min(prev.top, top);
+    prev.right = Math.max(prev.right, right);
+    prev.bottom = Math.max(prev.bottom, bottom);
+  }
+
+  const rects = [];
+  for (const entry of cellMap.values()) {
+    const width = Math.max(0, entry.right - entry.left);
+    const height = Math.max(0, entry.bottom - entry.top);
+    if (width <= 0 || height <= 0) {
+      continue;
+    }
+    rects.push({
+      x: entry.left,
+      y: entry.top,
+      width,
+      height,
+    });
+  }
+  return rects;
+};
+
+export const tableRangeSelectionToCellRects = ({
+  layout,
+  fromOffset,
+  toOffset,
+  scrollTop,
+  viewportWidth,
+  layoutIndex,
+}) => {
+  if (!layout || !layoutIndex?.lines || !Number.isFinite(fromOffset) || !Number.isFinite(toOffset)) {
+    return [];
+  }
+  const minOffset = Math.min(fromOffset, toOffset);
+  const maxOffset = Math.max(fromOffset, toOffset);
+  if (minOffset === maxOffset) {
+    return [];
+  }
+
+  const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
+  const pageSpan = layout.pageHeight + layout.pageGap;
+  const cellMap = new Map();
+
+  for (const item of layoutIndex.lines) {
+    const line = item?.line;
+    if (!line || line.blockType !== "table") {
+      continue;
+    }
+    const lineStart = Number.isFinite(line.start) ? line.start : null;
+    const lineEnd = Number.isFinite(line.end) ? line.end : null;
+    if (lineStart == null || lineEnd == null) {
+      continue;
+    }
+    if (maxOffset <= lineStart || minOffset >= lineEnd) {
+      continue;
+    }
+    const attrs = line.blockAttrs || {};
+    const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : null;
+    const colIndex = Number.isFinite(attrs.colIndex) ? attrs.colIndex : null;
+    if (rowIndex == null || colIndex == null) {
+      continue;
+    }
+
+    const paddingX = Number.isFinite(line.cellPadding)
+      ? line.cellPadding
+      : Number.isFinite(attrs.padding)
+      ? attrs.padding
+      : 0;
+    const paddingY = Number.isFinite(line.cellPaddingY)
+      ? line.cellPaddingY
+      : Number.isFinite(attrs.paddingY)
+      ? attrs.paddingY
+      : 0;
+    const lineHeight = getLineHeight(line, layout);
+    const contentWidth = Number.isFinite(line.cellWidth)
+      ? line.cellWidth
+      : Number.isFinite(attrs.colWidth)
+      ? attrs.colWidth
+      : line.width || 0;
+    const cellOuterWidth = Math.max(0, contentWidth + paddingX * 2 + 1);
+    const x = pageX + (line.x || 0) - paddingX;
+    const y = item.pageIndex * pageSpan - scrollTop + line.y;
+    const top = y - paddingY;
+    const bottom = y + lineHeight + paddingY;
+    const left = x;
+    const right = x + cellOuterWidth;
+    const blockKey = line.blockId ?? line.blockStart ?? "table";
+    const key = `${item.pageIndex}:${blockKey}:${rowIndex}:${colIndex}`;
+    const prev = cellMap.get(key);
+    if (!prev) {
+      cellMap.set(key, { left, top, right, bottom });
+      continue;
+    }
+    prev.left = Math.min(prev.left, left);
+    prev.top = Math.min(prev.top, top);
+    prev.right = Math.max(prev.right, right);
+    prev.bottom = Math.max(prev.bottom, bottom);
+  }
+
+  const rects = [];
+  for (const entry of cellMap.values()) {
+    const width = Math.max(0, entry.right - entry.left);
+    const height = Math.max(0, entry.bottom - entry.top);
+    if (width <= 0 || height <= 0) {
+      continue;
+    }
+    rects.push({
+      x: entry.left,
+      y: entry.top,
+      width,
+      height,
+    });
+  }
+  return rects;
+};
+
 type ActiveBlockRectOptions = {
   blockTypes?: string[];
+  excludeBlockTypes?: string[];
 };
 
 export function activeBlockToRects(
@@ -310,11 +559,17 @@ export function activeBlockToRects(
   const blockStart = targetLine.blockStart;
   const blockId = targetLine.blockId ?? null;
   const blockTypes = Array.isArray(options.blockTypes) ? options.blockTypes : null;
+  const excludeBlockTypes = Array.isArray(options.excludeBlockTypes)
+    ? options.excludeBlockTypes
+    : null;
 
   if (!blockType) {
     return [];
   }
   if (blockTypes && !blockTypes.includes(blockType)) {
+    return [];
+  }
+  if (excludeBlockTypes && excludeBlockTypes.includes(blockType)) {
     return [];
   }
 

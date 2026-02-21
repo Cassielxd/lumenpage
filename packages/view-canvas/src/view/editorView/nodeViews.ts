@@ -1,8 +1,9 @@
-import { NodeSelection } from "lumenpage-state";
+﻿import { NodeSelection } from "lumenpage-state";
+import { docPosToTextOffset } from "../../core";
 
 import { getFirstLineForBlockId, getLineAtOffset } from "../layoutIndex";
 
-// 统一管理 NodeView 的生命周期与命中逻辑，避免 editorView 核心类继续膨胀。
+// NodeView manager.
 export const createNodeViewManager = ({
   view,
   getState,
@@ -21,11 +22,14 @@ export const createNodeViewManager = ({
     if (!node || !NodeSelection.isSelectable(node)) {
       return false;
     }
-    // 显式配置时严格按白名单。
     if (defaultNodeSelectionTypes) {
       return defaultNodeSelectionTypes.has(node.type?.name);
     }
-    // 默认策略：不抢 textblock 光标；其余 selectable 节点允许作为 NodeSelection。
+    // Default behavior aligns with PM table UX:
+    // table internals should keep text/cell selection semantics, not NodeSelection on table.
+    if (node.type?.name === "table") {
+      return false;
+    }
     return node.isTextblock !== true;
   };
 
@@ -67,7 +71,6 @@ export const createNodeViewManager = ({
   };
 
   const getNodeViewForLine = (line) => {
-    // 渲染阶段按行回查 NodeView，供 overlay 以及节点扩展使用。
     const blockId = line?.blockId;
     if (blockId && nodeViewsByBlockId.has(blockId)) {
       return nodeViewsByBlockId.get(blockId).view;
@@ -76,7 +79,6 @@ export const createNodeViewManager = ({
   };
 
   const getPosByBlockId = (blockId) => {
-    // 优先走已缓存映射，缺失时再回退扫描文档，保证迁移后行为与旧逻辑一致。
     if (!blockId) {
       return null;
     }
@@ -107,7 +109,6 @@ export const createNodeViewManager = ({
     docPosToTextOffset,
     layoutIndex,
   }) => {
-    // 坐标命中流程：坐标 -> 文档位置 -> 偏移行 -> blockId -> NodeView。
     if (!layoutIndex) {
       return null;
     }
@@ -125,7 +126,6 @@ export const createNodeViewManager = ({
         return fromBlockId;
       }
     }
-    // 回退：按文档位置匹配 NodeView，避免对 layout.blockId 的硬依赖。
     let fallback = null;
     for (const entry of nodeViews.values()) {
       if (!entry?.node || !Number.isFinite(entry?.pos)) {
@@ -181,8 +181,12 @@ export const createNodeViewManager = ({
   };
 
   const syncNodeViewOverlays = ({ layout, layoutIndex, scrollArea }) => {
-    // 每次渲染后同步 NodeView 的 DOM 定位信息，避免节点 UI 与画布错位。
-    if (!layout || !layoutIndex || nodeViewsByBlockId.size === 0) {
+    // Sync NodeView DOM positions. Fallback to pos mapping when blockId is missing.
+    if (!layout || !layoutIndex || nodeViews.size === 0) {
+      return;
+    }
+    const state = getState();
+    if (!state?.doc) {
       return;
     }
     const scrollTop = scrollArea.scrollTop;
@@ -191,8 +195,13 @@ export const createNodeViewManager = ({
     const pageSpan = layout.pageHeight + layout.pageGap;
     const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
 
-    for (const [blockId, entry] of nodeViewsByBlockId) {
-      const item = getFirstLineForBlockId(layoutIndex, blockId);
+    for (const entry of nodeViews.values()) {
+      const blockId = entry?.blockId ?? null;
+      let item = blockId ? getFirstLineForBlockId(layoutIndex, blockId) : null;
+      if (!item && Number.isFinite(entry?.pos)) {
+        const offset = docPosToTextOffset(state.doc, entry.pos);
+        item = getLineAtOffset(layoutIndex, offset);
+      }
       if (!item) {
         entry.view?.syncDOM?.({ visible: false });
         continue;
@@ -209,9 +218,8 @@ export const createNodeViewManager = ({
       entry.view?.syncDOM?.({ x, y, width, height, visible, line, pageIndex: item.pageIndex, layout });
     }
   };
-
   const syncNodeViewSelection = () => {
-    // 将 ProseMirror 的 NodeSelection 同步到 NodeView 的选中态回调。
+    // Sync NodeSelection to NodeView state.
     let nextKey = null;
     const state = getState();
     const selection = state?.selection;
@@ -251,7 +259,7 @@ export const createNodeViewManager = ({
   };
 
   const syncNodeViews = () => {
-    // 文档变化后增量复用 NodeView；无法 update 的实例会被销毁并重建。
+    // 鏂囨。鍙樺寲鍚庡閲忓鐢?NodeView锛涙棤娉?update 鐨勫疄渚嬩細琚攢姣佸苟閲嶅缓銆?
     const state = getState();
     if (!state?.doc) {
       return;
@@ -326,7 +334,7 @@ export const createNodeViewManager = ({
   };
 
   const destroyNodeViews = () => {
-    // 编辑器销毁时统一释放 NodeView，避免泄漏事件与 DOM。
+    // 缂栬緫鍣ㄩ攢姣佹椂缁熶竴閲婃斁 NodeView锛岄伩鍏嶆硠婕忎簨浠朵笌 DOM銆?
     for (const entry of nodeViews.values()) {
       entry.view?.destroy?.();
     }
@@ -341,7 +349,7 @@ export const createNodeViewManager = ({
     textOffsetToDocPos,
     queryEditorProp,
   }) => {
-    // 将命中行解析为可选中的节点位置，兼容插件重写 isNodeSelectionTarget。
+    // 灏嗗懡涓瑙ｆ瀽涓哄彲閫変腑鐨勮妭鐐逛綅缃紝鍏煎鎻掍欢閲嶅啓 isNodeSelectionTarget銆?
     const state = getState();
     if (!hit?.line || !state?.doc) {
       return null;
@@ -386,8 +394,7 @@ export const createNodeViewManager = ({
       return null;
     }
     if (decision !== true) {
-      // 与 PM 点击语义靠拢：默认不在“文本行”上触发 NodeSelection，避免抢占光标。
-      if (lineHasTextContent(hit?.line)) {
+        if (lineHasTextContent(hit?.line)) {
         return null;
       }
       if (!allowDefaultNodeSelection(node)) {
@@ -408,7 +415,6 @@ export const createNodeViewManager = ({
     queryEditorProp,
     dispatchTransaction,
   }) => {
-    // 先交给 NodeView 自己处理点击；未消费时再回退为 NodeSelection。
     const coords = getEventCoords(event);
     const nodeView = getNodeViewAtCoords({
       coords,
@@ -432,6 +438,9 @@ export const createNodeViewManager = ({
         hit: null,
         event,
       });
+      if (decision !== true && entry?.node?.type?.name === "table") {
+        return false;
+      }
       if (
         decision !== true &&
         (decision === false || !allowDefaultNodeSelection(entry.node))
@@ -475,3 +484,6 @@ export const createNodeViewManager = ({
     consumeSkipNextClickSelection,
   };
 };
+
+
+

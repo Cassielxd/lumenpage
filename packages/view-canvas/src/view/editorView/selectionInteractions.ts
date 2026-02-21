@@ -76,6 +76,21 @@ export const createSelectionInteractions = ({
     return true;
   };
 
+  // 根据文档位置直接设置 NodeSelection（用于拖拽句柄/媒体本体点击）。
+  const setNodeSelectionAtPos = (pos) => {
+    const state = getState();
+    if (!state?.doc || !Number.isFinite(pos)) {
+      return false;
+    }
+    const node = state.doc.nodeAt(pos);
+    if (!node) {
+      return false;
+    }
+    const tr = state.tr.setSelection(NodeSelection.create(state.doc, pos));
+    dispatchTransaction(tr);
+    return true;
+  };
+
   const setGapCursorAtCoords = (x, y, hit, event) => {
     const layout = getLayout();
     if (!layout || event?.shiftKey || isEditable() === false) {
@@ -144,6 +159,7 @@ export const createSelectionInteractions = ({
 
   return {
     setSelectionFromHit,
+    setNodeSelectionAtPos,
     createSelectionBetweenFromProps,
     resolveGapSelectionAtPos,
     createSelectionBetween,

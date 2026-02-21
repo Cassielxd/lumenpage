@@ -1,5 +1,6 @@
 import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
+import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
 export const createRenderSync = ({
   getEditorState,
   setEditorState,
@@ -65,7 +66,12 @@ export const createRenderSync = ({
     const focused = getActiveElement() === inputEl;
     const onlyWhenFocused = config.onlyWhenFocused !== false;
     let enabled = config.enabled !== false && (!onlyWhenFocused || focused);
-    let types = Array.isArray(config.types) ? config.types : ["paragraph", "heading", "image"];
+    let types = Array.isArray(config.types) ? config.types : null;
+    let excludeTypes = Array.isArray(config.excludeTypes) ? config.excludeTypes : null;
+    if (!types && !excludeTypes) {
+      // Default behavior: keep generic block highlight, but avoid table-level flood highlight.
+      excludeTypes = ["table"];
+    }
 
     // 支持通过 EditorProps/PluginProps 下沉活动块高亮策略，避免核心白名单硬编码。
     const fromProps = typeof queryEditorProp === "function" ? queryEditorProp("blockSelection") : null;
@@ -73,6 +79,7 @@ export const createRenderSync = ({
       enabled = false;
     } else if (Array.isArray(fromProps)) {
       types = fromProps;
+      excludeTypes = null;
     } else if (fromProps && typeof fromProps === "object") {
       if (fromProps.enabled === false) {
         enabled = false;
@@ -81,9 +88,13 @@ export const createRenderSync = ({
       }
       if (Array.isArray(fromProps.types)) {
         types = fromProps.types;
+        excludeTypes = null;
+      }
+      if (Array.isArray(fromProps.excludeTypes)) {
+        excludeTypes = fromProps.excludeTypes;
       }
     }
-    return { enabled, types };
+    return { enabled, types, excludeTypes };
   };
 
   const scheduleRender = () => {
@@ -96,8 +107,9 @@ export const createRenderSync = ({
         setRafId(0);
         const layout = getLayout();
         const layoutIndex = getLayoutIndex?.() || null;
+        const editorState = getEditorState();
         const selection = getSelectionOffsets(getEditorState(), docPosToTextOffset, clampOffset);
-        const selectionRects = selectionToRects(
+        let selectionRects = selectionToRects(
           layout,
           selection.from,
           selection.to,
@@ -106,6 +118,31 @@ export const createRenderSync = ({
           getText().length,
           layoutIndex
         );
+        const tableCellRects = tableCellSelectionToRects({
+          layout,
+          selection: editorState?.selection,
+          doc: editorState?.doc,
+          scrollTop: scrollArea.scrollTop,
+          viewportWidth: scrollArea.clientWidth,
+          layoutIndex,
+          docPosToTextOffset,
+        });
+        if (tableCellRects.length > 0) {
+          // Draw twice to increase perceived emphasis for cell-range selections.
+          selectionRects = [...tableCellRects, ...tableCellRects];
+        } else {
+          const tableRangeRects = tableRangeSelectionToCellRects({
+            layout,
+            fromOffset: selection.from,
+            toOffset: selection.to,
+            scrollTop: scrollArea.scrollTop,
+            viewportWidth: scrollArea.clientWidth,
+            layoutIndex,
+          });
+          if (tableRangeRects.length > 0) {
+            selectionRects = [...tableRangeRects, ...tableRangeRects];
+          }
+        }
         let blockRects = [];
         const blockSelection = resolveBlockSelection();
         if (
@@ -119,7 +156,7 @@ export const createRenderSync = ({
             scrollArea.scrollTop,
             scrollArea.clientWidth,
             getText().length,
-            { blockTypes: blockSelection.types },
+            { blockTypes: blockSelection.types, excludeBlockTypes: blockSelection.excludeTypes },
             layoutIndex
           );
         }
