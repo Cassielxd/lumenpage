@@ -75,7 +75,6 @@ export class CanvasEditorView {
       resolveCanvasConfig,
       nodeRegistry,
       layoutWorkerConfig,
-      nodeViewFactories,
       status,
     } = initEditorViewEnvironment({ place, viewProps });
     this.state = editorState;
@@ -113,23 +112,24 @@ export class CanvasEditorView {
 
     // NodeView 管理能力由独立模块提供，editorView 只做装配。
     const configuredNodeSelectionTypes = resolveCanvasConfig("nodeSelectionTypes", null);
-    // 对齐 PM 且保证可用性：
-    // 未显式配置时使用默认判定函数（避免抢占 textblock 光标）。
-    // 显式配置 nodeSelectionTypes 时按白名单收窄。
-    const defaultNodeSelectionTypes =
-      Array.isArray(configuredNodeSelectionTypes) && configuredNodeSelectionTypes.length > 0
-        ? new Set(configuredNodeSelectionTypes)
-        : null;
     let getDecorations = null;
     let queryEditorProp: (name: string, ...args: any[]) => any = () => null;
     const nodeViewManager = createNodeViewManager({
       view: this,
       getState: () => this.state,
       nodeRegistry,
-      nodeViewFactories,
-      getNodeViewFactories: () => queryEditorProp("nodeViews") ?? editorProps?.nodeViews ?? null,
+      getNodeViewFactories: () => queryEditorProp("nodeViews") ?? null,
       getDecorations: () => getDecorations?.(),
-      defaultNodeSelectionTypes,
+      getDefaultNodeSelectionTypes: () => {
+        const fromProps = queryEditorProp("nodeSelectionTypes");
+        const resolved =
+          Array.isArray(fromProps) && fromProps.length > 0
+            ? fromProps
+            : Array.isArray(configuredNodeSelectionTypes) && configuredNodeSelectionTypes.length > 0
+            ? configuredNodeSelectionTypes
+            : null;
+        return resolved ? new Set(resolved) : null;
+      },
       logNodeSelection: debugConfig?.selection
         ? (phase, payload) => {
             console.log(`[node-selection:${phase}]`, payload);
@@ -154,6 +154,7 @@ export class CanvasEditorView {
       dom,
       basePageWidth,
       resolveCanvasConfig,
+      queryEditorProp: (name, ...args) => queryEditorProp(name, ...args),
       getState: () => this.state,
       docToOffsetText,
     });
@@ -295,6 +296,7 @@ export class CanvasEditorView {
     const { dispatchTransaction, setSelectionOffsets } = createStateFlow({
       view: this,
       getEditorProps: () => editorProps,
+      getEditorPropsList,
       applyTransaction,
       createChangeEvent,
       layoutPipeline,

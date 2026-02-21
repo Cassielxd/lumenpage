@@ -33,7 +33,12 @@ export const createDragHandlers = ({
 
   // 解析 drop cursor 样式。
   const resolveDropCursorStyle = () => {
-    const config = settings?.dropCursor || {};
+    const fromProps = queryEditorProp?.("dropCursor");
+    if (fromProps === false) {
+      return null;
+    }
+    const config =
+      fromProps && typeof fromProps === "object" ? fromProps : settings?.dropCursor || {};
     return {
       color: config.color || "#2563eb",
       width: Number.isFinite(config.width) ? config.width : 2,
@@ -68,17 +73,29 @@ export const createDragHandlers = ({
     if (dropPos === pos) {
       return;
     }
+    const style = resolveDropCursorStyle();
+    if (!style) {
+      clearDropDecoration();
+      return;
+    }
     dropPos = pos;
-    const { color, width } = resolveDropCursorStyle();
+    const { color, width } = style;
     const height = resolveLineHeightAtPos(pos);
-    dropDecoration = Decoration.widget(
-      pos,
-      (ctx, x, y) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(x - width / 2, y, width, height);
-      },
-      { side: 1 }
-    );
+    const fromProps = queryEditorProp?.("createDropCursorDecoration", pos, {
+      color,
+      width,
+      height,
+    });
+    dropDecoration =
+      fromProps ??
+      Decoration.widget(
+        pos,
+        (ctx, x, y) => {
+          ctx.fillStyle = color;
+          ctx.fillRect(x - width / 2, y, width, height);
+        },
+        { side: 1 }
+      );
     scheduleRender();
   };
 
@@ -227,9 +244,7 @@ export const createDragHandlers = ({
 
     if (state.selection.empty) {
       const fromProps = queryEditorProp?.("resolveDragNodePos", event);
-      const fallbackTarget = event?.target?.closest?.("[data-lumen-drag-pos]");
-      const fallbackAttr = fallbackTarget?.getAttribute?.("data-lumen-drag-pos");
-      const nodePos = Number.isFinite(fromProps) ? fromProps : Number(fallbackAttr);
+      const nodePos = Number.isFinite(fromProps) ? fromProps : null;
       const node = Number.isFinite(nodePos) ? state.doc.nodeAt(nodePos) : null;
       if (!node || !Number.isFinite(nodePos)) {
         event.preventDefault();

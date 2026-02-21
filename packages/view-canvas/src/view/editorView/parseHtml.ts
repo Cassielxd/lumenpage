@@ -8,22 +8,28 @@ export const createParseHtmlToSlice = ({
   queryEditorProp,
   getDomRoot,
 }) => {
-  const defaultParseHtmlToSlice =
-    resolveCanvasConfig("parseHtmlToSlice") ??
-    (schema
-      ? createHtmlParser(schema, PMDOMParser)
-      : () => {
-          throw new Error("HTML parser is not configured.");
-        });
+  const fallbackParser = schema
+    ? createHtmlParser(schema, PMDOMParser)
+    : () => {
+        throw new Error("HTML parser is not configured.");
+      };
 
   return (html) => {
+    const parseFromProps = queryEditorProp("parseHtmlToSlice", html);
+    if (parseFromProps) {
+      return parseFromProps;
+    }
+    const parseFromConfig = resolveCanvasConfig("parseHtmlToSlice");
+    if (typeof parseFromConfig === "function") {
+      return parseFromConfig(html);
+    }
     if (typeof html !== "string") {
-      return defaultParseHtmlToSlice(html);
+      return fallbackParser(html);
     }
     const ownerDocument = getDomRoot?.()?.ownerDocument || (typeof document !== "undefined" ? document : null);
     const ownerWindow = ownerDocument?.defaultView || (typeof window !== "undefined" ? window : null);
     if (!ownerWindow?.DOMParser) {
-      return defaultParseHtmlToSlice(html);
+      return fallbackParser(html);
     }
     const domParser = new ownerWindow.DOMParser();
     const doc = domParser.parseFromString(html, "text/html");
@@ -35,6 +41,6 @@ export const createParseHtmlToSlice = ({
     if (schemaDomParser && typeof schemaDomParser.parseSlice === "function") {
       return schemaDomParser.parseSlice(doc.body);
     }
-    return defaultParseHtmlToSlice(html);
+    return fallbackParser(html);
   };
 };

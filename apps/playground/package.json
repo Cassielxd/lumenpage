@@ -20,6 +20,7 @@
     "lumenpage-transform": "workspace:*",
     "lumenpage-inputrules": "workspace:*",
     "lumenpage-gapcursor": "workspace:*",
+    "lumenpage-drag-handle": "workspace:*",
     "vue": "^3.5.0",
     "tdesign-vue-next": "^1.8.0",
     "tdesign-icons-vue-next": "^0.3.4"

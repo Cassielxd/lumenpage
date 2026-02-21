@@ -5,6 +5,9 @@
       "path": "packages/view-canvas"
     },
     {
+      "path": "packages/drag-handle"
+    },
+    {
       "path": "apps/playground"
     },
     {

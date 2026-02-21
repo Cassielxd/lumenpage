@@ -1,4 +1,5 @@
 ﻿import { Plugin } from "lumenpage-state";
+import { Decoration } from "lumenpage-view-canvas";
 
 type NodeViewFactory = (node: any, view: any, getPos: () => number) => any;
 
@@ -11,6 +12,12 @@ type DragHandleOptions = {
   size?: number;
   insetTop?: number;
   insetLeft?: number;
+  dropCursor?:
+    | boolean
+    | {
+        color?: string;
+        width?: number;
+      };
 };
 
 const isBlockNodeType = (type: any) => {
@@ -314,6 +321,24 @@ export const createDragHandlePlugin = (options: DragHandleOptions) =>
   new Plugin({
     props: {
       nodeViews: createBlockDragHandleNodeViews(options),
+      dropCursor:
+        options?.dropCursor === undefined ? { color: "#2563eb", width: 2 } : options.dropCursor,
+      createDropCursorDecoration: (_view: any, pos: number, context: any) => {
+        if (options?.dropCursor === false) {
+          return null;
+        }
+        const color = context?.color || "#2563eb";
+        const width = Number.isFinite(context?.width) ? context.width : 2;
+        const height = Number.isFinite(context?.height) ? context.height : 22;
+        return Decoration.widget(
+          pos,
+          (ctx, x, y) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(x - width / 2, y, width, height);
+          },
+          { side: 1 }
+        );
+      },
       resolveDragNodePos: (_view: any, event: any) => {
         const target = event?.target?.closest?.("[data-lumen-drag-pos]");
         const attr = target?.getAttribute?.("data-lumen-drag-pos");
@@ -322,4 +347,6 @@ export const createDragHandlePlugin = (options: DragHandleOptions) =>
       },
     },
   });
+
+
 

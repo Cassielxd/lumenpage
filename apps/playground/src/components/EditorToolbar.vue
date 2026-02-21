@@ -1,14 +1,26 @@
 ﻿<template>
-  <t-header class="toolbar">
+  <t-header class="toolbar" @mousedown="handleToolbarMouseDown">
     <div class="toolbar-left">
       <div class="toolbar-group">
         <t-tooltip content="撤销">
-          <t-button size="small" variant="text" class="icon-btn" @click="runUndo">
+          <t-button
+            size="small"
+            variant="text"
+            class="icon-btn"
+            :disabled="!canRun('undo')"
+            @click="runUndo"
+          >
             <Icon name="arrow-left" />
           </t-button>
         </t-tooltip>
         <t-tooltip content="重做">
-          <t-button size="small" variant="text" class="icon-btn" @click="runRedo">
+          <t-button
+            size="small"
+            variant="text"
+            class="icon-btn"
+            :disabled="!canRun('redo')"
+            @click="runRedo"
+          >
             <Icon name="arrow-right" />
           </t-button>
         </t-tooltip>
@@ -138,6 +150,74 @@
             <Icon name="video" />
           </t-button>
         </t-tooltip>
+      </div>
+
+      <t-divider layout="vertical" class="toolbar-divider" />
+
+      <div class="toolbar-group">
+        <t-popup trigger="click" placement="bottom">
+          <template #content>
+            <div class="table-tools-panel" @mousedown.prevent>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('addTableRowAfter')"
+                @click="addTableRowAfter"
+              >
+                表格加行
+              </t-button>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('deleteTableRow')"
+                @click="deleteTableRow"
+              >
+                表格删行
+              </t-button>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('addTableColumnAfter')"
+                @click="addTableColumnAfter"
+              >
+                表格加列
+              </t-button>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('deleteTableColumn')"
+                @click="deleteTableColumn"
+              >
+                表格删列
+              </t-button>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('mergeTableCellRight')"
+                @click="mergeTableCellRight"
+              >
+                合并右侧单元格
+              </t-button>
+              <t-button
+                size="small"
+                variant="text"
+                block
+                :disabled="!canRun('splitTableCell')"
+                @click="splitTableCell"
+              >
+                拆分单元格
+              </t-button>
+            </div>
+          </template>
+          <t-button size="small" variant="outline" class="table-tools-btn">
+            <Icon name="table" />
+          </t-button>
+        </t-popup>
       </div>
     </div>
     <div class="toolbar-right">
@@ -357,8 +437,37 @@ const run = (name: string, ...args: unknown[]) => {
   return command(...args);
 };
 
-const runUndo = () => run("undo");
-const runRedo = () => run("redo");
+const canRun = (name: string, ...args: unknown[]) => {
+  const commands = getCommands();
+  if (typeof commands?.can === "function") {
+    return commands.can(name, ...args) === true;
+  }
+  return true;
+};
+
+const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
+  const ok = run(name, ...args);
+  if (!ok) {
+    window.alert(message);
+  }
+  return ok;
+};
+
+const handleToolbarMouseDown = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) {
+    return;
+  }
+  if (target.closest(".t-select") || target.closest(".t-input")) {
+    return;
+  }
+  if (target.closest(".t-button")) {
+    event.preventDefault();
+  }
+};
+
+const runUndo = () => runWithNotice("undo", "当前没有可撤销的操作");
+const runRedo = () => runWithNotice("redo", "当前没有可重做的操作");
 const toggleBold = () => run("toggleBold");
 const toggleItalic = () => run("toggleItalic");
 const toggleUnderline = () => run("toggleUnderline");
@@ -419,6 +528,16 @@ const insertVideo = () => {
   }
   return run("insertVideo", { src, embed: false });
 };
+
+const addTableRowAfter = () => runWithNotice("addTableRowAfter", "请先将光标放在表格单元格内");
+const deleteTableRow = () => runWithNotice("deleteTableRow", "请先将光标放在表格单元格内");
+const addTableColumnAfter = () =>
+  runWithNotice("addTableColumnAfter", "请先将光标放在表格单元格内");
+const deleteTableColumn = () =>
+  runWithNotice("deleteTableColumn", "请先将光标放在表格单元格内");
+const mergeTableCellRight = () =>
+  runWithNotice("mergeTableCellRight", "当前单元格无法向右合并");
+const splitTableCell = () => runWithNotice("splitTableCell", "当前单元格无法拆分");
 
 const handleBlockTypeChange = (value: string) => {
   if (value === "paragraph") {
@@ -603,6 +722,7 @@ defineExpose({ statusEl });
   font-size: 16px;
 }
 
+
 .status {
   font-size: 12px;
   color: #8f959e;
@@ -630,5 +750,19 @@ defineExpose({ statusEl });
 
 .settings-select {
   width: 90px;
+}
+
+.table-tools-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-tools-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 168px;
+  padding: 6px;
+  gap: 2px;
 }
 </style>

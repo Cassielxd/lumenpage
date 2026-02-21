@@ -34,11 +34,7 @@ export const createPointerHandlers = ({
     pendingInternalDrag = null;
 
     const fromResolver = resolveDragNodePos?.(event);
-    const fallbackTarget = event?.target?.closest?.("[data-lumen-drag-pos]");
-    const fallbackAttr = fallbackTarget?.getAttribute?.("data-lumen-drag-pos");
-    const dragNodePos = Number.isFinite(fromResolver)
-      ? fromResolver
-      : Number(fallbackAttr);
+    const dragNodePos = Number.isFinite(fromResolver) ? fromResolver : null;
     if (Number.isFinite(dragNodePos)) {
       const rect = scrollArea.getBoundingClientRect();
       const x = event.clientX - rect.left;

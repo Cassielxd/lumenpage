@@ -31,7 +31,9 @@ export type NodeSelectionHit = {
 export type EditorProps<T = any> = {
   state?: unknown;
   dispatchTransaction?: (tr: any) => void;
+  onChange?: (view: EditorView, event: any) => void;
   nodeViews?: Record<string, any>;
+  nodeSelectionTypes?: string[];
   attributes?: Record<string, any> | ((state: unknown) => Record<string, any> | null | undefined);
   editable?: boolean | ((state: unknown) => boolean);
   decorations?: any;
@@ -54,6 +56,20 @@ export type EditorProps<T = any> = {
         types?: string[];
         excludeTypes?: string[];
       };
+  dropCursor?:
+    | boolean
+    | {
+        color?: string;
+        width?: number;
+      };
+  createDropCursorDecoration?: (view: EditorView, pos: number, context: any) => any;
+  parseHtmlToSlice?: (view: EditorView, html: string) => any;
+  getText?: (view: EditorView, doc: any) => string;
+  isInSpecialStructureAtPos?: (view: EditorView, state: any, pos: number) => boolean;
+  shouldAutoAdvanceAfterEnter?: (
+    view: EditorView,
+    args: { prevState: any; nextState: any; prevHead: number }
+  ) => boolean;
   resolveDragNodePos?: (
     view: EditorView,
     event: PointerEvent | DragEvent | MouseEvent | Event

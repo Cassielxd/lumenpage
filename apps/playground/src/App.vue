@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <t-layout class="app-shell">
     <t-header class="topbar">
       <div class="topbar-left">
@@ -52,6 +52,7 @@ import {
   docPosToTextOffset,
   textOffsetToDocPos,
 } from "lumenpage-view-canvas";
+import { createDragHandlePlugin } from "lumenpage-drag-handle";
 import { history } from "lumenpage-history";
 import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
 import { gapCursor } from "lumenpage-gapcursor";
@@ -85,8 +86,8 @@ const debugListSmoke = resolveDebugFlag("listSmoke");
 const debugDuplicateDecorations = resolveDebugFlag("dupDecor");
 
 const settings = {
-  pageWidth: 816,
-  pageHeight: 720,
+  pageWidth: 794,
+  pageHeight: 1123,
   pageGap: 24,
   margin: {
     top: 72,
@@ -107,7 +108,6 @@ const settings = {
 };
 
 const nodeRegistry = createDefaultNodeRendererRegistry();
-
 const findFirstTableCellPos = (doc) => {
   let tableCellPos = null;
   doc.descendants((node, pos) => {
@@ -510,6 +510,13 @@ onMounted(() => {
   if (enableGapCursor) {
     plugins.push(gapCursor());
   }
+  plugins.push(
+    createDragHandlePlugin({
+      schema,
+      nodeRegistry,
+      onlyTopLevel: true,
+    })
+  );
   const editorState = createCanvasState({
     schema,
     createDocFromText,
@@ -518,7 +525,9 @@ onMounted(() => {
   });
   const initBlockIdTr = createBlockIdTransaction(editorState);
   const readyState = initBlockIdTr ? editorState.apply(initBlockIdTr) : editorState;
-  const viewProps: Record<string, unknown> = { state: readyState };
+  const viewProps: Record<string, unknown> = {
+    state: readyState,
+  };
   if (debugDuplicateDecorations) {
     viewProps.decorations = (state) => {
       const docSize = state?.doc?.content?.size ?? 0;
@@ -652,3 +661,4 @@ onBeforeUnmount(() => {
   z-index: 10;
 }
 </style>
+

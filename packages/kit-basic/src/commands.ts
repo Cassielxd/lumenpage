@@ -254,6 +254,34 @@ export const createViewCommands = () => {
     return wrapIn(type)(state, dispatch, view);
   };
 
+  const toggleWrapNode = (nodeName) => (state, dispatch, view) => {
+    const type = state.schema.nodes[nodeName];
+    if (!type) {
+      return false;
+    }
+    const { $from, $to } = state.selection;
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      const node = $from.node(depth);
+      if (node?.type !== type) {
+        continue;
+      }
+      const range = $from.blockRange($to, (n) => n.type === type);
+      if (!range) {
+        break;
+      }
+      const target = liftTarget(range);
+      if (target == null) {
+        break;
+      }
+      if (dispatch) {
+        const tr = state.tr.lift(range, target);
+        dispatch(tr.scrollIntoView());
+      }
+      return true;
+    }
+    return wrapIn(type)(state, dispatch, view);
+  };
+
   const toggleMarkByName = (markName, attrs = null) => (state, dispatch, view) => {
     const type = state.schema.marks[markName];
     if (!type) {
@@ -318,7 +346,7 @@ export const createViewCommands = () => {
     toggleStrike: toggleMarkByName("strike"),
     toggleInlineCode: toggleMarkByName("code"),
     toggleLink: (attrs) => toggleMarkByName("link", attrs),
-    toggleBlockquote: wrapInNode("blockquote"),
+    toggleBlockquote: toggleWrapNode("blockquote"),
     toggleCodeBlock: toggleCodeBlock(),
     insertHorizontalRule: insertNode("horizontal_rule"),
     toggleBulletList: toggleList("bullet_list"),

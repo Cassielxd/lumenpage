@@ -8,10 +8,9 @@ export const createNodeViewManager = ({
   view,
   getState,
   nodeRegistry,
-  nodeViewFactories,
   getNodeViewFactories,
   getDecorations,
-  defaultNodeSelectionTypes,
+  getDefaultNodeSelectionTypes,
   logNodeSelection,
 }) => {
   const nodeViews = new Map();
@@ -22,6 +21,10 @@ export const createNodeViewManager = ({
     if (!node || !NodeSelection.isSelectable(node)) {
       return false;
     }
+    const defaultNodeSelectionTypes =
+      typeof getDefaultNodeSelectionTypes === "function"
+        ? getDefaultNodeSelectionTypes()
+        : null;
     if (defaultNodeSelectionTypes) {
       return defaultNodeSelectionTypes.has(node.type?.name);
     }
@@ -265,8 +268,7 @@ export const createNodeViewManager = ({
       return;
     }
     const activeNodeViewFactories =
-      (typeof getNodeViewFactories === "function" ? getNodeViewFactories() : null) ??
-      nodeViewFactories;
+      typeof getNodeViewFactories === "function" ? getNodeViewFactories() : null;
 
     if (!nodeRegistry && !activeNodeViewFactories) {
       return;

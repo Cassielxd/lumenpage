@@ -42,10 +42,7 @@ export const createInteractionPipeline = ({
     if (Number.isFinite(fromProps)) {
       return fromProps;
     }
-    const fallbackTarget = event?.target?.closest?.("[data-lumen-drag-pos]");
-    const fallbackAttr = fallbackTarget?.getAttribute?.("data-lumen-drag-pos");
-    const fallbackPos = Number(fallbackAttr);
-    return Number.isFinite(fallbackPos) ? fallbackPos : null;
+    return null;
   };
 
   const dragHandlers = createDragHandlers({

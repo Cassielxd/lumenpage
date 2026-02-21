@@ -4,6 +4,7 @@ import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
 export const createStateFlow = ({
   view,
   getEditorProps,
+  getEditorPropsList,
   applyTransaction,
   createChangeEvent,
   layoutPipeline,
@@ -26,7 +27,17 @@ export const createStateFlow = ({
     if (changeEvent?.summary?.blocks?.ids?.length) {
       layoutPipeline.invalidateBlocks(changeEvent.summary.blocks.ids);
     }
-    if (onChange) {
+    const propsList =
+      typeof getEditorPropsList === "function" ? getEditorPropsList(nextState) : [];
+    let handledByProps = false;
+    for (const props of propsList) {
+      const onChangeFromProps = props?.onChange;
+      if (typeof onChangeFromProps === "function") {
+        handledByProps = true;
+        onChangeFromProps(view, changeEvent);
+      }
+    }
+    if (!handledByProps && onChange) {
       onChange(changeEvent);
     }
     setPendingChangeSummary(changeEvent.summary || null);

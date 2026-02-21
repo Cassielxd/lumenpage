@@ -5,6 +5,7 @@ export const createRuntimeHelpers = ({
   dom,
   basePageWidth,
   resolveCanvasConfig,
+  queryEditorProp,
   getState,
   docToOffsetText,
 }) => {
@@ -17,13 +18,17 @@ export const createRuntimeHelpers = ({
   };
 
   const getText = () => {
-    const getTextProp = resolveCanvasConfig("getText");
     const state = getState();
-    if (getTextProp) {
-      return getTextProp(state.doc);
-    }
     if (!state?.doc) {
       return "";
+    }
+    const getTextProp = queryEditorProp?.("getText", state?.doc);
+    if (typeof getTextProp === "string") {
+      return getTextProp;
+    }
+    const getTextFromConfig = resolveCanvasConfig("getText");
+    if (typeof getTextFromConfig === "function") {
+      return getTextFromConfig(state.doc);
     }
     return docToOffsetText(state.doc);
   };
@@ -50,10 +55,29 @@ export const createRuntimeHelpers = ({
     return false;
   };
 
-  const isInSpecialStructureAtPos =
-    resolveCanvasConfig("isInSpecialStructureAtPos") ??
-    ((state, pos) => isInNodeTypeAtPos(state, pos, "table"));
-  const shouldAutoAdvanceAfterEnter = resolveCanvasConfig("shouldAutoAdvanceAfterEnter", null);
+  const isInSpecialStructureAtPos = (state, pos) => {
+    const fromProps = queryEditorProp?.("isInSpecialStructureAtPos", state, pos);
+    if (typeof fromProps === "boolean") {
+      return fromProps;
+    }
+    const fromConfig = resolveCanvasConfig("isInSpecialStructureAtPos");
+    if (typeof fromConfig === "function") {
+      return fromConfig(state, pos);
+    }
+    return isInNodeTypeAtPos(state, pos, "table");
+  };
+
+  const shouldAutoAdvanceAfterEnter = (args) => {
+    const fromProps = queryEditorProp?.("shouldAutoAdvanceAfterEnter", args);
+    if (typeof fromProps === "boolean") {
+      return fromProps;
+    }
+    const fromConfig = resolveCanvasConfig("shouldAutoAdvanceAfterEnter", null);
+    if (typeof fromConfig === "function") {
+      return fromConfig(args);
+    }
+    return null;
+  };
 
   return {
     resolvePageWidth,
