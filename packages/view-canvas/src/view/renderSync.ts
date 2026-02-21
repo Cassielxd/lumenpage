@@ -42,25 +42,47 @@ export const createRenderSync = ({
   getPendingSteps,
   clearPendingSteps,
   resolvePageWidth,
+  queryEditorProp,
 }) => {
   let layoutVersion = 0;
   let workerDisabled = false;
   let workerHasDoc = false;
   let workerErrorCount = 0;
+  const getActiveElement = () => {
+    const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
+    return ownerDocument?.activeElement ?? null;
+  };
 
   const updateStatus = () => {
     const layout = getLayout();
     const pageCount = layout ? layout.pages.length : 0;
-    const focused = document.activeElement === inputEl ? "typing" : "idle";
+    const focused = getActiveElement() === inputEl ? "typing" : "idle";
     status.textContent = `${pageCount} pages | ${focused}`;
   };
 
   const resolveBlockSelection = () => {
     const config = blockSelectionConfig || {};
-    const focused = document.activeElement === inputEl;
+    const focused = getActiveElement() === inputEl;
     const onlyWhenFocused = config.onlyWhenFocused !== false;
-    const enabled = config.enabled !== false && (!onlyWhenFocused || focused);
-    const types = Array.isArray(config.types) ? config.types : ["paragraph", "heading", "image"];
+    let enabled = config.enabled !== false && (!onlyWhenFocused || focused);
+    let types = Array.isArray(config.types) ? config.types : ["paragraph", "heading", "image"];
+
+    // 支持通过 EditorProps/PluginProps 下沉活动块高亮策略，避免核心白名单硬编码。
+    const fromProps = typeof queryEditorProp === "function" ? queryEditorProp("blockSelection") : null;
+    if (fromProps === false) {
+      enabled = false;
+    } else if (Array.isArray(fromProps)) {
+      types = fromProps;
+    } else if (fromProps && typeof fromProps === "object") {
+      if (fromProps.enabled === false) {
+        enabled = false;
+      } else if (fromProps.enabled === true) {
+        enabled = !onlyWhenFocused || focused;
+      }
+      if (Array.isArray(fromProps.types)) {
+        types = fromProps.types;
+      }
+    }
     return { enabled, types };
   };
 

@@ -3,6 +3,7 @@
 import { docPosToTextOffset } from "../../core";
 import { getLineAtOffset } from "../layoutIndex";
 import { Decoration } from "../decorations";
+import { isEditorDomEventHandled } from "./plugins";
 
 // 拖拽/放置处理（包含 drop cursor 计算与绘制）。
 export const createDragHandlers = ({
@@ -16,9 +17,11 @@ export const createDragHandlers = ({
   getEventCoords,
   getDocPosFromCoords,
   serializeSliceToHtml,
+  clipboardTextSerializer,
   createSliceFromText,
   parseHtmlToSlice,
   dispatchEditorProp,
+  queryEditorProp,
   dispatchTransaction,
   setPendingPreferredUpdate,
   scheduleRender,
@@ -88,9 +91,21 @@ export const createDragHandlers = ({
     scheduleRender();
   };
 
+  const isDragCopy = (event) => {
+    const fromProps = queryEditorProp?.("dragCopies", event);
+    if (typeof fromProps === "boolean") {
+      return fromProps;
+    }
+    // 对齐 ProseMirror：默认复制修饰键在 macOS 为 Alt，其它平台为 Ctrl。
+    const platform =
+      typeof navigator !== "undefined" ? navigator.platform || navigator.userAgent || "" : "";
+    const isMac = /Mac|iPhone|iPad|iPod/i.test(platform);
+    return isMac ? event.altKey : event.ctrlKey;
+  };
+
   // 开始拖拽：写入剪贴数据。
   const handleDragStart = (event) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
     if (dispatchEditorProp?.("handleDragStart", event)) {
@@ -103,7 +118,10 @@ export const createDragHandlers = ({
       return;
     }
     const slice = state.selection.content();
-    const text = state.doc.textBetween(state.selection.from, state.selection.to, "\n");
+    const serializedText = clipboardTextSerializer?.(slice) ?? null;
+    const text = typeof serializedText === "string"
+      ? serializedText
+      : state.doc.textBetween(state.selection.from, state.selection.to, "\n");
     const html = serializeSliceToHtml(slice, state.schema);
     const json = slice?.toJSON?.() ?? null;
 
@@ -127,7 +145,7 @@ export const createDragHandlers = ({
 
   // 拖拽中：更新 drop cursor。
   const handleDragOver = (event) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
     if (dispatchEditorProp?.("handleDragOver", event)) {
@@ -143,13 +161,13 @@ export const createDragHandlers = ({
       clearDropDecoration();
     }
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = event.ctrlKey || event.metaKey ? "copy" : "move";
+      event.dataTransfer.dropEffect = isDragCopy(event) ? "copy" : "move";
     }
   };
 
   // 离开拖拽区域：清理 drop cursor。
   const handleDragLeave = (event) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
     if (dispatchEditorProp?.("handleDragLeave", event)) {
@@ -161,13 +179,7 @@ export const createDragHandlers = ({
 
   // 放置：解析数据并插入/移动。
   const handleDrop = (event) => {
-    if (event.defaultPrevented) {
-      return;
-    }
-    if (dispatchEditorProp?.("handleDrop", event)) {
-      event.preventDefault();
-      clearDropDecoration();
-      dragState = null;
+    if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
     event.preventDefault();
@@ -181,8 +193,9 @@ export const createDragHandlers = ({
     }
 
     const dataTransfer = event.dataTransfer;
-    const isCopy = event.ctrlKey || event.metaKey || dataTransfer?.dropEffect === "copy";
+    const isCopy = isDragCopy(event) || dataTransfer?.dropEffect === "copy";
     const isInternal = !!dragState;
+    const moved = isInternal && !isCopy;
     let slice = null;
 
     if (isInternal && dragState?.slice) {
@@ -219,10 +232,15 @@ export const createDragHandlers = ({
       return;
     }
 
+    if (dispatchEditorProp?.("handleDrop", event, slice, moved)) {
+      dragState = null;
+      return;
+    }
+
     const state = getState();
     let tr = state.tr;
 
-    if (isInternal && dragState && !isCopy) {
+    if (moved && dragState) {
       const { from, to } = dragState;
       if (dropTargetPos >= from && dropTargetPos <= to) {
         dragState = null;
@@ -242,7 +260,7 @@ export const createDragHandlers = ({
 
   // 拖拽结束：清理状态。
   const handleDragEnd = (event) => {
-    if (event.defaultPrevented) {
+    if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
     if (dispatchEditorProp?.("handleDragEnd", event)) {

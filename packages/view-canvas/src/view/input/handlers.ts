@@ -3,6 +3,8 @@ export const createInputHandlers = ({
   dispatchTransaction,
   runCommand,
   basicCommands,
+  runKeymap,
+  enableBuiltInKeyFallback = true,
   insertText,
   insertTextWithBreaks,
   deleteText,
@@ -20,11 +22,33 @@ export const createInputHandlers = ({
   inputEl,
   parseHtmlToSlice,
   transformPasted,
+  transformPastedText,
+  transformPastedHTML,
+  clipboardTextParser,
   setPendingPreferredUpdate,
   editorHandlers,
 }) => {
-  const runTextInputHandler = (from, to, text) =>
-    !!editorHandlers?.handleTextInput?.(from, to, text);
+  let lastCompositionCommitText = "";
+  let lastCompositionCommitAt = 0;
+  const markCompositionCommit = (text) => {
+    if (!text) {
+      return;
+    }
+    lastCompositionCommitText = text;
+    lastCompositionCommitAt = Date.now();
+  };
+  const wasRecentCompositionCommit = (text) => {
+    if (!text || !lastCompositionCommitText) {
+      return false;
+    }
+    if (text !== lastCompositionCommitText) {
+      return false;
+    }
+    return Date.now() - lastCompositionCommitAt <= 120;
+  };
+
+  const runTextInputHandler = (from, to, text, deflt) =>
+    !!editorHandlers?.handleTextInput?.(from, to, text, deflt);
   const runUndo = () => {
     runCommand(basicCommands.undo, getEditorState(), dispatchTransaction);
   };
@@ -58,12 +82,62 @@ export const createInputHandlers = ({
         {
           const state = getEditorState();
           const text = event.data || "";
-          if (runTextInputHandler(state.selection.from, state.selection.to, text)) {
+          if (wasRecentCompositionCommit(text)) {
+            event.preventDefault();
+            return;
+          }
+          let appliedDefault = false;
+          const deflt = () => {
+            if (appliedDefault) {
+              return true;
+            }
+            appliedDefault = true;
+            insertTextWithBreaks(text);
+            return true;
+          };
+          if (runTextInputHandler(state.selection.from, state.selection.to, text, deflt)) {
+            event.preventDefault();
+            return;
+          }
+          if (appliedDefault) {
             event.preventDefault();
             return;
           }
           event.preventDefault();
-          insertTextWithBreaks(text);
+          deflt();
+        }
+        break;
+      case "insertFromComposition":
+        {
+          const text = event.data || "";
+          if (wasRecentCompositionCommit(text)) {
+            event.preventDefault();
+            return;
+          }
+          if (!text) {
+            event.preventDefault();
+            return;
+          }
+          const state = getEditorState();
+          let appliedDefault = false;
+          const deflt = () => {
+            if (appliedDefault) {
+              return true;
+            }
+            appliedDefault = true;
+            insertTextWithBreaks(text);
+            return true;
+          };
+          if (runTextInputHandler(state.selection.from, state.selection.to, text, deflt)) {
+            event.preventDefault();
+            return;
+          }
+          if (appliedDefault) {
+            event.preventDefault();
+            return;
+          }
+          event.preventDefault();
+          deflt();
         }
         break;
       case "insertLineBreak":
@@ -78,6 +152,8 @@ export const createInputHandlers = ({
         }
         break;
       case "insertFromPaste":
+      case "insertFromDrop":
+      case "deleteByCut":
         event.preventDefault();
         break;
       case "historyUndo":
@@ -109,7 +185,35 @@ export const createInputHandlers = ({
       return;
     }
 
+    // 先走外部 keymap（PM 风格），未命中时再回退到内置按键行为。
+    if (typeof runKeymap === "function" && runKeymap(event)) {
+      event.preventDefault();
+      return;
+    }
+
+    if (enableBuiltInKeyFallback === false) {
+      return;
+    }
+
     const metaKey = event.ctrlKey || event.metaKey;
+
+    if (metaKey && !event.altKey) {
+      const key = (event.key || "").toLowerCase();
+      if (key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          runRedo();
+        } else {
+          runUndo();
+        }
+        return;
+      }
+      if (key === "y") {
+        event.preventDefault();
+        runRedo();
+        return;
+      }
+    }
 
     switch (event.key) {
       case "ArrowLeft": {
@@ -219,12 +323,25 @@ export const createInputHandlers = ({
     }
     if (event.key.length === 1) {
       const state = getEditorState();
-      if (runTextInputHandler(state.selection.from, state.selection.to, event.key)) {
+      let appliedDefault = false;
+      const deflt = () => {
+        if (appliedDefault) {
+          return true;
+        }
+        appliedDefault = true;
+        insertText(event.key);
+        return true;
+      };
+      if (runTextInputHandler(state.selection.from, state.selection.to, event.key, deflt)) {
+        event.preventDefault();
+        return;
+      }
+      if (appliedDefault) {
         event.preventDefault();
         return;
       }
       event.preventDefault();
-      insertText(event.key);
+      deflt();
     }
   };
 
@@ -268,6 +385,7 @@ export const createInputHandlers = ({
     const text = event.data || inputEl.value;
     if (text) {
       insertTextWithBreaks(text);
+      markCompositionCommit(text);
     }
     inputEl.value = "";
     // Ensure layout/selection sync after IME commit.
@@ -278,28 +396,49 @@ export const createInputHandlers = ({
     if (event.defaultPrevented) {
       return;
     }
-    if (editorHandlers?.handlePaste?.(event)) {
-      event.preventDefault();
-      return;
-    }
-    event.preventDefault();
-    const html = event.clipboardData?.getData("text/html") || "";
+    const rawHtml = event.clipboardData?.getData("text/html") || "";
+    const rawText = event.clipboardData?.getData("text/plain") || "";
+    const html =
+      typeof transformPastedHTML === "function"
+        ? (transformPastedHTML(rawHtml) ?? "")
+        : rawHtml;
+    const plain = !html;
+    const text =
+      typeof transformPastedText === "function"
+        ? (transformPastedText(rawText, plain) ?? "")
+        : rawText;
+
+    let parsedSlice = null;
     if (html) {
       try {
-        const parsedSlice = parseHtmlToSlice(html);
-        const slice = transformPasted?.(parsedSlice) ?? parsedSlice;
-        const editorState = getEditorState();
-        const tr = editorState.tr.replaceSelection(slice);
-        setPendingPreferredUpdate(true);
-        dispatchTransaction(tr);
-        inputEl.value = "";
-        return;
+        parsedSlice = parseHtmlToSlice(html);
       } catch (error) {
         console.warn("Failed to parse HTML paste", error);
       }
     }
+    if (!parsedSlice && text) {
+      const parsedTextSlice = clipboardTextParser?.(text, plain) ?? null;
+      if (parsedTextSlice) {
+        parsedSlice = parsedTextSlice;
+      }
+    }
+    const slice = parsedSlice ? transformPasted?.(parsedSlice) ?? parsedSlice : null;
 
-    const text = event.clipboardData?.getData("text/plain") || "";
+    if (editorHandlers?.handlePaste?.(event, slice)) {
+      event.preventDefault();
+      return;
+    }
+
+    event.preventDefault();
+    if (slice) {
+      const editorState = getEditorState();
+      const tr = editorState.tr.replaceSelection(slice);
+      setPendingPreferredUpdate(true);
+      dispatchTransaction(tr);
+      inputEl.value = "";
+      return;
+    }
+
     insertTextWithBreaks(text);
     inputEl.value = "";
   };

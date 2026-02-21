@@ -1,3 +1,18 @@
+const DOM_EVENT_HANDLED_FLAG = "__lumen_dom_event_handled__";
+
+const markEditorDomEventHandled = (event) => {
+  if (!event) {
+    return;
+  }
+  try {
+    event[DOM_EVENT_HANDLED_FLAG] = true;
+  } catch (_error) {
+    // Ignore non-extensible event objects.
+  }
+};
+
+export const isEditorDomEventHandled = (event) => !!event?.[DOM_EVENT_HANDLED_FLAG];
+
 export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, getState, domRoot }) => {
   let domEventHandlers = new Map();
   let pluginViews = [];
@@ -67,8 +82,8 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
   };
 
   const clearDomEventHandlers = () => {
-    for (const [eventName, handler] of domEventHandlers.entries()) {
-      domRoot.removeEventListener(eventName, handler, true);
+    for (const [, entry] of domEventHandlers.entries()) {
+      entry.target.removeEventListener(entry.eventName, entry.handler, true);
     }
     domEventHandlers = new Map();
   };
@@ -76,16 +91,23 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
   const refreshDomEventHandlers = (state = getState?.()) => {
     clearDomEventHandlers();
     const events = collectHandleDomEvents(state);
+    const ownerDocument =
+      domRoot?.ownerDocument || (typeof document !== "undefined" ? document : null);
+    if (!ownerDocument || !domRoot) {
+      return;
+    }
     for (const [eventName, handlers] of events.entries()) {
       const listener = (event) => {
         for (const handler of handlers) {
           if (handler(view, event)) {
+            markEditorDomEventHandled(event);
             return;
           }
         }
       };
-      domRoot.addEventListener(eventName, listener, true);
-      domEventHandlers.set(eventName, listener);
+      const target = eventName === "selectionchange" ? ownerDocument : domRoot;
+      target.addEventListener(eventName, listener, true);
+      domEventHandlers.set(eventName, { eventName, target, handler: listener });
     }
   };
 

@@ -308,11 +308,13 @@ export function activeBlockToRects(
   const targetLine = resolved.line;
   const blockType = targetLine.blockType;
   const blockStart = targetLine.blockStart;
-  const blockTypes = Array.isArray(options.blockTypes)
-    ? options.blockTypes
-    : ["paragraph", "heading", "image"];
+  const blockId = targetLine.blockId ?? null;
+  const blockTypes = Array.isArray(options.blockTypes) ? options.blockTypes : null;
 
-  if (!blockType || !blockTypes.includes(blockType)) {
+  if (!blockType) {
+    return [];
+  }
+  if (blockTypes && !blockTypes.includes(blockType)) {
     return [];
   }
 
@@ -327,7 +329,9 @@ export function activeBlockToRects(
       const line = item.line;
 
       const matchesBlock =
-        blockStart != null
+        blockId != null
+          ? line.blockId === blockId
+          : blockStart != null
           ? line.blockStart === blockStart && line.blockType === blockType
           : line === targetLine;
 
@@ -365,7 +369,9 @@ export function activeBlockToRects(
       const line = page.lines[l];
 
       const matchesBlock =
-        blockStart != null
+        blockId != null
+          ? line.blockId === blockId
+          : blockStart != null
           ? line.blockStart === blockStart && line.blockType === blockType
           : line === targetLine;
 

@@ -1,12 +1,16 @@
 ﻿import { DOMSerializer, Fragment, Slice } from "lumenpage-model";
 
 // Slice -> HTML 字符串（复制/拖拽用）。
-export const serializeSliceToHtml = (slice, schema) => {
+export const serializeSliceToHtml = (slice, schema, ownerDocument = null) => {
   if (!slice || !schema) {
     return "";
   }
+  const docRef = ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!docRef) {
+    return "";
+  }
   const serializer = DOMSerializer.fromSchema(schema);
-  const container = document.createElement("div");
+  const container = docRef.createElement("div");
   container.appendChild(serializer.serializeFragment(slice.content));
   return container.innerHTML;
 };

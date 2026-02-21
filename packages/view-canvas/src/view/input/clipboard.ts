@@ -1,11 +1,15 @@
 import { DOMSerializer } from "lumenpage-model";
 
-const serializeSliceToHtml = (slice, schema) => {
+const defaultSerializeSliceToHtml = (slice, schema, ownerDocument = null) => {
   if (!slice || !schema) {
     return "";
   }
+  const docRef = ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!docRef) {
+    return "";
+  }
   const serializer = DOMSerializer.fromSchema(schema);
-  const container = document.createElement("div");
+  const container = docRef.createElement("div");
   container.appendChild(serializer.serializeFragment(slice.content));
   return container.innerHTML;
 };
@@ -31,10 +35,14 @@ const writeClipboardData = (event, data) => {
 
 export const createClipboardHandlers = ({
   getEditorState,
+  getOwnerDocument,
   dispatchTransaction,
   setPendingPreferredUpdate,
   editorHandlers,
   transformCopied,
+  clipboardTextSerializer,
+  transformCopiedHTML,
+  serializeSliceToHtml,
 }) => {
   const handleCopy = (event) => {
     if (event.defaultPrevented) {
@@ -51,10 +59,15 @@ export const createClipboardHandlers = ({
 
     const selectionSlice = state.selection.content();
     const slice = transformCopied?.(selectionSlice) ?? selectionSlice;
-    const text =
-      slice?.content?.textBetween?.(0, slice.content.size, "\n\n") ??
-      state.doc.textBetween(state.selection.from, state.selection.to, "\n");
-    const html = serializeSliceToHtml(slice, state.schema);
+    const serializedText = clipboardTextSerializer?.(slice) ?? null;
+    const text = typeof serializedText === "string"
+      ? serializedText
+      : slice?.content?.textBetween?.(0, slice.content.size, "\n\n") ??
+        state.doc.textBetween(state.selection.from, state.selection.to, "\n");
+    const rawHtml =
+      serializeSliceToHtml?.(slice, state.schema) ??
+      defaultSerializeSliceToHtml(slice, state.schema, getOwnerDocument?.());
+    const html = typeof transformCopiedHTML === "function" ? transformCopiedHTML(rawHtml, slice) : rawHtml;
     const json = slice?.toJSON?.() ?? null;
 
     writeClipboardData(event, { text, html, json });

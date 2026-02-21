@@ -1,0 +1,153 @@
+import { NodeSelection, TextSelection } from "lumenpage-state";
+
+// 选择交互策略：命中节点选择、GapCursor 选择，以及 createSelectionBetween 回退逻辑。
+export const createSelectionInteractions = ({
+  getState,
+  getLayout,
+  scrollArea,
+  isEditable,
+  textOffsetToDocPos,
+  dispatchTransaction,
+  queryEditorProp,
+  resolveNodeSelectionTargetFromManager,
+  setSkipNextClickSelection,
+}) => {
+  const createSelectionBetweenFromProps = (anchorPos, headPos) => {
+    const state = getState();
+    const $anchor = state.doc.resolve(anchorPos);
+    const $head = state.doc.resolve(headPos);
+    return queryEditorProp("createSelectionBetween", $anchor, $head);
+  };
+
+  const createSelectionBetween = (anchorPos, headPos) => {
+    const fromProps = createSelectionBetweenFromProps(anchorPos, headPos);
+    if (fromProps) {
+      return fromProps;
+    }
+    const state = getState();
+    const $anchor = state.doc.resolve(anchorPos);
+    const $head = state.doc.resolve(headPos);
+    return TextSelection.between($anchor, $head);
+  };
+
+  // 在目标位置附近尝试解析 GapSelection（通常由 gapcursor 插件的 createSelectionBetween 提供）。
+  // 这里不直接依赖 GapCursor 类型，避免核心包与插件包耦合。
+  const resolveGapSelectionAtPos = (pos) => {
+    const state = getState();
+    if (!state?.doc || !Number.isFinite(pos)) {
+      return null;
+    }
+    const maxPos = state.doc.content.size;
+    const seeds = [pos, pos - 1, pos + 1, pos - 2, pos + 2];
+    for (const seed of seeds) {
+      if (!Number.isFinite(seed)) {
+        continue;
+      }
+      const candidatePos = Math.max(0, Math.min(maxPos, seed));
+      const selection = createSelectionBetweenFromProps(candidatePos, candidatePos);
+      if (selection && !(selection instanceof TextSelection)) {
+        return { selection, pos: candidatePos };
+      }
+    }
+    return null;
+  };
+
+  const resolveNodeSelectionTarget = (hit, event = null) => {
+    return resolveNodeSelectionTargetFromManager({
+      hit,
+      event,
+      textOffsetToDocPos,
+      queryEditorProp,
+    });
+  };
+
+  const setSelectionFromHit = (hit, event) => {
+    if (!hit || !hit.line || event?.shiftKey) {
+      return false;
+    }
+    const target = resolveNodeSelectionTarget(hit, event);
+    if (!target) {
+      return false;
+    }
+    const state = getState();
+    const tr = state.tr.setSelection(NodeSelection.create(state.doc, target.pos));
+    dispatchTransaction(tr);
+    setSkipNextClickSelection(true);
+    return true;
+  };
+
+  const setGapCursorAtCoords = (x, y, hit, event) => {
+    const layout = getLayout();
+    if (!layout || event?.shiftKey || isEditable() === false) {
+      return false;
+    }
+    if (resolveNodeSelectionTarget(hit, event)) {
+      return false;
+    }
+    const pageSpan = layout.pageHeight + layout.pageGap;
+    const absoluteY = y + scrollArea.scrollTop;
+    const pageIndex = Math.floor(absoluteY / pageSpan);
+    if (pageIndex < 0 || pageIndex >= layout.pages.length) {
+      return false;
+    }
+    const page = layout.pages[pageIndex];
+    const localY = absoluteY - pageIndex * pageSpan;
+    const lines = page.lines || [];
+    const lineAtY = lines.find((line) => {
+      const lineHeight = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+      return localY >= line.y && localY < line.y + lineHeight;
+    });
+    if (lineAtY) {
+      return false;
+    }
+    let above = null;
+    let below = null;
+    for (const line of lines) {
+      const lineHeight = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+      const bottom = line.y + lineHeight;
+      if (bottom <= localY) {
+        if (!above || bottom > above.bottom) {
+          above = { line, bottom };
+        }
+      }
+      if (line.y >= localY) {
+        if (!below || line.y < below.top) {
+          below = { line, top: line.y };
+        }
+      }
+    }
+    if (!above || !below) {
+      return false;
+    }
+    const targetOffset = Number.isFinite(below.line.blockStart)
+      ? below.line.blockStart
+      : Number.isFinite(above.line.end)
+        ? above.line.end
+        : null;
+    if (!Number.isFinite(targetOffset)) {
+      return false;
+    }
+    const state = getState();
+    const pos = textOffsetToDocPos(state.doc, targetOffset);
+    if (!Number.isFinite(pos)) {
+      return false;
+    }
+    const resolved = resolveGapSelectionAtPos(pos);
+    if (!resolved?.selection) {
+      return false;
+    }
+    const tr = state.tr.setSelection(resolved.selection);
+    dispatchTransaction(tr);
+    setSkipNextClickSelection(true);
+    return true;
+  };
+
+  return {
+    setSelectionFromHit,
+    createSelectionBetweenFromProps,
+    resolveGapSelectionAtPos,
+    createSelectionBetween,
+    resolveNodeSelectionTarget,
+    setGapCursorAtCoords,
+  };
+};
