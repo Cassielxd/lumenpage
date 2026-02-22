@@ -256,3 +256,7 @@ Playground 支持通过 URL 查询参数开启回归 smoke：
 ```txt
 ?devTools=1&allSmoke=1
 ```
+
+`allSmoke=1` 执行后会附加一条汇总日志：
+
+- `[all-smoke-summary] total=... pass=... fail=...`

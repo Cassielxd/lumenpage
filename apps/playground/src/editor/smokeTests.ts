@@ -4,6 +4,11 @@ import { NodeSelection, TextSelection } from "lumenpage-state";
 import { CellSelection } from "lumenpage-node-table";
 
 const appendDebugLine = (debugPanelEl: HTMLElement | null, text: string) => {
+  const globalObj = globalThis as any;
+  if (!Array.isArray(globalObj.__lumenSmokeLogs)) {
+    globalObj.__lumenSmokeLogs = [];
+  }
+  globalObj.__lumenSmokeLogs.push(text);
   if (!debugPanelEl) {
     return;
   }

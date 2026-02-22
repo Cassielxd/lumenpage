@@ -105,3 +105,4 @@ http://localhost:5173/?devTools=1&allSmoke=1
 - `[mapping-smoke] PASS|FAIL`
 - `[coords-smoke] PASS|FAIL`
 - `[readonly-smoke] PASS|FAIL`
+- `[all-smoke-summary] total=... pass=... fail=...`

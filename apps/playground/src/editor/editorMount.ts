@@ -252,8 +252,36 @@ export const mountPlaygroundEditor = ({
   }
   if (smokeQueue.length > 0) {
     requestAnimationFrame(() => {
+      const globalObj = globalThis as any;
+      globalObj.__lumenSmokeLogs = [];
       for (const runSmoke of smokeQueue) {
         runSmoke();
+      }
+      if (flags.debugAllSmoke) {
+        const logLines = Array.isArray(globalObj.__lumenSmokeLogs) ? globalObj.__lumenSmokeLogs : [];
+        const lines = logLines
+          .map((line: string) => String(line || "").trim())
+          .filter((line: string) => /^\[[^\]]+-smoke\]\s+(PASS|FAIL)\b/.test(line));
+        const passLines = lines.filter((line: string) => /\]\s+PASS\b/.test(line));
+        const failLines = lines.filter((line: string) => /\]\s+FAIL\b/.test(line));
+        const failNames = failLines
+          .map((line: string) => {
+            const match = line.match(/^\[([^\]]+)\]/);
+            return match?.[1] ?? line;
+          })
+          .join(", ");
+        const summary = `[all-smoke-summary] total=${lines.length} pass=${passLines.length} fail=${failLines.length}${
+          failLines.length > 0 ? ` failed=[${failNames}]` : ""
+        }`;
+        if (tableDebugPanelElement) {
+          const text = tableDebugPanelElement.textContent || "";
+          tableDebugPanelElement.textContent = `${text}\n${summary}`.trim();
+        }
+        if (failLines.length > 0) {
+          console.error(summary);
+        } else {
+          console.info(summary);
+        }
       }
     });
   }
