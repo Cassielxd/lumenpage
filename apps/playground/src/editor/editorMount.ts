@@ -31,6 +31,7 @@ import { createCanvasSettings } from "./config";
 import { resolveLinkHrefAtPos } from "./link";
 import {
   runBlockOutlineAlignmentSmoke,
+  runCoordsSmoke,
   runDragActionSmoke,
   runDragSelectionSmoke,
   runHistorySmoke,
@@ -39,6 +40,7 @@ import {
   runMappingSmoke,
   runOrderedListPaginationSmoke,
   runPasteActionSmoke,
+  runReadonlySmoke,
   runSelectionBoundarySmoke,
   runSelectionImeSmoke,
   runTableBehaviorStrictSmoke,
@@ -212,6 +214,14 @@ export const mountPlaygroundEditor = ({
       () => runMappingSmoke(view, tableDebugPanelElement || null)
     );
     enqueueSmoke(
+      flags.debugCoordsSmoke,
+      () => runCoordsSmoke(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
+      flags.debugReadonlySmoke,
+      () => runReadonlySmoke(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
       flags.debugHistorySmoke,
       () => runHistorySmoke(view, tableDebugPanelElement || null)
     );
@@ -233,6 +243,8 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runToolCommandSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runPasteActionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runMappingSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runCoordsSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runReadonlySmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runHistorySmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runImeActionSmoke(view, tableDebugPanelElement || null));
   } else {

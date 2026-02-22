@@ -28,6 +28,7 @@ export const createInputHandlers = ({
   setPendingPreferredUpdate,
   editorHandlers,
 }) => {
+  const isReadOnly = () => inputEl?.readOnly === true;
   let lastCompositionCommitText = "";
   let lastCompositionCommitAt = 0;
   const markCompositionCommit = (text) => {
@@ -58,6 +59,10 @@ export const createInputHandlers = ({
   };
 
   const handleBeforeInput = (event) => {
+    if (isReadOnly()) {
+      event?.preventDefault?.();
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }
@@ -346,6 +351,10 @@ export const createInputHandlers = ({
   };
 
   const handleCompositionStart = (event) => {
+    if (isReadOnly()) {
+      event?.preventDefault?.();
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }
@@ -357,6 +366,10 @@ export const createInputHandlers = ({
   };
 
   const handleCompositionUpdate = (event) => {
+    if (isReadOnly()) {
+      event?.preventDefault?.();
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }
@@ -374,6 +387,10 @@ export const createInputHandlers = ({
   };
 
   const handleCompositionEnd = (event) => {
+    if (isReadOnly()) {
+      event?.preventDefault?.();
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }
@@ -393,6 +410,10 @@ export const createInputHandlers = ({
   };
 
   const handlePaste = (event) => {
+    if (isReadOnly()) {
+      event?.preventDefault?.();
+      return;
+    }
     if (event.defaultPrevented) {
       return;
     }

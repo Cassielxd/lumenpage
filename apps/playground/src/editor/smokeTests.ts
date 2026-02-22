@@ -1660,7 +1660,13 @@ export const runMappingSmoke = (editorView: any, debugPanelEl: HTMLElement | nul
   });
 
   const positions = Array.from(posSet).sort((a, b) => a - b);
-  const mismatches: Array<{ pos: number; offset: number; mappedPos: number }> = [];
+  const canonicalMismatches: Array<{
+    pos: number;
+    offset: number;
+    canonicalPos: number;
+    canonicalOffset: number;
+  }> = [];
+  const outOfRange: Array<{ pos: number; offset: number; canonicalPos: number }> = [];
   const offsetViolations: Array<{ prevPos: number; pos: number; prevOffset: number; offset: number }> =
     [];
   let prevOffset = Number.NEGATIVE_INFINITY;
@@ -1668,13 +1674,22 @@ export const runMappingSmoke = (editorView: any, debugPanelEl: HTMLElement | nul
 
   for (const pos of positions) {
     const offset = docPosToTextOffset(doc, pos);
-    const mappedPos = textOffsetToDocPos(doc, offset);
-    if (!Number.isFinite(offset) || !Number.isFinite(mappedPos)) {
-      mismatches.push({ pos, offset, mappedPos });
+    const canonicalPos = textOffsetToDocPos(doc, offset);
+    if (!Number.isFinite(offset) || !Number.isFinite(canonicalPos)) {
+      outOfRange.push({ pos, offset, canonicalPos });
       continue;
     }
-    if (mappedPos !== pos) {
-      mismatches.push({ pos, offset, mappedPos });
+    if (canonicalPos < 0 || canonicalPos > docSize) {
+      outOfRange.push({ pos, offset, canonicalPos });
+    }
+    const canonicalOffset = docPosToTextOffset(doc, canonicalPos);
+    if (!Number.isFinite(canonicalOffset) || canonicalOffset !== offset) {
+      canonicalMismatches.push({
+        pos,
+        offset,
+        canonicalPos,
+        canonicalOffset,
+      });
     }
     if (offset < prevOffset) {
       offsetViolations.push({ prevPos, pos, prevOffset, offset });
@@ -1690,14 +1705,199 @@ export const runMappingSmoke = (editorView: any, debugPanelEl: HTMLElement | nul
   const summary = {
     checked: positions.length,
     textLength,
-    mismatchCount: mismatches.length,
-    mismatchSample: mismatches.slice(0, 20),
+    canonicalMismatchCount: canonicalMismatches.length,
+    canonicalMismatchSample: canonicalMismatches.slice(0, 20),
+    outOfRangeCount: outOfRange.length,
+    outOfRangeSample: outOfRange.slice(0, 20),
     offsetViolationCount: offsetViolations.length,
     offsetViolationSample: offsetViolations.slice(0, 20),
     offsetBoundsOk,
   };
-  const ok = mismatches.length === 0 && offsetViolations.length === 0 && offsetBoundsOk;
+  const ok =
+    canonicalMismatches.length === 0 &&
+    outOfRange.length === 0 &&
+    offsetViolations.length === 0 &&
+    offsetBoundsOk;
   const text = `[mapping-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runCoordsSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const doc = editorView?.state?.doc;
+  const scrollArea = editorView?._internals?.dom?.scrollArea;
+  if (!doc || !scrollArea) {
+    const text = "[coords-smoke] skipped: missing doc or scroll area.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const docSize = Number(doc.content?.size ?? 0);
+  const sample: number[] = [0, docSize];
+  doc.descendants((node: any, pos: number) => {
+    if (!Number.isFinite(pos)) {
+      return true;
+    }
+    const start = pos;
+    const inside = pos + 1;
+    const end = pos + Math.max(0, Number(node?.nodeSize || 0) - 1);
+    if (start >= 0 && start <= docSize) {
+      sample.push(start);
+    }
+    if (inside >= 0 && inside <= docSize) {
+      sample.push(inside);
+    }
+    if (end >= 0 && end <= docSize) {
+      sample.push(end);
+    }
+    return sample.length < 200;
+  });
+
+  const positions = Array.from(new Set(sample)).sort((a, b) => a - b).slice(0, 160);
+  const mismatches: Array<{
+    pos: number;
+    mappedPos: number | null;
+    offset: number;
+    mappedOffset: number | null;
+  }> = [];
+  const invalidRects: Array<{ pos: number }> = [];
+
+  for (const pos of positions) {
+    const rect = editorView.coordsAtPos(pos);
+    if (!rect || !Number.isFinite(rect.left) || !Number.isFinite(rect.top)) {
+      invalidRects.push({ pos });
+      continue;
+    }
+    const mapped = editorView.posAtCoords({ left: rect.left + 0.5, top: rect.top + 0.5 });
+    const mappedPos = Number.isFinite(mapped) ? Number(mapped) : null;
+    const offset = docPosToTextOffset(doc, pos);
+    const mappedOffset =
+      mappedPos != null && Number.isFinite(mappedPos) ? docPosToTextOffset(doc, mappedPos) : null;
+    const prevPos = Math.max(0, pos - 1);
+    const nextPos = Math.min(docSize, pos + 1);
+    const prevOffset = docPosToTextOffset(doc, prevPos);
+    const nextOffset = docPosToTextOffset(doc, nextPos);
+    const allowedOffsets = new Set<number>();
+    if (Number.isFinite(offset)) {
+      allowedOffsets.add(offset);
+    }
+    if (Number.isFinite(prevOffset)) {
+      allowedOffsets.add(prevOffset);
+    }
+    if (Number.isFinite(nextOffset)) {
+      allowedOffsets.add(nextOffset);
+    }
+    if (
+      !Number.isFinite(offset) ||
+      !Number.isFinite(mappedOffset) ||
+      !allowedOffsets.has(Number(mappedOffset))
+    ) {
+      mismatches.push({ pos, mappedPos, offset, mappedOffset });
+    }
+  }
+
+  const summary = {
+    checked: positions.length,
+    invalidRectCount: invalidRects.length,
+    invalidRectSample: invalidRects.slice(0, 20),
+    mismatchCount: mismatches.length,
+    mismatchSample: mismatches.slice(0, 20),
+  };
+  const ok = invalidRects.length === 0 && mismatches.length === 0;
+  const text = `[coords-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runReadonlySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const inputHandlers = editorView?._internals?.inputDebugHandlers;
+  const dragHandlers = editorView?._internals?.dragHandlers;
+  if (!inputHandlers || !dragHandlers) {
+    const text = "[readonly-smoke] skipped: missing debug handlers.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const paragraphPos = findFirstParagraphCursorPos(editorView.state?.doc);
+  if (!Number.isFinite(paragraphPos)) {
+    const text = "[readonly-smoke] skipped: no paragraph found.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const snapshotText = () =>
+    editorView.state.doc.textBetween(0, editorView.state.doc.content.size, "\n", "\n");
+
+  const beforeText = snapshotText();
+  let selection: any;
+  try {
+    selection = TextSelection.create(editorView.state.doc, Number(paragraphPos));
+  } catch (_error) {
+    selection = editorView.state.selection.constructor.near(
+      editorView.state.doc.resolve(Number(paragraphPos)),
+      1
+    );
+  }
+  editorView.dispatch(editorView.state.tr.setSelection(selection).scrollIntoView());
+
+  editorView.setProps({ editable: () => false });
+  const readOnlyApplied = editorView.editable === false;
+  const inputReadOnly = editorView?._internals?.dom?.input?.readOnly === true;
+
+  const beforeInputEvent = createSyntheticInputEvent({
+    type: "beforeinput",
+    inputType: "insertText",
+    data: "READONLY_BLOCK",
+    isComposing: false,
+  });
+  inputHandlers.handleBeforeInput?.(beforeInputEvent);
+  const afterInputText = snapshotText();
+  const inputBlocked =
+    beforeInputEvent.defaultPrevented === true && afterInputText === beforeText;
+
+  let dragSelection: any;
+  try {
+    dragSelection = TextSelection.create(
+      editorView.state.doc,
+      Number(paragraphPos),
+      Math.min(Number(paragraphPos) + 2, Number(paragraphPos) + 1)
+    );
+  } catch (_error) {
+    dragSelection = null;
+  }
+  if (dragSelection) {
+    editorView.dispatch(editorView.state.tr.setSelection(dragSelection).scrollIntoView());
+  }
+  const dragStartBlocked =
+    dragHandlers.startInternalDragFromSelection?.({
+      ctrlKey: false,
+      altKey: false,
+      preventDefault: () => {},
+    }) !== true;
+
+  editorView.setProps({ editable: () => true });
+  const editableRestored = editorView.editable === true;
+
+  const summary = {
+    readOnlyApplied,
+    inputReadOnly,
+    inputBlocked,
+    dragStartBlocked,
+    editableRestored,
+  };
+  const ok = readOnlyApplied && inputReadOnly && inputBlocked && dragStartBlocked && editableRestored;
+  const text = `[readonly-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
   } else {

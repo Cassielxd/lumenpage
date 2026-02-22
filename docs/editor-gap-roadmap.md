@@ -73,12 +73,14 @@
   - `pasteSmoke=1`
   - `historySmoke=1`
   - `mappingSmoke=1`
+  - `coordsSmoke=1`
+  - `readonlySmoke=1`
 - 新增 `blockOutlineSmoke`，用于检查 `code_block` 和 `blockquote` 的块容器几何一致性，提前发现“选中框与可视块错位”问题。
 
 ## 使用方式
 
 ```txt
-http://localhost:5173/?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1
+http://localhost:5173/?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&readonlySmoke=1
 
 或：
 
@@ -101,3 +103,5 @@ http://localhost:5173/?devTools=1&allSmoke=1
 - `[paste-smoke] PASS|FAIL`
 - `[history-smoke] PASS|FAIL`
 - `[mapping-smoke] PASS|FAIL`
+- `[coords-smoke] PASS|FAIL`
+- `[readonly-smoke] PASS|FAIL`

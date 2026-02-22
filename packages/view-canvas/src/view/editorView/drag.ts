@@ -26,6 +26,7 @@ export const createDragHandlers = ({
   setPendingPreferredUpdate,
   scheduleRender,
 }) => {
+  const isEditable = () => view?.editable !== false;
   let dragState = null;
   let dropDecoration = null;
   let dropPos = null;
@@ -159,6 +160,9 @@ export const createDragHandlers = ({
 
   // 由 pointer 手势触发的内部拖拽入口（不依赖浏览器原生 dragstart）。
   const startInternalDragFromSelection = (event) => {
+    if (!isEditable()) {
+      return false;
+    }
     if (internalDragging) {
       return true;
     }
@@ -178,6 +182,9 @@ export const createDragHandlers = ({
 
   // 由节点位置触发内部拖拽（用于图片/视频等原子节点句柄）。
   const startInternalDragFromNodePos = (nodePos, _event) => {
+    if (!isEditable()) {
+      return false;
+    }
     if (internalDragging) {
       return true;
     }
@@ -225,6 +232,10 @@ export const createDragHandlers = ({
 
   // 开始拖拽：写入剪贴数据。
   const handleDragStart = (event) => {
+    if (!isEditable()) {
+      event.preventDefault();
+      return;
+    }
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
@@ -286,6 +297,11 @@ export const createDragHandlers = ({
 
   // 拖拽中：更新 drop cursor。
   const handleDragOver = (event) => {
+    if (!isEditable()) {
+      event.preventDefault();
+      clearDropDecoration();
+      return;
+    }
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }
@@ -320,6 +336,12 @@ export const createDragHandlers = ({
 
   // 放置：解析数据并插入/移动。
   const handleDrop = (event) => {
+    if (!isEditable()) {
+      event.preventDefault();
+      clearDropDecoration();
+      dragState = null;
+      return;
+    }
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
     }

@@ -242,11 +242,13 @@ Playground 支持通过 URL 查询参数开启回归 smoke：
 - `?pasteSmoke=1`：真实粘贴事件冒烟（plain text + HTML）。
 - `?historySmoke=1`：历史栈冒烟（插入后 undo/redo 可逆）。
 - `?mappingSmoke=1`：`pos <-> offset` 映射冒烟（roundtrip 与单调性）。
+- `?coordsSmoke=1`：`coordsAtPos/posAtCoords` 命中回环冒烟。
+- `?readonlySmoke=1`：只读态冒烟（输入与内部拖拽阻断）。
 
 建议联调参数：
 
 ```txt
-?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1
+?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&readonlySmoke=1
 ```
 
 或直接：

@@ -15,6 +15,8 @@ export type PlaygroundDebugFlags = {
   debugPasteSmoke: boolean;
   debugHistorySmoke: boolean;
   debugMappingSmoke: boolean;
+  debugCoordsSmoke: boolean;
+  debugReadonlySmoke: boolean;
   debugDuplicateDecorations: boolean;
   debugDevTools: boolean;
   enableInputRules: boolean;
@@ -53,6 +55,8 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugPasteSmoke: resolveDebugFlag("pasteSmoke"),
   debugHistorySmoke: resolveDebugFlag("historySmoke"),
   debugMappingSmoke: resolveDebugFlag("mappingSmoke"),
+  debugCoordsSmoke: resolveDebugFlag("coordsSmoke"),
+  debugReadonlySmoke: resolveDebugFlag("readonlySmoke"),
   debugDuplicateDecorations: resolveDebugFlag("dupDecor"),
   debugDevTools: resolveDebugFlag("devTools"),
   enableInputRules: resolveDebugFlag("inputRules"),
