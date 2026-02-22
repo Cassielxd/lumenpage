@@ -16,6 +16,7 @@ import type { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
 import { liftTarget } from "lumenpage-transform";
+import { backspaceEmptyListItem, splitListItem } from "lumenpage-node-list";
 import {
   addTableRowAfter,
   addTableRowBefore,
@@ -25,6 +26,10 @@ import {
   deleteTableColumn,
   goToNextTableCell,
   goToPreviousTableCell,
+  enterTableCellSelection,
+  deleteTableCellSelection,
+  preventDeleteBackwardAtTableCellBoundary,
+  preventDeleteForwardAtTableCellBoundary,
   mergeTableCellRight,
   splitTableCell,
   selectCurrentAndNextTableCell,
@@ -40,6 +45,10 @@ export {
   deleteTableColumn,
   goToNextTableCell,
   goToPreviousTableCell,
+  enterTableCellSelection,
+  deleteTableCellSelection,
+  preventDeleteBackwardAtTableCellBoundary,
+  preventDeleteForwardAtTableCellBoundary,
   mergeTableCellRight,
   splitTableCell,
   selectCurrentAndNextTableCell,
@@ -209,6 +218,18 @@ export const createCanvasEditorKeymap = () => ({
   "Shift-Mod-c": setBlockAlign("center"),
   "Shift-Mod-e": setBlockAlign("center"),
   "Shift-Mod-r": setBlockAlign("right"),
+  Enter: chainCommands(enterTableCellSelection, splitListItem),
+  Backspace: chainCommands(
+    deleteTableCellSelection,
+    preventDeleteBackwardAtTableCellBoundary,
+    backspaceEmptyListItem
+  ),
+  Delete: chainCommands(deleteTableCellSelection, preventDeleteForwardAtTableCellBoundary),
+  "Mod-Backspace": chainCommands(
+    deleteTableCellSelection,
+    preventDeleteBackwardAtTableCellBoundary
+  ),
+  "Mod-Delete": chainCommands(deleteTableCellSelection, preventDeleteForwardAtTableCellBoundary),
   Tab: chainCommands(goToNextTableCell, insertTextCommand("  ")),
   "Shift-Tab": goToPreviousTableCell,
 });
@@ -227,6 +248,23 @@ export const createViewCommands = () => {
         continue;
       }
       const parent = $from.node(depth - 1);
+      if (
+        parent &&
+        parent.type?.name !== nodeName &&
+        (parent.type?.name === "bullet_list" || parent.type?.name === "ordered_list")
+      ) {
+        if (!dispatch) {
+          return true;
+        }
+        const listPos = $from.before(depth - 1);
+        const nextAttrs =
+          nodeName === "ordered_list"
+            ? { ...(parent.attrs || {}), order: Number(parent.attrs?.order) || 1 }
+            : { id: parent.attrs?.id ?? null };
+        const tr = state.tr.setNodeMarkup(listPos, type, nextAttrs, parent.marks);
+        dispatch(tr.scrollIntoView());
+        return true;
+      }
       if (parent?.type?.name !== nodeName) {
         continue;
       }

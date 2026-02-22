@@ -510,7 +510,20 @@ const toggleLink = () => {
   if (!url.trim()) {
     return run("toggleLink");
   }
-  return run("toggleLink", { href: url.trim(), title: url.trim() });
+  const href = url.trim();
+  if (empty) {
+    const from = view.state.selection.from;
+    const to = view.state.selection.to;
+    let tr = view.state.tr.insertText(href, from, to);
+    tr = tr.addMark(from, from + href.length, markType.create({ href, title: href }));
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  }
+  const ok = run("toggleLink", { href, title: href });
+  if (!ok) {
+    window.alert("请先选中文本，或将光标放在文本中后再添加链接");
+  }
+  return ok;
 };
 
 const insertImage = () => {
@@ -573,8 +586,6 @@ const applyLineHeightMultiplier = (value: number) => {
     inputEl.style.height = `${nextLineHeight}px`;
     inputEl.style.lineHeight = `${nextLineHeight}px`;
   }
-  const worker = view?._internals?.layoutWorker;
-  worker?.resetSettings?.(settings).catch(() => null);
   view?._internals?.updateLayout?.();
   view?._internals?.updateCaret?.(true);
   view?._internals?.scheduleRender?.();
@@ -588,8 +599,6 @@ const applyBlockSpacing = (value: number) => {
   }
   settings.blockSpacing = Math.max(0, Math.round(value));
   view?._internals?.layoutPipeline?.clearCache?.();
-  const worker = view?._internals?.layoutWorker;
-  worker?.resetSettings?.(settings).catch(() => null);
   view?._internals?.updateLayout?.();
   view?._internals?.updateCaret?.(true);
   view?._internals?.scheduleRender?.();
@@ -603,8 +612,6 @@ const applyParagraphSpacing = (key: "paragraphSpacingBefore" | "paragraphSpacing
   }
   settings[key] = Math.max(0, Math.round(value));
   view?._internals?.layoutPipeline?.clearCache?.();
-  const worker = view?._internals?.layoutWorker;
-  worker?.resetSettings?.(settings).catch(() => null);
   view?._internals?.updateLayout?.();
   view?._internals?.updateCaret?.(true);
   view?._internals?.scheduleRender?.();
@@ -712,14 +719,51 @@ defineExpose({ statusEl });
   width: 120px;
 }
 
+.block-select :deep(.t-input) {
+  background-color: transparent !important;
+  border: 1px solid #d9dce3 !important;
+  box-shadow: none !important;
+}
+
+.block-select :deep(.t-input:hover) {
+  border-color: #bfc4d0 !important;
+}
+
+.block-select :deep(.t-is-focused .t-input),
+.block-select :deep(.t-input--focused) {
+  border-color: #2f6bff !important;
+  box-shadow: none !important;
+}
+
 .icon-btn {
   width: 28px;
   height: 28px;
   padding: 0;
+  border: 1px solid #d9dce3 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .icon-btn :deep(.t-icon) {
   font-size: 16px;
+}
+
+.icon-btn:hover,
+.icon-btn:active,
+.icon-btn:focus,
+.icon-btn:focus-visible {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.icon-btn:hover {
+  border-color: #bfc4d0 !important;
+}
+
+.icon-btn:active,
+.icon-btn:focus,
+.icon-btn:focus-visible {
+  border-color: #2f6bff !important;
 }
 
 

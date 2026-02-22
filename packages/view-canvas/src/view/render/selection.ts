@@ -558,6 +558,7 @@ export function activeBlockToRects(
   const blockType = targetLine.blockType;
   const blockStart = targetLine.blockStart;
   const blockId = targetLine.blockId ?? null;
+  const rootIndex = Number.isFinite(targetLine.rootIndex) ? targetLine.rootIndex : null;
   const blockTypes = Array.isArray(options.blockTypes) ? options.blockTypes : null;
   const excludeBlockTypes = Array.isArray(options.excludeBlockTypes)
     ? options.excludeBlockTypes
@@ -584,7 +585,9 @@ export function activeBlockToRects(
       const line = item.line;
 
       const matchesBlock =
-        blockId != null
+        rootIndex != null
+          ? line.rootIndex === rootIndex
+          : blockId != null
           ? line.blockId === blockId
           : blockStart != null
           ? line.blockStart === blockStart && line.blockType === blockType
@@ -624,7 +627,9 @@ export function activeBlockToRects(
       const line = page.lines[l];
 
       const matchesBlock =
-        blockId != null
+        rootIndex != null
+          ? line.rootIndex === rootIndex
+          : blockId != null
           ? line.blockId === blockId
           : blockStart != null
           ? line.blockStart === blockStart && line.blockType === blockType

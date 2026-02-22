@@ -153,6 +153,33 @@ const drawDecorationWidgets = (ctx, widgets) => {
   }
 };
 
+const drawPageCornerMarks = (ctx, width, height) => {
+  const cornerLen = 10;
+  const inset = 6;
+  ctx.save();
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  // top-left
+  ctx.moveTo(inset, inset + cornerLen);
+  ctx.lineTo(inset, inset);
+  ctx.lineTo(inset + cornerLen, inset);
+  // top-right
+  ctx.moveTo(width - inset - cornerLen, inset);
+  ctx.lineTo(width - inset, inset);
+  ctx.lineTo(width - inset, inset + cornerLen);
+  // bottom-right
+  ctx.moveTo(width - inset, height - inset - cornerLen);
+  ctx.lineTo(width - inset, height - inset);
+  ctx.lineTo(width - inset - cornerLen, height - inset);
+  // bottom-left
+  ctx.moveTo(inset + cornerLen, height - inset);
+  ctx.lineTo(inset, height - inset);
+  ctx.lineTo(inset, height - inset - cornerLen);
+  ctx.stroke();
+  ctx.restore();
+};
+
 // 构建表格分页调试信息（只统计可见页）
 const buildTablePaginationDebug = (layout, visibleRange) => {
   if (!layout?.pages?.length) {
@@ -592,13 +619,47 @@ export class Renderer {
 
     ctx.clearRect(0, 0, width, height);
 
-    ctx.fillStyle = "#ffffff";
+    const renderPageBackground = this.settings?.renderPageBackground;
+    let backgroundHandled = false;
+    if (typeof renderPageBackground === "function") {
+      backgroundHandled =
+        renderPageBackground({
+          ctx,
+          width,
+          height,
+          pageIndex,
+          layout,
+          drawDefaultBackground: () => {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+            ctx.strokeStyle = "#d1d5db";
+            ctx.strokeRect(0, 0, width, height);
+          },
+        }) === true;
+    }
+    if (!backgroundHandled) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "#d1d5db";
+      ctx.strokeRect(0, 0, width, height);
+    }
 
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = "#d1d5db";
-
-    ctx.strokeRect(0, 0, width, height);
+    const renderPageChrome = this.settings?.renderPageChrome;
+    let chromeHandled = false;
+    if (typeof renderPageChrome === "function") {
+      chromeHandled =
+        renderPageChrome({
+          ctx,
+          width,
+          height,
+          pageIndex,
+          layout,
+          drawDefaultCornerMarks: () => drawPageCornerMarks(ctx, width, height),
+        }) === true;
+    }
+    if (!chromeHandled) {
+      drawPageCornerMarks(ctx, width, height);
+    }
 
     ctx.textBaseline = "top";
 
@@ -843,6 +904,10 @@ export class Renderer {
       if (canvas.style.top !== nextTop) {
         canvas.style.top = nextTop;
       }
+      const onPageCanvasStyle = this.settings?.onPageCanvasStyle;
+      if (typeof onPageCanvasStyle === "function") {
+        onPageCanvasStyle({ canvas, pageIndex, layout });
+      }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -885,12 +950,15 @@ export class Renderer {
       drawDecorationRects(this.overlayCtx, decorationData.nodeRects);
       drawDecorationWidgets(this.overlayCtx, decorationData.widgets);
     }
-    const overlayRects =
-      selectionRects && selectionRects.length > 0 ? selectionRects : blockRects;
+    const hasSelectionRects = Array.isArray(selectionRects) && selectionRects.length > 0;
+    const hasBlockRects = Array.isArray(blockRects) && blockRects.length > 0;
+    const overlayRects = hasSelectionRects ? selectionRects : hasBlockRects ? blockRects : [];
 
     if (overlayRects && overlayRects.length > 0) {
       const selectionStyle = resolveSelectionStyle(this.settings);
-      const hasFill = !!selectionStyle.fill;
+      // 块级高亮（段落/标题激活态）仅保留边框，不做背景填充。
+      const isBlockHighlightOnly = !hasSelectionRects && hasBlockRects;
+      const hasFill = !isBlockHighlightOnly && !!selectionStyle.fill;
       const hasStroke = !!selectionStyle.stroke && selectionStyle.strokeWidth > 0;
 
       if (hasFill) {

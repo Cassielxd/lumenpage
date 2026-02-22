@@ -204,5 +204,13 @@ export const createEditorInputPipeline = ({
     resetComposing,
     clipboardTextSerializer,
     serializeSliceToHtmlForClipboard,
+    debugInputHandlers: {
+      handleBeforeInput,
+      handleCompositionStart,
+      handleCompositionUpdate,
+      handleCompositionEnd,
+      handlePaste,
+      handleInput,
+    },
   };
 };

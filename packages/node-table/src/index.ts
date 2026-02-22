@@ -12,6 +12,10 @@ export {
   deleteTableColumn,
   goToNextTableCell,
   goToPreviousTableCell,
+  enterTableCellSelection,
+  deleteTableCellSelection,
+  preventDeleteBackwardAtTableCellBoundary,
+  preventDeleteForwardAtTableCellBoundary,
   mergeTableCellRight,
   splitTableCell,
   selectCurrentAndNextTableCell,
@@ -320,6 +324,7 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
     },
 
     content: "block+",
+    isolating: true,
 
     parseDOM: [
       {

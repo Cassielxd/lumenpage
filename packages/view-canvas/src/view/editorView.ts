@@ -14,7 +14,6 @@ import {
 } from "../core";
 
 import { createRenderSync } from "./renderSync";
-import { createLayoutWorkerClient } from "./layoutWorkerClient";
 import { coordsAtPos, posAtCoords } from "./posIndex";
 import { selectionToRects, activeBlockToRects } from "./render/selection";
 import { buildLayoutIndex } from "./layoutIndex";
@@ -48,6 +47,7 @@ import {
   readSomeProp,
   scrollViewIntoView,
   setViewProps,
+  getViewPaginationInfo,
   viewCoordsAtPos,
   viewHasFocus,
   viewPosAtCoords,
@@ -58,6 +58,7 @@ export class CanvasEditorView {
   dom;
   state;
   commands;
+  dispatchTransaction;
   _internals;
   overlayHost;
   composing;
@@ -74,18 +75,11 @@ export class CanvasEditorView {
       a11yStatus,
       resolveCanvasConfig,
       nodeRegistry,
-      layoutWorkerConfig,
       status,
     } = initEditorViewEnvironment({ place, viewProps });
     this.state = editorState;
     this.dom = dom.root;
     this.overlayHost = dom.overlayHost ?? null;
-
-    const layoutWorkerClient = createLayoutWorkerClient({
-      settings,
-      schema,
-      config: layoutWorkerConfig,
-    });
 
     // 甯冨眬涓庢覆鏌撶绾裤€?
     const layoutPipeline = new LayoutPipeline(settings, nodeRegistry);
@@ -226,7 +220,6 @@ export class CanvasEditorView {
       },
       applyTransaction,
       layoutPipeline,
-      layoutWorker: layoutWorkerClient,
       renderer,
       spacer: dom.spacer,
       scrollArea: dom.scrollArea,
@@ -287,13 +280,7 @@ export class CanvasEditorView {
     const { updateStatus, scheduleRender, updateCaret, updateLayout, syncAfterStateChange } =
       renderSync;
 
-    layoutWorkerClient?.whenReady?.().then(() => {
-      if (layoutWorkerClient?.isActive?.()) {
-        updateLayout();
-      }
-    }).catch(() => null);
-
-    const { dispatchTransaction, setSelectionOffsets } = createStateFlow({
+    const { dispatchTransaction: applyDispatchTransaction, setSelectionOffsets } = createStateFlow({
       view: this,
       getEditorProps: () => editorProps,
       getEditorPropsList,
@@ -313,6 +300,8 @@ export class CanvasEditorView {
       textOffsetToDocPos,
       debugLog,
     });
+    this.dispatchTransaction = applyDispatchTransaction;
+    const dispatchViaView = (tr) => this.dispatch(tr);
 
     const selectionInteractions = createSelectionInteractions({
       getState: () => this.state,
@@ -320,7 +309,7 @@ export class CanvasEditorView {
       scrollArea: dom.scrollArea,
       isEditable: () => this.editable,
       textOffsetToDocPos,
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
       queryEditorProp,
       resolveNodeSelectionTargetFromManager: (payload) =>
         nodeViewManager.resolveNodeSelectionTarget(payload),
@@ -355,7 +344,7 @@ export class CanvasEditorView {
       extendSelection,
     } = createEditingRuntime({
       getState: () => this.state,
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
       runCommand,
       basicCommands,
       setPendingPreferredUpdate: (value) => {
@@ -384,13 +373,14 @@ export class CanvasEditorView {
       resetComposing,
       clipboardTextSerializer,
       serializeSliceToHtmlForClipboard,
+      debugInputHandlers,
     } = createEditorInputPipeline({
       view: this,
       dom,
       getState: () => this.state,
       dispatchEditorProp,
       queryEditorProp,
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
       runCommand,
       basicCommands,
       runKeymap,
@@ -449,7 +439,7 @@ export class CanvasEditorView {
       parseHtmlToSlice,
       dispatchEditorProp,
       queryEditorProp,
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
       setPendingPreferredUpdate: (value) => {
         pendingPreferredUpdate = value;
       },
@@ -470,7 +460,7 @@ export class CanvasEditorView {
       docPosToTextOffset,
       getLayoutIndex: () => layoutIndex,
       queryEditorProp,
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
     });
 
     const eventHandlers = createViewEventHandlers({
@@ -523,7 +513,6 @@ export class CanvasEditorView {
       renderer,
       onChange,
       layoutPipeline,
-      layoutWorker: layoutWorkerClient,
       renderSync,
       getText,
       getLayout: () => layout,
@@ -536,7 +525,7 @@ export class CanvasEditorView {
       setPendingChangeSummary: (value) => {
         pendingChangeSummary = value;
       },
-      dispatchTransaction,
+      dispatchTransaction: dispatchViaView,
       updateLayout,
       updatePluginViews,
       syncNodeViews,
@@ -569,10 +558,15 @@ export class CanvasEditorView {
       handleDragLeave,
       handleDrop,
       handleDragEnd,
+      dragHandlers,
       refreshDomEventHandlers,
       getEditorPropsList,
       queryEditorProp,
       applyViewAttributes,
+      inputDebugHandlers: debugInputHandlers,
+      setNodeSelectionAtPos,
+      resolveGapSelectionAtPos,
+      setGapCursorAtCoords,
     });
   }
 
@@ -637,6 +631,10 @@ export class CanvasEditorView {
 
   get editable() {
     return isViewEditable(this);
+  }
+
+  getPaginationInfo() {
+    return getViewPaginationInfo(this);
   }
 
   // 绉婚櫎浜嬩欢鐩戝惉涓?DOM銆?

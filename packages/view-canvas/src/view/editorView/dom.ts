@@ -49,6 +49,12 @@ export const DEFAULT_SETTINGS = {
     cursorWidth: 2,
     labelFont: "12px Arial",
   },
+  // 可选：自定义每页背景绘制（返回 true 表示已完全接管背景与边框）。
+  renderPageBackground: null,
+  // 可选：自定义每页纸张外观绘制（返回 true 表示已完全接管）。
+  renderPageChrome: null,
+  // 可选：自定义每页 canvas 的 DOM 样式（阴影/圆角/CSS 滤镜等）。
+  onPageCanvasStyle: null,
   touch: {
     longPressDelay: 450,
     tapMoveThreshold: 12,

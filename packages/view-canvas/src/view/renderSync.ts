@@ -6,7 +6,6 @@ export const createRenderSync = ({
   setEditorState,
   applyTransaction,
   layoutPipeline,
-  layoutWorker,
   renderer,
   spacer,
   scrollArea,
@@ -46,9 +45,6 @@ export const createRenderSync = ({
   queryEditorProp,
 }) => {
   let layoutVersion = 0;
-  let workerDisabled = false;
-  let workerHasDoc = false;
-  let workerErrorCount = 0;
   const getActiveElement = () => {
     const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
     return ownerDocument?.activeElement ?? null;
@@ -226,8 +222,6 @@ export const createRenderSync = ({
   };
   const updateLayout = () => {
     const changeSummary = getPendingChangeSummary?.() ?? null;
-    const pendingSteps = getPendingSteps?.() ?? null;
-    const hasSteps = Array.isArray(pendingSteps) && pendingSteps.length > 0;
     const nextPageWidth = resolvePageWidth?.();
     if (Number.isFinite(nextPageWidth) && nextPageWidth > 0) {
       if (layoutPipeline.settings.pageWidth !== nextPageWidth) {
@@ -238,42 +232,11 @@ export const createRenderSync = ({
     const version = (layoutVersion += 1);
     clearPendingChangeSummary?.();
     clearPendingSteps?.();
-    const requestPayload = {
-      doc: workerHasDoc && hasSteps ? undefined : getEditorState().doc,
-      steps: workerHasDoc && hasSteps ? pendingSteps : undefined,
-      changeSummary,
-      pageWidth: layoutPipeline.settings.pageWidth,
-      version,
-    };
-    if (layoutWorker && !workerDisabled && layoutWorker.isActive()) {
-      layoutWorker
-        .requestLayout(requestPayload)
-        .then((result) => {
-          workerHasDoc = true;
-          workerErrorCount = 0;
-          applyLayout(result.layout, result.version, changeSummary);
-        })
-        .catch(() => {
-          workerHasDoc = false;
-          workerErrorCount += 1;
-          if (workerErrorCount >= 2) {
-            workerDisabled = true;
-          }
-          const layout = layoutPipeline.layoutFromDoc(getEditorState().doc, {
-            previousLayout: getLayout?.() ?? null,
-            changeSummary,
-            docPosToTextOffset,
-          });
-          applyLayout(layout, version, changeSummary);
-        });
-      return;
-    }
     if (layoutPipeline.settings?.debugPerf) {
       const prevLayout = getLayout?.() ?? null;
       console.debug("[render-sync]", {
         version,
         prevLayoutPages: prevLayout?.pages?.length ?? 0,
-        hasSteps,
         hasChangeSummary: !!changeSummary,
       });
     }

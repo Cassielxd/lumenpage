@@ -95,7 +95,6 @@ export const initEditorViewEnvironment = ({ place, viewProps }) => {
     a11yStatus,
     resolveCanvasConfig,
     nodeRegistry: resolveCanvasConfig("nodeRegistry") ?? null,
-    layoutWorkerConfig: resolveCanvasConfig("layoutWorker") ?? null,
     status: resolveCanvasConfig("statusElement") ?? document.createElement("div"),
   };
 };

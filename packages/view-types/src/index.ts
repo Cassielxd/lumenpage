@@ -7,6 +7,7 @@ export type EditorView = {
   focus?: () => void;
   destroy?: () => void;
   scrollIntoView?: (pos?: number) => void;
+  getPaginationInfo?: () => any;
   someProp?: (propName: string, f?: (value: any) => any) => any;
   endOfTextblock?: (dir: "forward" | "backward" | string, state?: unknown) => boolean;
   posAtCoords?: (

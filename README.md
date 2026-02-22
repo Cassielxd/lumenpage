@@ -139,6 +139,39 @@ pnpm build:app
 - 块级拖拽位置解析由插件 `resolveDragNodePos` 决定
 - drop cursor 默认由 `drag-handle` 插件提供，可覆盖/禁用
 
+### 6.4 页面样式钩子
+
+- `settings.renderPageBackground(args)`：自定义页面背景/边框绘制（Canvas）。返回 `true` 表示完全接管默认背景。
+- `settings.renderPageChrome(args)`：自定义页面装饰绘制（如四角、印章、裁切线）。返回 `true` 表示完全接管默认装饰。
+- `settings.onPageCanvasStyle(args)`：自定义页面 DOM 样式（如阴影、圆角、滤镜、边框）。
+
+示例：
+
+```ts
+const settings = {
+  // ...existing settings
+  renderPageBackground: ({ ctx, width, height, drawDefaultBackground }) => {
+    drawDefaultBackground();
+    ctx.save();
+    ctx.fillStyle = "rgba(255, 248, 220, 0.12)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+    return true;
+  },
+  renderPageChrome: ({ ctx, width, height }) => {
+    ctx.save();
+    ctx.strokeStyle = "#94a3b8";
+    ctx.strokeRect(8, 8, width - 16, height - 16);
+    ctx.restore();
+    return true;
+  },
+  onPageCanvasStyle: ({ canvas }) => {
+    canvas.style.borderRadius = "8px";
+    canvas.style.boxShadow = "0 12px 28px rgba(0,0,0,.12)";
+  },
+};
+```
+
 ## 7. 架构思想（灵感来源）
 
 - 架构设计灵感来源于 ProseMirror：
@@ -163,3 +196,61 @@ pnpm build:app
 
 - `docs/pos-offset-mapping.md`：`pos <-> offset <-> 坐标` 映射说明
 - `docs/prosemirror-gap.md`：历史差异分析与演进记录
+- `docs/editor-gap-roadmap.md`：完整编辑器差距清单与补齐路线图
+
+## 10. 完整编辑器差距清单（执行中）
+
+### P0（必须优先）
+
+- 输入法与选区稳定性：IME 合成、跨节点选区、光标不丢失、不跳块。
+- 拖拽与选择一致性：文本拖拽、块拖拽、NodeSelection、GapCursor 交互统一。
+- 表格编辑完整性：Enter / Backspace / Delete、范围选区、合并拆分、行列增删回归。
+- 列表行为一致性：Enter 新项/退出、Backspace 回退层级/转段落、有序无序互切。
+- 自动化回归基线：命令级 + 事务映射 + 交互 smoke（键盘/鼠标/拖拽/粘贴）。
+
+### P1（产品可用）
+
+- 粘贴与导入导出：HTML/Markdown/JSON 保真与清洗策略。
+- 历史与协作：Undo/Redo 边界、批事务、远端选区与冲突收敛。
+- 只读与权限模型：view-only / 受限编辑 / 评论态。
+- 链接与语义交互：编辑态、跳转态、键盘导航、包裹/拆除一致性。
+- 移动端触控适配：光标、长按菜单、软键盘遮挡处理。
+
+### P2（规模化）
+
+- 大文档性能压测与优化（分页增量复用、重排范围控制、内存）。
+- 无障碍与国际化（键盘可达性、RTL/CJK 混排）。
+- 安全治理（粘贴 XSS、URL 策略、媒体资源策略）。
+- 插件生态规范（生命周期、兼容矩阵、示例与文档）。
+
+## 11. 回归 Smoke 开关
+
+Playground 支持通过 URL 查询参数开启回归 smoke：
+
+- `?allSmoke=1`：一键执行全套 smoke（推荐本地回归入口）。
+- `?tableSmoke=1`：表格导航与命令冒烟。
+- `?tableBehaviorSmoke=1`：表格删除/回车严格冒烟（边界删除拦截、范围删除、CellSelection 回车）。
+- `?listSmoke=1`：有序列表分页冒烟。
+- `?listBehaviorSmoke=1`：列表行为冒烟（段落↔有序/无序切换、列表项 Enter）。
+- `?blockOutlineSmoke=1`：块容器几何一致性冒烟（`code_block` / `blockquote`）。
+- `?dragSmoke=1`：拖拽/选择链路冒烟（`resolveDragNodePos`、dropCursor、媒体 NodeSelection）。
+- `?dragActionSmoke=1`：真实内部拖拽动作冒烟（文本 + 媒体节点的 `start -> update -> finish` 移动）。
+- `?selectionImeSmoke=1`：选区/中文输入路径冒烟（文本插入、映射回环、NodeSelection 往返）。
+- `?imeActionSmoke=1`：真实组合输入事件冒烟（composition start/update/end + beforeinput）。
+- `?selectionBoundarySmoke=1`：节点选区/间隙选区边界冒烟（GapCursor 与 NodeSelection 往返）。
+- `?toolSmoke=1`：工具栏命令冒烟（加粗/斜体/下划线/链接/标题段落切换）。
+- `?pasteSmoke=1`：真实粘贴事件冒烟（plain text + HTML）。
+- `?historySmoke=1`：历史栈冒烟（插入后 undo/redo 可逆）。
+- `?mappingSmoke=1`：`pos <-> offset` 映射冒烟（roundtrip 与单调性）。
+
+建议联调参数：
+
+```txt
+?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1
+```
+
+或直接：
+
+```txt
+?devTools=1&allSmoke=1
+```

@@ -1,5 +1,7 @@
 ﻿import { breakLines, docToRuns, textblockToRuns } from "lumenpage-view-canvas";
 import { type NodeSpec } from "lumenpage-model";
+import { canSplit } from "lumenpage-transform";
+import { Selection } from "lumenpage-state";
 
 const serializeListItemToText = (itemNode) =>
   itemNode.textBetween(0, itemNode.content.size, "\n");
@@ -88,6 +90,98 @@ export const serializeListToText = (listNode) => {
 };
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
+
+const findAncestorDepthByType = ($pos, typeName) => {
+  if (!$pos || !typeName) {
+    return -1;
+  }
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    if ($pos.node(depth)?.type?.name === typeName) {
+      return depth;
+    }
+  }
+  return -1;
+};
+
+export const splitListItem = (state, dispatch) => {
+  const { selection } = state;
+  const { $from, $to } = selection;
+  if (!$from?.sameParent?.($to)) {
+    return false;
+  }
+  if (!$from.parent?.isTextblock) {
+    return false;
+  }
+
+  const itemDepth = findAncestorDepthByType($from, "list_item");
+  if (itemDepth < 0 || itemDepth - 1 < 0) {
+    return false;
+  }
+  const listNode = $from.node(itemDepth - 1);
+  const isList = listNode?.type?.name === "bullet_list" || listNode?.type?.name === "ordered_list";
+  if (!isList) {
+    return false;
+  }
+
+  const splitPos = $from.pos;
+  if (!canSplit(state.doc, splitPos, 2)) {
+    return false;
+  }
+  if (!dispatch) {
+    return true;
+  }
+
+  let tr = state.tr;
+  if (!selection.empty) {
+    tr = tr.deleteSelection();
+  }
+  const mappedPos = tr.mapping.map(splitPos);
+  tr = tr.split(mappedPos, 2).scrollIntoView();
+  dispatch(tr);
+  return true;
+};
+
+export const backspaceEmptyListItem = (state, dispatch) => {
+  const { selection } = state;
+  if (!selection?.empty) {
+    return false;
+  }
+  const { $from } = selection;
+  if (!$from?.parent?.isTextblock) {
+    return false;
+  }
+  if ($from.parentOffset !== 0 || $from.parent.content.size !== 0) {
+    return false;
+  }
+
+  const itemDepth = findAncestorDepthByType($from, "list_item");
+  if (itemDepth < 0 || itemDepth - 1 < 0) {
+    return false;
+  }
+  const listDepth = itemDepth - 1;
+  const listNode = $from.node(listDepth);
+  const isList = listNode?.type?.name === "bullet_list" || listNode?.type?.name === "ordered_list";
+  if (!isList) {
+    return false;
+  }
+
+  const itemIndex = $from.index(listDepth);
+  if (itemIndex <= 0) {
+    return false;
+  }
+
+  const itemStart = $from.before(itemDepth);
+  const itemEnd = $from.after(itemDepth);
+  if (!dispatch) {
+    return true;
+  }
+
+  let tr = state.tr.delete(itemStart, itemEnd);
+  const prevPos = Math.max(0, tr.mapping.map(itemStart) - 1);
+  tr = tr.setSelection(Selection.near(tr.doc.resolve(prevPos), -1)).scrollIntoView();
+  dispatch(tr);
+  return true;
+};
 
 export const listNodeSpecs: Record<string, NodeSpec> = {
   bullet_list: {
@@ -713,5 +807,6 @@ export const orderedListRenderer = {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
+
 
 

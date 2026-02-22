@@ -1,3 +1,4 @@
+import { Selection, TextSelection } from "lumenpage-state";
 import { CellSelection } from "./cellSelection";
 
 const getTableMaxCols = (table) => {
@@ -30,6 +31,11 @@ const createEmptyCell = (schema) => {
 
 const createCellWithAttrs = (cell, attrs, content = undefined) =>
   cell.type.create({ ...(cell.attrs || {}), ...(attrs || {}) }, content ?? cell.content, cell.marks);
+
+const createClearedCell = (schema, cell) => {
+  const emptyCell = createEmptyCell(schema);
+  return cell.type.create(cell.attrs || {}, emptyCell.content, cell.marks);
+};
 
 const getSpan = (cell, key) => {
   const value = cell?.attrs?.[key];
@@ -134,6 +140,62 @@ const getSelectionRect = (state, context) => {
     left: Math.min(anchor.colIndex, head.colIndex),
     right: Math.max(anchor.colIndex, head.colIndex),
   };
+};
+
+const collectSelectionAnchors = (context, rect) => {
+  if (!context?.grid || !rect) {
+    return [];
+  }
+  const entries = new Map();
+  for (let r = rect.top; r <= rect.bottom; r += 1) {
+    for (let c = rect.left; c <= rect.right; c += 1) {
+      const entry = findAnchorCoveringCol(context.grid, r, c);
+      if (entry) {
+        entries.set(entry.pos, entry);
+      }
+    }
+  }
+  return Array.from(entries.values());
+};
+
+const findAncestorDepthByType = ($pos, typeName) => {
+  if (!$pos || !typeName) {
+    return -1;
+  }
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    if ($pos.node(depth)?.type?.name === typeName) {
+      return depth;
+    }
+  }
+  return -1;
+};
+
+const isAtCellBoundary = ($head, direction) => {
+  const cellDepth = findAncestorDepthByType($head, "table_cell");
+  if (cellDepth < 0 || !$head?.parent?.isTextblock) {
+    return false;
+  }
+  if (direction === "backward") {
+    if ($head.parentOffset !== 0) {
+      return false;
+    }
+    for (let depth = $head.depth; depth > cellDepth; depth -= 1) {
+      if ($head.index(depth - 1) !== 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if ($head.parentOffset !== $head.parent.content.size) {
+    return false;
+  }
+  for (let depth = $head.depth; depth > cellDepth; depth -= 1) {
+    const parent = $head.node(depth - 1);
+    if ($head.index(depth - 1) !== parent.childCount - 1) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const createRow = (schema, colCount) => {
@@ -399,6 +461,105 @@ export const goToPreviousTableCell = (state, dispatch) => {
     return false;
   }
   return moveToCellByPos(state, dispatch, grid.anchors[index - 1].pos);
+};
+
+export const enterTableCellSelection = (state, dispatch) => {
+  if (!(state.selection instanceof CellSelection)) {
+    return false;
+  }
+  const targetPos = Math.min(state.selection.anchor, state.selection.head);
+  if (!Number.isFinite(targetPos)) {
+    return false;
+  }
+  if (!dispatch) {
+    return true;
+  }
+  try {
+    const $cell = state.doc.resolve(targetPos);
+    const cell = $cell.nodeAfter;
+    let nextPos = $cell.pos + 1;
+    if (cell?.childCount > 0 && cell.child(0)?.isTextblock) {
+      nextPos += 1;
+    }
+    let selection = null;
+    try {
+      selection = TextSelection.create(state.doc, nextPos);
+    } catch (_error) {
+      selection = Selection.near(state.doc.resolve(nextPos), 1);
+    }
+    dispatch(state.tr.setSelection(selection).scrollIntoView());
+    return true;
+  } catch (_error) {
+    return false;
+  }
+};
+
+export const deleteTableCellSelection = (state, dispatch) => {
+  if (!(state.selection instanceof CellSelection)) {
+    return false;
+  }
+  const context = findTableContext(state);
+  if (!context) {
+    return false;
+  }
+  const rect = getSelectionRect(state, context);
+  if (!rect) {
+    return false;
+  }
+  const anchors = collectSelectionAnchors(context, rect);
+  if (anchors.length === 0) {
+    return false;
+  }
+  if (!dispatch) {
+    return true;
+  }
+  const rowToCols = new Map();
+  for (const anchor of anchors) {
+    if (!rowToCols.has(anchor.rowIndex)) {
+      rowToCols.set(anchor.rowIndex, new Set());
+    }
+    rowToCols.get(anchor.rowIndex).add(anchor.colIndex);
+  }
+
+  const nextRows = [];
+  for (let rowIndex = 0; rowIndex < context.table.childCount; rowIndex += 1) {
+    const row = context.table.child(rowIndex);
+    const selectedCols = rowToCols.get(rowIndex);
+    if (!selectedCols || selectedCols.size === 0) {
+      nextRows.push(row);
+      continue;
+    }
+    const cells = [];
+    for (let colIndex = 0; colIndex < row.childCount; colIndex += 1) {
+      const cell = row.child(colIndex);
+      cells.push(selectedCols.has(colIndex) ? createClearedCell(state.schema, cell) : cell);
+    }
+    nextRows.push(state.schema.nodes.table_row.create(row.attrs, cells, row.marks));
+  }
+
+  const tableType = state.schema.nodes.table;
+  const nextTable = tableType.create(context.table.attrs, nextRows, context.table.marks);
+  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable);
+};
+
+export const preventDeleteBackwardAtTableCellBoundary = (state) => {
+  if (state.selection instanceof CellSelection) {
+    return false;
+  }
+  if (!state.selection?.empty) {
+    return false;
+  }
+  return isAtCellBoundary(state.selection.$head, "backward");
+};
+
+export const preventDeleteForwardAtTableCellBoundary = (state) => {
+  if (state.selection instanceof CellSelection) {
+    return false;
+  }
+  if (!state.selection?.empty) {
+    return false;
+  }
+  return isAtCellBoundary(state.selection.$head, "forward");
 };
 
 export const mergeTableCellRight = (state, dispatch) =>

@@ -24,7 +24,6 @@ export const destroyView = (view) => {
     destroyNodeViews,
     destroyPluginViews,
     clearDomEventHandlers,
-    layoutWorker: layoutWorkerClient,
     getRafId,
   } = view._internals;
   const ownerDocument = dom.root?.ownerDocument || document;
@@ -34,7 +33,6 @@ export const destroyView = (view) => {
   destroyNodeViews?.();
   destroyPluginViews?.();
   clearDomEventHandlers?.();
-  layoutWorkerClient?.destroy?.();
   dom.input.removeEventListener("focus", view._internals.renderSync.updateStatus);
   dom.input.removeEventListener("blur", view._internals.renderSync.updateStatus);
   dom.input.removeEventListener("blur", view._internals.resetComposing);

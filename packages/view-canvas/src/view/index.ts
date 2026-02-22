@@ -28,4 +28,3 @@ export {
 } from "./collaborationPlugin";
 export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
 export { createCanvasState } from "./canvasState";
-export { type LayoutWorkerConfig } from "./layoutWorkerClient";

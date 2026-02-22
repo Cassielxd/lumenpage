@@ -1,0 +1,8 @@
+/example/
+
+/.babelrc
+/.editorconfig
+/.gitignore
+/.travis.yml
+/.build
+/docs

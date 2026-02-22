@@ -83,7 +83,7 @@ export const createStateFlow = ({
       anchorPos,
       headPos,
     });
-    dispatchTransaction(tr);
+    view.dispatch(tr);
   };
 
   return {
