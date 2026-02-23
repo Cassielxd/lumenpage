@@ -1,4 +1,4 @@
-import { basicCommands, createCanvasEditorKeymap, runCommand } from "lumenpage-kit-basic";
+﻿import { basicCommands, createCanvasEditorKeymap, runCommand } from "lumenpage-kit-basic";
 import { docPosToTextOffset, textOffsetToDocPos } from "lumenpage-view-canvas";
 import { NodeSelection, TextSelection } from "lumenpage-state";
 import { CellSelection } from "lumenpage-node-table";
@@ -6,7 +6,12 @@ import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
 import { normalizeNavigableHref } from "lumenpage-link";
 import { loadMarkdownModule } from "./markdownBridge";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
-import { normalizePastedText, sanitizePastedHtml } from "./pastePolicy";
+import {
+  consumePlaygroundSecurityAuditLogs,
+  normalizePastedText,
+  sanitizePastedHtml,
+} from "./pastePolicy";
+import { createPlaygroundI18n, resolvePlaygroundLocale } from "./i18n";
 import { initialDocPerfJson } from "../initialDoc";
 
 const appendDebugLine = (debugPanelEl: HTMLElement | null, text: string) => {
@@ -943,6 +948,124 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
     appendDebugLine(debugPanelEl, text);
     return;
   }
+
+  const getLayoutPageCount = () => {
+    const layout = internals?.getLayout?.();
+    return Array.isArray(layout?.pages) ? Number(layout.pages.length) : 0;
+  };
+
+  let coldHandleProbeRan = false;
+  let coldHandleProbeError: string | null = null;
+  let coldHandleBeforeDocSize = 0;
+  let coldHandleAfterDocSize = 0;
+  let coldHandleBeforePages = 0;
+  let coldHandleAfterPages = 0;
+  let coldHandleDocStable = false;
+  let coldHandleSelectionStable = false;
+  let coldHandleLayoutStable = false;
+  let coldHandleRootConnected = false;
+  let coldHandleInputFocused = false;
+  let coldHandleBeforeSelection: { from: number | null; to: number | null } | null = null;
+  let coldHandleAfterSelection: { from: number | null; to: number | null } | null = null;
+
+  const canProbeColdHandlePath =
+    typeof internals?.handlePointerDown === "function" &&
+    typeof internals?.handlePointerUp === "function" &&
+    typeof internals?.onClickFocus === "function";
+  if (canProbeColdHandlePath) {
+    coldHandleProbeRan = true;
+    try {
+      const rootEl = internals?.dom?.root ?? null;
+      const inputEl = internals?.dom?.input ?? null;
+      const ownerDocument =
+        rootEl?.ownerDocument ||
+        inputEl?.ownerDocument ||
+        (typeof document !== "undefined" ? document : null);
+      const handleDragPos = Math.max(0, Number(ranges[0]?.start || 1) - 1);
+      const handleTarget = {
+        closest: (selector: string) => {
+          if (selector === ".lumenpage-block-drag-handle") {
+            return { className: "lumenpage-block-drag-handle" };
+          }
+          if (selector === "[data-lumen-drag-pos]") {
+            return {
+              getAttribute: (name: string) =>
+                name === "data-lumen-drag-pos" ? String(handleDragPos) : null,
+            };
+          }
+          return null;
+        },
+      };
+
+      const beforeState = editorView.state;
+      coldHandleBeforeDocSize = Number(beforeState?.doc?.content?.size ?? 0);
+      coldHandleBeforePages = getLayoutPageCount();
+      coldHandleBeforeSelection = {
+        from: Number.isFinite(beforeState?.selection?.from)
+          ? Number(beforeState.selection.from)
+          : null,
+        to: Number.isFinite(beforeState?.selection?.to) ? Number(beforeState.selection.to) : null,
+      };
+
+      // Simulate the bug-prone path: first interaction is handle click without prior canvas selection.
+      inputEl?.blur?.();
+      const pointerId = 991;
+      internals.handlePointerDown({
+        button: 0,
+        pointerId,
+        clientX: 0,
+        clientY: 0,
+        target: handleTarget,
+      });
+      internals.handlePointerUp({
+        pointerId,
+        clientX: 0,
+        clientY: 0,
+        target: handleTarget,
+      });
+      internals.onClickFocus({
+        detail: 1,
+        button: 0,
+        defaultPrevented: false,
+        preventDefault: () => {},
+        clientX: 0,
+        clientY: 0,
+        target: handleTarget,
+      });
+
+      const afterState = editorView.state;
+      coldHandleAfterDocSize = Number(afterState?.doc?.content?.size ?? 0);
+      coldHandleAfterPages = getLayoutPageCount();
+      coldHandleAfterSelection = {
+        from: Number.isFinite(afterState?.selection?.from) ? Number(afterState.selection.from) : null,
+        to: Number.isFinite(afterState?.selection?.to) ? Number(afterState.selection.to) : null,
+      };
+
+      const afterSelFrom = Number(afterState?.selection?.from);
+      const afterSelTo = Number(afterState?.selection?.to);
+      coldHandleDocStable = coldHandleAfterDocSize === coldHandleBeforeDocSize;
+      coldHandleSelectionStable =
+        Number.isFinite(afterSelFrom) &&
+        Number.isFinite(afterSelTo) &&
+        afterSelFrom >= 0 &&
+        afterSelTo >= 0 &&
+        afterSelFrom <= coldHandleAfterDocSize &&
+        afterSelTo <= coldHandleAfterDocSize;
+      coldHandleLayoutStable = coldHandleAfterPages > 0;
+      coldHandleRootConnected = rootEl?.isConnected !== false;
+      coldHandleInputFocused = !!ownerDocument && ownerDocument.activeElement === inputEl;
+    } catch (error) {
+      coldHandleProbeError = String((error as any)?.message || error);
+    }
+  }
+
+  const coldHandlePathOk =
+    !coldHandleProbeRan ||
+    (!coldHandleProbeError &&
+      coldHandleDocStable &&
+      coldHandleSelectionStable &&
+      coldHandleLayoutStable &&
+      coldHandleRootConnected);
   const dropTarget = ranges[ranges.length - 1];
   const dropTargetRect = editorView.coordsAtPos(Math.max(dropTarget.start, dropTarget.end - 1));
   const dropPoint =
@@ -1026,6 +1149,10 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
   let mediaVerticalProbeFinishHandled = false;
   let mediaVerticalProbeDraggingAfterFinish = false;
   let mediaVerticalProbeOk = false;
+  let mediaVerticalStrictCheck = true;
+  let mediaVerticalRectHeight = 0;
+  let mediaVerticalTopDropPosAllowed = false;
+  let mediaVerticalBottomDropPosAllowed = false;
   if (Number.isFinite(mediaPos)) {
     const mediaNode = editorView.state.doc.nodeAt(Number(mediaPos));
     mediaType = mediaNode?.type?.name ?? null;
@@ -1036,8 +1163,10 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
       mediaVerticalProbeRan = true;
       const rectTop = Number(mediaRect.top);
       const rectBottom = Number(mediaRect.bottom);
+      mediaVerticalRectHeight = Math.max(0, rectBottom - rectTop);
       const rectHeight = Math.max(2, rectBottom - rectTop);
       const edgePad = Math.max(1, Math.min(3, Math.round(rectHeight * 0.2)));
+      const baseLineHeight = Math.max(1, Number(internals?.settings?.lineHeight) || 0);
       const probeX = Number(mediaRect.left) + 2;
       const topPoint = {
         x: probeX,
@@ -1049,6 +1178,9 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
       };
       mediaVerticalExpectedTopPos = beforeMediaPos;
       mediaVerticalExpectedBottomPos = beforeMediaPos + mediaNodeSize;
+      // Only enforce strict top/bottom distinction when media rect is clearly larger than a text line.
+      mediaVerticalStrictCheck =
+        mediaVerticalRectHeight > Math.max(4, baseLineHeight + 2) && bottomPoint.y > topPoint.y;
       const verticalProbeStarted =
         dragHandlers.startInternalDragFromNodePos?.(beforeMediaPos, dragEvent) === true;
       if (verticalProbeStarted) {
@@ -1065,11 +1197,22 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
           dragHandlers.finishInternalDrag?.(dragEvent, bottomPoint) === true;
         mediaVerticalProbeDraggingAfterFinish = dragHandlers.isInternalDragging?.() === true;
       }
+      const allowedVerticalDropPos = new Set([
+        Number(mediaVerticalExpectedTopPos),
+        Number(mediaVerticalExpectedBottomPos),
+      ]);
+      mediaVerticalTopDropPosAllowed =
+        Number.isFinite(mediaVerticalTopDropPos) && allowedVerticalDropPos.has(Number(mediaVerticalTopDropPos));
+      mediaVerticalBottomDropPosAllowed =
+        Number.isFinite(mediaVerticalBottomDropPos) &&
+        allowedVerticalDropPos.has(Number(mediaVerticalBottomDropPos));
       mediaVerticalProbeOk =
         mediaVerticalTopHandled &&
         mediaVerticalBottomHandled &&
-        mediaVerticalTopDropPos === mediaVerticalExpectedTopPos &&
-        mediaVerticalBottomDropPos === mediaVerticalExpectedBottomPos &&
+        (mediaVerticalStrictCheck
+          ? mediaVerticalTopDropPos === mediaVerticalExpectedTopPos &&
+            mediaVerticalBottomDropPos === mediaVerticalExpectedBottomPos
+          : mediaVerticalTopDropPosAllowed && mediaVerticalBottomDropPosAllowed) &&
         mediaVerticalProbeFinishHandled &&
         !mediaVerticalProbeDraggingAfterFinish;
     }
@@ -1152,13 +1295,33 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
       mediaVerticalBottomDropPos,
       mediaVerticalExpectedTopPos,
       mediaVerticalExpectedBottomPos,
+      mediaVerticalStrictCheck,
+      mediaVerticalRectHeight,
+      mediaVerticalTopDropPosAllowed,
+      mediaVerticalBottomDropPosAllowed,
       mediaVerticalProbeFinishHandled,
       mediaVerticalProbeDraggingAfterFinish,
       mediaVerticalProbeOk,
       ok: mediaPathOk,
     },
+    coldHandleClickPath: {
+      coldHandleProbeRan,
+      coldHandleProbeError,
+      coldHandleBeforeDocSize,
+      coldHandleAfterDocSize,
+      coldHandleBeforePages,
+      coldHandleAfterPages,
+      coldHandleDocStable,
+      coldHandleSelectionStable,
+      coldHandleLayoutStable,
+      coldHandleRootConnected,
+      coldHandleInputFocused,
+      coldHandleBeforeSelection,
+      coldHandleAfterSelection,
+      ok: coldHandlePathOk,
+    },
   };
-  const ok = textPathOk && mediaPathOk;
+  const ok = textPathOk && mediaPathOk && coldHandlePathOk;
   const text = `[drag-action-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
@@ -1441,7 +1604,7 @@ export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLEle
     tableNodeSelectionBlocked,
     backToTextSelection,
   };
-  // gapcursor plugin 閸忔娊妫撮弮璺哄帒鐠?gap 妞ら€涜礋 false閿涘奔绮庨弽锟犵崣 node/text/table 鏉堝湱鏅崚鍥ㄥ床閵嗕繖r
+  // gapcursor plugin 闁稿繑濞婂Λ鎾籍鐠哄搫甯掗悹?gap 濡炪倝鈧稖绀?false闁挎稑濂旂划搴ㄥ冀閿熺姷宕?node/text/table 閺夊牆婀遍弲顐﹀礆閸ャ劌搴婇柕鍡曠箹r
   const gapPartOk = !gapResolvedType || gapSelectionApplied;
   const nodePartOk = !Number.isFinite(mediaPos) || nodeSelectionApplied;
   const tablePartOk = !Number.isFinite(tablePos) || tableNodeSelectionBlocked;
@@ -1614,7 +1777,7 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
   const snapshotText = () =>
     editorView.state.doc.textBetween(0, editorView.state.doc.content.size, "\n", "\n");
 
-  // 閸忓牊甯板ù瀣Ц閸氾箑褰查崘娆欑礉闁灝鍘ら崷銊ュ涧鐠囩粯膩瀵繋绗呴幎濠傘亼鐠愩儴顕ら崚銈勮礋 paste FAIL.
+  // 闁稿繐鐗婄敮鏉棵圭€ｎ偅笑闁告熬绠戣ぐ鏌ュ礃濞嗘瑧绀夐梺顒€鐏濋崢銈夊捶閵娿儱娑ч悹鍥╃帛鑶╃€殿喖绻嬬粭鍛村箮婵犲倶浜奸悹鎰╁劥椤曘倝宕氶妶鍕 paste FAIL.
   const probeBefore = snapshotText();
   const probeMarker = "__PASTE_PROBE__";
   const probeFrom = editorView.state.selection.from;
@@ -1627,7 +1790,7 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
     appendDebugLine(debugPanelEl, text);
     return;
   }
-  // 閸ョ偞绮撮幒銏ゆ嫛閹绘帒鍙嗛妴淇檙
+  // 闁搞儳鍋炵划鎾箳閵忋倖瀚涢柟缁樺笒閸欏棝濡存穱妾?
   editorView.dispatch(
     editorView.state.tr.delete(probeFrom, Math.min(probeFrom + probeMarker.length, editorView.state.doc.content.size))
   );
@@ -2584,6 +2747,7 @@ export const runLinkInteractionSmoke = (debugPanelEl: HTMLElement | null) => {
 };
 
 export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElement | null) => {
+  consumePlaygroundSecurityAuditLogs();
   const normalizedText = normalizePastedText("A\r\nB\rC\u00a0D");
   const textNormalizeOk = normalizedText === "A\nB\nC D";
 
@@ -2876,6 +3040,13 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
     }
   }
 
+  const securityAuditLogs = consumePlaygroundSecurityAuditLogs();
+  const securityAuditDropCount = securityAuditLogs.filter(
+    (entry: any) => entry?.decision === "drop"
+  ).length;
+  const securityAuditSanitizeCount = securityAuditLogs.filter(
+    (entry: any) => entry?.decision === "sanitize"
+  ).length;
   const summary = {
     textNormalizeOk,
     dangerousSanitizedOk,
@@ -2894,6 +3065,10 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
     jsonSafeStats,
     hrefMismatchCount: hrefMismatches.length,
     hrefMismatches,
+    securityAuditTotal: securityAuditLogs.length,
+    securityAuditDropCount,
+    securityAuditSanitizeCount,
+    securityAuditSample: securityAuditLogs.slice(0, 12),
     sanitizedDangerous,
     sanitizedSafe,
   };
@@ -2904,7 +3079,8 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
     hrefNormalizeOk &&
     (schemaParseSkipped || schemaParseOk) &&
     (markdownParseSkipped || markdownParseOk) &&
-    (jsonImportSkipped || jsonImportOk);
+    (jsonImportSkipped || jsonImportOk) &&
+    securityAuditDropCount > 0;
   const text = `[security-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
@@ -2925,6 +3101,17 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
   }
 
   const original = getJSON();
+  const locale = resolvePlaygroundLocale();
+  const i18n = createPlaygroundI18n(locale);
+  const root = editorView?._internals?.dom?.root ?? null;
+  const rootAriaLabel = String(root?.getAttribute?.("aria-label") || "");
+  const expectedAriaLabel = i18n.app.editorAriaLabel;
+  const ariaLocaleLabelOk = rootAriaLabel === expectedAriaLabel;
+  const settings = editorView?._internals?.settings ?? null;
+  const segmenterConfigured = typeof settings?.segmentText === "function";
+  const textLocale = String(settings?.textLocale || "");
+  const textLocaleMatched = textLocale === locale;
+
   const mixedDoc = {
     type: "doc",
     content: [
@@ -3030,6 +3217,13 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
   }
 
   const summary = {
+    locale,
+    rootAriaLabel,
+    expectedAriaLabel,
+    ariaLocaleLabelOk,
+    segmenterConfigured,
+    textLocale,
+    textLocaleMatched,
     applied,
     lineCount,
     finiteLineMetrics,
@@ -3046,6 +3240,9 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
     finiteLineMetrics &&
     hasCjkText &&
     hasRtlText &&
+    ariaLocaleLabelOk &&
+    segmenterConfigured &&
+    textLocaleMatched &&
     coordsOk &&
     roundtripMismatchCount === 0;
   const text = `[i18n-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
@@ -3056,7 +3253,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
   }
   appendDebugLine(debugPanelEl, text);
 };
-
 const waitRaf = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());

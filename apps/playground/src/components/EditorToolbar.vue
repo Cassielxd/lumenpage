@@ -2,7 +2,7 @@
   <t-header class="toolbar" @mousedown="handleToolbarMouseDown">
     <div class="toolbar-left">
       <div class="toolbar-group">
-        <t-tooltip content="撤销">
+        <t-tooltip :content="i18n.toolbar.undo">
           <t-button
             size="small"
             variant="text"
@@ -13,7 +13,7 @@
             <Icon name="arrow-left" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="重做">
+        <t-tooltip :content="i18n.toolbar.redo">
           <t-button
             size="small"
             variant="text"
@@ -24,7 +24,7 @@
             <Icon name="arrow-right" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="切分历史分组（下一次编辑独立撤销）">
+        <t-tooltip :content="i18n.toolbar.historyBoundaryTip">
           <t-button size="small" variant="text" class="icon-btn" @click="markHistoryBoundary">
             <span class="history-cut">||</span>
           </t-button>
@@ -46,27 +46,27 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-tooltip content="加粗">
+        <t-tooltip :content="i18n.toolbar.bold">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleBold">
             <Icon name="textformat-bold" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="斜体">
+        <t-tooltip :content="i18n.toolbar.italic">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleItalic">
             <Icon name="textformat-italic" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="下划线">
+        <t-tooltip :content="i18n.toolbar.underline">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleUnderline">
             <Icon name="textformat-underline" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="删除线">
+        <t-tooltip :content="i18n.toolbar.strike">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleStrike">
             <Icon name="textformat-strikethrough" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="行内代码">
+        <t-tooltip :content="i18n.toolbar.inlineCode">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleInlineCode">
             <Icon name="code" />
           </t-button>
@@ -76,22 +76,22 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-tooltip content="链接">
+        <t-tooltip :content="i18n.toolbar.link">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleLink">
             <Icon name="link" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="引用">
+        <t-tooltip :content="i18n.toolbar.blockquote">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleBlockquote">
             <Icon name="quote" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="代码块">
+        <t-tooltip :content="i18n.toolbar.codeBlock">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleCodeBlock">
             <Icon name="code" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="分割线">
+        <t-tooltip :content="i18n.toolbar.horizontalRule">
           <t-button size="small" variant="text" class="icon-btn" @click="insertHorizontalRule">
             <Icon name="minus" />
           </t-button>
@@ -101,22 +101,22 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-tooltip content="无序列表">
+        <t-tooltip :content="i18n.toolbar.bulletList">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleBulletList">
             <Icon name="list" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="有序列表">
+        <t-tooltip :content="i18n.toolbar.orderedList">
           <t-button size="small" variant="text" class="icon-btn" @click="toggleOrderedList">
             <Icon name="list-numbered" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="减少缩进">
+        <t-tooltip :content="i18n.toolbar.outdent">
           <t-button size="small" variant="text" class="icon-btn" @click="outdent">
             <Icon name="indent-left" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="增加缩进">
+        <t-tooltip :content="i18n.toolbar.indent">
           <t-button size="small" variant="text" class="icon-btn" @click="indent">
             <Icon name="indent-right" />
           </t-button>
@@ -126,17 +126,17 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-tooltip content="左对齐">
+        <t-tooltip :content="i18n.toolbar.alignLeft">
           <t-button size="small" variant="text" class="icon-btn" @click="alignLeft">
             <Icon name="format-vertical-align-left" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="居中">
+        <t-tooltip :content="i18n.toolbar.alignCenter">
           <t-button size="small" variant="text" class="icon-btn" @click="alignCenter">
             <Icon name="format-vertical-align-center" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="右对齐">
+        <t-tooltip :content="i18n.toolbar.alignRight">
           <t-button size="small" variant="text" class="icon-btn" @click="alignRight">
             <Icon name="format-vertical-align-right" />
           </t-button>
@@ -146,12 +146,12 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-tooltip content="插入图片">
+        <t-tooltip :content="i18n.toolbar.insertImage">
           <t-button size="small" variant="text" class="icon-btn" @click="insertImage">
             <Icon name="image" />
           </t-button>
         </t-tooltip>
-        <t-tooltip content="插入视频">
+        <t-tooltip :content="i18n.toolbar.insertVideo">
           <t-button size="small" variant="text" class="icon-btn" @click="insertVideo">
             <Icon name="video" />
           </t-button>
@@ -173,7 +173,7 @@
         <template #content>
           <div class="settings-panel">
             <div class="settings-row">
-              <span class="settings-label">行高</span>
+              <span class="settings-label">{{ i18n.toolbar.lineHeight }}</span>
               <t-select
                 v-model="lineHeightMultiplier"
                 size="small"
@@ -182,7 +182,7 @@
               />
             </div>
             <div class="settings-row">
-              <span class="settings-label">段间距</span>
+              <span class="settings-label">{{ i18n.toolbar.blockSpacing }}</span>
               <t-select
                 v-model="blockSpacing"
                 size="small"
@@ -191,7 +191,7 @@
               />
             </div>
             <div class="settings-row">
-              <span class="settings-label">段前</span>
+              <span class="settings-label">{{ i18n.toolbar.paragraphBefore }}</span>
               <t-select
                 v-model="paragraphSpacingBefore"
                 size="small"
@@ -199,14 +199,14 @@
                 :options="resolvedParagraphSpacingOptions"
               />
               <t-button size="small" variant="text" @click="applySpacingBeforeToSelection">
-                作用当前段
+                {{ i18n.toolbar.applyToCurrentParagraph }}
               </t-button>
               <t-button size="small" variant="text" @click="clearSpacingBeforeForSelection">
-                清除
+                {{ i18n.toolbar.clear }}
               </t-button>
             </div>
             <div class="settings-row">
-              <span class="settings-label">段后</span>
+              <span class="settings-label">{{ i18n.toolbar.paragraphAfter }}</span>
               <t-select
                 v-model="paragraphSpacingAfter"
                 size="small"
@@ -214,19 +214,19 @@
                 :options="resolvedParagraphSpacingOptions"
               />
               <t-button size="small" variant="text" @click="applySpacingAfterToSelection">
-                作用当前段
+                {{ i18n.toolbar.applyToCurrentParagraph }}
               </t-button>
               <t-button size="small" variant="text" @click="clearSpacingAfterForSelection">
-                清除
+                {{ i18n.toolbar.clear }}
               </t-button>
             </div>
           </div>
         </template>
-        <t-button size="small" variant="outline" class="settings-icon-btn" title="设置">
+        <t-button size="small" variant="outline" class="settings-icon-btn" :title="i18n.toolbar.settings">
           <Icon name="setting-1" />
         </t-button>
       </t-popup>
-      <span ref="statusEl" class="status">0 pages</span>
+      <span ref="statusEl" class="status">{{ i18n.toolbar.statusZeroPages }}</span>
     </div>
   </t-header>
 </template>
@@ -236,21 +236,25 @@ import { computed, ref, toRaw, watch } from "vue";
 import { Icon } from "tdesign-icons-vue-next";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { closeHistory, redoDepth, undoDepth } from "lumenpage-history";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 const props = defineProps<{
   editorView: CanvasEditorView | null;
+  locale?: PlaygroundLocale;
   blockTypeOptions?: Array<{ label: string; value: string }>;
 }>();
 
-const defaultBlockTypeOptions = [
-  { label: "正文", value: "paragraph" },
-  { label: "标题 1", value: "heading-1" },
-  { label: "标题 2", value: "heading-2" },
-  { label: "标题 3", value: "heading-3" },
-];
+const i18n = computed(() => createPlaygroundI18n(props.locale));
+
+const defaultBlockTypeOptions = computed(() => [
+  { label: i18n.value.toolbar.blockTypeParagraph, value: "paragraph" },
+  { label: i18n.value.toolbar.blockTypeHeading1, value: "heading-1" },
+  { label: i18n.value.toolbar.blockTypeHeading2, value: "heading-2" },
+  { label: i18n.value.toolbar.blockTypeHeading3, value: "heading-3" },
+]);
 
 const resolvedBlockTypeOptions = computed(
-  () => props.blockTypeOptions || defaultBlockTypeOptions
+  () => props.blockTypeOptions || defaultBlockTypeOptions.value
 );
 
 const blockType = ref("paragraph");
@@ -307,7 +311,10 @@ const resolvedLineHeightOptions = computed(() => {
   if (exists) {
     return baseLineHeightOptions;
   }
-  return [{ label: `当前 ${current}`, value: current }, ...baseLineHeightOptions];
+  return [
+    { label: `${i18n.value.toolbar.currentValuePrefix}${current}`, value: current },
+    ...baseLineHeightOptions,
+  ];
 });
 
 const baseBlockSpacingOptions = [
@@ -333,7 +340,10 @@ const resolvedBlockSpacingOptions = computed(() => {
   if (exists) {
     return baseBlockSpacingOptions;
   }
-  return [{ label: `当前 ${current}`, value: current }, ...baseBlockSpacingOptions];
+  return [
+    { label: `${i18n.value.toolbar.currentValuePrefix}${current}`, value: current },
+    ...baseBlockSpacingOptions,
+  ];
 });
 
 const baseParagraphSpacingOptions = [
@@ -431,8 +441,8 @@ const handleToolbarMouseDown = (event: MouseEvent) => {
   }
 };
 
-const runUndo = () => runWithNotice("undo", "当前没有可撤销的操作");
-const runRedo = () => runWithNotice("redo", "当前没有可重做的操作");
+const runUndo = () => runWithNotice("undo", i18n.value.toolbar.alertCannotUndo);
+const runRedo = () => runWithNotice("redo", i18n.value.toolbar.alertCannotRedo);
 const markHistoryBoundary = () => {
   const view = props.editorView ? toRaw(props.editorView) : null;
   if (!view?.state?.tr) {
@@ -477,7 +487,7 @@ const toggleLink = () => {
     ? !!markType.isInSet(view.state.storedMarks || $cursor?.marks() || [])
     : view.state.doc.rangeHasMark(from, to, markType);
   const defaultValue = hasLink ? "" : "https://";
-  const url = window.prompt("请输入链接地址", defaultValue);
+  const url = window.prompt(i18n.value.toolbar.promptLinkUrl, defaultValue);
   if (url === null) {
     return false;
   }
@@ -495,13 +505,13 @@ const toggleLink = () => {
   }
   const ok = run("toggleLink", { href, title: href });
   if (!ok) {
-    window.alert("请先选中文本，或将光标放在文本中后再添加链接");
+    window.alert(i18n.value.toolbar.alertLinkRequiresSelection);
   }
   return ok;
 };
 
 const insertImage = () => {
-  const src = window.prompt("请输入图片地址", "");
+  const src = window.prompt(i18n.value.toolbar.promptImageUrl, "");
   if (!src) {
     return false;
   }
@@ -509,30 +519,57 @@ const insertImage = () => {
 };
 
 const insertVideo = () => {
-  const src = window.prompt("请输入视频地址", "");
+  const src = window.prompt(i18n.value.toolbar.promptVideoUrl, "");
   if (!src) {
     return false;
   }
   return run("insertVideo", { src, embed: false });
 };
 
-const addTableRowAfter = () => runWithNotice("addTableRowAfter", "请先将光标放在表格单元格内");
-const deleteTableRow = () => runWithNotice("deleteTableRow", "请先将光标放在表格单元格内");
+const addTableRowAfter = () =>
+  runWithNotice("addTableRowAfter", i18n.value.toolbar.alertTableCellRequired);
+const deleteTableRow = () =>
+  runWithNotice("deleteTableRow", i18n.value.toolbar.alertTableCellRequired);
 const addTableColumnAfter = () =>
-  runWithNotice("addTableColumnAfter", "请先将光标放在表格单元格内");
+  runWithNotice("addTableColumnAfter", i18n.value.toolbar.alertTableCellRequired);
 const deleteTableColumn = () =>
-  runWithNotice("deleteTableColumn", "请先将光标放在表格单元格内");
+  runWithNotice("deleteTableColumn", i18n.value.toolbar.alertTableCellRequired);
 const mergeTableCellRight = () =>
-  runWithNotice("mergeTableCellRight", "当前单元格无法向右合并");
-const splitTableCell = () => runWithNotice("splitTableCell", "当前单元格无法拆分");
+  runWithNotice("mergeTableCellRight", i18n.value.toolbar.alertMergeRightUnavailable);
+const splitTableCell = () =>
+  runWithNotice("splitTableCell", i18n.value.toolbar.alertSplitCellUnavailable);
 
 const tableMenuOptions = computed(() => [
-  { content: "表格加行", value: "addTableRowAfter", disabled: !canRun("addTableRowAfter") },
-  { content: "表格删行", value: "deleteTableRow", disabled: !canRun("deleteTableRow") },
-  { content: "表格加列", value: "addTableColumnAfter", disabled: !canRun("addTableColumnAfter") },
-  { content: "表格删列", value: "deleteTableColumn", disabled: !canRun("deleteTableColumn") },
-  { content: "合并右侧单元格", value: "mergeTableCellRight", disabled: !canRun("mergeTableCellRight") },
-  { content: "拆分单元格", value: "splitTableCell", disabled: !canRun("splitTableCell") },
+  {
+    content: i18n.value.toolbar.tableAddRow,
+    value: "addTableRowAfter",
+    disabled: !canRun("addTableRowAfter"),
+  },
+  {
+    content: i18n.value.toolbar.tableDeleteRow,
+    value: "deleteTableRow",
+    disabled: !canRun("deleteTableRow"),
+  },
+  {
+    content: i18n.value.toolbar.tableAddColumn,
+    value: "addTableColumnAfter",
+    disabled: !canRun("addTableColumnAfter"),
+  },
+  {
+    content: i18n.value.toolbar.tableDeleteColumn,
+    value: "deleteTableColumn",
+    disabled: !canRun("deleteTableColumn"),
+  },
+  {
+    content: i18n.value.toolbar.tableMergeRight,
+    value: "mergeTableCellRight",
+    disabled: !canRun("mergeTableCellRight"),
+  },
+  {
+    content: i18n.value.toolbar.tableSplitCell,
+    value: "splitTableCell",
+    disabled: !canRun("splitTableCell"),
+  },
 ]);
 
 const handleTableMenuClick = (payload: any) => {

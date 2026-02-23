@@ -89,32 +89,55 @@ export function findLineForOffset(layout, offset, textLength) {
   const clamped = Math.max(0, Math.min(offset, textLength));
 
   let emptyHit = null;
-  for (let p = 0; p < layout.pages.length; p += 1) {
-    const page = layout.pages[p];
-    for (let l = 0; l < page.lines.length; l += 1) {
-      const line = page.lines[l];
-      if (line.start === line.end && clamped === line.start) {
-        emptyHit = { pageIndex: p, lineIndex: l, line };
-      }
-    }
-  }
-  if (emptyHit) {
-    return emptyHit;
-  }
+  let lineEndHit = null;
+  let rangeHit = null;
+  let startHit = null;
+  let visualStartHit = null;
 
   for (let p = 0; p < layout.pages.length; p += 1) {
     const page = layout.pages[p];
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
+      const hit = { pageIndex: p, lineIndex: l, line };
+      if (line.start === line.end && clamped === line.start && !emptyHit) {
+        emptyHit = hit;
+      }
 
       if (clamped >= line.start && clamped < line.end) {
-        return { pageIndex: p, lineIndex: l, line };
+        if (!rangeHit) {
+          rangeHit = hit;
+        }
+        if (clamped === line.start) {
+          if (!startHit) {
+            startHit = hit;
+          }
+          if (isVisualBlockLine(line) && !visualStartHit) {
+            visualStartHit = hit;
+          }
+        }
       }
 
       if (clamped == line.end && line.end > line.start) {
-        return { pageIndex: p, lineIndex: l, line, isLineEnd: true };
+        if (!lineEndHit) {
+          lineEndHit = { pageIndex: p, lineIndex: l, line, isLineEnd: true };
+        }
       }
     }
+  }
+  if (visualStartHit) {
+    return visualStartHit;
+  }
+  if (startHit) {
+    return startHit;
+  }
+  if (rangeHit) {
+    return rangeHit;
+  }
+  if (lineEndHit) {
+    return lineEndHit;
+  }
+  if (emptyHit) {
+    return emptyHit;
   }
 
   const lastPage = layout.pages[layout.pages.length - 1];

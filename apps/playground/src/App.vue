@@ -3,20 +3,20 @@
     <t-header class="topbar">
       <div class="topbar-left">
         <div class="logo">LP</div>
-        <div class="brand">腾讯文档</div>
+        <div class="brand">{{ i18n.app.brand }}</div>
         <t-input v-model="docTitle" class="title-input" size="small" />
-        <t-tag size="small" theme="success" variant="light">已保存</t-tag>
+        <t-tag size="small" theme="success" variant="light">{{ i18n.app.saved }}</t-tag>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
       </div>
       <div class="topbar-right">
-        <t-button size="small" theme="primary">分享</t-button>
-        <t-button size="small" variant="outline">评论</t-button>
+        <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
+        <t-button size="small" variant="outline">{{ i18n.app.comment }}</t-button>
         <t-avatar size="small">U</t-avatar>
       </div>
     </t-header>
 
-    <EditorMenuBar :editorView="view" />
-    <EditorToolbar ref="toolbarRef" :editorView="view" />
+    <EditorMenuBar :editorView="view" :locale="debugFlags.locale" />
+    <EditorToolbar ref="toolbarRef" :editorView="view" :locale="debugFlags.locale" />
 
   <t-content class="editor-area">
     <div ref="editorHost" class="editor-host"></div>
@@ -35,24 +35,26 @@ import type { CanvasEditorView } from "lumenpage-view-canvas";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
+import { createPlaygroundI18n } from "./editor/i18n";
 import { mountPlaygroundEditor } from "./editor/editorMount";
 
-const docTitle = ref("项目周报");
+const debugFlags = createPlaygroundDebugFlags();
+const i18n = createPlaygroundI18n(debugFlags.locale);
+const docTitle = ref(i18n.app.defaultDocTitle);
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
 const tableDebugPanel = ref<HTMLElement | null>(null);
-const debugFlags = createPlaygroundDebugFlags();
 const debugTablePagination = debugFlags.debugTablePagination;
 const permissionLabel = computed(() => {
   if (debugFlags.permissionMode === "readonly") {
-    return "只读态";
+    return i18n.app.permissionReadonly;
   }
   if (debugFlags.permissionMode === "comment") {
-    return "评论态";
+    return i18n.app.permissionComment;
   }
-  return "编辑态";
+  return i18n.app.permissionEdit;
 });
 let detachEditor: null | (() => void) = null;
 

@@ -1,4 +1,8 @@
+import { createLinebreakSegmentText } from "lumenpage-view-canvas";
+import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
+
 export type PlaygroundDebugFlags = {
+  locale: PlaygroundLocale;
   permissionMode: "full" | "comment" | "readonly";
   debugAllSmoke: boolean;
   debugP0Smoke: boolean;
@@ -32,7 +36,6 @@ export type PlaygroundDebugFlags = {
   debugTimingLogs: boolean;
   debugLegacyConfigSmoke: boolean;
   debugDuplicateDecorations: boolean;
-  debugDevTools: boolean;
   enableInputRules: boolean;
   enableGapCursor: boolean;
   debugPerf: boolean;
@@ -94,6 +97,7 @@ const resolveWorkerEnabled = () => {
 
 // Playground 调试开关集中管理，避免散落在页面组件中。
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
+  locale: resolvePlaygroundLocale(),
   permissionMode: resolvePermissionMode(),
   debugAllSmoke: resolveDebugFlag("allSmoke"),
   debugP0Smoke: resolveDebugFlag("p0Smoke"),
@@ -127,7 +131,6 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugTimingLogs: resolveDebugFlag("timingLogs"),
   debugLegacyConfigSmoke: resolveDebugFlag("legacyConfigSmoke"),
   debugDuplicateDecorations: resolveDebugFlag("dupDecor"),
-  debugDevTools: resolveDebugFlag("devTools"),
   enableInputRules: resolveDebugFlag("inputRules"),
   enableGapCursor: resolveDebugFlag("gapCursor"),
   debugPerf: resolveDebugFlag("debugPerf"),
@@ -139,7 +142,8 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
 export const createCanvasSettings = (
   debugPerf: boolean,
   enablePaginationWorker = false,
-  forcePaginationWorker = false
+  forcePaginationWorker = false,
+  locale: PlaygroundLocale = "zh-CN"
 ) => {
   const incrementalEnabled = resolveDebugFlag("paginationIncremental")
     ? true
@@ -171,6 +175,8 @@ export const createCanvasSettings = (
   paragraphSpacingBefore: 0,
   paragraphSpacingAfter: 8,
   font: "16px Arial",
+  textLocale: locale,
+  segmentText: createLinebreakSegmentText({ locale }),
   wrapTolerance: 2,
   pageBuffer: 1,
   maxPageCache: 32,

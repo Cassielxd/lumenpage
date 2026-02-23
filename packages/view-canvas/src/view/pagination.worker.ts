@@ -1,4 +1,5 @@
 import { LayoutPipeline } from "../layout-pagination/engine";
+import { createLinebreakSegmentText } from "./segmenter";
 
 type PaginationWorkerRequest = {
   id: number;
@@ -11,6 +12,7 @@ type PaginationWorkerRequest = {
     margin: { left: number; right: number; top: number; bottom: number };
     lineHeight: number;
     font: string;
+    textLocale?: string;
     wrapTolerance?: number;
     minLineWidth?: number;
   };
@@ -50,9 +52,12 @@ self.onmessage = (event: MessageEvent<PaginationWorkerRequest>) => {
 
   try {
     const measureTextWidth = createMeasureTextWidth();
+    const textLocale = request?.settings?.textLocale || "zh-CN";
     const pipeline = new LayoutPipeline(
       {
         ...request.settings,
+        textLocale,
+        segmentText: createLinebreakSegmentText({ locale: textLocale }),
         measureTextWidth,
       },
       null
@@ -69,4 +74,3 @@ self.onmessage = (event: MessageEvent<PaginationWorkerRequest>) => {
     self.postMessage(response);
   }
 };
-

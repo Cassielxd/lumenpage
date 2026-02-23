@@ -1,6 +1,6 @@
 ﻿type SegmenterGranularity = "grapheme" | "word" | "sentence";
 
-type SegmenterOptions = {
+export type SegmenterOptions = {
   locale?: string | string[];
   granularity?: SegmenterGranularity;
 };
@@ -46,4 +46,6 @@ export const createSegmentText = (options: SegmenterOptions = {}) => {
   };
 };
 
-export const createLinebreakSegmentText = () => createSegmentText({ granularity: "word" });
+export const createLinebreakSegmentText = (
+  options: Omit<SegmenterOptions, "granularity"> = {}
+) => createSegmentText({ ...options, granularity: "word" });

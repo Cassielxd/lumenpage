@@ -1,3 +1,4 @@
+
 export const createPointerHandlers = ({
   getLayout,
   scrollArea,
@@ -29,6 +30,14 @@ export const createPointerHandlers = ({
   let pendingInternalDrag = null;
   let pointerAreaRect: DOMRect | null = null;
 
+  const focusInputNoScroll = () => {
+    try {
+      inputEl?.focus?.({ preventScroll: true });
+    } catch (_error) {
+      inputEl?.focus?.();
+    }
+  };
+
   const getPointerAreaRect = () => {
     if (pointerAreaRect) {
       return pointerAreaRect;
@@ -37,208 +46,269 @@ export const createPointerHandlers = ({
     return pointerAreaRect;
   };
 
-  const handlePointerDown = (event) => {
-    if (event.button !== 0) {
-      return;
-    }
+  const resetPointerState = () => {
     pendingInternalDrag = null;
-
-    const fromResolver = resolveDragNodePos?.(event);
-    const dragNodePos = Number.isFinite(fromResolver) ? fromResolver : null;
-    if (Number.isFinite(dragNodePos)) {
-      const rect = getPointerAreaRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      setNodeSelectionAtPos?.(dragNodePos, event);
-      pendingInternalDrag = {
-        pointerId: event.pointerId,
-        startX: x,
-        startY: y,
-        nodePos: dragNodePos,
-        active: false,
-      };
-      setSkipNextClickSelection?.(true);
-      inputEl.focus();
-      return;
-    }
-
-    const layout = getLayout();
-    if (!layout) {
-      inputEl.focus();
-      return;
-    }
-
-    const rect = getPointerAreaRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const hit = typeof getHitAtCoords === "function"
-      ? getHitAtCoords(x, y)
-      : null;
-    if (typeof setGapCursorAtCoords === "function") {
-      const handled = setGapCursorAtCoords(x, y, hit, event);
-      if (handled) {
-        inputEl.focus();
-        return;
+    pointerAreaRect = null;
+    if (isPointerSelecting && pointerId != null) {
+      try {
+        scrollArea.releasePointerCapture(pointerId);
+      } catch (_error) {
+        // ignore
       }
     }
-    const hitOffset = posAtCoords(
-      layout,
-      x,
-      y,
-      scrollArea.scrollTop,
-      scrollArea.clientWidth,
-      getText().length
-    );
+    isPointerSelecting = false;
+    pointerId = null;
+  };
 
-    // 当按下位置在现有选区内部时，优先保留选区，允许触发原生 dragstart。
-    // 否则会因为提前折叠选区导致拖拽总是被取消。
-    const currentRange =
-      typeof getSelectionRangeOffsets === "function" ? getSelectionRangeOffsets() : null;
-    if (
-      !event.shiftKey &&
-      hitOffset !== null &&
-      currentRange &&
-      Number.isFinite(currentRange.from) &&
-      Number.isFinite(currentRange.to) &&
-      currentRange.from !== currentRange.to
-    ) {
-      const min = Math.min(currentRange.from, currentRange.to);
-      const max = Math.max(currentRange.from, currentRange.to);
-      const keepOnBoundary = typeof isNodeSelectionActive === "function"
-        ? !isNodeSelectionActive()
-        : true;
-      const shouldKeepSelection = keepOnBoundary
-        ? hitOffset >= min && hitOffset <= max
-        : hitOffset > min && hitOffset < max;
-      if (shouldKeepSelection) {
+  const handlePointerDown = (event) => {
+    try {
+      if (event.button !== 0) {
+        return;
+      }
+      pendingInternalDrag = null;
+      const isHandleTarget = !!event?.target?.closest?.(".lumenpage-block-drag-handle");
+
+      const fromResolver = resolveDragNodePos?.(event);
+      const dragNodePos = Number.isFinite(fromResolver) ? fromResolver : null;
+      if (Number.isFinite(dragNodePos)) {
+        const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
+        const isInputFocused = !!ownerDocument && ownerDocument.activeElement === inputEl;
+        // Cold-start guard: on first interaction, force focus first.
+        // This avoids unstable handle-first path before input/selection bridge is active.
+        if (!isInputFocused) {
+          // First handle click may retarget the subsequent `click` to canvas after pointerup.
+          // Mark skip to avoid accidental click-chain selection/open logic on this warmup path.
+          setSkipNextClickSelection?.(true);
+          focusInputNoScroll();
+          return;
+        }
+        const rect = getPointerAreaRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
         pendingInternalDrag = {
           pointerId: event.pointerId,
           startX: x,
           startY: y,
-          hitOffset,
+          nodePos: dragNodePos,
           active: false,
         };
-        inputEl.focus();
+        setSkipNextClickSelection?.(true);
+        focusInputNoScroll();
         return;
       }
-    }
-
-    if (typeof shouldDeferSelection === "function" && shouldDeferSelection(hit, hitOffset, event)) {
-      inputEl.focus();
-      return;
-    }
-
-    if (hit && typeof setSelectionFromHit === "function") {
-      const handled = setSelectionFromHit(hit, event);
-      if (handled) {
-        inputEl.focus();
+      // If the event comes from drag handle but cannot resolve node pos yet,
+      // never fall through to generic canvas hit-testing on the first click.
+      if (isHandleTarget) {
+        setSkipNextClickSelection?.(true);
+        focusInputNoScroll();
         return;
       }
-    }
 
-    if (hitOffset !== null) {
-      setPreferredX(null);
-      pointerAnchorOffset = event.shiftKey ? getSelectionAnchorOffset() : hitOffset;
-      pointerId = event.pointerId;
-      isPointerSelecting = true;
-      scrollArea.setPointerCapture(pointerId);
-      setSelectionOffsets(pointerAnchorOffset, hitOffset, true);
-    }
-
-    inputEl.focus();
-  };
-
-  const handlePointerMove = (event) => {
-    if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
-      if ((event.buttons & 1) !== 1) {
+      const layout = getLayout();
+      if (!layout) {
+        focusInputNoScroll();
         return;
       }
+
       const rect = getPointerAreaRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      const dx = x - pendingInternalDrag.startX;
-      const dy = y - pendingInternalDrag.startY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      if (!pendingInternalDrag.active && distance >= INTERNAL_DRAG_START_DISTANCE) {
-        const started = Number.isFinite(pendingInternalDrag.nodePos)
-          ? startInternalDragFromNodePos?.(pendingInternalDrag.nodePos, event)
-          : canStartSelectionDrag?.(event) === false
-            ? false
-            : startInternalDragFromSelection?.(event);
-        if (started) {
-          pendingInternalDrag.active = true;
-          // 仅在真正进入拖拽后跳过后续 click 选区，避免单击被误吞。
-          setSkipNextClickSelection?.(true);
-          scrollArea.setPointerCapture(event.pointerId);
+      const hit = typeof getHitAtCoords === "function" ? getHitAtCoords(x, y) : null;
+
+      if (typeof setGapCursorAtCoords === "function") {
+        const handled = setGapCursorAtCoords(x, y, hit, event);
+        if (handled) {
+          focusInputNoScroll();
+          return;
         }
       }
-      if (pendingInternalDrag.active) {
-        updateInternalDrag?.(event, { x, y });
+
+      const hitOffset = posAtCoords(
+        layout,
+        x,
+        y,
+        scrollArea.scrollTop,
+        scrollArea.clientWidth,
+        getText().length
+      );
+
+      const currentRange =
+        typeof getSelectionRangeOffsets === "function" ? getSelectionRangeOffsets() : null;
+      if (
+        !event.shiftKey &&
+        hitOffset !== null &&
+        currentRange &&
+        Number.isFinite(currentRange.from) &&
+        Number.isFinite(currentRange.to) &&
+        currentRange.from !== currentRange.to
+      ) {
+        const min = Math.min(currentRange.from, currentRange.to);
+        const max = Math.max(currentRange.from, currentRange.to);
+        const keepOnBoundary =
+          typeof isNodeSelectionActive === "function" ? !isNodeSelectionActive() : true;
+        const shouldKeepSelection = keepOnBoundary
+          ? hitOffset >= min && hitOffset <= max
+          : hitOffset > min && hitOffset < max;
+        if (shouldKeepSelection) {
+          pendingInternalDrag = {
+            pointerId: event.pointerId,
+            startX: x,
+            startY: y,
+            hitOffset,
+            active: false,
+          };
+          focusInputNoScroll();
+          return;
+        }
+      }
+
+      if (typeof shouldDeferSelection === "function" && shouldDeferSelection(hit, hitOffset, event)) {
+        focusInputNoScroll();
         return;
       }
-    }
 
-    if (!isPointerSelecting || event.pointerId !== pointerId) {
-      return;
-    }
+      if (hit && typeof setSelectionFromHit === "function") {
+        const handled = setSelectionFromHit(hit, event);
+        if (handled) {
+          focusInputNoScroll();
+          return;
+        }
+      }
 
-    const layout = getLayout();
-    if (!layout) {
-      return;
-    }
+      if (hitOffset !== null) {
+        setPreferredX(null);
+        pointerAnchorOffset = event.shiftKey ? getSelectionAnchorOffset() : hitOffset;
+        pointerId = event.pointerId;
+        isPointerSelecting = true;
+        scrollArea.setPointerCapture(pointerId);
+        setSelectionOffsets(pointerAnchorOffset, hitOffset, true);
+      }
 
-    const rect = getPointerAreaRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const hitOffset = posAtCoords(
-      layout,
-      x,
-      y,
-      scrollArea.scrollTop,
-      scrollArea.clientWidth,
-      getText().length
-    );
-
-    if (hitOffset !== null) {
-      setSelectionOffsets(pointerAnchorOffset, hitOffset, false);
+      focusInputNoScroll();
+    } catch (error) {
+      console.error("[pointer] handlePointerDown fatal", error);
+      resetPointerState();
+      focusInputNoScroll();
     }
   };
 
-  const finishPointerSelection = () => {
-    if (isPointerSelecting && pointerId !== null) {
-      scrollArea.releasePointerCapture(pointerId);
-    }
-    isPointerSelecting = false;
-    pointerId = null;
-    pointerAreaRect = null;
-  };
-
-  const handlePointerUp = (event) => {
-    if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
-      if (pendingInternalDrag.active) {
+  const handlePointerMove = (event) => {
+    try {
+      if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
+        if ((event.buttons & 1) !== 1) {
+          return;
+        }
         const rect = getPointerAreaRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        finishInternalDrag?.(event, { x, y });
+        const dx = x - pendingInternalDrag.startX;
+        const dy = y - pendingInternalDrag.startY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (!pendingInternalDrag.active && distance >= INTERNAL_DRAG_START_DISTANCE) {
+          let started = false;
+          try {
+            started = Number.isFinite(pendingInternalDrag.nodePos)
+              ? startInternalDragFromNodePos?.(pendingInternalDrag.nodePos, event)
+              : canStartSelectionDrag?.(event) === false
+                ? false
+                : startInternalDragFromSelection?.(event);
+          } catch (error) {
+            console.error("[pointer] startInternalDrag error", error);
+            started = false;
+          }
+          if (started) {
+            pendingInternalDrag.active = true;
+            setSkipNextClickSelection?.(true);
+            scrollArea.setPointerCapture(event.pointerId);
+          }
+        }
+
+        if (pendingInternalDrag.active) {
+          try {
+            updateInternalDrag?.(event, { x, y });
+          } catch (error) {
+            console.error("[pointer] updateInternalDrag error", error);
+            pendingInternalDrag.active = false;
+          }
+          return;
+        }
+      }
+
+      if (!isPointerSelecting || event.pointerId !== pointerId) {
+        return;
+      }
+
+      const layout = getLayout();
+      if (!layout) {
+        return;
+      }
+
+      const rect = getPointerAreaRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const hitOffset = posAtCoords(
+        layout,
+        x,
+        y,
+        scrollArea.scrollTop,
+        scrollArea.clientWidth,
+        getText().length
+      );
+
+      if (hitOffset !== null) {
+        setSelectionOffsets(pointerAnchorOffset, hitOffset, false);
+      }
+    } catch (error) {
+      console.error("[pointer] handlePointerMove fatal", error);
+      resetPointerState();
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    try {
+      if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
+        if (pendingInternalDrag.active) {
+          const rect = getPointerAreaRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          try {
+            finishInternalDrag?.(event, { x, y });
+          } catch (error) {
+            console.error("[pointer] finishInternalDrag error", error);
+          }
+          try {
+            scrollArea.releasePointerCapture(event.pointerId);
+          } catch (_error) {
+            // ignore
+          }
+        } else if (Number.isFinite(pendingInternalDrag.hitOffset)) {
+          setPreferredX(null);
+          setSelectionOffsets(pendingInternalDrag.hitOffset, pendingInternalDrag.hitOffset, true);
+        }
+        pendingInternalDrag = null;
+        pointerAreaRect = null;
+        return;
+      }
+
+      if (event.pointerId !== pointerId) {
+        return;
+      }
+
+      if (isPointerSelecting && pointerId != null) {
         try {
-          scrollArea.releasePointerCapture(event.pointerId);
+          scrollArea.releasePointerCapture(pointerId);
         } catch (_error) {
           // ignore
         }
-      } else if (Number.isFinite(pendingInternalDrag.hitOffset)) {
-        // 未达到拖拽阈值时，回落为普通单击：将光标放回点击位置。
-        setPreferredX(null);
-        setSelectionOffsets(pendingInternalDrag.hitOffset, pendingInternalDrag.hitOffset, true);
       }
-      pendingInternalDrag = null;
+      isPointerSelecting = false;
+      pointerId = null;
       pointerAreaRect = null;
-      return;
+    } catch (error) {
+      console.error("[pointer] handlePointerUp fatal", error);
+      resetPointerState();
     }
-
-    if (event.pointerId !== pointerId) {
-      return;
-    }
-    finishPointerSelection();
   };
 
   return {
@@ -247,3 +317,4 @@ export const createPointerHandlers = ({
     handlePointerUp,
   };
 };
+

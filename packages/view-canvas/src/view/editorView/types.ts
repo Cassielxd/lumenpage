@@ -26,6 +26,10 @@ export type CanvasEditorViewProps = {
   dispatchTransaction?: (tr: any) => void;
   editable?: boolean | ((view: any) => boolean);
   attributes?: Record<string, any> | ((state: any) => Record<string, any>);
+  formatStatusText?: (
+    view: any,
+    args: { pageCount: number; focused: "typing" | "idle"; inputFocused: boolean }
+  ) => string | null;
   onChange?: (view: any, event: any) => void;
   nodeSelectionTypes?: string[];
   isNodeSelectionTarget?: (view: any, args: NodeSelectionTargetArgs) => boolean | null;

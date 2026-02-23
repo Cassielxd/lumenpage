@@ -1,5 +1,5 @@
 import { schema, createDefaultNodeRendererRegistry } from "lumenpage-kit-basic";
-import { LayoutPipeline, docPosToTextOffset } from "lumenpage-view-canvas";
+import { LayoutPipeline, createLinebreakSegmentText, docPosToTextOffset } from "lumenpage-view-canvas";
 
 type PaginationDocWorkerRequest = {
   id: number;
@@ -41,6 +41,7 @@ let pipeline: LayoutPipeline | null = null;
 let previousLayoutState: any = null;
 
 const normalizeSettings = (settings: any) => ({
+  textLocale: settings?.textLocale || "zh-CN",
   pageWidth: Number(settings?.pageWidth) || 794,
   pageHeight: Number(settings?.pageHeight) || 1123,
   pageGap: Number(settings?.pageGap) || 24,
@@ -55,6 +56,9 @@ const normalizeSettings = (settings: any) => ({
   paragraphSpacingBefore: Number(settings?.paragraphSpacingBefore) || 0,
   paragraphSpacingAfter: Number(settings?.paragraphSpacingAfter) || 0,
   font: settings?.font || "16px Arial",
+  segmentText: createLinebreakSegmentText({
+    locale: settings?.textLocale || "zh-CN",
+  }),
   wrapTolerance: Number(settings?.wrapTolerance) || 0,
   minLineWidth: Number(settings?.minLineWidth) || 0,
   disablePageReuse: settings?.disablePageReuse === true,

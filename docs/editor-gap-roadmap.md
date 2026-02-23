@@ -39,11 +39,11 @@
 - worker 分页采用“安全门禁 + 回退策略”，复杂块（如表格）自动回退主线程，保证正确性优先。
 - NodeView 管理与主渲染解耦，支持媒体 DOM overlay 与 Canvas 文本同屏协同。
 
-### 4. 已识别风险（需纳入后续迭代）
+### 4. 已识别风险（持续跟踪）
 
-- 文档编码历史问题仍存在（本文件已修复，`docs/pagination-layout.md` 仍有乱码）。
-- `README.md` 引用了不存在的 `docs/prosemirror-gap.md`，文档索引存在漂移。
-- `packages/model/src/tmpclaude-*` 临时文件应清理，避免误打包或误识别为源码。
+- 文档编码问题已收敛：`docs/pagination-layout.md` 已重写为 UTF-8 正常版本。
+- 文档索引漂移已修复：`docs/prosemirror-gap.md` 已补齐，README 链接恢复有效。
+- 临时文件风险已清理：`packages/model/src/tmpclaude-*` 已移除。
 - 严格模式迁移已开始，但仍有 legacy 通道依赖风险，需要持续收口。
 
 ## 路线图（更新版）
@@ -92,6 +92,9 @@
 - 已新增 `a11ySmoke`（ARIA 语义、焦点进出、状态播报、只读语义一致性）。
 - 已新增 `i18nSmoke`（CJK/RTL 混排样例、行几何有效性、offset/pos 映射与坐标稳定性）。
 - 已增强读屏播报：光标支持 page/line/column/node 信息，选区支持起止 page/line/column。
+- 已在 playground 接入集中式本地化字典（`zh-CN` / `en-US`），并支持 `?locale=`/`?lang=` 参数切换。
+- 已将顶部、菜单、工具栏与交互提示文案去散落化，统一由 `editor/i18n.ts` 管理。
+- 已将换行分词器改为 locale-aware 可替换策略：主线程与 worker 分页均可按 `textLocale` 使用 `Intl.Segmenter`。
 
 里程碑 A（无障碍基线）：
 
@@ -111,7 +114,7 @@
 - 关键路径无 keyboard trap，无读屏阻断。
 - 复杂混排文档分页与选区行为稳定。
 
-### P2.3 安全治理（P2.2 后并行启动）
+### P2.3 安全治理（已完成）
 
 当前进展（2026-02-23）：
 
@@ -121,12 +124,14 @@
 - 已抽取统一安全工具到 `packages/link`，策略从“多处重复实现”收敛为“单点维护”。
 - 已将粘贴清洗核心能力下沉到 `packages/link`（`sanitizePastedHtml` / `normalizePastedText`），并支持可配置策略参数。
 - 已新增 `sanitizeDocJson` 并接入 `CanvasEditorView.setJSON` 与 `createCanvasState`，JSON 导入路径纳入统一 URL 安全策略。
+- 已将 Markdown 导入路径显式接入统一策略上下文（source=markdown），并与 HTML/JSON 共用同一 URL 策略面。
+- 已新增安全审计事件流（drop/sanitize/source/target），playground 可按需开启并用于 `securitySmoke` 回归断言。
 - `data:image` 已从宽松放行改为白名单（仅允许受控 MIME 且 base64），阻断 `svg` 等高风险载荷。
 
 1. 将粘贴清洗策略从 playground 提升为可复用包（核心策略可配置）。（已完成）
-2. URL 协议白名单与媒体源策略统一（链接、图片、视频同一治理面）。
-3. 导入路径（HTML/Markdown/JSON）建立统一 sanitize/validate 链路。（进行中：JSON 已接入）
-4. 增加安全回归冒烟（XSS payload、恶意 URL、事件属性注入）。
+2. URL 协议白名单与媒体源策略统一（链接、图片、视频同一治理面）。（已完成）
+3. 导入路径（HTML/Markdown/JSON）建立统一 sanitize/validate 链路。（已完成）
+4. 增加安全回归冒烟（XSS payload、恶意 URL、事件属性注入）。（已完成）
 
 验收标准：
 
@@ -149,8 +154,8 @@
 ## 建议执行顺序（“优化完继续”）
 
 1. 先做 P2.2 里程碑 A（无障碍基线），避免后续功能返工。
-2. 并行预研 P2.3 安全治理的数据面与策略面抽象。
-3. P2.2 里程碑 B 与 P2.3 联动完成后，再冻结 P2.4 插件规范。
+2. 再做 P2.2 里程碑 B（国际化排版），补齐 CJK/RTL 与本地化字符串治理。
+3. 在 P2.2 收口后，推进 P2.4 插件生态规范冻结与模板发布。
 
 ## 回归开关与联调方式
 

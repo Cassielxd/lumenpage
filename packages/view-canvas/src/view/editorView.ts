@@ -1,4 +1,4 @@
-﻿import { DOMParser as PMDOMParser } from "lumenpage-model";
+import { DOMParser as PMDOMParser } from "lumenpage-model";
 import { NodeSelection, Selection } from "lumenpage-state";
 import { sanitizeDocJson } from "lumenpage-link";
 
@@ -483,7 +483,11 @@ export class CanvasEditorView {
       handleNodeViewClick,
       consumeSkipNextClickSelection: () => nodeViewManager.consumeSkipNextClickSelection(),
       focusInput: () => {
-        dom.input.focus();
+        try {
+          dom.input.focus({ preventScroll: true });
+        } catch (_error) {
+          dom.input.focus();
+        }
       },
       debugLog,
       updateStatus,
@@ -659,7 +663,9 @@ export class CanvasEditorView {
     if (!json || !this.state?.schema?.nodeFromJSON) {
       return false;
     }
-    const sanitizedJson = sanitizeDocJson(json);
+    const sanitizedJson = sanitizeDocJson(json, {
+      source: "CanvasEditorView.setJSON",
+    });
     if (!sanitizedJson) {
       return false;
     }

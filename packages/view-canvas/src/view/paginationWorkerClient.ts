@@ -22,6 +22,7 @@ const toSerializableSettings = (settings: any) => ({
   },
   lineHeight: Number(settings?.lineHeight) || 26,
   font: settings?.font || "16px Arial",
+  textLocale: settings?.textLocale || "zh-CN",
   wrapTolerance: Number(settings?.wrapTolerance) || 0,
   minLineWidth: Number(settings?.minLineWidth) || 0,
 });

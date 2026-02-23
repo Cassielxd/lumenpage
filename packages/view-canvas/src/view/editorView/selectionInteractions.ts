@@ -83,7 +83,16 @@ export const createSelectionInteractions = ({
     if (!state?.doc || !Number.isFinite(pos)) {
       return false;
     }
-    const node = state.doc.nodeAt(pos);
+    const docSize = Number(state.doc.content?.size ?? 0);
+    if (pos < 0 || pos > docSize) {
+      return false;
+    }
+    let node = null;
+    try {
+      node = state.doc.nodeAt(pos);
+    } catch (_error) {
+      return false;
+    }
     if (!node || !NodeSelection.isSelectable(node)) {
       return false;
     }
@@ -98,7 +107,12 @@ export const createSelectionInteractions = ({
     if (!decision.allowed) {
       return false;
     }
-    const tr = state.tr.setSelection(NodeSelection.create(state.doc, pos));
+    let tr = null;
+    try {
+      tr = state.tr.setSelection(NodeSelection.create(state.doc, pos));
+    } catch (_error) {
+      return false;
+    }
     dispatchTransaction(tr);
     return true;
   };

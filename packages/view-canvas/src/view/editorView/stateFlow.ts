@@ -18,40 +18,57 @@ export const createStateFlow = ({
   strictLegacy = false,
 }) => {
   const dispatchTransaction = (tr) => {
-    if (getEditorProps()?.dispatchTransaction) {
-      getEditorProps().dispatchTransaction(tr);
-      return;
-    }
-    const prevState = view.state;
-    const nextState = applyTransaction(prevState, tr);
-    const shouldScroll = tr?.scrolledIntoView;
-    const changeEvent = createChangeEvent(tr, prevState, nextState);
-    if (changeEvent?.summary?.blocks?.ids?.length) {
-      layoutPipeline.invalidateBlocks(changeEvent.summary.blocks.ids);
-    }
-    const propsList =
-      typeof getEditorPropsList === "function" ? getEditorPropsList(nextState) : [];
-    let handledByProps = false;
-    for (const props of propsList) {
-      const onChangeFromProps = props?.onChange;
-      if (typeof onChangeFromProps === "function") {
-        handledByProps = true;
-        onChangeFromProps(view, changeEvent);
+    try {
+      if (getEditorProps()?.dispatchTransaction) {
+        getEditorProps().dispatchTransaction(tr);
+        return;
       }
-    }
-    if (!handledByProps && onChange) {
-      warnLegacyCanvasConfigUsage(
-        "onChange",
-        "EditorProps.onChange / Plugin props.onChange",
-        strictLegacy
-      );
-      onChange(changeEvent);
-    }
-    setPendingChangeSummary(changeEvent.summary || null);
-    setPendingSteps(changeEvent.steps || null);
-    view.updateState(nextState);
-    if (shouldScroll) {
-      view.scrollIntoView();
+      const prevState = view.state;
+      const nextState = applyTransaction(prevState, tr);
+      const shouldScroll = tr?.scrolledIntoView;
+      const changeEvent = createChangeEvent(tr, prevState, nextState);
+      if (changeEvent?.summary?.blocks?.ids?.length) {
+        layoutPipeline.invalidateBlocks(changeEvent.summary.blocks.ids);
+      }
+      const propsList =
+        typeof getEditorPropsList === "function" ? getEditorPropsList(nextState) : [];
+      let handledByProps = false;
+      for (const props of propsList) {
+        const onChangeFromProps = props?.onChange;
+        if (typeof onChangeFromProps === "function") {
+          handledByProps = true;
+          try {
+            onChangeFromProps(view, changeEvent);
+          } catch (error) {
+            console.error("[state-flow] onChange prop error", error);
+          }
+        }
+      }
+      if (!handledByProps && onChange) {
+        warnLegacyCanvasConfigUsage(
+          "onChange",
+          "EditorProps.onChange / Plugin props.onChange",
+          strictLegacy
+        );
+        try {
+          onChange(changeEvent);
+        } catch (error) {
+          console.error("[state-flow] legacy onChange error", error);
+        }
+      }
+      setPendingChangeSummary(changeEvent.summary || null);
+      setPendingSteps(changeEvent.steps || null);
+      view.updateState(nextState);
+      if (shouldScroll) {
+        view.scrollIntoView();
+      }
+    } catch (error) {
+      console.error("[state-flow] dispatchTransaction fatal", error);
+      try {
+        view?._internals?.scheduleRender?.();
+      } catch (_innerError) {
+        // ignore
+      }
     }
   };
 
@@ -98,3 +115,4 @@ export const createStateFlow = ({
     setSelectionOffsets,
   };
 };
+

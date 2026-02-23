@@ -2,36 +2,42 @@
   <t-header class="menu-bar">
     <div class="menu-left">
       <t-dropdown :options="fileMenuOptions" trigger="click" @click="handleFileMenuClick">
-        <t-button size="small" variant="text" class="menu-trigger">文件</t-button>
+        <t-button size="small" variant="text" class="menu-trigger">{{ i18n.menu.file }}</t-button>
       </t-dropdown>
       <t-dropdown :options="toolMenuOptions" trigger="click" @click="handleToolMenuClick">
-        <t-button size="small" variant="text" class="menu-trigger">工具</t-button>
+        <t-button size="small" variant="text" class="menu-trigger">{{ i18n.menu.tools }}</t-button>
       </t-dropdown>
     </div>
   </t-header>
 </template>
 
 <script setup lang="ts">
-import { toRaw } from "vue";
+import { computed, toRaw } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
 import { closeHistory } from "lumenpage-history";
 import { loadMarkdownModule } from "../editor/markdownBridge";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 const props = defineProps<{
   editorView: CanvasEditorView | null;
+  locale?: PlaygroundLocale;
 }>();
 
-const fileMenuOptions = [
-  { content: "导入 JSON", value: "import-json" },
-  { content: "导出 JSON", value: "export-json" },
-  { content: "导入 HTML", value: "import-html" },
-  { content: "导出 HTML", value: "export-html" },
-  { content: "导入 Markdown", value: "import-markdown" },
-  { content: "导出 Markdown", value: "export-markdown" },
-];
+const i18n = computed(() => createPlaygroundI18n(props.locale));
 
-const toolMenuOptions = [{ content: "切分历史分组", value: "history-boundary" }];
+const fileMenuOptions = computed(() => [
+  { content: i18n.value.menu.importJson, value: "import-json" },
+  { content: i18n.value.menu.exportJson, value: "export-json" },
+  { content: i18n.value.menu.importHtml, value: "import-html" },
+  { content: i18n.value.menu.exportHtml, value: "export-html" },
+  { content: i18n.value.menu.importMarkdown, value: "import-markdown" },
+  { content: i18n.value.menu.exportMarkdown, value: "export-markdown" },
+]);
+
+const toolMenuOptions = computed(() => [
+  { content: i18n.value.menu.historyBoundary, value: "history-boundary" },
+]);
 
 const getView = () => (props.editorView ? toRaw(props.editorView) : null);
 
@@ -46,26 +52,26 @@ const copyToClipboard = async (text: string) => {
 const exportJsonDoc = async () => {
   const view = getView();
   if (!view || typeof (view as any).getJSON !== "function") {
-    window.alert("当前编辑器不支持导出 JSON");
+    window.alert(i18n.value.menu.unsupportedExportJson);
     return;
   }
   const json = (view as any).getJSON();
   const text = JSON.stringify(json, null, 2);
   const copied = await copyToClipboard(text);
   if (copied) {
-    window.alert("文档 JSON 已复制到剪贴板");
+    window.alert(i18n.value.menu.copiedJson);
     return;
   }
-  window.prompt("复制以下 JSON", text);
+  window.prompt(i18n.value.menu.promptCopyJson, text);
 };
 
 const importJsonDoc = () => {
   const view = getView();
   if (!view || typeof (view as any).setJSON !== "function") {
-    window.alert("当前编辑器不支持导入 JSON");
+    window.alert(i18n.value.menu.unsupportedImportJson);
     return;
   }
-  const raw = window.prompt("请粘贴文档 JSON", "");
+  const raw = window.prompt(i18n.value.menu.promptPasteJson, "");
   if (raw == null || raw.trim().length === 0) {
     return;
   }
@@ -73,7 +79,7 @@ const importJsonDoc = () => {
     const json = JSON.parse(raw);
     (view as any).setJSON(json);
   } catch (_error) {
-    window.alert("JSON 格式无效，导入失败");
+    window.alert(i18n.value.menu.invalidJson);
   }
 };
 
@@ -82,7 +88,7 @@ const exportHtmlDoc = async () => {
   const state = view?.state;
   const ownerDocument = view?.dom?.ownerDocument || (typeof document !== "undefined" ? document : null);
   if (!view || !state?.doc || !state?.schema || !ownerDocument) {
-    window.alert("当前编辑器不支持导出 HTML");
+    window.alert(i18n.value.menu.unsupportedExportHtml);
     return;
   }
   const serializer = DOMSerializer.fromSchema(state.schema);
@@ -91,10 +97,10 @@ const exportHtmlDoc = async () => {
   const html = container.innerHTML;
   const copied = await copyToClipboard(html);
   if (copied) {
-    window.alert("文档 HTML 已复制到剪贴板");
+    window.alert(i18n.value.menu.copiedHtml);
     return;
   }
-  window.prompt("复制以下 HTML", html);
+  window.prompt(i18n.value.menu.promptCopyHtml, html);
 };
 
 const importHtmlDoc = () => {
@@ -102,10 +108,10 @@ const importHtmlDoc = () => {
   const state = view?.state;
   const ownerDocument = view?.dom?.ownerDocument || (typeof document !== "undefined" ? document : null);
   if (!view || typeof (view as any).setJSON !== "function" || !state?.schema || !ownerDocument) {
-    window.alert("当前编辑器不支持导入 HTML");
+    window.alert(i18n.value.menu.unsupportedImportHtml);
     return;
   }
-  const raw = window.prompt("请粘贴 HTML", "");
+  const raw = window.prompt(i18n.value.menu.promptPasteHtml, "");
   if (raw == null || raw.trim().length === 0) {
     return;
   }
@@ -116,7 +122,7 @@ const importHtmlDoc = () => {
     const docNode = parser.parse(host);
     (view as any).setJSON(docNode.toJSON());
   } catch (_error) {
-    window.alert("HTML 解析失败，导入失败");
+    window.alert(i18n.value.menu.parseHtmlFailed);
   }
 };
 
@@ -124,7 +130,7 @@ const exportMarkdownDoc = async () => {
   const view = getView();
   const state = view?.state;
   if (!state?.doc) {
-    window.alert("当前编辑器不支持导出 Markdown");
+    window.alert(i18n.value.menu.unsupportedExportMarkdown);
     return;
   }
 
@@ -132,7 +138,7 @@ const exportMarkdownDoc = async () => {
   try {
     markdownMod = await loadMarkdownModule();
   } catch (_error) {
-    window.alert("Markdown 模块加载失败，请检查 lumenpage-markdown 依赖");
+    window.alert(i18n.value.menu.markdownModuleLoadFailed);
     return;
   }
 
@@ -151,25 +157,25 @@ const exportMarkdownDoc = async () => {
     }
   } catch (error) {
     console.error("Markdown export failed:", error);
-    window.alert("Markdown 导出失败：当前文档包含不兼容节点");
+    window.alert(i18n.value.menu.markdownExportFailed);
     return;
   }
 
   const copied = await copyToClipboard(text);
   if (copied) {
-    window.alert("文档 Markdown 已复制到剪贴板");
+    window.alert(i18n.value.menu.copiedMarkdown);
     return;
   }
-  window.prompt("复制以下 Markdown", text);
+  window.prompt(i18n.value.menu.promptCopyMarkdown, text);
 };
 
 const importMarkdownDoc = () => {
   const view = getView();
   if (!view || typeof (view as any).setJSON !== "function") {
-    window.alert("当前编辑器不支持导入 Markdown");
+    window.alert(i18n.value.menu.unsupportedImportMarkdown);
     return;
   }
-  const raw = window.prompt("请粘贴 Markdown", "");
+  const raw = window.prompt(i18n.value.menu.promptPasteMarkdown, "");
   if (raw == null || raw.trim().length === 0) {
     return;
   }
@@ -180,11 +186,11 @@ const importMarkdownDoc = () => {
         (view as any).setJSON(doc.toJSON());
       } catch (error) {
         console.error("Markdown import failed:", error);
-        window.alert("Markdown 导入失败：内容格式不受支持或不合法");
+        window.alert(i18n.value.menu.markdownImportFailed);
       }
     })
     .catch(() => {
-      window.alert("Markdown 模块加载失败，请检查 lumenpage-markdown 依赖");
+      window.alert(i18n.value.menu.markdownModuleLoadFailed);
     });
 };
 

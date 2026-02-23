@@ -1,14 +1,22 @@
+
 // 点击链路统一封装：先走插件 handleXxxOn，再走 handleXxx，再回退 NodeView。
 const dispatchNodeEventChain = (state, dispatchEditorProp, propName, pos, event) => {
   if (!Number.isFinite(pos) || !state?.doc) {
     return false;
   }
-  const $pos = state.doc.resolve(pos);
+  const docSize = Number(state.doc?.content?.size ?? 0);
+  const clampedPos = Math.max(0, Math.min(docSize, Number(pos)));
+  let $pos = null;
+  try {
+    $pos = state.doc.resolve(clampedPos);
+  } catch (_error) {
+    return false;
+  }
   for (let depth = $pos.depth; depth >= 0; depth -= 1) {
     const node = $pos.node(depth);
     const nodePos = depth > 0 ? $pos.before(depth) : 0;
     const direct = depth === $pos.depth;
-    if (dispatchEditorProp(propName, pos, node, nodePos, event, direct)) {
+    if (dispatchEditorProp(propName, clampedPos, node, nodePos, event, direct)) {
       return true;
     }
   }
@@ -46,70 +54,93 @@ export const createViewEventHandlers = ({
 }) => {
   const onClickFocus = (event) => {
     const startedAt = eventTiming ? now() : 0;
-    const coords = getEventCoords(event);
-    const pos = getDocPosFromCoords(coords);
-    debugLog("click", { pos, coords });
-    if (consumeSkipNextClickSelection()) {
-      focusInput();
-      logEventTiming(eventTiming, "click:skip-next-selection", startedAt);
-      return;
-    }
-    const state = getState();
-    if (event.detail >= 3 && Number.isFinite(pos)) {
-      if (dispatchNodeEventChain(state, dispatchEditorProp, "handleTripleClickOn", pos, event)) {
-        event.preventDefault();
-        logEventTiming(eventTiming, "click:triple-on", startedAt);
+    try {
+      const isHandleTarget = !!event?.target?.closest?.(".lumenpage-block-drag-handle");
+      if (isHandleTarget) {
+        focusInput();
+        logEventTiming(eventTiming, "click:handle-short-circuit", startedAt);
         return;
       }
-      if (dispatchEditorProp("handleTripleClick", pos, event)) {
-        event.preventDefault();
-        logEventTiming(eventTiming, "click:triple", startedAt);
+      const coords = getEventCoords(event);
+      const pos = getDocPosFromCoords(coords);
+      debugLog("click", { pos, coords });
+      if (consumeSkipNextClickSelection()) {
+        focusInput();
+        logEventTiming(eventTiming, "click:skip-next-selection", startedAt);
         return;
       }
-    }
-    if (dispatchNodeEventChain(state, dispatchEditorProp, "handleClickOn", pos, event)) {
-      event.preventDefault();
-      logEventTiming(eventTiming, "click:on", startedAt);
-      return;
-    }
-    if (dispatchEditorProp("handleClick", pos, event)) {
-      event.preventDefault();
-      logEventTiming(eventTiming, "click", startedAt);
-      return;
-    }
-    if (handleNodeViewClick(event, "handleClick")) {
-      event.preventDefault();
+      const state = getState();
+      if (event.detail >= 3 && Number.isFinite(pos)) {
+        if (dispatchNodeEventChain(state, dispatchEditorProp, "handleTripleClickOn", pos, event)) {
+          event.preventDefault();
+          logEventTiming(eventTiming, "click:triple-on", startedAt);
+          return;
+        }
+        if (dispatchEditorProp("handleTripleClick", pos, event)) {
+          event.preventDefault();
+          logEventTiming(eventTiming, "click:triple", startedAt);
+          return;
+        }
+      }
+      if (dispatchNodeEventChain(state, dispatchEditorProp, "handleClickOn", pos, event)) {
+        event.preventDefault();
+        logEventTiming(eventTiming, "click:on", startedAt);
+        return;
+      }
+      if (dispatchEditorProp("handleClick", pos, event)) {
+        event.preventDefault();
+        logEventTiming(eventTiming, "click", startedAt);
+        return;
+      }
+      if (handleNodeViewClick(event, "handleClick")) {
+        event.preventDefault();
+        focusInput();
+        logEventTiming(eventTiming, "click:node-view", startedAt);
+        return;
+      }
       focusInput();
-      logEventTiming(eventTiming, "click:node-view", startedAt);
-      return;
+      logEventTiming(eventTiming, "click:focus-only", startedAt);
+    } catch (error) {
+      console.error("[events] onClickFocus error", error);
+      focusInput();
+      logEventTiming(eventTiming, "click:error-guarded", startedAt);
     }
-    focusInput();
-    logEventTiming(eventTiming, "click:focus-only", startedAt);
   };
 
   const onDoubleClick = (event) => {
     const startedAt = eventTiming ? now() : 0;
-    const coords = getEventCoords(event);
-    const pos = getDocPosFromCoords(coords);
-    const state = getState();
-    if (
-      dispatchNodeEventChain(state, dispatchEditorProp, "handleDoubleClickOn", pos, event)
-    ) {
-      event.preventDefault();
-      logEventTiming(eventTiming, "double-click:on", startedAt);
-      return;
+    try {
+      const isHandleTarget = !!event?.target?.closest?.(".lumenpage-block-drag-handle");
+      if (isHandleTarget) {
+        focusInput();
+        logEventTiming(eventTiming, "double-click:handle-short-circuit", startedAt);
+        return;
+      }
+      const coords = getEventCoords(event);
+      const pos = getDocPosFromCoords(coords);
+      const state = getState();
+      if (
+        dispatchNodeEventChain(state, dispatchEditorProp, "handleDoubleClickOn", pos, event)
+      ) {
+        event.preventDefault();
+        logEventTiming(eventTiming, "double-click:on", startedAt);
+        return;
+      }
+      if (dispatchEditorProp("handleDoubleClick", pos, event)) {
+        event.preventDefault();
+        logEventTiming(eventTiming, "double-click", startedAt);
+        return;
+      }
+      if (handleNodeViewClick(event, "handleDoubleClick")) {
+        event.preventDefault();
+        logEventTiming(eventTiming, "double-click:node-view", startedAt);
+        return;
+      }
+      logEventTiming(eventTiming, "double-click:noop", startedAt);
+    } catch (error) {
+      console.error("[events] onDoubleClick error", error);
+      logEventTiming(eventTiming, "double-click:error-guarded", startedAt);
     }
-    if (dispatchEditorProp("handleDoubleClick", pos, event)) {
-      event.preventDefault();
-      logEventTiming(eventTiming, "double-click", startedAt);
-      return;
-    }
-    if (handleNodeViewClick(event, "handleDoubleClick")) {
-      event.preventDefault();
-      logEventTiming(eventTiming, "double-click:node-view", startedAt);
-      return;
-    }
-    logEventTiming(eventTiming, "double-click:noop", startedAt);
   };
 
   const onRootFocus = () => {
@@ -195,3 +226,4 @@ export const bindViewDomEvents = ({
   ownerDocument.addEventListener("selectionchange", onDocumentSelectionChange);
   ownerWindow.addEventListener("resize", onResize);
 };
+

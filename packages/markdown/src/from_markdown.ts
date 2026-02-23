@@ -257,7 +257,7 @@ export const defaultMarkdownParser = new MarkdownParser(schema, MarkdownIt("comm
   fence: {block: "code_block", getAttrs: tok => ({params: tok.info || ""}), noCloseToken: true},
   hr: {node: "horizontal_rule"},
   image: {node: "image", getAttrs: tok => ({
-    src: sanitizeImageSrc(tok.attrGet("src")),
+    src: sanitizeImageSrc(tok.attrGet("src"), { source: "markdown" }),
     title: tok.attrGet("title") || null,
     alt: tok.children![0] && tok.children![0].content || null
   })},
@@ -267,7 +267,7 @@ export const defaultMarkdownParser = new MarkdownParser(schema, MarkdownIt("comm
   strong: {mark: "strong"},
   s: {mark: "strike"},
   link: {mark: "link", getAttrs: tok => ({
-    href: sanitizeLinkHref(tok.attrGet("href")) || "#",
+    href: sanitizeLinkHref(tok.attrGet("href"), { source: "markdown" }) || "#",
     title: tok.attrGet("title") || null
   })},
   code_inline: {mark: "code", noCloseToken: true}

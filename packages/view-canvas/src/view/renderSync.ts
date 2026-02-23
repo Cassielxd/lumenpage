@@ -1,4 +1,4 @@
-﻿import { buildDecorationDrawData } from "./render/decorations";
+import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
 import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
 import {
@@ -93,8 +93,16 @@ export const createRenderSync = ({
   const updateStatus = () => {
     const layout = getLayout();
     const pageCount = layout ? layout.pages.length : 0;
-    const focused = getActiveElement() === inputEl ? "typing" : "idle";
-    status.textContent = `${pageCount} pages | ${focused}`;
+    const inputFocused = getActiveElement() === inputEl;
+    const focused: "typing" | "idle" = inputFocused ? "typing" : "idle";
+    const fromProps =
+      typeof queryEditorProp === "function"
+        ? queryEditorProp("formatStatusText", { pageCount, focused, inputFocused })
+        : null;
+    status.textContent =
+      typeof fromProps === "string" && fromProps.trim().length > 0
+        ? fromProps
+        : `${pageCount} pages | ${focused}`;
   };
 
   // 选区几何扩展点：允许外部替换表格选区矩形计算，核心仅负责分发与兜底。
@@ -191,135 +199,140 @@ export const createRenderSync = ({
 
     setRafId(
       requestAnimationFrame(() => {
-        const renderStart = renderTiming ? now() : 0;
-        setRafId(0);
-        const layout = getLayout();
-        if (!layout) {
-          return;
-        }
-        const layoutIndex = getLayoutIndex?.() || null;
-        const editorState = getEditorState();
-        const textLength = getText().length;
-        const scrollTop = Math.round(scrollArea.scrollTop * 10) / 10;
-        const viewportWidth = scrollArea.clientWidth;
-        const layoutToken = Number.isFinite(layout?.__version) ? Number(layout.__version) : layoutVersion;
-        const selectionStart = renderTiming ? now() : 0;
-        const selection = getSelectionOffsets(editorState, docPosToTextOffset, clampOffset);
-        const selectionRectsKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|${textLength}`;
-        const canShiftSelectionRects =
-          selectionRectsKey === lastSelectionRectsKey &&
-          Array.isArray(lastSelectionRects) &&
-          Number.isFinite(lastSelectionScrollTop);
-        let selectionRects = canShiftSelectionRects
-          ? lastSelectionRects!.map((rect) => ({
-              ...rect,
-              y: rect.y - (scrollTop - lastSelectionScrollTop),
-            }))
-          : selectionToRects(
-              layout,
-              selection.from,
-              selection.to,
-              scrollTop,
-              viewportWidth,
-              textLength,
-              layoutIndex
-            );
-        lastSelectionRectsKey = selectionRectsKey;
-        lastSelectionRects = selectionRects;
-        lastSelectionScrollTop = scrollTop;
-        const selectionMs = renderTiming ? Math.round((now() - selectionStart) * 100) / 100 : 0;
-
-        const tableSelectionStart = renderTiming ? now() : 0;
-        let tableSelectionRects = null;
-        if (shouldComputeTableSelectionRects(editorState, selection)) {
-          const tableSelectionKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|table`;
-          const canShiftTableSelectionRects =
-            tableSelectionKey === lastTableSelectionRectsKey &&
-            Array.isArray(lastTableSelectionRects) &&
-            Number.isFinite(lastTableSelectionScrollTop);
-          tableSelectionRects = canShiftTableSelectionRects
-            ? lastTableSelectionRects!.map((rect) => ({
-                ...rect,
-                y: rect.y - (scrollTop - lastTableSelectionScrollTop),
-              }))
-            : resolveTableSelectionRects({
-                layout,
-                editorState,
-                selection,
-                layoutIndex,
-              });
-          lastTableSelectionRectsKey = tableSelectionKey;
-          lastTableSelectionRects = tableSelectionRects;
-          lastTableSelectionScrollTop = scrollTop;
-        }
-        if (Array.isArray(tableSelectionRects) && tableSelectionRects.length > 0) {
-          selectionRects = tableSelectionRects;
-        }
-        const tableSelectionMs = renderTiming
-          ? Math.round((now() - tableSelectionStart) * 100) / 100
-          : 0;
-
-        const decorationStart = renderTiming ? now() : 0;
-        const decorations = typeof getDecorations === "function" ? getDecorations() : null;
-        const decorationData = decorations
-          ? buildDecorationDrawData({
-              layout,
-              layoutIndex,
-              doc: editorState?.doc,
-              decorations,
-              scrollTop,
-              viewportWidth,
-              textLength,
-              docPosToTextOffset,
-              coordsAtPos,
-            })
-          : null;
-        const decorationMs = renderTiming
-          ? Math.round((now() - decorationStart) * 100) / 100
-          : 0;
-
-        const nodeOverlayStart = renderTiming ? now() : 0;
-        const overlayNeedsSync =
-          layoutToken !== lastOverlayLayoutToken ||
-          !Number.isFinite(lastOverlayScrollTop) ||
-          Math.abs(scrollTop - lastOverlayScrollTop) > 0.5 ||
-          viewportWidth !== lastOverlayViewportWidth;
-        if (overlayNeedsSync) {
-          lastOverlayLayoutToken = layoutToken;
-          lastOverlayScrollTop = scrollTop;
-          lastOverlayViewportWidth = viewportWidth;
-          scheduleNodeOverlaySync(layout, layoutIndex);
-        }
-        const nodeOverlayMs = renderTiming
-          ? Math.round((now() - nodeOverlayStart) * 100) / 100
-          : 0;
-
-        const rendererStart = renderTiming ? now() : 0;
-        renderer.render(layout, scrollArea, getCaretRect(), selectionRects, [], decorationData);
-        const rendererMs = renderTiming ? Math.round((now() - rendererStart) * 100) / 100 : 0;
-
-        if (renderTiming) {
-          const totalMs = Math.round((now() - renderStart) * 100) / 100;
-          const current = now();
-          if (!lastRenderTimingLogAt || current - lastRenderTimingLogAt >= 120) {
-            lastRenderTimingLogAt = current;
-            const renderPerf = layoutPipeline?.settings?.__perf?.render ?? null;
-            console.info(
-              `[render-timing] ${JSON.stringify({
-                totalMs,
-                selectionMs,
-                tableSelectionMs,
-                decorationMs,
-                nodeOverlayMs,
-                rendererMs,
-                activePages: renderPerf?.activePages ?? null,
-                redrawPages: renderPerf?.redrawPages ?? null,
-                cachedPages: renderPerf?.cachedPages ?? null,
-                compositeMs: renderPerf?.compositeMs ?? null,
-                overlayMs: renderPerf?.overlayMs ?? null,
-              })}`
-            );
+        try {
+          const renderStart = renderTiming ? now() : 0;
+          setRafId(0);
+          const layout = getLayout();
+          if (!layout) {
+            return;
           }
+          const layoutIndex = getLayoutIndex?.() || null;
+          const editorState = getEditorState();
+          const textLength = getText().length;
+          const scrollTop = Math.round(scrollArea.scrollTop * 10) / 10;
+          const viewportWidth = scrollArea.clientWidth;
+          const layoutToken = Number.isFinite(layout?.__version) ? Number(layout.__version) : layoutVersion;
+          const selectionStart = renderTiming ? now() : 0;
+          const selection = getSelectionOffsets(editorState, docPosToTextOffset, clampOffset);
+          const selectionRectsKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|${textLength}`;
+          const canShiftSelectionRects =
+            selectionRectsKey === lastSelectionRectsKey &&
+            Array.isArray(lastSelectionRects) &&
+            Number.isFinite(lastSelectionScrollTop);
+          let selectionRects = canShiftSelectionRects
+            ? lastSelectionRects!.map((rect) => ({
+                ...rect,
+                y: rect.y - (scrollTop - lastSelectionScrollTop),
+              }))
+            : selectionToRects(
+                layout,
+                selection.from,
+                selection.to,
+                scrollTop,
+                viewportWidth,
+                textLength,
+                layoutIndex
+              );
+          lastSelectionRectsKey = selectionRectsKey;
+          lastSelectionRects = selectionRects;
+          lastSelectionScrollTop = scrollTop;
+          const selectionMs = renderTiming ? Math.round((now() - selectionStart) * 100) / 100 : 0;
+
+          const tableSelectionStart = renderTiming ? now() : 0;
+          let tableSelectionRects = null;
+          if (shouldComputeTableSelectionRects(editorState, selection)) {
+            const tableSelectionKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|table`;
+            const canShiftTableSelectionRects =
+              tableSelectionKey === lastTableSelectionRectsKey &&
+              Array.isArray(lastTableSelectionRects) &&
+              Number.isFinite(lastTableSelectionScrollTop);
+            tableSelectionRects = canShiftTableSelectionRects
+              ? lastTableSelectionRects!.map((rect) => ({
+                  ...rect,
+                  y: rect.y - (scrollTop - lastTableSelectionScrollTop),
+                }))
+              : resolveTableSelectionRects({
+                  layout,
+                  editorState,
+                  selection,
+                  layoutIndex,
+                });
+            lastTableSelectionRectsKey = tableSelectionKey;
+            lastTableSelectionRects = tableSelectionRects;
+            lastTableSelectionScrollTop = scrollTop;
+          }
+          if (Array.isArray(tableSelectionRects) && tableSelectionRects.length > 0) {
+            selectionRects = tableSelectionRects;
+          }
+          const tableSelectionMs = renderTiming
+            ? Math.round((now() - tableSelectionStart) * 100) / 100
+            : 0;
+
+          const decorationStart = renderTiming ? now() : 0;
+          const decorations = typeof getDecorations === "function" ? getDecorations() : null;
+          const decorationData = decorations
+            ? buildDecorationDrawData({
+                layout,
+                layoutIndex,
+                doc: editorState?.doc,
+                decorations,
+                scrollTop,
+                viewportWidth,
+                textLength,
+                docPosToTextOffset,
+                coordsAtPos,
+              })
+            : null;
+          const decorationMs = renderTiming
+            ? Math.round((now() - decorationStart) * 100) / 100
+            : 0;
+
+          const nodeOverlayStart = renderTiming ? now() : 0;
+          const overlayNeedsSync =
+            layoutToken !== lastOverlayLayoutToken ||
+            !Number.isFinite(lastOverlayScrollTop) ||
+            Math.abs(scrollTop - lastOverlayScrollTop) > 0.5 ||
+            viewportWidth !== lastOverlayViewportWidth;
+          if (overlayNeedsSync) {
+            lastOverlayLayoutToken = layoutToken;
+            lastOverlayScrollTop = scrollTop;
+            lastOverlayViewportWidth = viewportWidth;
+            scheduleNodeOverlaySync(layout, layoutIndex);
+          }
+          const nodeOverlayMs = renderTiming
+            ? Math.round((now() - nodeOverlayStart) * 100) / 100
+            : 0;
+
+          const rendererStart = renderTiming ? now() : 0;
+          renderer.render(layout, scrollArea, getCaretRect(), selectionRects, [], decorationData);
+          const rendererMs = renderTiming ? Math.round((now() - rendererStart) * 100) / 100 : 0;
+
+          if (renderTiming) {
+            const totalMs = Math.round((now() - renderStart) * 100) / 100;
+            const current = now();
+            if (!lastRenderTimingLogAt || current - lastRenderTimingLogAt >= 120) {
+              lastRenderTimingLogAt = current;
+              const renderPerf = layoutPipeline?.settings?.__perf?.render ?? null;
+              console.info(
+                `[render-timing] ${JSON.stringify({
+                  totalMs,
+                  selectionMs,
+                  tableSelectionMs,
+                  decorationMs,
+                  nodeOverlayMs,
+                  rendererMs,
+                  activePages: renderPerf?.activePages ?? null,
+                  redrawPages: renderPerf?.redrawPages ?? null,
+                  cachedPages: renderPerf?.cachedPages ?? null,
+                  compositeMs: renderPerf?.compositeMs ?? null,
+                  overlayMs: renderPerf?.overlayMs ?? null,
+                })}`
+              );
+            }
+          }
+        } catch (error) {
+          setRafId(0);
+          console.error("[render-sync] render fatal", error);
         }
       })
     );
@@ -639,6 +652,7 @@ export const createRenderSync = ({
     },
   };
 };
+
 
 
 

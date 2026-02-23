@@ -28,7 +28,10 @@ export const createCanvasState = (options: CanvasStateOptions = {}) => {
     stateOptions?.json != null
       ? {
           ...stateOptions,
-          json: sanitizeDocJson(stateOptions.json) ?? stateOptions.json,
+          json:
+            sanitizeDocJson(stateOptions.json, {
+              source: "createCanvasState",
+            }) ?? stateOptions.json,
         }
       : stateOptions;
 

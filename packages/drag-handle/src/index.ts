@@ -1,4 +1,4 @@
-﻿import { Plugin } from "lumenpage-state";
+import { Plugin } from "lumenpage-state";
 import { Decoration } from "lumenpage-view-canvas";
 
 type NodeViewFactory = (node: any, view: any, getPos: () => number) => any;
@@ -226,6 +226,17 @@ const createWrappedFactory = ({
       refreshVisibility();
       applyDragPosAttribute(handle, getPos);
     });
+    // Keep handle interactions inside drag-handle pipeline. The editor-level
+    // click handlers work on text/block hit-testing and can receive out-of-doc
+    // coords for the left overlay handle.
+    handle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    handle.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
     // Drag is handled by internal pointer pipeline. Prevent native HTML5 drag here.
     handle.addEventListener("dragstart", (event) => {
       event.preventDefault();
@@ -388,14 +399,22 @@ export const createDragHandlePlugin = (options: DragHandleOptions) =>
           { side: 1 }
         );
       },
-      resolveDragNodePos: (_view: any, event: any) => {
+      resolveDragNodePos: (view: any, event: any) => {
         const target = event?.target?.closest?.("[data-lumen-drag-pos]");
         const attr = target?.getAttribute?.("data-lumen-drag-pos");
         const pos = Number(attr);
-        return Number.isFinite(pos) ? pos : null;
+        if (!Number.isFinite(pos)) {
+          return null;
+        }
+        const docSize = Number(view?.state?.doc?.content?.size ?? 0);
+        if (pos < 0 || pos > docSize) {
+          return null;
+        }
+        return pos;
       },
     },
   });
+
 
 
 

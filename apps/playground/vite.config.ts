@@ -7,11 +7,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig(({ mode }) => {
-  const useSrc = mode !== "production";
+  const useSrc = true;
   const entry = (pkg: string) =>
     path.resolve(workspaceRoot, `packages/${pkg}/${useSrc ? "src/index.ts" : "dist/index.js"}`);
-  const entryPath = (pkg: string, file: string) =>
-    path.resolve(workspaceRoot, `packages/${pkg}/${useSrc ? `src/${file}` : `dist/${file}`}`);
 
   return {
     plugins: [vue()],
@@ -44,14 +42,9 @@ export default defineConfig(({ mode }) => {
         { find: /^lumenpage-node-horizontal-rule$/, replacement: entry("node-horizontal-rule") },
         { find: /^lumenpage-node-code-block$/, replacement: entry("node-code-block") },
         { find: /^lumenpage-node-blockquote$/, replacement: entry("node-blockquote") },
-        {
-          find: /^lumenpage-dev-tools$/,
-          replacement: path.resolve(workspaceRoot, "packages/dev-tools/dist/esm/index.js"),
-        },
-        {
-          find: /^@compiled\/react$/,
-          replacement: path.resolve(__dirname, "src/shims/compiled-react.ts"),
-        },
+        // markdown-it depends on `punycode.js`; some local pnpm states miss its runtime files.
+        // Alias to the equivalent `punycode` package to keep build/dev stable.
+        { find: /^punycode\.js$/, replacement: "punycode" },
       ],
     },
     server: {
@@ -88,7 +81,6 @@ export default defineConfig(({ mode }) => {
         "lumenpage-node-code-block",
         "lumenpage-node-horizontal-rule",
         "lumenpage-node-hard-break",
-        "lumenpage-dev-tools",
       ],
     },
     build: {

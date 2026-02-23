@@ -30,14 +30,18 @@ import { createActiveBlockSelectionPlugin } from "lumenpage-plugin-active-block"
 import { history } from "lumenpage-history";
 import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
 import { gapCursor } from "lumenpage-gapcursor";
-import { applyLumenDevTools } from "lumenpage-dev-tools";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
 import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
+import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
-import { normalizePastedText, sanitizePastedHtml } from "./pastePolicy";
+import {
+  configurePlaygroundSecurityPolicy,
+  normalizePastedText,
+  sanitizePastedHtml,
+} from "./pastePolicy";
 import {
   runA11ySmoke,
   runBlockOutlineAlignmentSmoke,
@@ -128,12 +132,17 @@ export const mountPlaygroundEditor = ({
   flags,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   clearLegacyConfigHits();
+  const i18n = createPlaygroundI18n(flags.locale);
+  configurePlaygroundSecurityPolicy({
+    enableAudit: flags.debugSecuritySmoke,
+  });
   const paginationDocWorkerClient =
     flags.enablePaginationWorker ? new PaginationDocWorkerClient() : null;
   const settings = createCanvasSettings(
     flags.debugPerf,
     flags.enablePaginationWorker,
-    flags.forcePaginationWorker
+    flags.forcePaginationWorker,
+    flags.locale
   );
   if (flags.enablePaginationWorker) {
     settings.paginationWorker = {
@@ -206,6 +215,14 @@ export const mountPlaygroundEditor = ({
 
   const viewProps: CanvasEditorViewProps = {
     state: readyState,
+    attributes: {
+      "aria-label": i18n.app.editorAriaLabel,
+    },
+    formatStatusText: (_view: CanvasEditorView, args: any) => {
+      const pageCount = Math.max(0, Number(args?.pageCount) || 0);
+      const focused = args?.focused === "typing" ? i18n.toolbar.statusTyping : i18n.toolbar.statusIdle;
+      return `${pageCount} ${i18n.toolbar.statusPageUnit} | ${focused}`;
+    },
     editable: () => flags.permissionMode !== "readonly",
     canvasViewConfig: {
       settings,
@@ -287,9 +304,16 @@ export const mountPlaygroundEditor = ({
   }
 
   const view = new CanvasEditorView(host, viewProps);
-  let detachDevTools: null | (() => void) = null;
-  if (flags.debugDevTools) {
-    detachDevTools = applyLumenDevTools(view as any);
+  try {
+    const currentSelection = view?.state?.selection;
+    if (currentSelection && view?.state?.tr) {
+      const warmupTr = view.state.tr.setSelection(currentSelection);
+      if (warmupTr?.selectionSet) {
+        view.dispatch(warmupTr);
+      }
+    }
+  } catch (error) {
+    console.error("[playground] selection warmup failed", error);
   }
 
   if (flags.debugTablePagination && tableDebugPanelElement) {
@@ -528,8 +552,7 @@ export const mountPlaygroundEditor = ({
   return {
     view,
     destroy: () => {
-      detachDevTools?.();
-      detachDevTools = null;
+      configurePlaygroundSecurityPolicy({ enableAudit: false });
       paginationDocWorkerClient?.destroy?.();
       view.destroy();
     },

@@ -641,6 +641,10 @@ importers:
         version: link:../model
 
   packages/view-canvas:
+    dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
     devDependencies:
       lumenpage-model:
         specifier: workspace:*

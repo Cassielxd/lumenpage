@@ -283,7 +283,19 @@ export const createDragHandlers = ({
       return false;
     }
     const state = getState?.();
-    const node = state?.doc?.nodeAt?.(nodePos);
+    if (!state?.doc) {
+      return false;
+    }
+    const docSize = Number(state.doc.content?.size ?? 0);
+    if (nodePos < 0 || nodePos > docSize) {
+      return false;
+    }
+    let node = null;
+    try {
+      node = state.doc.nodeAt(nodePos);
+    } catch (_error) {
+      return false;
+    }
     if (!state?.doc || !node) {
       return false;
     }
@@ -353,7 +365,15 @@ export const createDragHandlers = ({
     if (state.selection.empty) {
       const fromProps = queryEditorProp?.("resolveDragNodePos", event);
       const nodePos = Number.isFinite(fromProps) ? fromProps : null;
-      const node = Number.isFinite(nodePos) ? state.doc.nodeAt(nodePos) : null;
+      const docSize = Number(state.doc?.content?.size ?? 0);
+      let node = null;
+      if (Number.isFinite(nodePos) && nodePos >= 0 && nodePos <= docSize) {
+        try {
+          node = state.doc.nodeAt(nodePos);
+        } catch (_error) {
+          node = null;
+        }
+      }
       if (!node || !Number.isFinite(nodePos)) {
         event.preventDefault();
         return;
