@@ -82,6 +82,16 @@ const resolveNumberParam = (key: string, fallback: number) => {
   return Number.isFinite(value) ? value : fallback;
 };
 
+const resolveWorkerEnabled = () => {
+  const paginationWorkerParam = resolveQueryParam("paginationWorker");
+  const workerUsedParam = resolveQueryParam("workerUsed");
+  if (paginationWorkerParam != null || workerUsedParam != null) {
+    return resolveDebugFlag("paginationWorker") || resolveDebugFlag("workerUsed");
+  }
+  // Default on: can still be explicitly disabled by ?paginationWorker=0
+  return true;
+};
+
 // Playground 调试开关集中管理，避免散落在页面组件中。
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   permissionMode: resolvePermissionMode(),
@@ -121,8 +131,7 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   enableInputRules: resolveDebugFlag("inputRules"),
   enableGapCursor: resolveDebugFlag("gapCursor"),
   debugPerf: resolveDebugFlag("debugPerf"),
-  enablePaginationWorker:
-    resolveDebugFlag("paginationWorker") || resolveDebugFlag("workerUsed"),
+  enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveDebugFlag("paginationWorkerForce"),
 });
 

@@ -66,7 +66,9 @@ const createGripDots = () => {
 const createHandleElement = (size: number) => {
   const handle = document.createElement("div");
   handle.className = "lumenpage-block-drag-handle";
-  handle.draggable = true;
+  // Use internal pointer-driven drag pipeline only. Native draggable on the handle
+  // can trigger browser drag/drop side effects on simple clicks.
+  handle.draggable = false;
   handle.title = "Drag block";
   handle.style.position = "absolute";
   handle.style.width = `${size}px`;
@@ -120,6 +122,7 @@ const createWrappedFactory = ({
 
     let currentNode = node;
     let blockRect = { x: 0, y: 0, width: 0, height: 0, visible: false };
+    let handleRect = { x: 0, y: 0, width: size, height: size, visible: false };
     let blockHovered = false;
     let handleHovered = false;
     let handlePinned = false;
@@ -184,11 +187,12 @@ const createWrappedFactory = ({
       }
       const x = event.clientX - areaRect.left;
       const y = event.clientY - areaRect.top;
-      const hovered =
-        x >= blockRect.x - size - insetLeft - 6 &&
-        x <= blockRect.x + blockRect.width &&
-        y >= blockRect.y &&
-        y <= blockRect.y + blockRect.height;
+      const hoverPadding = 6;
+      const hoverLeft = Math.min(blockRect.x - size - insetLeft, handleRect.x) - hoverPadding;
+      const hoverRight = Math.max(blockRect.x + blockRect.width, handleRect.x + handleRect.width) + hoverPadding;
+      const hoverTop = Math.min(blockRect.y, handleRect.y) - hoverPadding;
+      const hoverBottom = Math.max(blockRect.y + blockRect.height, handleRect.y + handleRect.height) + hoverPadding;
+      const hovered = x >= hoverLeft && x <= hoverRight && y >= hoverTop && y <= hoverBottom;
       if (hovered !== blockHovered) {
         blockHovered = hovered;
         refreshVisibility();
@@ -200,6 +204,7 @@ const createWrappedFactory = ({
         return;
       }
       handlePinned = false;
+      handle.removeAttribute("data-lumen-drag-pos");
       refreshVisibility();
     };
 
@@ -215,12 +220,17 @@ const createWrappedFactory = ({
 
     handle.addEventListener("pointerenter", onHandlePointerEnter);
     handle.addEventListener("pointerleave", onHandlePointerLeave);
-    handle.addEventListener("pointerdown", () => {
+    handle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
       handlePinned = true;
       refreshVisibility();
       applyDragPosAttribute(handle, getPos);
     });
-    handle.addEventListener("dragstart", () => applyDragPosAttribute(handle, getPos));
+    // Drag is handled by internal pointer pipeline. Prevent native HTML5 drag here.
+    handle.addEventListener("dragstart", (event) => {
+      event.preventDefault();
+      applyDragPosAttribute(handle, getPos);
+    });
     handle.addEventListener("dragend", () => {
       handle.removeAttribute("data-lumen-drag-pos");
       handlePinned = false;
@@ -262,6 +272,13 @@ const createWrappedFactory = ({
         const handleX = Math.round(handleAnchorX - size - insetLeft);
         const handleY = Math.round(y + insetTop);
         handle.style.transform = `translate(${handleX}px, ${handleY}px)`;
+        handleRect = {
+          x: handleX,
+          y: handleY,
+          width: size,
+          height: size,
+          visible: ctx.visible !== false,
+        };
         refreshVisibility();
       },
       handleClick(x: number, y: number) {
@@ -341,29 +358,32 @@ export const createDragHandlePlugin = (options: DragHandleOptions) =>
           : blockWidth;
         if ((isBlockBoundary || isVisualBlock) && contentWidth > 0) {
           const thickness = Math.max(1, Math.round(width));
-          return Decoration.widget(
-            pos,
-            (ctx, x, y, renderHeight) => {
-              const effectiveHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
-              const lineStartX = isLineEnd ? x - blockWidth : x;
-              const left =
-                Number.isFinite(lineX) && Number.isFinite(marginLeft)
-                  ? lineStartX - (lineX - marginLeft)
-                  : lineStartX;
-              const top = isLineEnd
-                ? y + effectiveHeight - thickness / 2
-                : y - thickness / 2;
-              ctx.fillStyle = color;
-              ctx.fillRect(left, top, contentWidth, thickness);
-            },
-            { side: isLineEnd ? 1 : -1 }
-          );
+        return Decoration.widget(
+          pos,
+          (ctx, x, y, renderHeight) => {
+            const widgetHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
+            const lineTop = y - Math.max(0, (height - widgetHeight) / 2);
+            const lineStartX = isLineEnd ? x - blockWidth : x;
+            const left =
+              Number.isFinite(lineX) && Number.isFinite(marginLeft)
+                ? lineStartX - (lineX - marginLeft)
+                : lineStartX;
+            const top = isLineEnd
+                ? lineTop + height - thickness / 2
+                : lineTop - thickness / 2;
+            ctx.fillStyle = color;
+            ctx.fillRect(left, top, contentWidth, thickness);
+          },
+          { side: isLineEnd ? 1 : -1 }
+        );
         }
         return Decoration.widget(
           pos,
-          (ctx, x, y) => {
+          (ctx, x, y, renderHeight) => {
+            const widgetHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
+            const lineTop = y - Math.max(0, (height - widgetHeight) / 2);
             ctx.fillStyle = color;
-            ctx.fillRect(x - width / 2, y, width, height);
+            ctx.fillRect(x - width / 2, lineTop, width, height);
           },
           { side: 1 }
         );

@@ -22,6 +22,7 @@ export const createPointerHandlers = ({
   finishInternalDrag,
   setPreferredX,
 }) => {
+  const INTERNAL_DRAG_START_DISTANCE = 8;
   let isPointerSelecting = false;
   let pointerAnchorOffset = 0;
   let pointerId = null;
@@ -149,13 +150,16 @@ export const createPointerHandlers = ({
 
   const handlePointerMove = (event) => {
     if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
+      if ((event.buttons & 1) !== 1) {
+        return;
+      }
       const rect = getPointerAreaRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const dx = x - pendingInternalDrag.startX;
       const dy = y - pendingInternalDrag.startY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      if (!pendingInternalDrag.active && distance >= 4) {
+      if (!pendingInternalDrag.active && distance >= INTERNAL_DRAG_START_DISTANCE) {
         const started = Number.isFinite(pendingInternalDrag.nodePos)
           ? startInternalDragFromNodePos?.(pendingInternalDrag.nodePos, event)
           : canStartSelectionDrag?.(event) === false

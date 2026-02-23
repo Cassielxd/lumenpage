@@ -4,12 +4,41 @@ const CONTROL_AND_SPACE = /[\u0000-\u0020]+/g;
 const LINK_PROTOCOLS = new Set(["http:", "https:", "mailto:", "tel:"]);
 const MEDIA_PROTOCOLS = new Set(["http:", "https:", "blob:"]);
 const DEFAULT_BLOCKED_TAGS = ["script", "style", "iframe", "object", "embed", "link", "meta"] as const;
+const SAFE_DATA_IMAGE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/gif",
+  "image/bmp",
+  "image/avif",
+  "image/x-icon",
+  "image/vnd.microsoft.icon",
+]);
 
 export const normalizeUrlLike = (value: unknown) =>
   String(value || "").trim().replace(CONTROL_AND_SPACE, "");
 
 export const hasRelativeUrlPrefix = (value: string) =>
   value.startsWith("/") || value.startsWith("./") || value.startsWith("../") || value.startsWith("#");
+
+const isAllowedDataImageUrl = (value: string) => {
+  const match = /^data:([^;,]+)(;[^,]*)?,(.*)$/i.exec(value);
+  if (!match) {
+    return false;
+  }
+  const mime = String(match[1] || "").toLowerCase();
+  const params = String(match[2] || "").toLowerCase();
+  const payload = String(match[3] || "");
+  if (!SAFE_DATA_IMAGE_MIME_TYPES.has(mime)) {
+    return false;
+  }
+  if (!params.includes(";base64")) {
+    return false;
+  }
+  // Keep this strict to avoid tolerant parsing of malformed payloads.
+  return /^[a-z0-9+/=\s]+$/i.test(payload);
+};
 
 const sanitizeUrlWithProtocols = (
   value: unknown,
@@ -28,7 +57,7 @@ const sanitizeUrlWithProtocols = (
   if (allowRelative && hasRelativeUrlPrefix(normalized)) {
     return normalized;
   }
-  if (allowDataImage && /^data:image\//i.test(normalized)) {
+  if (allowDataImage && isAllowedDataImageUrl(normalized)) {
     return normalized;
   }
   try {

@@ -2594,6 +2594,7 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
     "<a href=\"javascript:alert(1)\">bad-link</a>",
     "<a href=\"vbscript:msgbox(1)\">bad-link2</a>",
     "<img src=\"javascript:alert(1)\" onerror=\"alert(1)\" />",
+    "<img src=\"data:image/svg+xml;base64,PHN2Zy8+\" />",
     "<img src=\"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\" />",
   ].join("");
   const sanitizedDangerous = sanitizePastedHtml(dangerousHtml);
@@ -2605,6 +2606,7 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
     !/style=/i.test(sanitizedDangerous) &&
     !/javascript:/i.test(sanitizedDangerous) &&
     !/vbscript:/i.test(sanitizedDangerous) &&
+    !/data:image\/svg\+xml/i.test(sanitizedDangerous) &&
     !/data:text\/html/i.test(sanitizedDangerous);
 
   const safeHtml = [
@@ -2788,7 +2790,7 @@ export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElemen
           },
           {
             type: "image",
-            attrs: { src: "javascript:alert(1)", alt: "bad-image" },
+            attrs: { src: "data:image/svg+xml;base64,PHN2Zy8+", alt: "bad-image" },
           },
           {
             type: "video",

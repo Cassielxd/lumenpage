@@ -1,6 +1,7 @@
 ﻿import { Slice } from "lumenpage-model";
 
 import { docPosToTextOffset } from "../../core";
+import { NodeSelection, Selection } from "lumenpage-state";
 import { getLineAtOffset } from "../layoutIndex";
 import { Decoration } from "../decorations";
 import { isEditorDomEventHandled } from "./plugins";
@@ -31,6 +32,40 @@ export const createDragHandlers = ({
   let dropDecoration = null;
   let dropPos = null;
   let internalDragging = false;
+
+  const clampDocPos = (doc, pos) => {
+    const size = Number(doc?.content?.size ?? 0);
+    const n = Number(pos);
+    if (!Number.isFinite(n)) {
+      return Math.max(0, Math.min(size, 0));
+    }
+    return Math.max(0, Math.min(size, n));
+  };
+
+  const resolveDropSelection = (tr, insertPos, slice) => {
+    if (!tr?.doc || !Number.isFinite(insertPos)) {
+      return tr;
+    }
+    const mappedStart = clampDocPos(tr.doc, tr.mapping.map(insertPos, -1));
+    const mappedAfter = clampDocPos(tr.doc, tr.mapping.map(insertPos, 1));
+    const singleAtomNode =
+      slice?.openStart === 0 &&
+      slice?.openEnd === 0 &&
+      Number(slice?.content?.childCount) === 1 &&
+      !!slice?.content?.firstChild?.isAtom;
+    if (singleAtomNode) {
+      try {
+        return tr.setSelection(NodeSelection.create(tr.doc, mappedStart));
+      } catch (_error) {
+        // fall back to a text-like selection
+      }
+    }
+    try {
+      return tr.setSelection(Selection.near(tr.doc.resolve(mappedAfter), 1));
+    } catch (_error) {
+      return tr;
+    }
+  };
 
   // 解析 drop cursor 样式。
   const resolveDropCursorStyle = () => {
@@ -129,21 +164,25 @@ export const createDragHandlers = ({
       fromProps ??
       Decoration.widget(
         pos,
-        (ctx, x, y) => {
+        (ctx, x, y, renderHeight) => {
           const thickness = Math.max(1, Math.round(width));
+          const widgetHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
+          const lineTop = y - Math.max(0, (height - widgetHeight) / 2);
           if (isBlockBoundary && Number.isFinite(contentWidth) && contentWidth > 0) {
             const lineStartX = isLineEnd && Number.isFinite(blockWidth) ? x - Number(blockWidth) : x;
             const left =
               Number.isFinite(lineX) && Number.isFinite(marginLeft)
                 ? lineStartX - (Number(lineX) - Number(marginLeft))
                 : lineStartX;
-            const top = isLineEnd ? y + height - thickness / 2 : y - thickness / 2;
+            const top = isLineEnd
+              ? lineTop + height - thickness / 2
+              : lineTop - thickness / 2;
             ctx.fillStyle = color;
             ctx.fillRect(left, top, Number(contentWidth), thickness);
             return;
           }
           ctx.fillStyle = color;
-          ctx.fillRect(x - width / 2, y, width, height);
+          ctx.fillRect(x - width / 2, lineTop, width, height);
         },
         { side: 1 }
       );
@@ -196,8 +235,10 @@ export const createDragHandlers = ({
       tr = tr.deleteRange(from, to);
       const mappedPos = tr.mapping.map(dropTargetPos, -1);
       tr = tr.replaceRange(mappedPos, mappedPos, dragState.slice);
+      tr = resolveDropSelection(tr, mappedPos, dragState.slice);
     } else {
       tr = tr.replaceRange(dropTargetPos, dropTargetPos, dragState.slice);
+      tr = resolveDropSelection(tr, dropTargetPos, dragState.slice);
     }
 
     setPendingPreferredUpdate(true);
@@ -276,7 +317,13 @@ export const createDragHandlers = ({
       return false;
     }
     const point = coords || getEventCoords(event);
-    const dropTargetPos = getDocPosFromCoords(point) ?? getState().selection.head;
+    const dropTargetPos = getDocPosFromCoords(point);
+    if (!Number.isFinite(dropTargetPos)) {
+      dragState = null;
+      internalDragging = false;
+      clearDropDecoration();
+      return false;
+    }
     return commitInternalDrop({ dropTargetPos, event });
   };
 
@@ -460,8 +507,10 @@ export const createDragHandlers = ({
       tr = tr.deleteRange(from, to);
       const mappedPos = tr.mapping.map(dropTargetPos, -1);
       tr = tr.replaceRange(mappedPos, mappedPos, slice);
+      tr = resolveDropSelection(tr, mappedPos, slice);
     } else {
       tr = tr.replaceRange(dropTargetPos, dropTargetPos, slice);
+      tr = resolveDropSelection(tr, dropTargetPos, slice);
     }
 
     setPendingPreferredUpdate(true);

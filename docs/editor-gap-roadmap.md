@@ -121,6 +121,7 @@
 - 已抽取统一安全工具到 `packages/link`，策略从“多处重复实现”收敛为“单点维护”。
 - 已将粘贴清洗核心能力下沉到 `packages/link`（`sanitizePastedHtml` / `normalizePastedText`），并支持可配置策略参数。
 - 已新增 `sanitizeDocJson` 并接入 `CanvasEditorView.setJSON` 与 `createCanvasState`，JSON 导入路径纳入统一 URL 安全策略。
+- `data:image` 已从宽松放行改为白名单（仅允许受控 MIME 且 base64），阻断 `svg` 等高风险载荷。
 
 1. 将粘贴清洗策略从 playground 提升为可复用包（核心策略可配置）。（已完成）
 2. URL 协议白名单与媒体源策略统一（链接、图片、视频同一治理面）。
