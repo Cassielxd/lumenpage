@@ -1,0 +1,113 @@
+import { schema, createDefaultNodeRendererRegistry } from "lumenpage-kit-basic";
+import { LayoutPipeline, docPosToTextOffset } from "lumenpage-view-canvas";
+
+type PaginationDocWorkerRequest = {
+  id: number;
+  docJson: any;
+  seedLayout: any;
+  changeSummary: any;
+  settings: any;
+  progressiveMaxPages?: number | null;
+};
+
+type PaginationDocWorkerResponse =
+  | {
+      id: number;
+      ok: true;
+      layout: any;
+    }
+  | {
+      id: number;
+      ok: false;
+      error: string;
+    };
+
+const createMeasureTextWidth = () => {
+  if (typeof OffscreenCanvas !== "undefined") {
+    const canvas = new OffscreenCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      return (font: string, text: string) => {
+        ctx.font = font || "16px Arial";
+        return ctx.measureText(text || "").width;
+      };
+    }
+  }
+  return (_font: string, text: string) => (text || "").length * 8;
+};
+
+const registry = createDefaultNodeRendererRegistry();
+let pipeline: LayoutPipeline | null = null;
+let previousLayoutState: any = null;
+
+const normalizeSettings = (settings: any) => ({
+  pageWidth: Number(settings?.pageWidth) || 794,
+  pageHeight: Number(settings?.pageHeight) || 1123,
+  pageGap: Number(settings?.pageGap) || 24,
+  margin: {
+    left: Number(settings?.margin?.left) || 72,
+    right: Number(settings?.margin?.right) || 72,
+    top: Number(settings?.margin?.top) || 72,
+    bottom: Number(settings?.margin?.bottom) || 72,
+  },
+  lineHeight: Number(settings?.lineHeight) || 26,
+  blockSpacing: Number(settings?.blockSpacing) || 0,
+  paragraphSpacingBefore: Number(settings?.paragraphSpacingBefore) || 0,
+  paragraphSpacingAfter: Number(settings?.paragraphSpacingAfter) || 0,
+  font: settings?.font || "16px Arial",
+  wrapTolerance: Number(settings?.wrapTolerance) || 0,
+  minLineWidth: Number(settings?.minLineWidth) || 0,
+  disablePageReuse: settings?.disablePageReuse === true,
+  measureTextWidth: createMeasureTextWidth(),
+});
+
+const ensurePipeline = (settings: any) => {
+  const normalized = normalizeSettings(settings);
+  if (!pipeline) {
+    pipeline = new LayoutPipeline(normalized, registry);
+    previousLayoutState = null;
+    return pipeline;
+  }
+  const pageWidthChanged = Number(pipeline.settings?.pageWidth) !== Number(normalized.pageWidth);
+  const pageHeightChanged = Number(pipeline.settings?.pageHeight) !== Number(normalized.pageHeight);
+  const fontChanged = String(pipeline.settings?.font || "") !== String(normalized.font || "");
+  pipeline.settings = { ...pipeline.settings, ...normalized };
+  if (pageWidthChanged || pageHeightChanged || fontChanged) {
+    pipeline.clearCache?.();
+    previousLayoutState = null;
+  }
+  return pipeline;
+};
+
+self.onmessage = (event: MessageEvent<PaginationDocWorkerRequest>) => {
+  const request = event?.data;
+  if (!request || !Number.isFinite(request.id)) {
+    return;
+  }
+  try {
+    const layoutPipeline = ensurePipeline(request.settings);
+    const doc = schema.nodeFromJSON(request.docJson);
+    if (request.seedLayout) {
+      previousLayoutState = request.seedLayout;
+    }
+    const layout = layoutPipeline.layoutFromDoc(
+      doc,
+      {
+        previousLayout: previousLayoutState ?? null,
+        changeSummary: request.changeSummary ?? null,
+        docPosToTextOffset,
+        progressiveMaxPages: request.progressiveMaxPages ?? null,
+      } as any
+    );
+    previousLayoutState = layout;
+    const response: PaginationDocWorkerResponse = { id: request.id, ok: true, layout };
+    self.postMessage(response);
+  } catch (error: any) {
+    const response: PaginationDocWorkerResponse = {
+      id: request.id,
+      ok: false,
+      error: error?.message || String(error),
+    };
+    self.postMessage(response);
+  }
+};

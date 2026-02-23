@@ -70,6 +70,15 @@ export const resolveDebugFlag = (key: string) => {
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
 
+const resolveNumberParam = (key: string, fallback: number) => {
+  const raw = resolveQueryParam(key);
+  if (!raw) {
+    return fallback;
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : fallback;
+};
+
 // Playground 调试开关集中管理，避免散落在页面组件中。
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   permissionMode: resolvePermissionMode(),
@@ -116,7 +125,23 @@ export const createCanvasSettings = (
   debugPerf: boolean,
   enablePaginationWorker = false,
   forcePaginationWorker = false
-) => ({
+) => {
+  const incrementalEnabled = resolveDebugFlag("paginationIncremental")
+    ? true
+    : resolveDebugFlag("paginationIncrementalOff")
+    ? false
+    : true;
+  const incrementalMaxPages = Math.max(4, Math.floor(resolveNumberParam("paginationMaxPages", 24)));
+  const incrementalSettleDelayMs = Math.max(
+    0,
+    Math.floor(resolveNumberParam("paginationSettleMs", 120))
+  );
+  const pageReuseProbeRadius = Math.max(2, Math.floor(resolveNumberParam("pageReuseProbe", 8)));
+  const pageReuseRootIndexProbeRadius = Math.max(
+    0,
+    Math.floor(resolveNumberParam("pageReuseRootProbe", 2))
+  );
+  return {
   pageWidth: 794,
   pageHeight: 1123,
   pageGap: 24,
@@ -135,6 +160,8 @@ export const createCanvasSettings = (
   pageBuffer: 1,
   maxPageCache: 32,
   debugPerf,
+  pageReuseProbeRadius,
+  pageReuseRootIndexProbeRadius,
   disablePageReuse: false,
   paginationWorker: (enablePaginationWorker
     ? {
@@ -145,12 +172,13 @@ export const createCanvasSettings = (
         useForDocChanged: true,
         useForInitial: false,
         incremental: {
-          enabled: true,
-          maxPages: 24,
-          settleDelayMs: 120,
+          enabled: incrementalEnabled,
+          maxPages: incrementalMaxPages,
+          settleDelayMs: incrementalSettleDelayMs,
         },
       }
     : {
         enabled: false,
       }) as any,
-});
+  };
+};
