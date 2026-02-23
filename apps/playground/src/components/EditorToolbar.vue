@@ -258,6 +258,20 @@ const lineHeightMultiplier = ref(1.5);
 const blockSpacing = ref(8);
 const paragraphSpacingBefore = ref(0);
 const paragraphSpacingAfter = ref(8);
+let suppressStyleWatchCount = 0;
+
+const withStyleWatchSuppressed = (fn: () => void) => {
+  suppressStyleWatchCount += 1;
+  try {
+    fn();
+  } finally {
+    queueMicrotask(() => {
+      suppressStyleWatchCount = Math.max(0, suppressStyleWatchCount - 1);
+    });
+  }
+};
+
+const shouldSkipStyleWatch = () => suppressStyleWatchCount > 0;
 
 const getFontPx = (font: string | undefined) => {
   if (!font) {
@@ -647,15 +661,19 @@ const clearSpacingAfterForSelection = () => {
 const syncSpacingFromSelection = () => {
   const before = getSelectionParagraphSpacing("spacingBefore", "paragraphSpacingBefore");
   const after = getSelectionParagraphSpacing("spacingAfter", "paragraphSpacingAfter");
-  paragraphSpacingBefore.value = before;
-  paragraphSpacingAfter.value = after;
+  withStyleWatchSuppressed(() => {
+    paragraphSpacingBefore.value = before;
+    paragraphSpacingAfter.value = after;
+  });
 };
 
 watch(
   () => props.editorView,
   () => {
-    lineHeightMultiplier.value = getCurrentLineHeightMultiplier();
-    blockSpacing.value = getCurrentBlockSpacing();
+    withStyleWatchSuppressed(() => {
+      lineHeightMultiplier.value = getCurrentLineHeightMultiplier();
+      blockSpacing.value = getCurrentBlockSpacing();
+    });
     syncSpacingFromSelection();
   },
   { immediate: true }
@@ -669,18 +687,30 @@ watch(
 );
 
 watch(lineHeightMultiplier, (value) => {
+  if (shouldSkipStyleWatch()) {
+    return;
+  }
   applyLineHeightMultiplier(value);
 });
 
 watch(blockSpacing, (value) => {
+  if (shouldSkipStyleWatch()) {
+    return;
+  }
   applyBlockSpacing(value);
 });
 
 watch(paragraphSpacingBefore, (value) => {
+  if (shouldSkipStyleWatch()) {
+    return;
+  }
   applyParagraphSpacing("paragraphSpacingBefore", value);
 });
 
 watch(paragraphSpacingAfter, (value) => {
+  if (shouldSkipStyleWatch()) {
+    return;
+  }
   applyParagraphSpacing("paragraphSpacingAfter", value);
 });
 

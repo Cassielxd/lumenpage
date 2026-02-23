@@ -1,8 +1,31 @@
-﻿import { setupViewCommands } from "./commands";
+import { setupViewCommands } from "./commands";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
+import type { CanvasCommandConfig } from "./types";
 
 // 命令运行时初始化：整理 commands 配置并挂载到 view.commands。
-export const createCommandRuntime = ({ view, schema, resolveCanvasConfig }) => {
-  const commandConfig = resolveCanvasConfig("commands", {});
+export const createCommandRuntime = ({
+  view,
+  schema,
+  resolveCanvasConfig,
+  commandConfigFromProps,
+}: {
+  view: any;
+  schema: any;
+  resolveCanvasConfig: (key: string, fallback?: any) => any;
+  commandConfigFromProps?: CanvasCommandConfig | null;
+}) => {
+  const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
+  const legacyCommandConfig = resolveCanvasConfig("commands", {});
+  const hasPropCommandConfig =
+    commandConfigFromProps && typeof commandConfigFromProps === "object";
+  const commandConfig = hasPropCommandConfig ? commandConfigFromProps : legacyCommandConfig;
+  if (!hasPropCommandConfig && legacyCommandConfig && Object.keys(legacyCommandConfig).length > 0) {
+    warnLegacyCanvasConfigUsage(
+      "commands",
+      "EditorProps.handleKeyDown + keymap plugin + explicit commands wiring",
+      strictLegacy
+    );
+  }
   const noopCommand = () => false;
   const runCommand =
     commandConfig.runCommand ??

@@ -1,6 +1,11 @@
 ﻿import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
 import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
+const now = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+
 export const createRenderSync = ({
   getEditorState,
   setEditorState,
@@ -41,8 +46,19 @@ export const createRenderSync = ({
   clearPendingSteps,
   resolvePageWidth,
   queryEditorProp,
+  paginationTiming = false,
+  renderTiming = false,
 }) => {
   let layoutVersion = 0;
+  let layoutRafId = 0;
+  let stateSyncRafId = 0;
+  let overlaySyncRafId = 0;
+  let pendingOverlaySyncContext: { layout: any; layoutIndex: any } | null = null;
+  let lastRenderTimingLogAt = 0;
+  let lastSelectionRectsKey = "";
+  let lastSelectionRects: any[] | null = null;
+  let lastTableSelectionRectsKey = "";
+  let lastTableSelectionRects: any[] | null = null;
   const getActiveElement = () => {
     const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
     return ownerDocument?.activeElement ?? null;
@@ -116,6 +132,32 @@ export const createRenderSync = ({
     return null;
   };
 
+  const isInTableAtResolvedPos = ($pos: any) => {
+    if (!$pos || !Number.isFinite($pos.depth)) {
+      return false;
+    }
+    for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+      if ($pos.node(depth)?.type?.name?.startsWith("table")) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const shouldComputeTableSelectionRects = (editorState: any, selection: { from: number; to: number }) => {
+    const pmSel = editorState?.selection;
+    if (!pmSel) {
+      return false;
+    }
+    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
+      return true;
+    }
+    if (selection.from === selection.to) {
+      return false;
+    }
+    return isInTableAtResolvedPos(pmSel?.$from) || isInTableAtResolvedPos(pmSel?.$to);
+  };
+
   const scheduleRender = () => {
     if (getRafId()) {
       return;
@@ -123,42 +165,116 @@ export const createRenderSync = ({
 
     setRafId(
       requestAnimationFrame(() => {
+        const renderStart = renderTiming ? now() : 0;
         setRafId(0);
         const layout = getLayout();
+        if (!layout) {
+          return;
+        }
         const layoutIndex = getLayoutIndex?.() || null;
         const editorState = getEditorState();
-        const selection = getSelectionOffsets(getEditorState(), docPosToTextOffset, clampOffset);
-        let selectionRects = selectionToRects(
-          layout,
-          selection.from,
-          selection.to,
-          scrollArea.scrollTop,
-          scrollArea.clientWidth,
-          getText().length,
-          layoutIndex
-        );
-        const tableSelectionRects = resolveTableSelectionRects({
-          layout,
-          editorState,
-          selection,
-          layoutIndex,
-        });
+        const textLength = getText().length;
+        const scrollTop = Math.round(scrollArea.scrollTop * 10) / 10;
+        const viewportWidth = scrollArea.clientWidth;
+        const layoutToken = Number.isFinite(layout?.__version) ? Number(layout.__version) : layoutVersion;
+        const selectionStart = renderTiming ? now() : 0;
+        const selection = getSelectionOffsets(editorState, docPosToTextOffset, clampOffset);
+        const selectionRectsKey = `${layoutToken}|${selection.from}|${selection.to}|${scrollTop}|${viewportWidth}|${textLength}`;
+        let selectionRects =
+          selectionRectsKey === lastSelectionRectsKey && Array.isArray(lastSelectionRects)
+            ? lastSelectionRects
+            : selectionToRects(
+                layout,
+                selection.from,
+                selection.to,
+                scrollTop,
+                viewportWidth,
+                textLength,
+                layoutIndex
+              );
+        if (selectionRectsKey !== lastSelectionRectsKey) {
+          lastSelectionRectsKey = selectionRectsKey;
+          lastSelectionRects = selectionRects;
+        }
+        const selectionMs = renderTiming ? Math.round((now() - selectionStart) * 100) / 100 : 0;
+
+        const tableSelectionStart = renderTiming ? now() : 0;
+        let tableSelectionRects = null;
+        if (shouldComputeTableSelectionRects(editorState, selection)) {
+          const tableSelectionKey = `${layoutToken}|${selection.from}|${selection.to}|${scrollTop}|${viewportWidth}|table`;
+          tableSelectionRects =
+            tableSelectionKey === lastTableSelectionRectsKey && Array.isArray(lastTableSelectionRects)
+              ? lastTableSelectionRects
+              : resolveTableSelectionRects({
+                  layout,
+                  editorState,
+                  selection,
+                  layoutIndex,
+                });
+          if (tableSelectionKey !== lastTableSelectionRectsKey) {
+            lastTableSelectionRectsKey = tableSelectionKey;
+            lastTableSelectionRects = tableSelectionRects;
+          }
+        }
         if (Array.isArray(tableSelectionRects) && tableSelectionRects.length > 0) {
           selectionRects = tableSelectionRects;
         }
-        const decorationData = buildDecorationDrawData({
-          layout,
-          layoutIndex,
-          doc: getEditorState().doc,
-          decorations: typeof getDecorations === "function" ? getDecorations() : null,
-          scrollTop: scrollArea.scrollTop,
-          viewportWidth: scrollArea.clientWidth,
-          textLength: getText().length,
-          docPosToTextOffset,
-          coordsAtPos,
-        });
-        syncNodeViewOverlays?.();
+        const tableSelectionMs = renderTiming
+          ? Math.round((now() - tableSelectionStart) * 100) / 100
+          : 0;
+
+        const decorationStart = renderTiming ? now() : 0;
+        const decorations = typeof getDecorations === "function" ? getDecorations() : null;
+        const decorationData = decorations
+          ? buildDecorationDrawData({
+              layout,
+              layoutIndex,
+              doc: editorState?.doc,
+              decorations,
+              scrollTop,
+              viewportWidth,
+              textLength,
+              docPosToTextOffset,
+              coordsAtPos,
+            })
+          : null;
+        const decorationMs = renderTiming
+          ? Math.round((now() - decorationStart) * 100) / 100
+          : 0;
+
+        const nodeOverlayStart = renderTiming ? now() : 0;
+        scheduleNodeOverlaySync(layout, layoutIndex);
+        const nodeOverlayMs = renderTiming
+          ? Math.round((now() - nodeOverlayStart) * 100) / 100
+          : 0;
+
+        const rendererStart = renderTiming ? now() : 0;
         renderer.render(layout, scrollArea, getCaretRect(), selectionRects, [], decorationData);
+        const rendererMs = renderTiming ? Math.round((now() - rendererStart) * 100) / 100 : 0;
+
+        if (renderTiming) {
+          const totalMs = Math.round((now() - renderStart) * 100) / 100;
+          const current = now();
+          if (!lastRenderTimingLogAt || current - lastRenderTimingLogAt >= 120) {
+            lastRenderTimingLogAt = current;
+            const renderPerf = layoutPipeline?.settings?.__perf?.render ?? null;
+            console.info(
+              `[render-timing] ${JSON.stringify({
+                totalMs,
+                selectionMs,
+                tableSelectionMs,
+                decorationMs,
+                nodeOverlayMs,
+                rendererMs,
+                activePages: renderPerf?.activePages ?? null,
+                redrawPages: renderPerf?.redrawPages ?? null,
+                cachedPages: renderPerf?.cachedPages ?? null,
+                compositeMs: renderPerf?.compositeMs ?? null,
+                overlayMs: renderPerf?.overlayMs ?? null,
+              })}`
+            );
+          }
+        }
       })
     );
   };
@@ -213,8 +329,27 @@ export const createRenderSync = ({
   const updateLayout = () => {
     const changeSummary = getPendingChangeSummary?.() ?? null;
     const nextPageWidth = resolvePageWidth?.();
+    const prevLayout = getLayout?.() ?? null;
+    const currentPageWidth = Number(layoutPipeline.settings.pageWidth);
+    const widthDiff =
+      Number.isFinite(nextPageWidth) && nextPageWidth > 0
+        ? Math.abs(currentPageWidth - Number(nextPageWidth))
+        : 0;
+    // 忽略浮点抖动，避免每次都误判为页宽变化导致清空缓存。
+    const widthChanged =
+      Number.isFinite(nextPageWidth) && nextPageWidth > 0 && Number(widthDiff) > 0.5;
+
+    // 性能快路径：文档未变化且页宽未变化时，直接复用当前布局，避免重复全量分页。
+    if (prevLayout && !widthChanged && changeSummary?.docChanged !== true) {
+      clearPendingChangeSummary?.();
+      clearPendingSteps?.();
+      updateStatus();
+      scheduleRender();
+      return;
+    }
+
     if (Number.isFinite(nextPageWidth) && nextPageWidth > 0) {
-      if (layoutPipeline.settings.pageWidth !== nextPageWidth) {
+      if (widthChanged) {
         layoutPipeline.settings.pageWidth = nextPageWidth;
         layoutPipeline.clearCache?.();
       }
@@ -222,20 +357,77 @@ export const createRenderSync = ({
     const version = (layoutVersion += 1);
     clearPendingChangeSummary?.();
     clearPendingSteps?.();
-    if (layoutPipeline.settings?.debugPerf) {
-      const prevLayout = getLayout?.() ?? null;
-      console.debug("[render-sync]", {
-        version,
-        prevLayoutPages: prevLayout?.pages?.length ?? 0,
-        hasChangeSummary: !!changeSummary,
-      });
-    }
+    const paginationStart = paginationTiming ? now() : 0;
     const layout = layoutPipeline.layoutFromDoc(getEditorState().doc, {
       previousLayout: getLayout?.() ?? null,
       changeSummary,
       docPosToTextOffset,
     });
+    if (paginationTiming) {
+      const ms = Math.round((now() - paginationStart) * 100) / 100;
+      const layoutPerf = layoutPipeline?.settings?.__perf?.layout ?? null;
+      const payload = {
+        version,
+        ms,
+        pages: Array.isArray(layout?.pages) ? layout.pages.length : 0,
+        docChanged: !!changeSummary?.docChanged,
+        beforeFrom: changeSummary?.blocks?.before?.fromIndex ?? null,
+        beforeTo: changeSummary?.blocks?.before?.toIndex ?? null,
+        afterFrom: changeSummary?.blocks?.after?.fromIndex ?? null,
+        afterTo: changeSummary?.blocks?.after?.toIndex ?? null,
+        reusedPages: layoutPerf?.reusedPages ?? null,
+        reuseReason: layoutPerf?.reuseReason ?? null,
+        syncAfterIndex: layoutPerf?.syncAfterIndex ?? null,
+        syncFromIndex: layoutPerf?.syncFromIndex ?? null,
+        maybeSyncReason: layoutPerf?.maybeSyncReason ?? null,
+        blocks: layoutPerf?.blocks ?? null,
+        cachedBlocks: layoutPerf?.cachedBlocks ?? null,
+        blockCacheHitRate: layoutPerf?.blockCacheHitRate ?? null,
+        disablePageReuse: layoutPerf?.disablePageReuse ?? null,
+      };
+      console.info(`[pagination-timing] ${JSON.stringify(payload)}`);
+    }
     applyLayout(layout, version, changeSummary);
+  };
+
+  const scheduleLayout = () => {
+    if (layoutRafId) {
+      return;
+    }
+    layoutRafId = requestAnimationFrame(() => {
+      layoutRafId = 0;
+      updateLayout();
+    });
+  };
+
+  const scheduleNodeOverlaySync = (layout: any, layoutIndex: any) => {
+    pendingOverlaySyncContext = { layout, layoutIndex };
+    if (overlaySyncRafId) {
+      return;
+    }
+    overlaySyncRafId = requestAnimationFrame(() => {
+      overlaySyncRafId = 0;
+      const context = pendingOverlaySyncContext;
+      pendingOverlaySyncContext = null;
+      if (!context) {
+        return;
+      }
+      syncNodeViewOverlays?.({
+        layout: context.layout,
+        layoutIndex: context.layoutIndex,
+        scrollArea,
+      });
+    });
+  };
+
+  const scheduleStateSync = () => {
+    if (stateSyncRafId) {
+      return;
+    }
+    stateSyncRafId = requestAnimationFrame(() => {
+      stateSyncRafId = 0;
+      syncAfterStateChange();
+    });
   };
 
   const syncAfterStateChange = () => {
@@ -255,7 +447,9 @@ export const createRenderSync = ({
     const nextState = applyTransaction(getEditorState(), tr);
     setEditorState(nextState);
     if (tr.docChanged) {
-      updateLayout();
+      scheduleLayout();
+      scheduleStateSync();
+      return;
     }
     syncAfterStateChange();
   };
@@ -269,6 +463,7 @@ export const createRenderSync = ({
     dispatchTransaction,
   };
 };
+
 
 
 

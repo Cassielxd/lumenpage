@@ -1,4 +1,5 @@
 import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
 
 // 状态流封装：统一 dispatchTransaction 与文本偏移选区更新逻辑。
 export const createStateFlow = ({
@@ -14,6 +15,7 @@ export const createStateFlow = ({
   setPendingPreferredUpdate,
   textOffsetToDocPos,
   debugLog,
+  strictLegacy = false,
 }) => {
   const dispatchTransaction = (tr) => {
     if (getEditorProps()?.dispatchTransaction) {
@@ -38,6 +40,11 @@ export const createStateFlow = ({
       }
     }
     if (!handledByProps && onChange) {
+      warnLegacyCanvasConfigUsage(
+        "onChange",
+        "EditorProps.onChange / Plugin props.onChange",
+        strictLegacy
+      );
       onChange(changeEvent);
     }
     setPendingChangeSummary(changeEvent.summary || null);

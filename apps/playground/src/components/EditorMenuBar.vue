@@ -16,6 +16,7 @@ import { toRaw } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
 import { closeHistory } from "lumenpage-history";
+import { loadMarkdownModule } from "../editor/markdownBridge";
 
 const props = defineProps<{
   editorView: CanvasEditorView | null;
@@ -33,39 +34,6 @@ const fileMenuOptions = [
 const toolMenuOptions = [{ content: "切分历史分组", value: "history-boundary" }];
 
 const getView = () => (props.editorView ? toRaw(props.editorView) : null);
-
-let markdownModulePromise: null | Promise<{
-  defaultMarkdownParser: { parse: (text: string) => any };
-  defaultMarkdownSerializer: {
-    serialize: (doc: any, options?: Record<string, unknown>) => string;
-    nodes: Record<string, any>;
-    marks: Record<string, any>;
-  };
-  MarkdownSerializer: new (
-    nodes: Record<string, any>,
-    marks: Record<string, any>,
-    options?: Record<string, unknown>
-  ) => { serialize: (doc: any, options?: Record<string, unknown>) => string };
-}> = null;
-
-const loadMarkdownModule = async () => {
-  if (!markdownModulePromise) {
-    markdownModulePromise = import("lumenpage-markdown") as Promise<{
-      defaultMarkdownParser: { parse: (text: string) => any };
-      defaultMarkdownSerializer: {
-        serialize: (doc: any, options?: Record<string, unknown>) => string;
-        nodes: Record<string, any>;
-        marks: Record<string, any>;
-      };
-      MarkdownSerializer: new (
-        nodes: Record<string, any>,
-        marks: Record<string, any>,
-        options?: Record<string, unknown>
-      ) => { serialize: (doc: any, options?: Record<string, unknown>) => string };
-    }>;
-  }
-  return markdownModulePromise;
-};
 
 const copyToClipboard = async (text: string) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -164,7 +132,7 @@ const exportMarkdownDoc = async () => {
   try {
     markdownMod = await loadMarkdownModule();
   } catch (_error) {
-    window.alert("Markdown 依赖加载失败，请先安装 markdown-it 后重试");
+    window.alert("Markdown 模块加载失败，请检查 lumenpage-markdown 依赖");
     return;
   }
 
@@ -216,7 +184,7 @@ const importMarkdownDoc = () => {
       }
     })
     .catch(() => {
-      window.alert("Markdown 依赖加载失败，请先安装 markdown-it 后重试");
+      window.alert("Markdown 模块加载失败，请检查 lumenpage-markdown 依赖");
     });
 };
 

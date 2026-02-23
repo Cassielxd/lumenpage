@@ -15,16 +15,14 @@ export { CanvasEditorView } from "./editorView";
 export { createSegmentText, createLinebreakSegmentText } from "./segmenter";
 export { Decoration, DecorationSet, type CanvasDecoration, type DecorationSpec } from "./decorations";
 export { type CanvasNodeView, type NodeViewFactory } from "./nodeView";
-export {
-  createRemoteSelectionDecorations,
-  type RemoteSelection,
-  type RemoteSelectionOptions,
-} from "./collaboration";
-export {
-  createCollaborationPlugin,
-  setRemoteSelections,
-  collaborationPluginKey,
-  type CollaborationMeta,
-} from "./collaborationPlugin";
 export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
 export { createCanvasState } from "./canvasState";
+export {
+  clearLegacyCanvasConfigHits,
+  getLegacyCanvasConfigHits,
+} from "./editorView/legacyConfigWarnings";
+export type {
+  CanvasCommandConfig,
+  CanvasEditorViewProps,
+  NodeSelectionTargetArgs,
+} from "./editorView/types";

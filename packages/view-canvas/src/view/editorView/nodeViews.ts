@@ -1,5 +1,6 @@
 ﻿import { NodeSelection } from "lumenpage-state";
 import { docPosToTextOffset } from "../../core";
+import { resolveNodeSelectionDecision } from "./selectionPolicy";
 
 import { getFirstLineForBlockId, getLineAtOffset } from "../layoutIndex";
 
@@ -17,21 +18,6 @@ export const createNodeViewManager = ({
   const nodeViewsByBlockId = new Map();
   let selectedNodeViewKey = null;
   let skipNextClickSelection = false;
-  const allowDefaultNodeSelection = (node) => {
-    if (!node || !NodeSelection.isSelectable(node)) {
-      return false;
-    }
-    const defaultNodeSelectionTypes =
-      typeof getDefaultNodeSelectionTypes === "function"
-        ? getDefaultNodeSelectionTypes()
-        : null;
-    if (defaultNodeSelectionTypes) {
-      return defaultNodeSelectionTypes.has(node.type?.name);
-    }
-    // Default behavior: selectable non-textblock nodes can become NodeSelection targets.
-    return node.isTextblock !== true;
-  };
-
   const lineHasTextContent = (line) => {
     if (!line) {
       return false;
@@ -382,20 +368,19 @@ export const createNodeViewManager = ({
     const node = resolvedTarget.node;
     const selectPos = resolvedTarget.pos;
 
-    const decision = queryEditorProp("isNodeSelectionTarget", {
+    const decision = resolveNodeSelectionDecision({
       node,
       pos: selectPos,
       hit,
       event,
+      queryEditorProp,
+      getDefaultNodeSelectionTypes,
     });
-    if (decision === false) {
+    if (!decision.allowed) {
       return null;
     }
-    if (decision !== true) {
-        if (lineHasTextContent(hit?.line)) {
-        return null;
-      }
-      if (!allowDefaultNodeSelection(node)) {
+    if (!decision.explicit) {
+      if (lineHasTextContent(hit?.line)) {
         return null;
       }
     }
@@ -430,16 +415,15 @@ export const createNodeViewManager = ({
     const entry = resolveNodeViewEntry(nodeView);
     const state = getState();
     if (entry?.node && NodeSelection.isSelectable(entry.node) && state?.doc) {
-      const decision = queryEditorProp("isNodeSelectionTarget", {
+      const decision = resolveNodeSelectionDecision({
         node: entry.node,
         pos: entry.pos,
         hit: null,
         event,
+        queryEditorProp,
+        getDefaultNodeSelectionTypes,
       });
-      if (
-        decision !== true &&
-        (decision === false || !allowDefaultNodeSelection(entry.node))
-      ) {
+      if (!decision.allowed) {
         return false;
       }
       const tr = state.tr.setSelection(NodeSelection.create(state.doc, entry.pos));

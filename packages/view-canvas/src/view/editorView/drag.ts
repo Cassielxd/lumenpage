@@ -369,7 +369,6 @@ export const createDragHandlers = ({
         try {
           slice = Slice.fromJSON(getState().schema, JSON.parse(json));
         } catch (error) {
-          console.warn("Failed to parse dropped slice", error);
         }
       }
       if (!slice) {
@@ -378,7 +377,6 @@ export const createDragHandlers = ({
           try {
             slice = parseHtmlToSlice(html);
           } catch (error) {
-            console.warn("Failed to parse dropped HTML", error);
           }
         }
       }

@@ -62,3 +62,13 @@
 ## 备注
 
 - 当前结构已形成“headless + canvas”的闭环，但一些高级排版、IME 体验、复杂节点分页仍需补齐
+
+## 兼容层收紧（新增）
+
+- `canvasConfig` 中与行为策略相关的入口（如 `commands/getText/parseHtmlToSlice/onChange/nodeSelectionTypes`）已标记为 legacy 回退通道
+- 默认行为：仍兼容，但会输出一次性告警，提示迁移到 `EditorProps / Plugin props`
+- 可开启严格模式：在 `EditorProps.canvasViewConfig`（或兼容的 `canvasConfig plugin`）传入
+  - `legacyPolicy: { strict: true }`
+  - 开启后，命中上述 legacy 回退会直接抛错，便于迁移期尽早收敛耦合
+- 其中命令相关配置已迁移到 `EditorProps.commandConfig`（playground 已切换）
+- playground 已将构造期视图配置迁移到 `EditorProps.canvasViewConfig`，不再依赖 `createCanvasConfigPlugin`

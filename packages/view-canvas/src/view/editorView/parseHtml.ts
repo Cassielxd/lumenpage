@@ -1,4 +1,5 @@
 import { createHtmlParser } from "../htmlParser";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
 
 // HTML 解析入口：优先走插件覆写的 clipboardParser/domParser，再回退默认解析器。
 export const createParseHtmlToSlice = ({
@@ -8,6 +9,7 @@ export const createParseHtmlToSlice = ({
   queryEditorProp,
   getDomRoot,
 }) => {
+  const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
   const fallbackParser = schema
     ? createHtmlParser(schema, PMDOMParser)
     : () => {
@@ -21,6 +23,11 @@ export const createParseHtmlToSlice = ({
     }
     const parseFromConfig = resolveCanvasConfig("parseHtmlToSlice");
     if (typeof parseFromConfig === "function") {
+      warnLegacyCanvasConfigUsage(
+        "parseHtmlToSlice",
+        "EditorProps.parseHtmlToSlice",
+        strictLegacy
+      );
       return parseFromConfig(html);
     }
     if (typeof html !== "string") {

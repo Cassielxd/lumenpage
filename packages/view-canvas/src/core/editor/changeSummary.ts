@@ -43,6 +43,23 @@ const collectBlockRange = (doc, from, to) => {
   });
 
   if (blockIndices.length === 0) {
+    const docSize = Number.isFinite(doc?.content?.size) ? Number(doc.content.size) : 0;
+    const fallbackPos = Math.max(0, Math.min(docSize, Number.isFinite(from) ? Number(from) : 0));
+    try {
+      const $pos = doc.resolve(fallbackPos);
+      const index = $pos.index(0);
+      if (Number.isFinite(index)) {
+        const clamped = Math.max(0, Math.min(doc.childCount - 1, Number(index)));
+        return {
+          fromIndex: clamped,
+          toIndex: clamped,
+          ids: [],
+          indices: [clamped],
+        };
+      }
+    } catch (_error) {
+      // ignore and fallback to null range
+    }
     return { fromIndex: null, toIndex: null, ids: [], indices: [] };
   }
 

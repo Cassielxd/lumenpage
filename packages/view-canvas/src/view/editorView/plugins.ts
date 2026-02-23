@@ -1,6 +1,13 @@
+﻿import type {
+  CanvasEditorViewProps,
+  DispatchEditorProp,
+  HookReturn,
+  QueryEditorProp,
+} from "./types";
+
 const DOM_EVENT_HANDLED_FLAG = "__lumen_dom_event_handled__";
 
-const markEditorDomEventHandled = (event) => {
+const markEditorDomEventHandled = (event: any) => {
   if (!event) {
     return;
   }
@@ -11,14 +18,26 @@ const markEditorDomEventHandled = (event) => {
   }
 };
 
-export const isEditorDomEventHandled = (event) => !!event?.[DOM_EVENT_HANDLED_FLAG];
+export const isEditorDomEventHandled = (event: any) => !!event?.[DOM_EVENT_HANDLED_FLAG];
 
-export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, getState, domRoot }) => {
-  let domEventHandlers = new Map();
-  let pluginViews = [];
+export const createEditorPropHandlers = ({
+  view,
+  editorProps,
+  getEditorProps,
+  getState,
+  domRoot,
+}: {
+  view: any;
+  editorProps: CanvasEditorViewProps;
+  getEditorProps: () => CanvasEditorViewProps;
+  getState: () => any;
+  domRoot: HTMLElement;
+}) => {
+  let domEventHandlers = new Map<string, { eventName: string; target: any; handler: any }>();
+  let pluginViews: Array<{ plugin: any; view: any }> = [];
 
   const getEditorPropsList = (state = getState?.()) => {
-    const list = [];
+    const list: Array<Record<string, any>> = [];
     const currentEditorProps =
       typeof getEditorProps === "function" ? getEditorProps() : editorProps;
     if (currentEditorProps) {
@@ -33,7 +52,7 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
     return list;
   };
 
-  const dispatchEditorProp = (name, ...args) => {
+  const dispatchEditorProp: DispatchEditorProp = (name, ...args) => {
     const propsList = getEditorPropsList();
     for (let i = 0; i < propsList.length; i += 1) {
       const props = propsList[i];
@@ -45,7 +64,7 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
     return false;
   };
 
-  const queryEditorProp = (name, ...args) => {
+  const queryEditorProp: QueryEditorProp = (name, ...args) => {
     const propsList = getEditorPropsList();
     for (let i = 0; i < propsList.length; i += 1) {
       const props = propsList[i];
@@ -53,14 +72,14 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
       const value =
         typeof valueOrHandler === "function" ? valueOrHandler(view, ...args) : valueOrHandler;
       if (value != null) {
-        return value;
+        return value as HookReturn<CanvasEditorViewProps[typeof name]>;
       }
     }
     return null;
   };
 
   const collectHandleDomEvents = (state = getState?.()) => {
-    const events = new Map();
+    const events = new Map<string, Array<(view: any, event: Event) => boolean>>();
     const propsList = getEditorPropsList(state);
     for (let i = 0; i < propsList.length; i += 1) {
       const props = propsList[i];
@@ -75,7 +94,7 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
         if (!events.has(eventName)) {
           events.set(eventName, []);
         }
-        events.get(eventName).push(handler);
+        events.get(eventName)?.push(handler as (view: any, event: Event) => boolean);
       }
     }
     return events;
@@ -91,13 +110,12 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
   const refreshDomEventHandlers = (state = getState?.()) => {
     clearDomEventHandlers();
     const events = collectHandleDomEvents(state);
-    const ownerDocument =
-      domRoot?.ownerDocument || (typeof document !== "undefined" ? document : null);
+    const ownerDocument = domRoot?.ownerDocument || (typeof document !== "undefined" ? document : null);
     if (!ownerDocument || !domRoot) {
       return;
     }
     for (const [eventName, handlers] of events.entries()) {
-      const listener = (event) => {
+      const listener = (event: Event) => {
         for (const handler of handlers) {
           if (handler(view, event)) {
             markEditorDomEventHandled(event);
@@ -111,8 +129,8 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
     }
   };
 
-  const createPluginViews = (state) => {
-    const views = [];
+  const createPluginViews = (state: any) => {
+    const views: Array<{ plugin: any; view: any }> = [];
     const plugins = state?.plugins ?? [];
     for (const plugin of plugins) {
       const viewFactory = plugin?.spec?.view;
@@ -134,12 +152,12 @@ export const createEditorPropHandlers = ({ view, editorProps, getEditorProps, ge
     pluginViews = [];
   };
 
-  const updatePluginViews = (prevState, nextState) => {
+  const updatePluginViews = (prevState: any, nextState: any) => {
     const prevPlugins = prevState?.plugins ?? [];
     const nextPlugins = nextState?.plugins ?? [];
     const samePlugins =
       prevPlugins.length === nextPlugins.length &&
-      prevPlugins.every((plugin, index) => plugin === nextPlugins[index]);
+      prevPlugins.every((plugin: any, index: number) => plugin === nextPlugins[index]);
 
     if (!samePlugins) {
       destroyPluginViews();

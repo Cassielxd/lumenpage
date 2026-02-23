@@ -15,6 +15,19 @@ const dispatchNodeEventChain = (state, dispatchEditorProp, propName, pos, event)
   return false;
 };
 
+const now = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+
+const logEventTiming = (enabled, name, startedAt) => {
+  if (!enabled) {
+    return;
+  }
+  const ms = Math.round((now() - startedAt) * 100) / 100;
+  console.info(`[event-timing] ${name} ${ms}ms`);
+};
+
 // 视图层事件处理：只依赖外部注入，避免与 editorView 主体强耦合。
 export const createViewEventHandlers = ({
   getState,
@@ -29,43 +42,53 @@ export const createViewEventHandlers = ({
   updateStatus,
   updateCaret,
   scheduleRender,
+  eventTiming = false,
 }) => {
   const onClickFocus = (event) => {
+    const startedAt = eventTiming ? now() : 0;
     const coords = getEventCoords(event);
     const pos = getDocPosFromCoords(coords);
     debugLog("click", { pos, coords });
     if (consumeSkipNextClickSelection()) {
       focusInput();
+      logEventTiming(eventTiming, "click:skip-next-selection", startedAt);
       return;
     }
     const state = getState();
     if (event.detail >= 3 && Number.isFinite(pos)) {
       if (dispatchNodeEventChain(state, dispatchEditorProp, "handleTripleClickOn", pos, event)) {
         event.preventDefault();
+        logEventTiming(eventTiming, "click:triple-on", startedAt);
         return;
       }
       if (dispatchEditorProp("handleTripleClick", pos, event)) {
         event.preventDefault();
+        logEventTiming(eventTiming, "click:triple", startedAt);
         return;
       }
     }
     if (dispatchNodeEventChain(state, dispatchEditorProp, "handleClickOn", pos, event)) {
       event.preventDefault();
+      logEventTiming(eventTiming, "click:on", startedAt);
       return;
     }
     if (dispatchEditorProp("handleClick", pos, event)) {
       event.preventDefault();
+      logEventTiming(eventTiming, "click", startedAt);
       return;
     }
     if (handleNodeViewClick(event, "handleClick")) {
       event.preventDefault();
       focusInput();
+      logEventTiming(eventTiming, "click:node-view", startedAt);
       return;
     }
     focusInput();
+    logEventTiming(eventTiming, "click:focus-only", startedAt);
   };
 
   const onDoubleClick = (event) => {
+    const startedAt = eventTiming ? now() : 0;
     const coords = getEventCoords(event);
     const pos = getDocPosFromCoords(coords);
     const state = getState();
@@ -73,38 +96,52 @@ export const createViewEventHandlers = ({
       dispatchNodeEventChain(state, dispatchEditorProp, "handleDoubleClickOn", pos, event)
     ) {
       event.preventDefault();
+      logEventTiming(eventTiming, "double-click:on", startedAt);
       return;
     }
     if (dispatchEditorProp("handleDoubleClick", pos, event)) {
       event.preventDefault();
+      logEventTiming(eventTiming, "double-click", startedAt);
       return;
     }
     if (handleNodeViewClick(event, "handleDoubleClick")) {
       event.preventDefault();
+      logEventTiming(eventTiming, "double-click:node-view", startedAt);
+      return;
     }
+    logEventTiming(eventTiming, "double-click:noop", startedAt);
   };
 
   const onRootFocus = () => {
+    const startedAt = eventTiming ? now() : 0;
     focusInput();
+    logEventTiming(eventTiming, "root-focus", startedAt);
   };
 
   const onDocumentSelectionChange = () => {
+    const startedAt = eventTiming ? now() : 0;
     if (!hasFocus()) {
+      logEventTiming(eventTiming, "selectionchange:blur", startedAt);
       return;
     }
     updateStatus();
     updateCaret(false);
     scheduleRender();
+    logEventTiming(eventTiming, "selectionchange", startedAt);
   };
 
   const onScroll = () => {
+    const startedAt = eventTiming ? now() : 0;
     updateCaret(false);
     scheduleRender();
+    logEventTiming(eventTiming, "scroll", startedAt);
   };
 
   const onResize = () => {
+    const startedAt = eventTiming ? now() : 0;
     updateCaret(false);
     scheduleRender();
+    logEventTiming(eventTiming, "resize", startedAt);
   };
 
   return {

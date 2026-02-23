@@ -14,6 +14,8 @@ const now = () =>
 // 变更摘要：用于增量布局复用。
 type LayoutChangeSummary = {
   docChanged?: boolean;
+  oldRange?: { from?: number | null; to?: number | null };
+  newRange?: { from?: number | null; to?: number | null };
   blocks?: {
     before?: { fromIndex?: number | null; toIndex?: number | null };
     after?: { fromIndex?: number | null; toIndex?: number | null };
@@ -146,15 +148,82 @@ const hashString = (hash, value) => {
   return hash;
 };
 
+// 将任意 attrs 结构归一化后参与哈希，保证缓存签名稳定。
+const hashAttrs = (hash, attrs) => {
+  if (!attrs || typeof attrs !== "object") {
+    return hash;
+  }
+  const keys = Object.keys(attrs).sort();
+  for (const key of keys) {
+    hash = hashString(hash, key);
+    const value = attrs[key];
+    if (typeof value === "string") {
+      hash = hashString(hash, value);
+      continue;
+    }
+    if (typeof value === "number") {
+      hash = hashNumber(hash, value);
+      continue;
+    }
+    if (typeof value === "boolean") {
+      hash = hashNumber(hash, value ? 1 : 0);
+      continue;
+    }
+    if (Array.isArray(value)) {
+      hash = hashNumber(hash, value.length);
+      for (const item of value) {
+        if (typeof item === "string") {
+          hash = hashString(hash, item);
+        } else if (typeof item === "number") {
+          hash = hashNumber(hash, item);
+        } else if (typeof item === "boolean") {
+          hash = hashNumber(hash, item ? 1 : 0);
+        } else if (item != null) {
+          hash = hashString(hash, JSON.stringify(item));
+        }
+      }
+      continue;
+    }
+    if (value == null) {
+      hash = hashString(hash, "null");
+      continue;
+    }
+    hash = hashString(hash, JSON.stringify(value));
+  }
+  return hash;
+};
+
+// 计算块布局签名：用于缓存命中判断（不依赖节点对象引用）。
+const getBlockLayoutSignature = (block, settings, indent) => {
+  let hash = 17;
+  hash = hashString(hash, block?.type?.name || "");
+  hash = hashAttrs(hash, block?.attrs || null);
+  hash = hashNumber(hash, block?.nodeSize);
+  hash = hashNumber(hash, block?.childCount);
+  hash = hashString(hash, block?.textContent || "");
+  hash = hashNumber(hash, indent || 0);
+  hash = hashNumber(hash, settings?.pageWidth);
+  hash = hashNumber(hash, settings?.lineHeight);
+  hash = hashString(hash, settings?.font || "");
+  return hash >>> 0;
+};
+
 // 生成页签名，用于判断页是否等价。
-const getPageSignature = (page) => {
+// 当用于复用判等时，避免依赖绝对文档偏移（start/end 等），
+// 否则一次局部插入会导致后续页面全部偏移变化而无法命中复用。
+const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) => {
+  const shift = (value) =>
+    Number.isFinite(value) ? Number(value) + Number(offsetDelta || 0) : value;
   let hash = 0;
   if (!page?.lines) {
     return hash;
   }
   for (const line of page.lines) {
-    hash = hashNumber(hash, line.start);
-    hash = hashNumber(hash, line.end);
+    if (includeAbsoluteOffsets) {
+      hash = hashNumber(hash, shift(line.start));
+      hash = hashNumber(hash, shift(line.end));
+      hash = hashNumber(hash, shift(line.blockStart));
+    }
     hash = hashNumber(hash, line.x);
     hash = hashNumber(hash, line.y);
     hash = hashNumber(hash, line.width);
@@ -164,8 +233,10 @@ const getPageSignature = (page) => {
     hash = hashString(hash, line.text || "");
     if (line.runs) {
       for (const run of line.runs) {
-        hash = hashNumber(hash, run.start);
-        hash = hashNumber(hash, run.end);
+        if (includeAbsoluteOffsets) {
+          hash = hashNumber(hash, shift(run.start));
+          hash = hashNumber(hash, shift(run.end));
+        }
         hash = hashString(hash, run.text || "");
         hash = hashString(hash, run.font || "");
         hash = hashString(hash, run.color || "");
@@ -177,7 +248,7 @@ const getPageSignature = (page) => {
 };
 
 // 判断页面是否等价（行数 + 签名）。
-const arePagesEquivalent = (nextPage, prevPage, debug) => {
+const arePagesEquivalent = (nextPage, prevPage, debug, offsetDelta = 0) => {
   if (!nextPage || !prevPage) {
     if (debug) {
       debug.reason = "missing-page";
@@ -194,8 +265,8 @@ const arePagesEquivalent = (nextPage, prevPage, debug) => {
     }
     return false;
   }
-  const nextSig = getPageSignature(nextPage);
-  const prevSig = getPageSignature(prevPage);
+  const nextSig = getPageSignature(nextPage, 0, false);
+  const prevSig = getPageSignature(prevPage, offsetDelta, false);
   if (nextSig !== prevSig && debug) {
     debug.reason = "signature";
     debug.nextSig = nextSig;
@@ -204,23 +275,34 @@ const arePagesEquivalent = (nextPage, prevPage, debug) => {
     for (let i = 0; i < Math.min(3, nextLines.length); i += 1) {
       sample.push({
         index: i,
-        next: {
-          start: nextLines[i]?.start,
-          end: nextLines[i]?.end,
-          x: nextLines[i]?.x,
-          y: nextLines[i]?.y,
-          width: nextLines[i]?.width,
+            next: {
+              start: nextLines[i]?.start,
+              end: nextLines[i]?.end,
+              blockStart: nextLines[i]?.blockStart,
+              x: nextLines[i]?.x,
+              y: nextLines[i]?.y,
+              width: nextLines[i]?.width,
           lineHeight: nextLines[i]?.lineHeight,
           blockType: nextLines[i]?.blockType,
           blockId: nextLines[i]?.blockId,
           text: nextLines[i]?.text,
         },
-        prev: {
-          start: prevLines[i]?.start,
-          end: prevLines[i]?.end,
-          x: prevLines[i]?.x,
-          y: prevLines[i]?.y,
-          width: prevLines[i]?.width,
+            prev: {
+              start:
+                Number.isFinite(prevLines[i]?.start) && Number.isFinite(offsetDelta)
+                  ? prevLines[i]?.start + offsetDelta
+                  : prevLines[i]?.start,
+              end:
+                Number.isFinite(prevLines[i]?.end) && Number.isFinite(offsetDelta)
+                  ? prevLines[i]?.end + offsetDelta
+                  : prevLines[i]?.end,
+              blockStart:
+                Number.isFinite(prevLines[i]?.blockStart) && Number.isFinite(offsetDelta)
+                  ? prevLines[i]?.blockStart + offsetDelta
+                  : prevLines[i]?.blockStart,
+              x: prevLines[i]?.x,
+              y: prevLines[i]?.y,
+              width: prevLines[i]?.width,
           lineHeight: prevLines[i]?.lineHeight,
           blockType: prevLines[i]?.blockType,
           blockId: prevLines[i]?.blockId,
@@ -231,6 +313,50 @@ const arePagesEquivalent = (nextPage, prevPage, debug) => {
     debug.sample = sample;
   }
   return nextSig === prevSig;
+};
+
+const shiftLineOffsets = (line, offsetDelta) => {
+  const next = { ...line };
+  if (Number.isFinite(next.start)) {
+    next.start += offsetDelta;
+  }
+  if (Number.isFinite(next.end)) {
+    next.end += offsetDelta;
+  }
+  if (Number.isFinite(next.blockStart)) {
+    next.blockStart += offsetDelta;
+  }
+  if (Array.isArray(next.runs) && next.runs.length > 0) {
+    next.runs = next.runs.map((run) => {
+      const nextRun = { ...run };
+      if (Number.isFinite(nextRun.start)) {
+        nextRun.start += offsetDelta;
+      }
+      if (Number.isFinite(nextRun.end)) {
+        nextRun.end += offsetDelta;
+      }
+      return nextRun;
+    });
+  }
+  return next;
+};
+
+const cloneAndShiftPages = (pages, offsetDelta) => {
+  if (!Array.isArray(pages) || pages.length === 0) {
+    return [];
+  }
+  if (!Number.isFinite(offsetDelta) || Number(offsetDelta) === 0) {
+    return pages.map((page) => ({
+      ...page,
+      lines: Array.isArray(page?.lines) ? page.lines.map((line) => ({ ...line })) : [],
+    }));
+  }
+  return pages.map((page) => ({
+    ...page,
+    lines: Array.isArray(page?.lines)
+      ? page.lines.map((line) => shiftLineOffsets(line, Number(offsetDelta)))
+      : [],
+  }));
 };
 
 // 在旧布局中定位锚点行（增量复用）。
@@ -342,6 +468,32 @@ const previousLayoutHasSensitiveLine = (previousLayout, isSensitiveLine) => {
   return false;
 };
 
+const previousLayoutHasSensitiveLineInRange = (
+  previousLayout,
+  fromIndex,
+  toIndex,
+  isSensitiveLine
+) => {
+  const pages = previousLayout?.pages;
+  if (!Array.isArray(pages) || !Number.isFinite(fromIndex) || !Number.isFinite(toIndex)) {
+    return false;
+  }
+  const from = Math.min(Number(fromIndex), Number(toIndex));
+  const to = Math.max(Number(fromIndex), Number(toIndex));
+  for (const page of pages) {
+    for (const line of page?.lines || []) {
+      const rootIndex = line?.rootIndex;
+      if (!Number.isFinite(rootIndex) || rootIndex < from || rootIndex > to) {
+        continue;
+      }
+      if (isSensitiveLine(line) === true) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 const shouldDisableReuseForSensitiveChange = (
   doc,
   changeSummary,
@@ -372,10 +524,7 @@ const shouldDisableReuseForSensitiveChange = (
   ].filter((value) => Number.isFinite(value));
 
   if (candidates.length === 0) {
-    return (
-      hasAnyTopLevelSensitiveNode(doc, isSensitiveNode) ||
-      previousLayoutHasSensitiveLine(previousLayout, isSensitiveLine)
-    );
+    return false;
   }
 
   const minIndex = Math.min(...candidates);
@@ -383,8 +532,18 @@ const shouldDisableReuseForSensitiveChange = (
   if (hasTopLevelSensitiveNodeInRange(doc, minIndex, maxIndex, isSensitiveNode)) {
     return true;
   }
-  // Handle sensitive-structure deletion: current range may no longer include the removed node.
-  return previousLayoutHasSensitiveLine(previousLayout, isSensitiveLine);
+  // Handle sensitive-structure deletion: new doc range may miss removed nodes, so inspect old range only.
+  const beforeFrom = Number.isFinite(before.fromIndex) ? Number(before.fromIndex) : null;
+  const beforeTo = Number.isFinite(before.toIndex) ? Number(before.toIndex) : null;
+  if (beforeFrom == null || beforeTo == null) {
+    return false;
+  }
+  return previousLayoutHasSensitiveLineInRange(
+    previousLayout,
+    beforeFrom,
+    beforeTo,
+    isSensitiveLine
+  );
 };
 
 
@@ -475,17 +634,11 @@ export class LayoutPipeline {
           passedChangedRange: false,
           syncFromIndex: null,
           resumeFromAnchor: false,
-          syncOldPageExists: false,
-          syncPageEquivalent: false,
-          currentPageIndex: 0,
-          prevLayoutPages: 0,
-          maybeSyncCalled: false,
           maybeSyncReason: "unknown",
           disablePageReuse: false,
           optionsPrevPages: 0,
-          maybeSyncCallCount: 0,
+          maybeSyncCalled: false,
           maybeSyncFailSnapshot: null,
-          pageDiff: null,
         }
       : null;
     // 包装测量函数以统计调用次数。
@@ -548,6 +701,11 @@ export class LayoutPipeline {
     let resumeHasPrefixLines = false;
     let resumeAnchorTargetY: { y: number; relativeY: number } | null = null;
     let resumeAnchorApplied = false;
+    const offsetDelta =
+      changeSummary?.docChanged && changeSummary?.oldRange && changeSummary?.newRange
+        ? Number(changeSummary.newRange.to - changeSummary.newRange.from) -
+          Number(changeSummary.oldRange.to - changeSummary.oldRange.from)
+        : 0;
     // 增量布局：在旧布局中定位锚点。
     if (previousLayout && changeSummary?.docChanged && typeof docPosToTextOffset === "function") {
       const settingsMatch =
@@ -648,12 +806,9 @@ export class LayoutPipeline {
     // 必须已处理完变更范围且版式一致。
       if (perf) {
         perf.maybeSyncCalled = true;
-        perf.maybeSyncCallCount += 1;
       }
       if (!canSync || !passedChangedRange || !previousLayout) {
         if (perf) {
-          perf.syncOldPageExists = false;
-          perf.syncPageEquivalent = false;
           perf.maybeSyncReason = "precheck-failed";
           perf.maybeSyncFailSnapshot = {
             canSync,
@@ -664,35 +819,40 @@ export class LayoutPipeline {
         return false;
       }
       const oldPage = previousLayout.pages?.[pageIndex];
-      if (perf) {
-        perf.currentPageIndex = pageIndex;
-        perf.prevLayoutPages = previousLayout.pages?.length ?? 0;
-      }
       if (!oldPage) {
         if (perf) {
-          perf.syncOldPageExists = false;
-          perf.syncPageEquivalent = false;
           perf.maybeSyncReason = "old-page-missing";
         }
         return false;
       }
-      if (perf) {
-        perf.syncOldPageExists = true;
+      const candidateIndexes = [pageIndex, pageIndex - 1, pageIndex + 1, pageIndex - 2, pageIndex + 2]
+        .filter((idx) => Number.isFinite(idx))
+        .filter((idx) => idx >= 0 && idx < (previousLayout.pages?.length ?? 0));
+      let matchedOldPageIndex = null;
+      let lastDiff = null;
+      for (const candidateIndex of candidateIndexes) {
+        const candidatePage = previousLayout.pages?.[candidateIndex];
+        if (!candidatePage) {
+          continue;
+        }
+        const diff = perf ? {} : null;
+        if (arePagesEquivalent(page, candidatePage, diff, offsetDelta)) {
+          matchedOldPageIndex = candidateIndex;
+          lastDiff = null;
+          break;
+        }
+        lastDiff = diff;
       }
-      const diff = perf ? {} : null;
-      if (!arePagesEquivalent(page, oldPage, diff)) {
+      if (!Number.isFinite(matchedOldPageIndex)) {
         if (perf) {
-          perf.syncPageEquivalent = false;
           perf.maybeSyncReason = "page-not-equivalent";
-          perf.pageDiff = diff;
         }
         return false;
       }
       if (perf) {
-        perf.syncPageEquivalent = true;
         perf.maybeSyncReason = "reuse-ok";
       }
-      syncFromIndex = pageIndex;
+      syncFromIndex = Number(matchedOldPageIndex);
       shouldStop = true;
       return true;
     };
@@ -716,13 +876,13 @@ export class LayoutPipeline {
       }
 
       const leafStart = perf ? now() : 0;
+      const blockId = block.attrs?.id ?? null;
 
       if (perf) {
         perf.blocks += 1;
       }
 
       const renderer = this.registry?.get(block.type.name);
-      const blockId = block.attrs?.id ?? null;
       const blockSettings = resolveSettingsWithIndent(baseSettings, context.indent);
       const blockTypeName = block.type?.name;
       const isTopLevel = !context?.containerStack || context.containerStack.length === 0;
@@ -759,21 +919,28 @@ export class LayoutPipeline {
       const rendererCacheable = renderer?.cacheLayout !== false;
       const canUseCache = rendererCacheable && cacheKey !== null;
       const cached = canUseCache ? this.blockCache.get(cacheKey) : null;
+      const blockSignature = canUseCache
+        ? getBlockLayoutSignature(block, blockSettings, context.indent)
+        : null;
 
-      if (cached && cached.node === block) {
-        if (perf) {
-          perf.cachedBlocks += 1;
+      if (canUseCache) {
+        if (cached && cached.signature === blockSignature) {
+          if (perf) {
+            perf.cachedBlocks += 1;
+          }
+          blockLines = cached.lines || [];
+          blockLength = cached.length || 0;
+          blockHeight = cached.height || 0;
+          if (cached.blockAttrs) {
+            blockAttrs = cached.blockAttrs;
+          }
+          if (cached.blockLineHeight) {
+            blockLineHeight = cached.blockLineHeight;
+          }
         }
-        blockLines = cached.lines || [];
-        blockLength = cached.length || 0;
-        blockHeight = cached.height || 0;
-        if (cached.blockAttrs) {
-          blockAttrs = cached.blockAttrs;
-        }
-        if (cached.blockLineHeight) {
-          blockLineHeight = cached.blockLineHeight;
-        }
-      } else {
+      }
+
+      if (!canUseCache || !cached || cached.signature !== blockSignature) {
         if (renderer?.layoutBlock) {
           const result = renderer.layoutBlock({
             node: block,
@@ -846,7 +1013,7 @@ export class LayoutPipeline {
 
         if (canUseCache) {
           this.blockCache.set(cacheKey, {
-            node: block,
+            signature: blockSignature,
             lines: blockLines,
             length: blockLength,
             height: blockHeight,
@@ -1215,7 +1382,11 @@ export class LayoutPipeline {
         perf.reusedPages =
           previousLayout.pages.length - Math.min(previousLayout.pages.length, syncFromIndex + 1);
       }
-      pages.push(...markReusedPages(previousLayout.pages.slice(syncFromIndex + 1)));
+      const reusedTail = cloneAndShiftPages(
+        previousLayout.pages.slice(syncFromIndex + 1),
+        offsetDelta
+      );
+      pages.push(...markReusedPages(reusedTail));
     }
     // 清理重复的表格块：若同一表格已出现分片，则移除无分片标记的完整表格行。
     const tableSliceStarts = new Set<number>();
@@ -1282,7 +1453,6 @@ export class LayoutPipeline {
       perf.passedChangedRange = passedChangedRange;
       perf.syncFromIndex = syncFromIndex;
       perf.resumeFromAnchor = resumeFromAnchor;
-      perf.prevLayoutPages = previousLayout?.pages?.length ?? perf.prevLayoutPages;
       perf.pages = pages.length;
       const duration = now() - perf.start;
       const cacheHitRate =
@@ -1291,6 +1461,7 @@ export class LayoutPipeline {
         ms: Math.round(duration),
         pages: perf.pages,
         blocks: perf.blocks,
+        cachedBlocks: perf.cachedBlocks,
         blockCacheHitRate: `${cacheHitRate}%`,
         lines: perf.lines,
         measureCalls: perf.measureCalls,
@@ -1302,24 +1473,17 @@ export class LayoutPipeline {
         passedChangedRange: perf.passedChangedRange,
         syncFromIndex: perf.syncFromIndex,
         resumeFromAnchor: perf.resumeFromAnchor,
-        syncOldPageExists: perf.syncOldPageExists,
-        syncPageEquivalent: perf.syncPageEquivalent,
-        currentPageIndex: perf.currentPageIndex,
-        prevLayoutPages: perf.prevLayoutPages,
         maybeSyncCalled: perf.maybeSyncCalled,
         maybeSyncReason: perf.maybeSyncReason,
         disablePageReuse: perf.disablePageReuse,
         optionsPrevPages: perf.optionsPrevPages,
-        maybeSyncCallCount: perf.maybeSyncCallCount,
         maybeSyncFailSnapshot: perf.maybeSyncFailSnapshot,
-        pageDiff: perf.pageDiff,
         breakLinesMs: Math.round(perf.breakLinesMs),
         layoutLeafMs: Math.round(perf.layoutLeafMs),
       };
       if (baseSettingsRaw?.__perf) {
         baseSettingsRaw.__perf.layout = summary;
       }
-      console.debug("[layout-perf]", summary);
     }
 
     return {

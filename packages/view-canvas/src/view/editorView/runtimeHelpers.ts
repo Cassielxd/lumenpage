@@ -1,4 +1,5 @@
 import { createSelectionLogger } from "../../core";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
 
 // 运行时通用辅助：页面宽度、文档文本、输入层定位与节点类型判断。
 export const createRuntimeHelpers = ({
@@ -9,6 +10,7 @@ export const createRuntimeHelpers = ({
   getState,
   docToOffsetText,
 }) => {
+  const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
   const resolvePageWidth = () => {
     const width = dom.scrollArea?.clientWidth ?? 0;
     if (!Number.isFinite(width) || width <= 0) {
@@ -28,6 +30,7 @@ export const createRuntimeHelpers = ({
     }
     const getTextFromConfig = resolveCanvasConfig("getText");
     if (typeof getTextFromConfig === "function") {
+      warnLegacyCanvasConfigUsage("getText", "EditorProps.getText", strictLegacy);
       return getTextFromConfig(state.doc);
     }
     return docToOffsetText(state.doc);
@@ -45,6 +48,11 @@ export const createRuntimeHelpers = ({
     }
     const fromConfig = resolveCanvasConfig("isInSpecialStructureAtPos");
     if (typeof fromConfig === "function") {
+      warnLegacyCanvasConfigUsage(
+        "isInSpecialStructureAtPos",
+        "EditorProps.isInSpecialStructureAtPos",
+        strictLegacy
+      );
       return fromConfig(state, pos);
     }
     return false;
@@ -57,6 +65,11 @@ export const createRuntimeHelpers = ({
     }
     const fromConfig = resolveCanvasConfig("shouldAutoAdvanceAfterEnter", null);
     if (typeof fromConfig === "function") {
+      warnLegacyCanvasConfigUsage(
+        "shouldAutoAdvanceAfterEnter",
+        "EditorProps.shouldAutoAdvanceAfterEnter",
+        strictLegacy
+      );
       return fromConfig(args);
     }
     return null;
@@ -76,14 +89,8 @@ export const createDebugLoggers = ({ debugConfig, getText, docPosToTextOffset, c
   const logSelection = debugConfig?.selection
     ? createSelectionLogger({ getText, docPosToTextOffset, clampOffset })
     : () => {};
-  const logDelete = debugConfig?.delete
-    ? (phase, payload) => {
-        console.log("[delete]", phase, payload);
-      }
-    : () => {};
-  const debugLog = debugConfig?.selection
-    ? (label, payload) => console.log(`[selection:${label}]`, payload)
-    : () => {};
+  const logDelete = () => {};
+  const debugLog = () => {};
 
   return {
     logSelection,

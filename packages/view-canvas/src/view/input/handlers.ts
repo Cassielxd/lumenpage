@@ -434,7 +434,6 @@ export const createInputHandlers = ({
       try {
         parsedSlice = parseHtmlToSlice(html);
       } catch (error) {
-        console.warn("Failed to parse HTML paste", error);
       }
     }
     if (!parsedSlice && text) {

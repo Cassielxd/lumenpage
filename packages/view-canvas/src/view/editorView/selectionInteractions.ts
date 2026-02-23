@@ -1,6 +1,7 @@
-import { NodeSelection, TextSelection } from "lumenpage-state";
+﻿import { NodeSelection, TextSelection } from "lumenpage-state";
+import { resolveNodeSelectionDecision } from "./selectionPolicy";
 
-// 选择交互策略：命中节点选择、GapCursor 选择，以及 createSelectionBetween 回退逻辑。
+// 选区交互策略：节点选中、GapCursor 选择、createSelectionBetween 回退。
 export const createSelectionInteractions = ({
   getState,
   getLayout,
@@ -9,6 +10,7 @@ export const createSelectionInteractions = ({
   textOffsetToDocPos,
   dispatchTransaction,
   queryEditorProp,
+  getDefaultNodeSelectionTypes = null,
   resolveNodeSelectionTargetFromManager,
   setSkipNextClickSelection,
 }) => {
@@ -30,8 +32,7 @@ export const createSelectionInteractions = ({
     return TextSelection.between($anchor, $head);
   };
 
-  // 在目标位置附近尝试解析 GapSelection（通常由 gapcursor 插件的 createSelectionBetween 提供）。
-  // 这里不直接依赖 GapCursor 类型，避免核心包与插件包耦合。
+  // 在目标位置附近尝试解析 GapSelection（通常由 gapcursor 插件提供）。
   const resolveGapSelectionAtPos = (pos) => {
     const state = getState();
     if (!state?.doc || !Number.isFinite(pos)) {
@@ -61,18 +62,6 @@ export const createSelectionInteractions = ({
     });
   };
 
-  // 与点击命中路径保持一致：优先走白名单，否则允许可选且非 textblock 的节点。
-  const allowDefaultNodeSelection = (node) => {
-    if (!node || !NodeSelection.isSelectable(node)) {
-      return false;
-    }
-    const fromProps = queryEditorProp("nodeSelectionTypes");
-    if (Array.isArray(fromProps) && fromProps.length > 0) {
-      return fromProps.includes(node.type?.name);
-    }
-    return node.isTextblock !== true;
-  };
-
   const setSelectionFromHit = (hit, event) => {
     if (!hit || !hit.line || event?.shiftKey) {
       return false;
@@ -88,7 +77,7 @@ export const createSelectionInteractions = ({
     return true;
   };
 
-  // 根据文档位置直接设置 NodeSelection（用于拖拽句柄/媒体本体点击）。
+  // 按文档位置直接设置 NodeSelection（用于拖拽句柄/媒体本体点击）。
   const setNodeSelectionAtPos = (pos) => {
     const state = getState();
     if (!state?.doc || !Number.isFinite(pos)) {
@@ -98,17 +87,15 @@ export const createSelectionInteractions = ({
     if (!node || !NodeSelection.isSelectable(node)) {
       return false;
     }
-    // 与点击命中路径对齐：允许通过 isNodeSelectionTarget 拦截节点级选中。
-    const decision = queryEditorProp("isNodeSelectionTarget", {
+    const decision = resolveNodeSelectionDecision({
       node,
       pos,
       hit: null,
       event: null,
+      queryEditorProp,
+      getDefaultNodeSelectionTypes,
     });
-    if (decision === false) {
-      return false;
-    }
-    if (decision !== true && !allowDefaultNodeSelection(node)) {
+    if (!decision.allowed) {
       return false;
     }
     const tr = state.tr.setSelection(NodeSelection.create(state.doc, pos));

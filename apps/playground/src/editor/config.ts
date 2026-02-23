@@ -22,6 +22,12 @@ export type PlaygroundDebugFlags = {
   debugReadonlySmoke: boolean;
   debugDocRoundtripSmoke: boolean;
   debugMarkdownIoSmoke: boolean;
+  debugHtmlIoSmoke: boolean;
+  debugLinkSmoke: boolean;
+  debugPerfBudgetSmoke: boolean;
+  usePerfDoc: boolean;
+  debugTimingLogs: boolean;
+  debugLegacyConfigSmoke: boolean;
   debugDuplicateDecorations: boolean;
   debugDevTools: boolean;
   enableInputRules: boolean;
@@ -87,6 +93,12 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugReadonlySmoke: resolveDebugFlag("readonlySmoke"),
   debugDocRoundtripSmoke: resolveDebugFlag("docRoundtripSmoke"),
   debugMarkdownIoSmoke: resolveDebugFlag("markdownIoSmoke"),
+  debugHtmlIoSmoke: resolveDebugFlag("htmlIoSmoke"),
+  debugLinkSmoke: resolveDebugFlag("linkSmoke"),
+  debugPerfBudgetSmoke: resolveDebugFlag("perfBudgetSmoke"),
+  usePerfDoc: resolveDebugFlag("perfDoc"),
+  debugTimingLogs: resolveDebugFlag("timingLogs"),
+  debugLegacyConfigSmoke: resolveDebugFlag("legacyConfigSmoke"),
   debugDuplicateDecorations: resolveDebugFlag("dupDecor"),
   debugDevTools: resolveDebugFlag("devTools"),
   enableInputRules: resolveDebugFlag("inputRules"),
@@ -112,7 +124,7 @@ export const createCanvasSettings = (debugPerf: boolean) => ({
   font: "16px Arial",
   wrapTolerance: 2,
   pageBuffer: 1,
-  maxPageCache: 16,
+  maxPageCache: 32,
   debugPerf,
   disablePageReuse: false,
 });

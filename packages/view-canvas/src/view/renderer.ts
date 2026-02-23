@@ -312,7 +312,13 @@ export class Renderer {
   settings: any;
   registry: any;
   pageCache: Map<number, any>;
-  pageCanvases: Array<{ canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D }>;
+  pageCanvases: Array<{
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    pageIndex: number | null;
+    signature: number | null;
+    dpr: number;
+  }>;
   lastDpr: number;
   lastLayoutDebug: string | null;
   nodeViewProvider: ((line: any) => any) | null;
@@ -470,7 +476,13 @@ export class Renderer {
 
         this.pageLayer.appendChild(canvas);
 
-        this.pageCanvases.push({ canvas, ctx: canvas.getContext("2d") });
+        this.pageCanvases.push({
+          canvas,
+          ctx: canvas.getContext("2d"),
+          pageIndex: null,
+          signature: null,
+          dpr: 0,
+        });
       }
     } else if (current > count) {
       const removed = this.pageCanvases.splice(count);
@@ -742,7 +754,8 @@ export class Renderer {
       this.pageCache.clear();
       layout.__forceRedraw = false;
     }
-    if (layoutVersion !== this.lastLayoutVersion) {
+    const layoutVersionChanged = layoutVersion !== this.lastLayoutVersion;
+    if (layoutVersionChanged) {
       this.lastLayoutVersion = layoutVersion;
     }
     const { clientWidth, clientHeight, scrollTop } = viewport;
@@ -774,15 +787,6 @@ export class Renderer {
       const signature = `${clientWidth}|${layout.pageWidth}|${layout.pageAlign}|${layout.pageOffsetX}|${pageX}`;
       if (signature !== this.lastLayoutDebug) {
         this.lastLayoutDebug = signature;
-        const viewportRect = viewport.getBoundingClientRect?.();
-        const layerRect = this.pageLayer.getBoundingClientRect?.();
-        console.log("[layout]", {
-          clientWidth,
-          pageWidth: layout.pageWidth,
-          pageX,
-          viewportRect,
-          pageLayerRect: layerRect,
-        });
       }
     }
 
@@ -831,7 +835,8 @@ export class Renderer {
       const canSkipSignature =
         !forceRedraw &&
         hasCachedSignature &&
-        (page?.__reused === true ||
+        (!layoutVersionChanged ||
+          page?.__reused === true ||
           (changedRange &&
             page &&
             Number.isFinite(page.rootIndexMax) &&
@@ -872,23 +877,13 @@ export class Renderer {
 
       const pageTop = pageIndex * pageSpan - scrollTop;
 
-      if (this.settings?.debugLayout && i === 0) {
-        const rect = canvas.getBoundingClientRect?.();
-        console.log("[layout-canvas]", {
-          pageIndex,
-          pageX,
-          pageTop,
-          canvasLeft: canvas.style.left,
-          canvasTop: canvas.style.top,
-          rect,
-        });
-      }
-
+      let resized = false;
       const nextWidth = Math.max(1, Math.floor(layout.pageWidth * dpr));
       const nextHeight = Math.max(1, Math.floor(layout.pageHeight * dpr));
       if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
         canvas.width = nextWidth;
         canvas.height = nextHeight;
+        resized = true;
       }
       if (canvas.style.width !== `${layout.pageWidth}px`) {
         canvas.style.width = `${layout.pageWidth}px`;
@@ -911,30 +906,33 @@ export class Renderer {
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const compositeStart = this.settings?.debugPerf ? now() : 0;
-      ctx.clearRect(0, 0, layout.pageWidth, layout.pageHeight);
-
-      ctx.drawImage(
-        entry.canvas,
-
-        0,
-
-        0,
-
-        entry.width * dpr,
-
-        entry.height * dpr,
-
-        0,
-
-        0,
-
-        entry.width,
-
-        entry.height
-      );
-      if (this.settings?.debugPerf) {
-        compositeMs += now() - compositeStart;
+      const needsComposite =
+        entry.dirty ||
+        resized ||
+        canvasEntry.pageIndex !== pageIndex ||
+        canvasEntry.signature !== entry.signature ||
+        canvasEntry.dpr !== dpr;
+      if (needsComposite) {
+        const compositeStart = this.settings?.debugPerf ? now() : 0;
+        ctx.clearRect(0, 0, layout.pageWidth, layout.pageHeight);
+        ctx.drawImage(
+          entry.canvas,
+          0,
+          0,
+          entry.width * dpr,
+          entry.height * dpr,
+          0,
+          0,
+          entry.width,
+          entry.height
+        );
+        canvasEntry.pageIndex = pageIndex;
+        canvasEntry.signature =
+          typeof entry.signature === "number" ? Number(entry.signature) : null;
+        canvasEntry.dpr = dpr;
+        if (this.settings?.debugPerf) {
+          compositeMs += now() - compositeStart;
+        }
       }
     }
 
@@ -1054,7 +1052,6 @@ export class Renderer {
             `  overlayMs: ${summary.overlayMs}`,
           ].join("\n");
         }
-        console.debug("[render-perf]", summary);
       }
     }
   }

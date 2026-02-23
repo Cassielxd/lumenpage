@@ -32,7 +32,7 @@ const callBooleanPropHandlers = (view, propName, ...args) => {
 };
 
 // 视图 props 动态更新入口：刷新事件、属性、渲染与 a11y。
-export const setViewProps = (view: any, props: Record<string, any> = {}) => {
+export const setViewProps = (view: any, props: Partial<CanvasEditorViewProps> = {}) => {
   const prevProps = view?._internals?.getEditorProps?.() ?? {};
   const nextProps = { ...prevProps, ...(props || {}) };
   view?._internals?.setEditorProps?.(nextProps);
@@ -352,3 +352,4 @@ export const getViewPaginationInfo = (view) => {
     pages,
   };
 };
+import type { CanvasEditorViewProps } from "./types";

@@ -39,6 +39,7 @@ import { createDebugLoggers, createRuntimeHelpers } from "./editorView/runtimeHe
 import { createEditorInputPipeline } from "./editorView/inputPipeline";
 import { createNodeViewBindings } from "./editorView/nodeViewBindings";
 import { createEditingRuntime } from "./editorView/editingRuntime";
+import { warnLegacyCanvasConfigUsage } from "./editorView/legacyConfigWarnings";
 import {
   dispatchViewTransaction,
   focusView,
@@ -53,6 +54,7 @@ import {
   viewPosAtCoords,
 } from "./editorView/publicApi";
 import { createSliceFromText } from "./editorView/text";
+import type { CanvasEditorViewProps, QueryEditorProp } from "./editorView/types";
 
 export class CanvasEditorView {
   dom;
@@ -63,8 +65,8 @@ export class CanvasEditorView {
   overlayHost;
   composing;
 
-  constructor(place, props) {
-    const viewProps = props ?? {};
+  constructor(place: any, props?: CanvasEditorViewProps) {
+    const viewProps: CanvasEditorViewProps = props ?? ({} as CanvasEditorViewProps);
     const {
       editorState,
       debugConfig,
@@ -98,37 +100,43 @@ export class CanvasEditorView {
     this.composing = false;
     let editorProps = viewProps;
     const onChange = resolveCanvasConfig("onChange", null);
+    const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
     const { runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } = createCommandRuntime({
       view: this,
       schema,
       resolveCanvasConfig,
+      commandConfigFromProps: viewProps?.commandConfig ?? null,
     });
 
     // NodeView 管理能力由独立模块提供，editorView 只做装配。
     const configuredNodeSelectionTypes = resolveCanvasConfig("nodeSelectionTypes", null);
     let getDecorations = null;
-    let queryEditorProp: (name: string, ...args: any[]) => any = () => null;
+    let queryEditorProp: QueryEditorProp = (() => null) as QueryEditorProp;
+    const getDefaultNodeSelectionTypes = () => {
+      const fromProps = queryEditorProp("nodeSelectionTypes");
+      const resolved =
+        Array.isArray(fromProps) && fromProps.length > 0
+          ? fromProps
+          : Array.isArray(configuredNodeSelectionTypes) && configuredNodeSelectionTypes.length > 0
+          ? configuredNodeSelectionTypes
+          : null;
+      if (!Array.isArray(fromProps) && Array.isArray(configuredNodeSelectionTypes) && resolved) {
+        warnLegacyCanvasConfigUsage(
+          "nodeSelectionTypes",
+          "EditorProps.nodeSelectionTypes",
+          strictLegacy
+        );
+      }
+      return resolved ? new Set(resolved) : null;
+    };
     const nodeViewManager = createNodeViewManager({
       view: this,
       getState: () => this.state,
       nodeRegistry,
       getNodeViewFactories: () => queryEditorProp("nodeViews") ?? null,
       getDecorations: () => getDecorations?.(),
-      getDefaultNodeSelectionTypes: () => {
-        const fromProps = queryEditorProp("nodeSelectionTypes");
-        const resolved =
-          Array.isArray(fromProps) && fromProps.length > 0
-            ? fromProps
-            : Array.isArray(configuredNodeSelectionTypes) && configuredNodeSelectionTypes.length > 0
-            ? configuredNodeSelectionTypes
-            : null;
-        return resolved ? new Set(resolved) : null;
-      },
-      logNodeSelection: debugConfig?.selection
-        ? (phase, payload) => {
-            console.log(`[node-selection:${phase}]`, payload);
-          }
-        : null,
+      getDefaultNodeSelectionTypes,
+      logNodeSelection: null,
     });
     renderer.setNodeViewProvider?.(nodeViewManager.getNodeViewForLine);
     const syncNodeViewOverlays = () => {
@@ -273,6 +281,8 @@ export class CanvasEditorView {
       clearPendingSteps: () => {
         pendingSteps = null;
       },
+      paginationTiming: debugConfig?.timing === true || debugConfig?.paginationTiming === true,
+      renderTiming: debugConfig?.timing === true || debugConfig?.renderTiming === true,
     });
 
     const { updateStatus, scheduleRender, updateCaret, updateLayout, syncAfterStateChange } =
@@ -297,6 +307,7 @@ export class CanvasEditorView {
       },
       textOffsetToDocPos,
       debugLog,
+      strictLegacy,
     });
     this.dispatchTransaction = applyDispatchTransaction;
     const dispatchViaView = (tr) => this.dispatch(tr);
@@ -309,6 +320,7 @@ export class CanvasEditorView {
       textOffsetToDocPos,
       dispatchTransaction: dispatchViaView,
       queryEditorProp,
+      getDefaultNodeSelectionTypes,
       resolveNodeSelectionTargetFromManager: (payload) =>
         nodeViewManager.resolveNodeSelectionTarget(payload),
       setSkipNextClickSelection: (value) => nodeViewManager.setSkipNextClickSelection(value),
@@ -476,6 +488,7 @@ export class CanvasEditorView {
       updateStatus,
       updateCaret,
       scheduleRender,
+      eventTiming: debugConfig?.timing === true || debugConfig?.eventTiming === true,
     });
     const {
       onClickFocus,
@@ -584,7 +597,7 @@ export class CanvasEditorView {
     this._internals.applyViewAttributes?.(state);
   }
 
-  setProps(props: Record<string, any> = {}) {
+  setProps(props: Partial<CanvasEditorViewProps> = {}) {
     setViewProps(this, props);
   }
 

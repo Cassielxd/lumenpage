@@ -2,6 +2,10 @@ import { basicCommands, createCanvasEditorKeymap, runCommand } from "lumenpage-k
 import { docPosToTextOffset, textOffsetToDocPos } from "lumenpage-view-canvas";
 import { NodeSelection, TextSelection } from "lumenpage-state";
 import { CellSelection } from "lumenpage-node-table";
+import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
+import { loadMarkdownModule } from "./markdownBridge";
+import { shouldOpenLinkOnClick } from "./linkPolicy";
+import { initialDocJson } from "../initialDoc";
 
 const appendDebugLine = (debugPanelEl: HTMLElement | null, text: string) => {
   const globalObj = globalThis as any;
@@ -13,6 +17,11 @@ const appendDebugLine = (debugPanelEl: HTMLElement | null, text: string) => {
     return;
   }
   debugPanelEl.textContent = `${debugPanelEl.textContent || ""}\n${text}`.trim();
+};
+
+const getLegacyConfigHits = () => {
+  const hits = (globalThis as any).__lumenLegacyConfigHits;
+  return Array.isArray(hits) ? hits : [];
 };
 
 const findFirstTableCellPos = (doc: any) => {
@@ -2110,9 +2119,9 @@ export const runDocRoundtripSmoke = (editorView: any, debugPanelEl: HTMLElement 
 export const runMarkdownIoSmoke = async (debugPanelEl: HTMLElement | null) => {
   let markdownMod: any = null;
   try {
-    markdownMod = await import("lumenpage-markdown");
+    markdownMod = await loadMarkdownModule();
   } catch (_error) {
-    const text = "[markdown-io-smoke] skipped: lumenpage-markdown or markdown-it not available.";
+    const text = "[markdown-io-smoke] skipped: markdown module not available.";
     console.warn(text);
     appendDebugLine(debugPanelEl, text);
     return;
@@ -2237,6 +2246,204 @@ export const runMarkdownIoSmoke = async (debugPanelEl: HTMLElement | null) => {
   const ok =
     parseOk && serializeOk && roundtripEq && extendedSerializeOk && extendedFeaturesOk;
   const text = `[markdown-io-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runLegacyConfigSmoke = (debugPanelEl: HTMLElement | null) => {
+  const hits = getLegacyConfigHits();
+  const keys = [...new Set(hits.map((item: any) => String(item?.key || "")).filter(Boolean))];
+  const summary = {
+    hitCount: hits.length,
+    keys,
+  };
+  const ok = hits.length === 0;
+  const text = `[legacy-config-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runHtmlIoSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const state = editorView?.state;
+  const ownerDocument =
+    editorView?.dom?.ownerDocument || (typeof document !== "undefined" ? document : null);
+  if (!state?.doc || !state?.schema || !ownerDocument) {
+    const text = "[html-io-smoke] skipped: missing doc/schema/document.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  let html = "";
+  let parsedDoc: any = null;
+  let serializeOk = false;
+  let parseOk = false;
+  let exactEq = false;
+  let textEq = false;
+  let errorMessage: string | null = null;
+
+  try {
+    const serializer = DOMSerializer.fromSchema(state.schema);
+    const container = ownerDocument.createElement("div");
+    container.appendChild(serializer.serializeFragment(state.doc.content));
+    html = container.innerHTML;
+    serializeOk = html.length > 0;
+
+    const parser = PMDOMParser.fromSchema(state.schema);
+    const host = ownerDocument.createElement("div");
+    host.innerHTML = html;
+    parsedDoc = parser.parse(host);
+    parseOk = !!parsedDoc;
+
+    exactEq = typeof state.doc?.eq === "function" ? state.doc.eq(parsedDoc) : false;
+    const originalText = state.doc?.textContent ?? "";
+    const parsedText = parsedDoc?.textContent ?? "";
+    textEq = originalText === parsedText;
+  } catch (error: any) {
+    errorMessage = String(error?.message || error);
+  }
+
+  const summary = {
+    serializeOk,
+    parseOk,
+    exactEq,
+    textEq,
+    htmlLen: html.length,
+    errorMessage,
+  };
+  const ok = serializeOk && parseOk && (exactEq || textEq);
+  const text = `[html-io-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runLinkInteractionSmoke = (debugPanelEl: HTMLElement | null) => {
+  const cases = [
+    { mode: "full", ctrlKey: false, metaKey: false, expected: false },
+    { mode: "full", ctrlKey: true, metaKey: false, expected: true },
+    { mode: "full", ctrlKey: false, metaKey: true, expected: true },
+    { mode: "comment", ctrlKey: false, metaKey: false, expected: true },
+    { mode: "readonly", ctrlKey: false, metaKey: false, expected: true },
+  ] as const;
+
+  const mismatches = cases.filter((item) => {
+    const actual = shouldOpenLinkOnClick(item.mode as any, {
+      ctrlKey: item.ctrlKey,
+      metaKey: item.metaKey,
+    });
+    return actual !== item.expected;
+  });
+
+  const summary = {
+    checked: cases.length,
+    mismatchCount: mismatches.length,
+    mismatches,
+  };
+  const ok = mismatches.length === 0;
+  const text = `[link-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+const waitRaf = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+
+const resolveTruthySearchParam = (key: string) => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const raw = new URLSearchParams(window.location.search).get(key);
+  if (!raw) {
+    return false;
+  }
+  const normalized = String(raw).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+};
+
+export const runPerfBudgetSmoke = async (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const getJSON = editorView?.getJSON?.bind(editorView);
+  const setJSON = editorView?.setJSON?.bind(editorView);
+  if (typeof getJSON !== "function" || typeof setJSON !== "function") {
+    const text = "[perf-budget-smoke] skipped: getJSON/setJSON unavailable.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const original = getJSON();
+  const keepLargeDoc = resolveTruthySearchParam("perfBudgetKeepDoc");
+  const keepLargeDocRaw =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("perfBudgetKeepDoc")
+      : null;
+  const largeDoc = initialDocJson;
+  const blockCount = Array.isArray(largeDoc?.content) ? largeDoc.content.length : 0;
+
+  const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+  let applied = false;
+  let elapsedMs = 0;
+  let pageCount = 0;
+  let textLength = 0;
+  let layoutPerf: any = null;
+  let renderPerf: any = null;
+  try {
+    applied = setJSON(largeDoc) === true;
+    await waitRaf();
+    await waitRaf();
+    const endedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    elapsedMs = Math.round((endedAt - startedAt) * 100) / 100;
+    const layout = editorView?._internals?.getLayout?.();
+    pageCount = Number(layout?.pages?.length ?? 0);
+    textLength = Number(editorView?._internals?.getText?.()?.length ?? 0);
+    layoutPerf = editorView?._internals?.settings?.__perf?.layout ?? null;
+    renderPerf = editorView?._internals?.settings?.__perf?.render ?? null;
+  } finally {
+    if (!keepLargeDoc && original) {
+      setJSON(original);
+    }
+  }
+
+  const budgets = {
+    maxElapsedMs: 15000,
+    minPageCount: 100,
+    minTextLength: 100000,
+  };
+  const summary = {
+    applied,
+    blockCount,
+    keepLargeDoc,
+    keepLargeDocRaw,
+    elapsedMs,
+    pageCount,
+    textLength,
+    budgets,
+    layoutPerf,
+    renderPerf,
+  };
+  const ok =
+    applied &&
+    elapsedMs <= budgets.maxElapsedMs &&
+    pageCount >= budgets.minPageCount &&
+    textLength >= budgets.minTextLength;
+  const text = `[perf-budget-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
   } else {

@@ -1,4 +1,4 @@
-import { EditorState, TextSelection } from "lumenpage-state";
+import { EditorState, Selection } from "lumenpage-state";
 
 type CreateEditorStateOptions = {
   schema?: any;
@@ -52,7 +52,7 @@ export function createEditorState({
         : doc;
   }
 
-  const selection = TextSelection.create(resolvedDoc, resolvedDoc.content.size);
+  const selection = Selection.atEnd(resolvedDoc);
 
   const state = EditorState.create({
     schema,

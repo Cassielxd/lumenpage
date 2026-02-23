@@ -34,16 +34,6 @@ export const createSelectionLogger = ({ getText, docPosToTextOffset, clampOffset
       return;
     }
     lastSelectionSignature = signature;
-    const selectionText = getText().slice(offsets.from, offsets.to);
-    const preview = selectionText.length > 80 ? `${selectionText.slice(0, 80)}...` : selectionText;
-    console.log("[selection]", {
-      from: offsets.from,
-      to: offsets.to,
-      anchor: anchorOffset,
-      head: headOffset,
-      length: selectionText.length,
-      text: preview,
-    });
   };
 };
 
