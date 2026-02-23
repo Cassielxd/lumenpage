@@ -14,6 +14,7 @@ import { imageNodeSpec } from "lumenpage-node-image";
 import { horizontalRuleNodeSpec } from "lumenpage-node-horizontal-rule";
 import { hardBreakNodeSpec } from "lumenpage-node-hard-break";
 import { videoNodeSpec } from "lumenpage-node-video";
+import { sanitizeLinkHref } from "lumenpage-link";
 
 export { serializeTableToText, getTableTextLength };
 
@@ -33,31 +34,21 @@ const withIdAttrsForRecord = (specs) => {
   return next;
 };
 
-// 当前项目统一基础 schema（节点与 mark 定义的唯一来源）。
+// Workspace default schema.
 export const schema = new Schema({
   nodes: {
     doc: { content: "block+" },
 
     paragraph: withIdAttr(paragraphNodeSpec),
-
     heading: withIdAttr(headingNodeSpec),
-
     blockquote: withIdAttr(blockquoteNodeSpec),
-
     code_block: withIdAttr(codeBlockNodeSpec),
-
     horizontal_rule: withIdAttr(horizontalRuleNodeSpec),
-
     ...withIdAttrsForRecord(listNodeSpecs),
-
     ...withIdAttrsForRecord(tableNodeSpecs),
-
     image: withIdAttr(imageNodeSpec),
-
     video: withIdAttr(videoNodeSpec),
-
     hard_break: withIdAttr(hardBreakNodeSpec),
-
     text: { group: "inline" },
   },
 
@@ -112,14 +103,20 @@ export const schema = new Schema({
       parseDOM: [
         {
           tag: "a[href]",
-          getAttrs: (dom) => ({
-            href: dom.getAttribute("href"),
-            title: dom.getAttribute("title"),
-          }),
+          getAttrs: (dom) => {
+            const safeHref = sanitizeLinkHref(dom.getAttribute("href"));
+            if (!safeHref) {
+              return false;
+            }
+            return {
+              href: safeHref,
+              title: dom.getAttribute("title"),
+            };
+          },
         },
       ],
       toDOM(node) {
-        const attrs = { href: node.attrs.href, title: node.attrs.title };
+        const attrs = { href: sanitizeLinkHref(node.attrs.href) || "#", title: node.attrs.title };
         if (!attrs.title) {
           delete attrs.title;
         }
@@ -165,3 +162,6 @@ export function createDocFromText(text = "") {
 export function docToText(doc) {
   return docToOffsetText(doc);
 }
+
+
+

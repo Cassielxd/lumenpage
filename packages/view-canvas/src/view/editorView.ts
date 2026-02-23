@@ -1,5 +1,6 @@
 ﻿import { DOMParser as PMDOMParser } from "lumenpage-model";
 import { NodeSelection, Selection } from "lumenpage-state";
+import { sanitizeDocJson } from "lumenpage-link";
 
 import {
   applyTransaction,
@@ -658,9 +659,13 @@ export class CanvasEditorView {
     if (!json || !this.state?.schema?.nodeFromJSON) {
       return false;
     }
+    const sanitizedJson = sanitizeDocJson(json);
+    if (!sanitizedJson) {
+      return false;
+    }
     let nextDoc = null;
     try {
-      nextDoc = this.state.schema.nodeFromJSON(json);
+      nextDoc = this.state.schema.nodeFromJSON(sanitizedJson);
     } catch (_error) {
       return false;
     }

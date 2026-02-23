@@ -65,6 +65,22 @@ const getFontForOffset = (line, offset, fallbackFont) => {
 
 const getBaselineOffset = (lineHeight, fontSize) => Math.max(0, (lineHeight - fontSize) / 2);
 
+const isVisualBlockLine = (line) => {
+  if (!line || !Number.isFinite(line.start) || !Number.isFinite(line.end)) {
+    return false;
+  }
+  if (line.end <= line.start) {
+    return false;
+  }
+  return (
+    line.imageMeta ||
+    line.videoMeta ||
+    line.blockType === "image" ||
+    line.blockType === "video" ||
+    line.blockType === "horizontal_rule"
+  );
+};
+
 export function findLineForOffset(layout, offset, textLength) {
   if (!layout || layout.pages.length === 0) {
     return null;
@@ -115,8 +131,12 @@ export function findLineForOffset(layout, offset, textLength) {
 }
 
 export function offsetAtX(font, line, x) {
-  if (line.imageMeta || line.blockType === "image") {
-    return line.end ?? line.start;
+  if (isVisualBlockLine(line)) {
+    const width = Math.max(0, Number(line.width) || 0);
+    if (width <= 0) {
+      return line.start;
+    }
+    return x < width / 2 ? line.start : line.end;
   }
 
   if (x <= 0) {
@@ -195,26 +215,27 @@ export function getCaretRect(layout, offset, scrollTop, viewportWidth, textLengt
   const pageTop = pageIndex * pageSpan - scrollTop;
 
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
+  const lineHeight = getLineHeight(line, layout);
+  if (isVisualBlockLine(line)) {
+    const width = Math.max(0, Number(line.width) || 0);
+    const caretX = isLineEnd ? width : 0;
+    return {
+      x: pageX + line.x + caretX,
+      y: pageTop + line.y,
+      height: lineHeight,
+    };
+  }
 
   const localIndex = Math.max(0, Math.min(offset - line.start, line.text.length));
-
   const localX = getLineXForOffset(line, line.start + localIndex, layout.font);
-
   const caretX = isLineEnd ? Math.max(localX, line.width || localX) : localX;
-
   const caretFont = getFontForOffset(line, offset, layout.font);
-
   const fontSize = getFontSize(caretFont);
-
-  const lineHeight = getLineHeight(line, layout);
-
   const baselineOffset = getBaselineOffset(lineHeight, fontSize);
 
   return {
     x: pageX + line.x + caretX,
-
     y: pageTop + line.y + baselineOffset,
-
     height: fontSize,
   };
 }
@@ -307,8 +328,12 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
   }
 
   const localX = Math.max(0, x - pageX - line.x);
-
-  const offset = offsetAtX(layout.font, line, localX);
+  let offset = offsetAtX(layout.font, line, localX);
+  if (isVisualBlockLine(line)) {
+    const lineHeight = getLineHeight(line, layout);
+    const localLineY = Math.max(0, y + scrollTop - pageIndex * pageSpan - line.y);
+    offset = localLineY < lineHeight / 2 ? line.start : line.end;
+  }
 
   return {
     offset,

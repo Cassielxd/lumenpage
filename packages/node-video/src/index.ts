@@ -1,4 +1,5 @@
-﻿import { type NodeSpec } from "lumenpage-model";
+import { type NodeSpec } from "lumenpage-model";
+import { sanitizePosterSrc, sanitizeVideoSrc } from "lumenpage-link";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -32,32 +33,47 @@ export const videoNodeSpec: NodeSpec = {
   parseDOM: [
     {
       tag: "video[src]",
-      getAttrs: (dom: Element) => ({
-        id: readIdAttr(dom),
-        src: dom.getAttribute("src") || "",
-        poster: dom.getAttribute("poster") || "",
-        width: dom.getAttribute("width"),
-        height: dom.getAttribute("height"),
-        embed: false,
-      }),
+      getAttrs: (dom: Element) => {
+        const src = sanitizeVideoSrc(dom.getAttribute("src") || "");
+        if (!src) {
+          return false;
+        }
+        return {
+          id: readIdAttr(dom),
+          src,
+          poster: sanitizePosterSrc(dom.getAttribute("poster") || ""),
+          width: dom.getAttribute("width"),
+          height: dom.getAttribute("height"),
+          embed: false,
+        };
+      },
     },
     {
       tag: "iframe[src]",
-      getAttrs: (dom: Element) => ({
-        id: readIdAttr(dom),
-        src: dom.getAttribute("src") || "",
-        width: dom.getAttribute("width"),
-        height: dom.getAttribute("height"),
-        embed: true,
-      }),
+      getAttrs: (dom: Element) => {
+        const src = sanitizeVideoSrc(dom.getAttribute("src") || "");
+        if (!src) {
+          return false;
+        }
+        return {
+          id: readIdAttr(dom),
+          src,
+          width: dom.getAttribute("width"),
+          height: dom.getAttribute("height"),
+          embed: true,
+        };
+      },
     },
   ],
   toDOM(node) {
-    const attrs: Record<string, unknown> = { src: node.attrs?.src || "" };
+    const attrs: Record<string, unknown> = {};
+    const safeSrc = sanitizeVideoSrc(node.attrs?.src || "");
+    if (safeSrc) attrs.src = safeSrc;
     if (node.attrs?.id) attrs["data-node-id"] = node.attrs.id;
     if (node.attrs?.width) attrs.width = node.attrs.width;
     if (node.attrs?.height) attrs.height = node.attrs.height;
-    if (node.attrs?.poster) attrs.poster = node.attrs.poster;
+    const safePoster = sanitizePosterSrc(node.attrs?.poster || "");
+    if (safePoster) attrs.poster = safePoster;
     if (node.attrs?.embed) return ["iframe", attrs];
     attrs.controls = true;
     return ["video", attrs];
@@ -84,18 +100,19 @@ const createMediaElement = (node: any) => {
   const attrs = node.attrs || {};
   if (attrs.embed) {
     const iframe = document.createElement("iframe");
-    iframe.src = attrs.src || "";
+    iframe.src = sanitizeVideoSrc(attrs.src || "");
     iframe.allowFullscreen = true;
     iframe.style.border = "0";
     return iframe;
   }
 
   const video = document.createElement("video");
-  video.src = attrs.src || "";
+  video.src = sanitizeVideoSrc(attrs.src || "");
   video.controls = true;
   video.playsInline = true;
   video.draggable = false;
-  if (attrs.poster) video.poster = attrs.poster;
+  const safePoster = sanitizePosterSrc(attrs.poster || "");
+  if (safePoster) video.poster = safePoster;
   return video;
 };
 
@@ -187,11 +204,11 @@ export const videoRenderer = {
         return;
       }
       if (mediaEl instanceof HTMLVideoElement) {
-        const src = nextNode.attrs?.src || "";
+        const src = sanitizeVideoSrc(nextNode.attrs?.src || "");
         if (mediaEl.src !== src) mediaEl.src = src;
-        mediaEl.poster = nextNode.attrs?.poster || "";
+        mediaEl.poster = sanitizePosterSrc(nextNode.attrs?.poster || "");
       } else {
-        const src = nextNode.attrs?.src || "";
+        const src = sanitizeVideoSrc(nextNode.attrs?.src || "");
         if (mediaEl.src !== src) mediaEl.src = src;
       }
     };
@@ -227,3 +244,5 @@ export const videoRenderer = {
     };
   },
 };
+
+

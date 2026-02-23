@@ -29,6 +29,7 @@
     "lumenpage-node-heading": "workspace:*",
     "lumenpage-node-horizontal-rule": "workspace:*",
     "lumenpage-node-image": "workspace:*",
+    "lumenpage-link": "workspace:*",
     "lumenpage-node-list": "workspace:*",
     "lumenpage-node-paragraph": "workspace:*",
     "lumenpage-node-table": "workspace:*",

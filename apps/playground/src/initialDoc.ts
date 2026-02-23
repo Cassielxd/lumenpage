@@ -124,6 +124,7 @@ const featureBlocks: JsonNode[] = [
   headingNode(2, "Performance Blocks"),
 ];
 
+const smokePerfParagraphCount = 120;
 const defaultPerfParagraphCount = 360;
 const heavyPerfParagraphCount = 5200;
 
@@ -145,4 +146,5 @@ const buildInitialDoc = (perfParagraphCount: number) => {
 };
 
 export const initialDocJson = buildInitialDoc(defaultPerfParagraphCount);
+export const initialDocSmokeJson = buildInitialDoc(smokePerfParagraphCount);
 export const initialDocPerfJson = buildInitialDoc(heavyPerfParagraphCount);

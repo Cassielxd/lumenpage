@@ -1,4 +1,5 @@
 import { createEditorState } from "../core";
+import { sanitizeDocJson } from "lumenpage-link";
 
 type CanvasStateOptions = {
   schema?: any;
@@ -23,9 +24,16 @@ export const createCanvasState = (options: CanvasStateOptions = {}) => {
   }
 
   const { plugins = [], ...stateOptions } = options;
+  const normalizedStateOptions =
+    stateOptions?.json != null
+      ? {
+          ...stateOptions,
+          json: sanitizeDocJson(stateOptions.json) ?? stateOptions.json,
+        }
+      : stateOptions;
 
   return createEditorState({
-    ...stateOptions,
+    ...normalizedStateOptions,
     plugins,
   });
 };

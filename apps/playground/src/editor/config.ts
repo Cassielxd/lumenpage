@@ -20,6 +20,9 @@ export type PlaygroundDebugFlags = {
   debugCoordsSmoke: boolean;
   debugScrollSmoke: boolean;
   debugReadonlySmoke: boolean;
+  debugA11ySmoke: boolean;
+  debugI18nSmoke: boolean;
+  debugSecuritySmoke: boolean;
   debugDocRoundtripSmoke: boolean;
   debugMarkdownIoSmoke: boolean;
   debugHtmlIoSmoke: boolean;
@@ -102,6 +105,9 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugCoordsSmoke: resolveDebugFlag("coordsSmoke"),
   debugScrollSmoke: resolveDebugFlag("scrollSmoke"),
   debugReadonlySmoke: resolveDebugFlag("readonlySmoke"),
+  debugA11ySmoke: resolveDebugFlag("a11ySmoke"),
+  debugI18nSmoke: resolveDebugFlag("i18nSmoke"),
+  debugSecuritySmoke: resolveDebugFlag("securitySmoke"),
   debugDocRoundtripSmoke: resolveDebugFlag("docRoundtripSmoke"),
   debugMarkdownIoSmoke: resolveDebugFlag("markdownIoSmoke"),
   debugHtmlIoSmoke: resolveDebugFlag("htmlIoSmoke"),

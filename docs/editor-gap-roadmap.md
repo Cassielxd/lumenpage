@@ -1,89 +1,166 @@
-﻿# LumenPage 瀹屾暣缂栬緫鍣ㄥ樊璺濅笌琛ラ綈璺嚎鍥?
-## 鐩爣
+﻿# LumenPage 编辑器差距路线图（已修复乱码）
 
-鎶婂綋鍓?Canvas 缂栬緫鍣ㄤ粠鈥滃彲鐢ㄢ€濇彁鍗囧埌鈥滅ǔ瀹氬彲浜や粯鈥濓紝浼樺厛淇濊瘉浜や簰涓€鑷存€т笌鍥炲綊鍙帶銆?
-## 褰撳墠闃舵锛?026-02锛?
-- 宸插畬鎴愪竴鎵规牳蹇冮噸鏋勶細`EditorView` 鎷嗗垎銆佹椿鍔ㄥ潡閫変腑鎻掍欢鍖栥€佹嫋鎷藉彞鏌勬彃浠跺寲銆丄4 鐢诲竷鏍峰紡钀藉湴銆?- 褰撳墠閲嶇偣杞叆鈥滆ˉ榻愯涓?+ 寤虹珛鍥炲綊鍩虹嚎鈥濄€?
-## P0 娓呭崟锛堝繀椤伙級
+## 目标
 
-1. 杈撳叆娉曚笌閫夊尯绋冲畾鎬?- 楠屾敹鏍囧噯锛?  - 涓枃 IME 杈撳叆鏃跺厜鏍囦笉涓㈠け銆佷笉璺冲潡銆?  - 璺ㄦ钀?璺ㄨ妭鐐归€夊尯鍚庯紝缁х画杈撳叆涓庡垹闄よ涓虹ǔ瀹氥€?  - NodeSelection 涓?TextSelection 鍒囨崲鏃犻棯鐑併€佹棤閿欎綅銆?
-2. 鎷栨嫿涓庨€夋嫨涓€鑷存€?- 楠屾敹鏍囧噯锛?  - 鏂囨湰鎷栨嫿鍙Щ鍔紝drop 浣嶇疆鍑嗙‘銆?  - 鍧楁嫋鎷斤紙鍚浘鐗?瑙嗛锛夊彲绉诲姩涓斾笉浼氳Е鍙戦敊璇€夊尯璺宠浆銆?  - 鎷栨嫿鍙ユ焺鍙湪 hover 鏃舵樉绀猴紝浣嶇疆宸﹀榻愪竴鑷淬€?
-3. 琛ㄦ牸琛屼负琛ラ綈
-- 楠屾敹鏍囧噯锛?  - Enter/Backspace/Delete 涓庨鏈熶竴鑷达紝涓嶅嚭鐜板紓甯稿悎骞躲€?  - 琛屽垪澧炲垹銆佸悎骞舵媶鍒嗐€佽寖鍥撮€夊尯鍙繛缁墽琛屻€?  - 宸ュ叿鏍忕姸鎬佷笌褰撳墠琛ㄦ牸閫夊尯鐘舵€佷竴鑷淬€?
-4. 鍒楄〃琛屼负琛ラ綈
-- 楠屾敹鏍囧噯锛?  - Enter 鍒涘缓涓嬩竴椤癸紝绌洪」 Enter 閫€鍑哄垪琛ㄣ€?  - Backspace 鍦ㄧ┖椤逛笂鍥為€€灞傜骇锛屽啀娆″洖閫€杞钀姐€?  - 鍚屼竴娈佃惤鍙湪鏈夊簭/鏃犲簭鍒楄〃涔嬮棿姝ｇ‘鍒囨崲銆?
-5. 鑷姩鍖栧洖褰掑熀绾?- 楠屾敹鏍囧噯锛?  - 鑷冲皯鍖呭惈琛ㄦ牸銆佸垪琛ㄣ€佸潡瀹瑰櫒鍑犱綍 3 绫?smoke銆?  - 姣忔鏀瑰姩鍙揩閫熸墽琛屽苟浜у嚭 PASS/FAIL 鏄庣‘缁撹銆?  - `allSmoke` 姹囨€诲凡鏀逛负涓茶绛夊緟寮傛 smoke锛堝惈 markdown I/O锛夛紝閬垮厤缁熻鎻愬墠缁撴潫銆?
-## P1 娓呭崟锛堜骇鍝佸寲锛?
-1. 绮樿创/瀵煎叆/瀵煎嚭淇濈湡銆?2. 鍘嗗彶涓庡崗浣滃啿绐佺瓥鐣ャ€?3. 鍙/鏉冮檺/璇勮鎬併€?4. 閾炬帴涓庤鍐呰涔変氦浜掔粺涓€銆?5. 绉诲姩绔Е鎺т綋楠屻€?
-## P2 娓呭崟锛堣妯″寲锛?
-1. 澶ф枃妗ｅ帇娴嬩笌鎬ц兘棰勭畻銆?2. 鏃犻殰纰嶄笌鍥介檯鍖栥€?3. 瀹夊叏娌荤悊绛栫暐銆?4. 鎻掍欢鐢熸€佽鑼冧笌绀轰緥銆?
-## 宸插紑濮嬬殑绗竴鎵瑰畬鍠?
-- 鏂板 Playground 鍥炲綊寮€鍏筹細
-  - `p0Smoke=1`锛堜粎鎵ц P0 蹇呴渶瀛愰泦锛屽揩閫熷洖褰掞級
-  - `allSmoke=1`锛堜竴閿墽琛屽叏濂楋級
-  - `tableSmoke=1`
-  - `tableBehaviorSmoke=1`
-  - `listSmoke=1`
-  - `listBehaviorSmoke=1`
-  - `blockOutlineSmoke=1`
-  - `dragSmoke=1`
-  - `dragActionSmoke=1`
-  - `selectionImeSmoke=1`
-  - `imeActionSmoke=1`
-  - `selectionBoundarySmoke=1`
-  - `toolSmoke=1`
-  - `pasteSmoke=1`
-  - `historySmoke=1`
-  - `mappingSmoke=1`
-  - `coordsSmoke=1`
-  - `scrollSmoke=1`
-  - `readonlySmoke=1`
-  - `docRoundtripSmoke=1`
-  - `htmlIoSmoke=1`
-  - `markdownIoSmoke=1`
-  - `linkSmoke=1`
-  - `perfBudgetSmoke=1`
-- 鏂板 `blockOutlineSmoke`锛岀敤浜庢鏌?`code_block` 鍜?`blockquote` 鐨勫潡瀹瑰櫒鍑犱綍涓€鑷存€э紝鎻愬墠鍙戠幇鈥滈€変腑妗嗕笌鍙鍧楅敊浣嶁€濋棶棰樸€?- 鏍稿績瑙嗗浘鏂板鍩虹鏂囨。 I/O API锛歚getJSON / setJSON / getTextContent`锛屼负瀵煎叆瀵煎嚭涓庢ā鏉胯兘鍔涙彁渚涚粺涓€鍏ュ彛銆?- 鏉冮檺鎺у埗閲囩敤鎻掍欢 `filterTransaction`锛屾牳蹇冭鍥惧眰涓嶅紩鍏ヤ笟鍔℃潈闄愯€﹀悎銆?
-## 浣跨敤鏂瑰紡
+把当前 Canvas 编辑器从“可用”推进到“稳定可交付、可规模化演进”。
+优先级始终是：交互一致性 > 回归可控性 > 性能可预测性 > 扩展生态。
+
+## 当前阶段（截至 2026-02-23）
+
+- 已完成一轮核心重构：`EditorView` 模块化拆分、NodeView 管理、拖拽句柄插件化、A4 分页样式落地。
+- 已建立 Smoke 回归体系：P0 套件、`allSmoke` 汇总、`perfBudgetSmoke` 性能预算冒烟。
+- P2 的“大文档性能优化”已完成代码层落地，路线图进入下一段：无障碍/国际化、安全治理、插件生态规范化。
+
+## 架构深度分析（现状）
+
+### 1. 分层与模块边界
+
+- `packages/model` / `packages/state` / `packages/transform` / `packages/commands`：ProseMirror 思想的 headless 核心能力。
+- `packages/view-canvas`：Canvas 视图实现，负责输入、布局、渲染、命中、坐标映射。
+- `packages/schema-basic` + `packages/kit-basic`：默认 schema、命令、节点渲染注册。
+- `packages/node-*`：节点级扩展（paragraph、heading、list、table、image、video 等）。
+- `apps/playground`：集成入口、调试面板、Smoke 触发与回归汇总。
+
+### 2. 关键数据流
+
+1. DOM 输入事件进入 `inputPipeline`。
+2. 事件统一转为命令或事务，交给 `stateFlow`。
+3. `changeSummary` 计算最小变更范围，驱动增量布局策略。
+4. `LayoutPipeline.layoutFromDoc` 产出 `pages -> lines`。
+5. `Renderer` 做可见页虚拟化、签名缓存与增量重绘。
+6. overlay 层绘制选区、装饰、光标；NodeView overlay 独立同步。
+7. `docPos <-> textOffset <-> coords` 映射闭环支撑命中与编辑。
+
+### 3. 细节设计亮点
+
+- offset 映射下沉到节点 spec（`offsetMapping`），不是在核心里写死节点分支。
+- 分页层同时具备三类性能手段：块缓存、页面复用、渐进布局（progressive）。
+- 渲染层区分“页面内容缓存”和“overlay 动态层”，避免整页重绘。
+- worker 分页采用“安全门禁 + 回退策略”，复杂块（如表格）自动回退主线程，保证正确性优先。
+- NodeView 管理与主渲染解耦，支持媒体 DOM overlay 与 Canvas 文本同屏协同。
+
+### 4. 已识别风险（需纳入后续迭代）
+
+- 文档编码历史问题仍存在（本文件已修复，`docs/pagination-layout.md` 仍有乱码）。
+- `README.md` 引用了不存在的 `docs/prosemirror-gap.md`，文档索引存在漂移。
+- `packages/model/src/tmpclaude-*` 临时文件应清理，避免误打包或误识别为源码。
+- 严格模式迁移已开始，但仍有 legacy 通道依赖风险，需要持续收口。
+
+## 路线图（更新版）
+
+## P0（必须项，持续守护）
+
+1. 输入法与选区稳定性。
+2. 拖拽与选择一致性。
+3. 表格行为完整性。
+4. 列表行为一致性。
+5. 自动化回归基线（P0/All Smoke）。
+
+状态：已具备可回归能力，后续以“防回退”为主，不再大规模加特性。
+
+## P1（产品化）
+
+1. 粘贴/导入/导出保真。
+2. 历史与协作冲突策略。
+3. 只读/权限/评论态。
+4. 链接与行内语义交互统一。
+5. 移动端触控体验。
+
+状态：已完成基础能力闭环，后续按业务形态补强。
+
+## P2（规模化）
+
+### P2.1 大文档性能优化（已完成）
+
+已落地：
+
+- 变更摘要驱动增量分页与块缓存失效控制。
+- 页级复用与签名判等，减少无效重绘。
+- 可见页虚拟化与 overlay 分层。
+- 渐进式布局（先快后全）与异步调度。
+- `perfBudgetSmoke` 预算冒烟入口。
+
+验收入口：
+
+- `?devTools=1&perfBudgetSmoke=1`
+- 预算阈值以 `runPerfBudgetSmoke` 中配置为准（当前含 `maxElapsedMs=15000`、最小页数与最小文本量约束）。
+
+### P2.2 无障碍与国际化（继续推进，当前优先）
+
+当前进展（2026-02-23）：
+
+- 已新增 `a11ySmoke`（ARIA 语义、焦点进出、状态播报、只读语义一致性）。
+- 已新增 `i18nSmoke`（CJK/RTL 混排样例、行几何有效性、offset/pos 映射与坐标稳定性）。
+- 已增强读屏播报：光标支持 page/line/column/node 信息，选区支持起止 page/line/column。
+
+里程碑 A（无障碍基线）：
+
+1. 完整键盘可达性（工具栏、菜单、编辑区、表格操作）。
+2. 屏幕阅读器可读的语义播报（页码、选区、节点类型）。
+3. 焦点管理与高对比模式验证。
+
+里程碑 B（国际化排版）：
+
+1. CJK + 英文混排的行分割策略升级（接入可替换分词器）。
+2. RTL 基础能力（方向、光标移动、选区绘制）补齐。
+3. 本地化字符串集中管理（playground + dev-tools）。
+
+验收标准：
+
+- 新增 `a11ySmoke`、`i18nSmoke`。
+- 关键路径无 keyboard trap，无读屏阻断。
+- 复杂混排文档分页与选区行为稳定。
+
+### P2.3 安全治理（P2.2 后并行启动）
+
+当前进展（2026-02-23）：
+
+- 已新增 `securitySmoke`（粘贴清洗、URL 协议白名单、危险 payload 回归）。
+- 已强化 `pastePolicy`：移除事件属性与 `style`，并对 `href/src` 启用协议白名单。
+- 已下沉到解析层：`schema-basic` link mark、`node-image`、`node-video`、`markdown from_markdown` 均做协议过滤。
+- 已抽取统一安全工具到 `packages/link`，策略从“多处重复实现”收敛为“单点维护”。
+- 已将粘贴清洗核心能力下沉到 `packages/link`（`sanitizePastedHtml` / `normalizePastedText`），并支持可配置策略参数。
+- 已新增 `sanitizeDocJson` 并接入 `CanvasEditorView.setJSON` 与 `createCanvasState`，JSON 导入路径纳入统一 URL 安全策略。
+
+1. 将粘贴清洗策略从 playground 提升为可复用包（核心策略可配置）。（已完成）
+2. URL 协议白名单与媒体源策略统一（链接、图片、视频同一治理面）。
+3. 导入路径（HTML/Markdown/JSON）建立统一 sanitize/validate 链路。（进行中：JSON 已接入）
+4. 增加安全回归冒烟（XSS payload、恶意 URL、事件属性注入）。
+
+验收标准：
+
+- 新增 `securitySmoke`。
+- 危险 payload 全部被拒绝或清洗。
+- 允许名单规则可配置且可审计。
+
+### P2.4 插件生态规范（P2.3 后）
+
+1. 固化插件生命周期与优先级规则（props / plugin props / legacy fallback）。
+2. 发布插件开发模板（node、command、selectionGeometry、decorations）。
+3. 兼容矩阵与版本策略文档化（核心版本 vs 插件版本）。
+4. 示例仓与最小插件集（至少：批注、目录、分页标尺）。
+
+验收标准：
+
+- 提供插件作者指南与模板仓库。
+- 至少 3 个官方示例插件通过 allSmoke。
+
+## 建议执行顺序（“优化完继续”）
+
+1. 先做 P2.2 里程碑 A（无障碍基线），避免后续功能返工。
+2. 并行预研 P2.3 安全治理的数据面与策略面抽象。
+3. P2.2 里程碑 B 与 P2.3 联动完成后，再冻结 P2.4 插件规范。
+
+## 回归开关与联调方式
 
 ```txt
-http://localhost:5173/?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&scrollSmoke=1&readonlySmoke=1&docRoundtripSmoke=1&markdownIoSmoke=1
-
-鎴栵細
-
 http://localhost:5173/?devTools=1&allSmoke=1
-
-鎴栵紙P0 蹇€熷洖褰掞級锛?
 http://localhost:5173/?devTools=1&p0Smoke=1
-
-或（P2 性能预算）：
 http://localhost:5173/?devTools=1&perfBudgetSmoke=1
 ```
 
-鍦ㄨ皟璇曢潰鏉挎垨鎺у埗鍙版煡鐪嬶細
+关键日志：
 
-- `[table-smoke] PASS|FAIL`
-- `[table-behavior-smoke] PASS|FAIL`
-- `[list-smoke] PASS|FAIL`
-- `[list-behavior-smoke] PASS|FAIL`
-- `[block-outline-smoke] PASS|FAIL`
-- `[drag-smoke] PASS|FAIL`
-- `[drag-action-smoke] PASS|FAIL`锛堟枃鏈笌濯掍綋鑺傜偣鎷栨嫿锛?- `[selection-ime-smoke] PASS|FAIL`
-- `[ime-action-smoke] PASS|FAIL`
-- `[selection-boundary-smoke] PASS|FAIL`
-- `[tool-smoke] PASS|FAIL`
-- `[paste-smoke] PASS|FAIL`
-- `[history-smoke] PASS|FAIL`
-- `[mapping-smoke] PASS|FAIL`
-- `[coords-smoke] PASS|FAIL`
-- `[scroll-smoke] PASS|FAIL`
-- `[readonly-smoke] PASS|FAIL`
-- `[doc-roundtrip-smoke] PASS|FAIL`
-- `[html-io-smoke] PASS|FAIL`
-- `[markdown-io-smoke] PASS|FAIL`
-- `[link-smoke] PASS|FAIL`
-- `[perf-budget-smoke] PASS|FAIL`
 - `[all-smoke-summary] total=... pass=... fail=...`
-- `[p0-smoke-summary] total=... pass=... fail=...`
-  - `p0Smoke` 浼氭牎楠?P0 蹇呴渶椤规槸鍚︽紡璺戯紝婕忚窇浼氬湪 summary 鐨?`missing=[...]` 涓粰鍑恒€?
-
+- `[p0-smoke-summary] total=... pass=... fail=... missing=[...]`
+- `[perf-budget-smoke] PASS|FAIL {...}`

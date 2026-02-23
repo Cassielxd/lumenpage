@@ -3,6 +3,7 @@ import MarkdownIt from "markdown-it"
 import Token from "markdown-it/lib/token.mjs"
 import {schema} from "./schema"
 import {Mark, MarkType, Node, Attrs, Schema, NodeType} from "lumenpage-model"
+import { sanitizeImageSrc, sanitizeLinkHref } from "lumenpage-link"
 
 function maybeMerge(a: Node, b: Node): Node | undefined {
   if (a.isText && b.isText && Mark.sameSet(a.marks, b.marks))
@@ -256,7 +257,7 @@ export const defaultMarkdownParser = new MarkdownParser(schema, MarkdownIt("comm
   fence: {block: "code_block", getAttrs: tok => ({params: tok.info || ""}), noCloseToken: true},
   hr: {node: "horizontal_rule"},
   image: {node: "image", getAttrs: tok => ({
-    src: tok.attrGet("src"),
+    src: sanitizeImageSrc(tok.attrGet("src")),
     title: tok.attrGet("title") || null,
     alt: tok.children![0] && tok.children![0].content || null
   })},
@@ -266,8 +267,10 @@ export const defaultMarkdownParser = new MarkdownParser(schema, MarkdownIt("comm
   strong: {mark: "strong"},
   s: {mark: "strike"},
   link: {mark: "link", getAttrs: tok => ({
-    href: tok.attrGet("href"),
+    href: sanitizeLinkHref(tok.attrGet("href")) || "#",
     title: tok.attrGet("title") || null
   })},
   code_inline: {mark: "code", noCloseToken: true}
 })
+
+

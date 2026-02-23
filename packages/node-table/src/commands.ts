@@ -245,13 +245,25 @@ const findTableContext = (state) => {
   return { table, tablePos, rowIndex, colIndex, grid, currentAnchor };
 };
 
-const replaceTable = (state, dispatch, tablePos, table, nextTable) => {
+const replaceTable = (state, dispatch, tablePos, table, nextTable, selectionHint = null) => {
   if (!dispatch) {
     return true;
   }
-  const tr = state.tr
-    .replaceWith(tablePos, tablePos + table.nodeSize, nextTable)
-    .scrollIntoView();
+  let tr = state.tr.replaceWith(tablePos, tablePos + table.nodeSize, nextTable);
+  const mappedTablePos = tr.mapping.map(tablePos, 1);
+  const mappedTable = tr.doc.nodeAt(mappedTablePos);
+  if (mappedTable?.type?.name === "table") {
+    const targetCellPos = resolveCellPosFromHint(mappedTable, mappedTablePos, selectionHint);
+    if (Number.isFinite(targetCellPos)) {
+      try {
+        const $cell = tr.doc.resolve(targetCellPos);
+        tr = tr.setSelection(Selection.near($cell, 1));
+      } catch (_error) {
+        // Keep mapped selection when fallback resolution fails.
+      }
+    }
+  }
+  tr = tr.scrollIntoView();
   dispatch(tr);
   return true;
 };
@@ -273,7 +285,10 @@ const updateRows = (state, dispatch, mutateRows) => {
 
   const tableType = schema.nodes.table;
   const nextTable = tableType.create(context.table.attrs, nextRows, context.table.marks);
-  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable);
+  const selectionHint = context.currentAnchor
+    ? { row: context.currentAnchor.row, col: context.currentAnchor.col }
+    : { row: context.rowIndex, col: context.colIndex };
+  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable, selectionHint);
 };
 
 const resolveCellPos = (table, tablePos, rowIndex, colIndex) => {
@@ -289,6 +304,29 @@ const resolveCellPos = (table, tablePos, rowIndex, colIndex) => {
     pos += row.child(c).nodeSize;
   }
   return pos;
+};
+
+const resolveCellPosFromHint = (table, tablePos, hint) => {
+  const grid = buildTableGrid(table, tablePos);
+  const anchors = grid?.anchors || [];
+  if (anchors.length === 0) {
+    return null;
+  }
+  const rowCount = Math.max(1, grid.matrix.length);
+  const maxCol = Math.max(0, (grid.cols || 1) - 1);
+  const preferredRow = Number.isFinite(hint?.row) ? Number(hint.row) : 0;
+  const preferredCol = Number.isFinite(hint?.col) ? Number(hint.col) : 0;
+  const safeRow = Math.max(0, Math.min(rowCount - 1, preferredRow));
+  const safeCol = Math.max(0, Math.min(maxCol, preferredCol));
+  const exact = findAnchorCoveringCol(grid, safeRow, safeCol);
+  if (Number.isFinite(exact?.pos)) {
+    return exact.pos;
+  }
+  const sameRow = anchors.find((entry) => entry?.row === safeRow);
+  if (Number.isFinite(sameRow?.pos)) {
+    return sameRow.pos;
+  }
+  return Number.isFinite(anchors[0]?.pos) ? anchors[0].pos : null;
 };
 
 const moveToCellByPos = (state, dispatch, cellPos) => {
@@ -539,7 +577,10 @@ export const deleteTableCellSelection = (state, dispatch) => {
 
   const tableType = state.schema.nodes.table;
   const nextTable = tableType.create(context.table.attrs, nextRows, context.table.marks);
-  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable);
+  const selectionHint = context.currentAnchor
+    ? { row: context.currentAnchor.row, col: context.currentAnchor.col }
+    : { row: context.rowIndex, col: context.colIndex };
+  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable, selectionHint);
 };
 
 export const preventDeleteBackwardAtTableCellBoundary = (state) => {
@@ -809,7 +850,12 @@ export const mergeSelectedTableCells = (state, dispatch) => {
 
   const tableType = state.schema.nodes.table;
   const nextTable = tableType.create(context.table.attrs, nextRows, context.table.marks);
-  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable);
+  const selectionHint = Number.isFinite(topLeft?.row) && Number.isFinite(topLeft?.col)
+    ? { row: topLeft.row, col: topLeft.col }
+    : context.currentAnchor
+      ? { row: context.currentAnchor.row, col: context.currentAnchor.col }
+      : { row: context.rowIndex, col: context.colIndex };
+  return replaceTable(state, dispatch, context.tablePos, context.table, nextTable, selectionHint);
 };
 
 export const selectCurrentAndNextTableCell = (state, dispatch) => {

@@ -35,7 +35,9 @@
     "build": "tsc -b",
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "lumenpage-link": "workspace:*"
+  },
   "peerDependencies": {
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",

@@ -3,9 +3,11 @@ import { docPosToTextOffset, textOffsetToDocPos } from "lumenpage-view-canvas";
 import { NodeSelection, TextSelection } from "lumenpage-state";
 import { CellSelection } from "lumenpage-node-table";
 import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
+import { normalizeNavigableHref } from "lumenpage-link";
 import { loadMarkdownModule } from "./markdownBridge";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
-import { initialDocJson } from "../initialDoc";
+import { normalizePastedText, sanitizePastedHtml } from "./pastePolicy";
+import { initialDocPerfJson } from "../initialDoc";
 
 const appendDebugLine = (debugPanelEl: HTMLElement | null, text: string) => {
   const globalObj = globalThis as any;
@@ -1014,9 +1016,64 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
   let mediaDraggingAfterFinish = false;
   let mediaMoved = false;
   let mediaType: string | null = null;
+  let mediaVerticalProbeRan = false;
+  let mediaVerticalTopHandled = false;
+  let mediaVerticalBottomHandled = false;
+  let mediaVerticalTopDropPos: number | null = null;
+  let mediaVerticalBottomDropPos: number | null = null;
+  let mediaVerticalExpectedTopPos: number | null = null;
+  let mediaVerticalExpectedBottomPos: number | null = null;
+  let mediaVerticalProbeFinishHandled = false;
+  let mediaVerticalProbeDraggingAfterFinish = false;
+  let mediaVerticalProbeOk = false;
   if (Number.isFinite(mediaPos)) {
-    mediaType = editorView.state.doc.nodeAt(Number(mediaPos))?.type?.name ?? null;
+    const mediaNode = editorView.state.doc.nodeAt(Number(mediaPos));
+    mediaType = mediaNode?.type?.name ?? null;
     const beforeMediaPos = Number(mediaPos);
+    const mediaNodeSize = Number(mediaNode?.nodeSize ?? 0);
+    const mediaRect = editorView.coordsAtPos(beforeMediaPos);
+    if (mediaRect && mediaNodeSize > 0) {
+      mediaVerticalProbeRan = true;
+      const rectTop = Number(mediaRect.top);
+      const rectBottom = Number(mediaRect.bottom);
+      const rectHeight = Math.max(2, rectBottom - rectTop);
+      const edgePad = Math.max(1, Math.min(3, Math.round(rectHeight * 0.2)));
+      const probeX = Number(mediaRect.left) + 2;
+      const topPoint = {
+        x: probeX,
+        y: rectTop + edgePad,
+      };
+      const bottomPoint = {
+        x: probeX,
+        y: rectBottom - edgePad,
+      };
+      mediaVerticalExpectedTopPos = beforeMediaPos;
+      mediaVerticalExpectedBottomPos = beforeMediaPos + mediaNodeSize;
+      const verticalProbeStarted =
+        dragHandlers.startInternalDragFromNodePos?.(beforeMediaPos, dragEvent) === true;
+      if (verticalProbeStarted) {
+        mediaVerticalTopHandled = dragHandlers.updateInternalDrag?.(dragEvent, topPoint) === true;
+        const topDecoration = dragHandlers.getDropDecoration?.();
+        mediaVerticalTopDropPos =
+          Number.isFinite(topDecoration?.from) ? Number(topDecoration.from) : null;
+        mediaVerticalBottomHandled =
+          dragHandlers.updateInternalDrag?.(dragEvent, bottomPoint) === true;
+        const bottomDecoration = dragHandlers.getDropDecoration?.();
+        mediaVerticalBottomDropPos =
+          Number.isFinite(bottomDecoration?.from) ? Number(bottomDecoration.from) : null;
+        mediaVerticalProbeFinishHandled =
+          dragHandlers.finishInternalDrag?.(dragEvent, bottomPoint) === true;
+        mediaVerticalProbeDraggingAfterFinish = dragHandlers.isInternalDragging?.() === true;
+      }
+      mediaVerticalProbeOk =
+        mediaVerticalTopHandled &&
+        mediaVerticalBottomHandled &&
+        mediaVerticalTopDropPos === mediaVerticalExpectedTopPos &&
+        mediaVerticalBottomDropPos === mediaVerticalExpectedBottomPos &&
+        mediaVerticalProbeFinishHandled &&
+        !mediaVerticalProbeDraggingAfterFinish;
+    }
+
     const mediaDropRanges = findParagraphRanges(editorView.state.doc);
     const mediaDropTarget = mediaDropRanges.length > 0 ? mediaDropRanges[0] : null;
     const mediaDropRect = mediaDropTarget
@@ -1061,7 +1118,8 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
       mediaHasDropDecoration &&
       mediaFinishHandled &&
       !mediaDraggingAfterFinish &&
-      mediaMoved);
+      mediaMoved &&
+      mediaVerticalProbeOk);
 
   const summary = {
     text: {
@@ -1087,6 +1145,16 @@ export const runDragActionSmoke = (editorView: any, debugPanelEl: HTMLElement | 
       mediaFinishHandled,
       mediaDraggingAfterFinish,
       mediaMoved,
+      mediaVerticalProbeRan,
+      mediaVerticalTopHandled,
+      mediaVerticalBottomHandled,
+      mediaVerticalTopDropPos,
+      mediaVerticalBottomDropPos,
+      mediaVerticalExpectedTopPos,
+      mediaVerticalExpectedBottomPos,
+      mediaVerticalProbeFinishHandled,
+      mediaVerticalProbeDraggingAfterFinish,
+      mediaVerticalProbeOk,
       ok: mediaPathOk,
     },
   };
@@ -2053,6 +2121,160 @@ export const runReadonlySmoke = (editorView: any, debugPanelEl: HTMLElement | nu
   appendDebugLine(debugPanelEl, text);
 };
 
+export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const root = editorView?.dom;
+  const input = editorView?._internals?.dom?.input;
+  const ownerDocument =
+    root?.ownerDocument || (typeof document !== "undefined" ? document : null);
+  const statusEl = root?.querySelector?.(".lumenpage-a11y-status") ?? null;
+  if (!root || !input || !statusEl) {
+    const text = "[a11y-smoke] skipped: missing root/input/status element.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const rootRole = root.getAttribute("role");
+  const inputRole = input.getAttribute("role");
+  const rootLabel = root.getAttribute("aria-label");
+  const inputLabel = input.getAttribute("aria-label");
+  const rootMultiline = root.getAttribute("aria-multiline");
+  const inputMultiline = input.getAttribute("aria-multiline");
+  const statusRole = statusEl.getAttribute("role");
+  const statusLive = statusEl.getAttribute("aria-live");
+  const rootTabIndex = Number(root.tabIndex);
+
+  const rootRoleOk = rootRole === "textbox";
+  const inputRoleOk = inputRole === "textbox";
+  const labelSyncOk = !!rootLabel && rootLabel === inputLabel;
+  const multilineSyncOk = rootMultiline === "true" && inputMultiline === "true";
+  const statusRoleOk = statusRole === "status";
+  const statusLiveOk = statusLive === "polite";
+  const tabIndexOk = Number.isFinite(rootTabIndex) && rootTabIndex >= 0;
+
+  let focusApplied = false;
+  let focusReleased = false;
+  if (typeof editorView?.focus === "function") {
+    editorView.focus();
+    focusApplied = editorView.hasFocus?.() === true;
+    if (ownerDocument?.body) {
+      const probe = ownerDocument.createElement("button");
+      probe.type = "button";
+      probe.textContent = "a11y-smoke-probe";
+      probe.style.position = "fixed";
+      probe.style.left = "-10000px";
+      probe.style.top = "0";
+      ownerDocument.body.appendChild(probe);
+      probe.focus();
+      focusReleased = editorView.hasFocus?.() === false;
+      probe.remove();
+    } else {
+      focusReleased = true;
+    }
+  }
+
+  const editable = editorView.editable === true;
+  const rootReadonly = root.getAttribute("aria-readonly");
+  const inputReadonly = input.readOnly === true;
+  const readonlyStateConsistent = editable
+    ? rootReadonly === "false" && !inputReadonly
+    : rootReadonly === "true" && inputReadonly;
+
+  const paragraphPos = findFirstParagraphCursorPos(editorView.state?.doc);
+  let cursorAnnouncement = "";
+  let selectionAnnouncement = "";
+  let cursorAnnouncementOk = false;
+  let selectionAnnouncementOk = false;
+  if (Number.isFinite(paragraphPos)) {
+    let cursorSelection: any;
+    try {
+      cursorSelection = TextSelection.create(editorView.state.doc, Number(paragraphPos));
+    } catch (_error) {
+      cursorSelection = editorView.state.selection.constructor.near(
+        editorView.state.doc.resolve(Number(paragraphPos)),
+        1
+      );
+    }
+    editorView.dispatch(editorView.state.tr.setSelection(cursorSelection).scrollIntoView());
+    cursorAnnouncement = String(statusEl.textContent || "").trim();
+    cursorAnnouncementOk =
+      /cursor/i.test(cursorAnnouncement) &&
+      /page/i.test(cursorAnnouncement) &&
+      /line/i.test(cursorAnnouncement) &&
+      /column/i.test(cursorAnnouncement);
+
+    const selectionEnd = Math.min(
+      Number(editorView.state.doc.content.size || 0),
+      Number(paragraphPos) + 2
+    );
+    if (selectionEnd > Number(paragraphPos)) {
+      let rangeSelection: any;
+      try {
+        rangeSelection = TextSelection.create(editorView.state.doc, Number(paragraphPos), selectionEnd);
+      } catch (_error) {
+        rangeSelection = null;
+      }
+      if (rangeSelection) {
+        editorView.dispatch(editorView.state.tr.setSelection(rangeSelection).scrollIntoView());
+        selectionAnnouncement = String(statusEl.textContent || "").trim();
+        selectionAnnouncementOk =
+          /selection/i.test(selectionAnnouncement) &&
+          /characters/i.test(selectionAnnouncement) &&
+          /page/i.test(selectionAnnouncement);
+      }
+    }
+  }
+
+  const summary = {
+    rootRole,
+    inputRole,
+    rootLabel,
+    inputLabel,
+    rootMultiline,
+    inputMultiline,
+    statusRole,
+    statusLive,
+    rootTabIndex,
+    rootRoleOk,
+    inputRoleOk,
+    labelSyncOk,
+    multilineSyncOk,
+    statusRoleOk,
+    statusLiveOk,
+    tabIndexOk,
+    focusApplied,
+    focusReleased,
+    editable,
+    rootReadonly,
+    inputReadonly,
+    readonlyStateConsistent,
+    cursorAnnouncement,
+    cursorAnnouncementOk,
+    selectionAnnouncement,
+    selectionAnnouncementOk,
+  };
+  const ok =
+    rootRoleOk &&
+    inputRoleOk &&
+    labelSyncOk &&
+    multilineSyncOk &&
+    statusRoleOk &&
+    statusLiveOk &&
+    tabIndexOk &&
+    focusApplied &&
+    focusReleased &&
+    readonlyStateConsistent &&
+    cursorAnnouncementOk &&
+    selectionAnnouncementOk;
+  const text = `[a11y-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
 export const runDocRoundtripSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const state = editorView?.state;
   if (!state?.doc || !state?.schema?.nodeFromJSON) {
@@ -2361,6 +2583,478 @@ export const runLinkInteractionSmoke = (debugPanelEl: HTMLElement | null) => {
   appendDebugLine(debugPanelEl, text);
 };
 
+export const runSecuritySmoke = async (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const normalizedText = normalizePastedText("A\r\nB\rC\u00a0D");
+  const textNormalizeOk = normalizedText === "A\nB\nC D";
+
+  const dangerousHtml = [
+    "<p onclick=\"alert(1)\" style=\"color:red\">x</p>",
+    "<script>alert(1)</script>",
+    "<iframe src=\"https://evil.example\"></iframe>",
+    "<a href=\"javascript:alert(1)\">bad-link</a>",
+    "<a href=\"vbscript:msgbox(1)\">bad-link2</a>",
+    "<img src=\"javascript:alert(1)\" onerror=\"alert(1)\" />",
+    "<img src=\"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\" />",
+  ].join("");
+  const sanitizedDangerous = sanitizePastedHtml(dangerousHtml);
+  const dangerousSanitizedOk =
+    !/script/i.test(sanitizedDangerous) &&
+    !/iframe/i.test(sanitizedDangerous) &&
+    !/onclick=/i.test(sanitizedDangerous) &&
+    !/onerror=/i.test(sanitizedDangerous) &&
+    !/style=/i.test(sanitizedDangerous) &&
+    !/javascript:/i.test(sanitizedDangerous) &&
+    !/vbscript:/i.test(sanitizedDangerous) &&
+    !/data:text\/html/i.test(sanitizedDangerous);
+
+  const safeHtml = [
+    "<a href=\"https://example.com\">safe-link</a>",
+    "<a href=\"/docs/ok\">safe-relative</a>",
+    "<img src=\"data:image/png;base64,AAAA\" alt=\"img\" />",
+  ].join("");
+  const sanitizedSafe = sanitizePastedHtml(safeHtml);
+  const safePreservedOk =
+    /href=\"https:\/\/example\.com/.test(sanitizedSafe) &&
+    /href=\"\/docs\/ok/.test(sanitizedSafe) &&
+    /src=\"data:image\/png;base64,AAAA\"/i.test(sanitizedSafe);
+
+  const hrefCases = [
+    { href: "https://example.com", allowed: true },
+    { href: "/relative/path", allowed: true },
+    { href: "#anchor", allowed: true },
+    { href: "mailto:test@example.com", allowed: true },
+    { href: "tel:+123456", allowed: true },
+    { href: "javascript:alert(1)", allowed: false },
+    { href: "vbscript:msgbox(1)", allowed: false },
+    { href: "data:text/html,<script>alert(1)</script>", allowed: false },
+    { href: "java\nscript:alert(1)", allowed: false },
+  ];
+  const hrefMismatches = hrefCases.filter((item) => {
+    const actual = normalizeNavigableHref(item.href);
+    const ok = item.allowed ? typeof actual === "string" : actual == null;
+    return !ok;
+  });
+  const hrefNormalizeOk = hrefMismatches.length === 0;
+
+  const normalizeDangerousProbe = (value: string) =>
+    String(value || "").trim().toLowerCase().replace(/[\u0000-\u0020]+/g, "");
+  const isDangerousProbe = (value: string) => {
+    const normalized = normalizeDangerousProbe(value);
+    return (
+      normalized.startsWith("javascript:") ||
+      normalized.startsWith("vbscript:") ||
+      normalized.startsWith("data:text/html")
+    );
+  };
+
+  const collectDocSecurityStats = (doc: any) => {
+    const linkHrefs: string[] = [];
+    const imageSrcs: string[] = [];
+    const videoSrcs: string[] = [];
+    doc?.descendants?.((node: any) => {
+      if (node?.isText && Array.isArray(node.marks)) {
+        for (const mark of node.marks) {
+          if (mark?.type?.name === "link" && typeof mark?.attrs?.href === "string") {
+            linkHrefs.push(String(mark.attrs.href));
+          }
+        }
+      }
+      if (node?.type?.name === "image" && typeof node?.attrs?.src === "string") {
+        imageSrcs.push(String(node.attrs.src));
+      }
+      if (node?.type?.name === "video" && typeof node?.attrs?.src === "string") {
+        videoSrcs.push(String(node.attrs.src));
+      }
+      return true;
+    });
+    const unsafeLinks = linkHrefs.filter(isDangerousProbe);
+    const unsafeImages = imageSrcs.filter(isDangerousProbe);
+    const unsafeVideos = videoSrcs.filter(isDangerousProbe);
+    return {
+      linkHrefs,
+      imageSrcs,
+      videoSrcs,
+      unsafeLinks,
+      unsafeImages,
+      unsafeVideos,
+    };
+  };
+
+  let schemaParseOk = false;
+  let schemaParseSkipped = false;
+  let dangerousParsedStats: any = null;
+  let safeParsedStats: any = null;
+  const ownerDocument = editorView?.dom?.ownerDocument || (typeof document !== "undefined" ? document : null);
+  const schema = editorView?.state?.schema;
+  if (!ownerDocument || !schema) {
+    schemaParseSkipped = true;
+  } else {
+    try {
+      const parser = PMDOMParser.fromSchema(schema);
+      const dangerousHost = ownerDocument.createElement("div");
+      dangerousHost.innerHTML = [
+        "<p><a href=\"javascript:alert(1)\">bad-link</a></p>",
+        "<img src=\"javascript:alert(1)\" />",
+        "<video src=\"javascript:alert(1)\"></video>",
+        "<iframe src=\"javascript:alert(1)\"></iframe>",
+      ].join("");
+      const dangerousDoc = parser.parse(dangerousHost);
+      dangerousParsedStats = collectDocSecurityStats(dangerousDoc);
+
+      const safeHost = ownerDocument.createElement("div");
+      safeHost.innerHTML = [
+        "<p><a href=\"https://example.com\">good-link</a></p>",
+        "<img src=\"https://example.com/a.png\" />",
+        "<video src=\"https://example.com/a.mp4\"></video>",
+        "<iframe src=\"https://example.com/embed\"></iframe>",
+      ].join("");
+      const safeDoc = parser.parse(safeHost);
+      safeParsedStats = collectDocSecurityStats(safeDoc);
+
+      schemaParseOk =
+        dangerousParsedStats.unsafeLinks.length === 0 &&
+        dangerousParsedStats.unsafeImages.length === 0 &&
+        dangerousParsedStats.unsafeVideos.length === 0 &&
+        dangerousParsedStats.linkHrefs.length === 0 &&
+        dangerousParsedStats.imageSrcs.length === 0 &&
+        dangerousParsedStats.videoSrcs.length === 0 &&
+        safeParsedStats.unsafeLinks.length === 0 &&
+        safeParsedStats.unsafeImages.length === 0 &&
+        safeParsedStats.unsafeVideos.length === 0 &&
+        safeParsedStats.linkHrefs.length >= 1 &&
+        safeParsedStats.imageSrcs.length >= 1 &&
+        safeParsedStats.videoSrcs.length >= 2;
+    } catch (_error) {
+      schemaParseOk = false;
+    }
+  }
+
+  let markdownParseOk = false;
+  let markdownParseSkipped = false;
+  let markdownStats: any = null;
+  try {
+    const markdownMod = await loadMarkdownModule();
+    const parser = markdownMod?.defaultMarkdownParser;
+    if (!parser?.parse) {
+      markdownParseSkipped = true;
+    } else {
+      const markdownDoc = parser.parse([
+        "[bad](javascript:alert(1))",
+        "",
+        "![badimg](javascript:alert(1))",
+        "",
+        "![okimg](https://example.com/a.png)",
+      ].join("\n"));
+      markdownStats = collectDocSecurityStats(markdownDoc);
+      const parsedResourceCount =
+        Number(markdownStats.linkHrefs?.length || 0) +
+        Number(markdownStats.imageSrcs?.length || 0) +
+        Number(markdownStats.videoSrcs?.length || 0);
+      const strictDroppedAll = parsedResourceCount === 0;
+      markdownParseOk =
+        !!markdownStats &&
+        markdownStats.unsafeLinks.length === 0 &&
+        markdownStats.unsafeImages.length === 0 &&
+        markdownStats.unsafeVideos.length === 0 &&
+        (parsedResourceCount > 0 || strictDroppedAll);
+    }
+  } catch (_error) {
+    markdownParseSkipped = true;
+  }
+
+  let jsonImportOk = false;
+  let jsonImportSkipped = false;
+  let jsonDangerousStats: any = null;
+  let jsonSafeStats: any = null;
+  const getJSON = editorView?.getJSON?.bind(editorView);
+  const setJSON = editorView?.setJSON?.bind(editorView);
+  if (typeof getJSON !== "function" || typeof setJSON !== "function") {
+    jsonImportSkipped = true;
+  } else {
+    const originalJson = getJSON();
+    try {
+      const dangerousJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "bad-link",
+                marks: [{ type: "link", attrs: { href: "javascript:alert(1)" } }],
+              },
+            ],
+          },
+          {
+            type: "image",
+            attrs: { src: "javascript:alert(1)", alt: "bad-image" },
+          },
+          {
+            type: "video",
+            attrs: {
+              src: "javascript:alert(1)",
+              poster: "javascript:alert(1)",
+              width: 320,
+              height: 180,
+              embed: false,
+            },
+          },
+        ],
+      };
+      const safeJson = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "safe-link",
+                marks: [{ type: "link", attrs: { href: "https://example.com" } }],
+              },
+            ],
+          },
+          {
+            type: "image",
+            attrs: { src: "https://example.com/a.png", alt: "safe-image" },
+          },
+          {
+            type: "video",
+            attrs: {
+              src: "https://example.com/a.mp4",
+              poster: "https://example.com/a.poster.png",
+              width: 320,
+              height: 180,
+              embed: false,
+            },
+          },
+        ],
+      };
+
+      const dangerousApplied = setJSON(dangerousJson) === true;
+      await waitRaf();
+      await waitRaf();
+      jsonDangerousStats = collectDocSecurityStats(editorView?.state?.doc);
+      const dangerousJsonOk =
+        dangerousApplied &&
+        !!jsonDangerousStats &&
+        jsonDangerousStats.unsafeLinks.length === 0 &&
+        jsonDangerousStats.unsafeImages.length === 0 &&
+        jsonDangerousStats.unsafeVideos.length === 0 &&
+        jsonDangerousStats.linkHrefs.length === 0;
+
+      const safeApplied = setJSON(safeJson) === true;
+      await waitRaf();
+      await waitRaf();
+      jsonSafeStats = collectDocSecurityStats(editorView?.state?.doc);
+      const safeJsonOk =
+        safeApplied &&
+        !!jsonSafeStats &&
+        jsonSafeStats.unsafeLinks.length === 0 &&
+        jsonSafeStats.unsafeImages.length === 0 &&
+        jsonSafeStats.unsafeVideos.length === 0 &&
+        jsonSafeStats.linkHrefs.length >= 1 &&
+        jsonSafeStats.imageSrcs.length >= 1 &&
+        jsonSafeStats.videoSrcs.length >= 1;
+
+      jsonImportOk = dangerousJsonOk && safeJsonOk;
+    } catch (_error) {
+      jsonImportOk = false;
+    } finally {
+      try {
+        if (originalJson) {
+          setJSON(originalJson);
+          await waitRaf();
+          await waitRaf();
+        }
+      } catch (_error) {
+        // no-op: restore best effort only
+      }
+    }
+  }
+
+  const summary = {
+    textNormalizeOk,
+    dangerousSanitizedOk,
+    safePreservedOk,
+    hrefNormalizeOk,
+    schemaParseOk,
+    schemaParseSkipped,
+    dangerousParsedStats,
+    safeParsedStats,
+    markdownParseOk,
+    markdownParseSkipped,
+    markdownStats,
+    jsonImportOk,
+    jsonImportSkipped,
+    jsonDangerousStats,
+    jsonSafeStats,
+    hrefMismatchCount: hrefMismatches.length,
+    hrefMismatches,
+    sanitizedDangerous,
+    sanitizedSafe,
+  };
+  const ok =
+    textNormalizeOk &&
+    dangerousSanitizedOk &&
+    safePreservedOk &&
+    hrefNormalizeOk &&
+    (schemaParseSkipped || schemaParseOk) &&
+    (markdownParseSkipped || markdownParseOk) &&
+    (jsonImportSkipped || jsonImportOk);
+  const text = `[security-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const getJSON = editorView?.getJSON?.bind(editorView);
+  const setJSON = editorView?.setJSON?.bind(editorView);
+  if (typeof getJSON !== "function" || typeof setJSON !== "function") {
+    const text = "[i18n-smoke] skipped: getJSON/setJSON unavailable.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const original = getJSON();
+  const mixedDoc = {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "中文 English 混排 123，标点。CJK + Latin wrap probe.",
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "مرحبا world שלום RTL probe line for bidi shaping.",
+          },
+        ],
+      },
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: "第二段 mixed：测试行分割与坐标映射稳定。",
+          },
+        ],
+      },
+    ],
+  } as any;
+
+  let applied = false;
+  let lineCount = 0;
+  let finiteLineMetrics = false;
+  let hasCjkText = false;
+  let hasRtlText = false;
+  let coordsOk = false;
+  let roundtripChecked = 0;
+  let roundtripMismatchCount = 0;
+  let roundtripMismatchSample: Array<any> = [];
+  try {
+    applied = setJSON(mixedDoc) === true;
+    await waitRaf();
+    await waitRaf();
+
+    const doc = editorView.state?.doc;
+    const layout = editorView?._internals?.getLayout?.();
+    const lines = (layout?.pages || []).flatMap((page: any) => page?.lines || []);
+    lineCount = lines.length;
+    finiteLineMetrics = lines.every(
+      (line: any) =>
+        Number.isFinite(line?.x) &&
+        Number.isFinite(line?.y) &&
+        Number.isFinite(line?.width) &&
+        Number.isFinite(line?.lineHeight ?? layout?.lineHeight)
+    );
+
+    const text = String(doc?.textBetween?.(0, doc?.content?.size ?? 0, "\n", "\n") || "");
+    hasCjkText = /[\u4e00-\u9fff]/.test(text);
+    hasRtlText = /[\u0590-\u05ff\u0600-\u06ff]/.test(text);
+
+    const ranges = findParagraphRanges(doc);
+    const probeRange = ranges[0] || null;
+    if (probeRange) {
+      const probePositions: number[] = [];
+      const upper = Math.min(probeRange.end, probeRange.start + 8);
+      for (let pos = probeRange.start; pos <= upper; pos += 1) {
+        probePositions.push(pos);
+      }
+      roundtripChecked = probePositions.length;
+      for (const pos of probePositions) {
+        const offset = docPosToTextOffset(doc, pos);
+        const mappedPos = textOffsetToDocPos(doc, offset);
+        if (!Number.isFinite(offset) || !Number.isFinite(mappedPos) || Number(mappedPos) !== Number(pos)) {
+          roundtripMismatchCount += 1;
+          if (roundtripMismatchSample.length < 20) {
+            roundtripMismatchSample.push({ pos, offset, mappedPos });
+          }
+        }
+      }
+
+      const startRect = editorView.coordsAtPos(probeRange.start);
+      const midRect = editorView.coordsAtPos(
+        Math.min(probeRange.end, probeRange.start + Math.max(1, Math.floor((probeRange.end - probeRange.start) / 2)))
+      );
+      const endRect = editorView.coordsAtPos(Math.max(probeRange.start, probeRange.end - 1));
+      const rects = [startRect, midRect, endRect];
+      coordsOk = rects.every(
+        (rect) =>
+          rect != null &&
+          Number.isFinite(Number(rect.left)) &&
+          Number.isFinite(Number(rect.top)) &&
+          Number.isFinite(Number(rect.bottom)) &&
+          Number.isFinite(Number(rect.right))
+      );
+    }
+  } finally {
+    if (original) {
+      setJSON(original);
+    }
+  }
+
+  const summary = {
+    applied,
+    lineCount,
+    finiteLineMetrics,
+    hasCjkText,
+    hasRtlText,
+    coordsOk,
+    roundtripChecked,
+    roundtripMismatchCount,
+    roundtripMismatchSample,
+  };
+  const ok =
+    applied &&
+    lineCount > 0 &&
+    finiteLineMetrics &&
+    hasCjkText &&
+    hasRtlText &&
+    coordsOk &&
+    roundtripMismatchCount === 0;
+  const text = `[i18n-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
 const waitRaf = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve());
@@ -2394,7 +3088,7 @@ export const runPerfBudgetSmoke = async (editorView: any, debugPanelEl: HTMLElem
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("perfBudgetKeepDoc")
       : null;
-  const largeDoc = initialDocJson;
+  const largeDoc = initialDocPerfJson;
   const blockCount = Array.isArray(largeDoc?.content) ? largeDoc.content.length : 0;
 
   const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();

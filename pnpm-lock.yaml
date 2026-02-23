@@ -44,6 +44,9 @@ importers:
       lumenpage-link:
         specifier: workspace:*
         version: link:../../packages/link
+      lumenpage-markdown:
+        specifier: workspace:*
+        version: link:../../packages/markdown
       lumenpage-model:
         specifier: workspace:*
         version: link:../../packages/model
@@ -388,6 +391,9 @@ importers:
       '@types/markdown-it':
         specifier: ^14.0.0
         version: 14.1.2
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
       lumenpage-model:
         specifier: workspace:*
         version: link:../model
@@ -479,6 +485,9 @@ importers:
 
   packages/node-image:
     dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
       lumenpage-model:
         specifier: workspace:*
         version: link:../model
@@ -537,6 +546,9 @@ importers:
 
   packages/node-video:
     dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
       lumenpage-model:
         specifier: workspace:*
         version: link:../model
@@ -566,6 +578,9 @@ importers:
 
   packages/schema-basic:
     dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
       lumenpage-model:
         specifier: workspace:*
         version: link:../model

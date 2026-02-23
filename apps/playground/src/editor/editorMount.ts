@@ -39,6 +39,7 @@ import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { normalizePastedText, sanitizePastedHtml } from "./pastePolicy";
 import {
+  runA11ySmoke,
   runBlockOutlineAlignmentSmoke,
   runCoordsSmoke,
   runScrollIntoViewSmoke,
@@ -47,6 +48,7 @@ import {
   runDragSelectionSmoke,
   runHistorySmoke,
   runHtmlIoSmoke,
+  runI18nSmoke,
   runImeActionSmoke,
   runLinkInteractionSmoke,
   runListBehaviorSmoke,
@@ -57,13 +59,14 @@ import {
   runPasteActionSmoke,
   runPerfBudgetSmoke,
   runReadonlySmoke,
+  runSecuritySmoke,
   runSelectionBoundarySmoke,
   runSelectionImeSmoke,
   runTableBehaviorStrictSmoke,
   runTableNavigationSmoke,
   runToolCommandSmoke,
 } from "./smokeTests";
-import { initialDocJson, initialDocPerfJson } from "../initialDoc";
+import { initialDocJson, initialDocPerfJson, initialDocSmokeJson } from "../initialDoc";
 
 type MountPlaygroundEditorParams = {
   host: HTMLElement;
@@ -79,6 +82,42 @@ type MountedPlaygroundEditor = {
 
 const clearLegacyConfigHits = () => {
   (globalThis as any).__lumenLegacyConfigHits = [];
+};
+
+const shouldUseSmokeDoc = (flags: PlaygroundDebugFlags) => {
+  if (flags.usePerfDoc) {
+    return false;
+  }
+  return (
+    flags.debugAllSmoke ||
+    flags.debugP0Smoke ||
+    flags.debugTableSmoke ||
+    flags.debugTableBehaviorSmoke ||
+    flags.debugListSmoke ||
+    flags.debugListBehaviorSmoke ||
+    flags.debugBlockOutlineSmoke ||
+    flags.debugDragSmoke ||
+    flags.debugDragActionSmoke ||
+    flags.debugSelectionImeSmoke ||
+    flags.debugImeActionSmoke ||
+    flags.debugSelectionBoundarySmoke ||
+    flags.debugToolSmoke ||
+    flags.debugPasteSmoke ||
+    flags.debugHistorySmoke ||
+    flags.debugMappingSmoke ||
+    flags.debugCoordsSmoke ||
+    flags.debugScrollSmoke ||
+    flags.debugReadonlySmoke ||
+    flags.debugA11ySmoke ||
+    flags.debugI18nSmoke ||
+    flags.debugSecuritySmoke ||
+    flags.debugDocRoundtripSmoke ||
+    flags.debugMarkdownIoSmoke ||
+    flags.debugHtmlIoSmoke ||
+    flags.debugLinkSmoke ||
+    flags.debugPerfBudgetSmoke ||
+    flags.debugLegacyConfigSmoke
+  );
 };
 
 // 缂傚倸鍊归悧鐐垫椤愶箑闂柕濞垮劤閺夎棄銆掑顒夊剰闁搞劌宕娆愭姜閹殿喚鎲块梻浣哥氨閸嬫挻鎱ㄩ敐鍕獢闁逞屽墯濡叉帞娆㈤锔解挅闁糕剝娲濋崢顒勬煥濞戞鎼紁p.vue 闂佸憡鐟禍锝囩矆鐎ｎ剚瀚婚柨婵嗩槶閳ь剙顦靛Λ鍐閿濆孩顥婇梻浣规緲缁夋煡鍩€椤戣法绠?
@@ -134,10 +173,15 @@ export const mountPlaygroundEditor = ({
     })
   );
 
+  const initialDoc = flags.usePerfDoc
+    ? initialDocPerfJson
+    : shouldUseSmokeDoc(flags)
+      ? initialDocSmokeJson
+      : initialDocJson;
   const editorState = createCanvasState({
     schema,
     createDocFromText,
-    json: flags.usePerfDoc ? initialDocPerfJson : initialDocJson,
+    json: initialDoc,
     plugins,
   });
   const initBlockIdTr = createBlockIdTransaction(editorState);
@@ -319,6 +363,14 @@ export const mountPlaygroundEditor = ({
       () => runReadonlySmoke(view, tableDebugPanelElement || null)
     );
     enqueueSmoke(
+      flags.debugA11ySmoke,
+      () => runA11ySmoke(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
+      flags.debugI18nSmoke,
+      () => runI18nSmoke(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
       flags.debugDocRoundtripSmoke,
       () => runDocRoundtripSmoke(view, tableDebugPanelElement || null)
     );
@@ -328,6 +380,9 @@ export const mountPlaygroundEditor = ({
     );
     enqueueSmoke(flags.debugLinkSmoke, () =>
       runLinkInteractionSmoke(tableDebugPanelElement || null)
+    );
+    enqueueSmoke(flags.debugSecuritySmoke, () =>
+      runSecuritySmoke(view, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugPerfBudgetSmoke,
@@ -362,9 +417,12 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runCoordsSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runScrollIntoViewSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runReadonlySmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runA11ySmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runI18nSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDocRoundtripSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runHtmlIoSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runLinkInteractionSmoke(tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runSecuritySmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runMarkdownIoSmoke(tableDebugPanelElement || null));
     enqueueSmoke(true, () => runPerfBudgetSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runLegacyConfigSmoke(tableDebugPanelElement || null));

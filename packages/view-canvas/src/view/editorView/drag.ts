@@ -82,16 +82,66 @@ export const createDragHandlers = ({
     dropPos = pos;
     const { color, width } = style;
     const height = resolveLineHeightAtPos(pos);
+    const layoutIndex = getLayoutIndex?.() ?? null;
+    const offset = docPosToTextOffset(getState().doc, pos);
+    const lineInfo = layoutIndex ? getLineAtOffset(layoutIndex, offset) : null;
+    const line = lineInfo?.line ?? null;
+    const lineStart = Number.isFinite(line?.start) ? line.start : null;
+    const lineEnd = Number.isFinite(line?.end) ? line.end : null;
+    const isLineEnd =
+      lineStart != null &&
+      lineEnd != null &&
+      lineEnd > lineStart &&
+      Number(offset) >= Number(lineEnd);
+    const blockType = line?.blockType || null;
+    const isVisualBlock =
+      blockType === "image" || blockType === "video" || blockType === "horizontal_rule";
+    const blockWidth = Number.isFinite(line?.width) ? Number(line.width) : null;
+    const lineX = Number.isFinite(line?.x) ? Number(line.x) : null;
+    const marginLeft = Number.isFinite(settings?.margin?.left) ? Number(settings.margin.left) : null;
+    const marginRight = Number.isFinite(settings?.margin?.right) ? Number(settings.margin.right) : null;
+    const pageWidth = Number.isFinite(settings?.pageWidth) ? Number(settings.pageWidth) : null;
+    const contentWidth =
+      pageWidth != null && marginLeft != null && marginRight != null
+        ? Math.max(1, pageWidth - marginLeft - marginRight)
+        : blockWidth;
+    const isBlockBoundary =
+      lineStart != null &&
+      (Number(offset) <= Number(lineStart) || (lineEnd != null && Number(offset) >= Number(lineEnd)));
     const fromProps = queryEditorProp?.("createDropCursorDecoration", pos, {
       color,
       width,
       height,
+      line,
+      blockType,
+      isVisualBlock,
+      blockWidth,
+      isLineEnd,
+      isBlockBoundary,
+      lineX,
+      marginLeft,
+      contentWidth,
+      offset,
+      lineStart,
+      lineEnd,
     });
     dropDecoration =
       fromProps ??
       Decoration.widget(
         pos,
         (ctx, x, y) => {
+          const thickness = Math.max(1, Math.round(width));
+          if (isBlockBoundary && Number.isFinite(contentWidth) && contentWidth > 0) {
+            const lineStartX = isLineEnd && Number.isFinite(blockWidth) ? x - Number(blockWidth) : x;
+            const left =
+              Number.isFinite(lineX) && Number.isFinite(marginLeft)
+                ? lineStartX - (Number(lineX) - Number(marginLeft))
+                : lineStartX;
+            const top = isLineEnd ? y + height - thickness / 2 : y - thickness / 2;
+            ctx.fillStyle = color;
+            ctx.fillRect(left, top, Number(contentWidth), thickness);
+            return;
+          }
           ctx.fillStyle = color;
           ctx.fillRect(x - width / 2, y, width, height);
         },

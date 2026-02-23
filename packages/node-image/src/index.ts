@@ -1,4 +1,5 @@
-﻿import { type NodeSpec } from "lumenpage-model";
+import { type NodeSpec } from "lumenpage-model";
+import { sanitizeImageSrc } from "lumenpage-link";
 
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
@@ -27,7 +28,7 @@ const resolveOverlayHost = (view) =>
 
 const createImageElement = (node) => {
   const img = document.createElement("img");
-  img.src = node.attrs?.src || "";
+  img.src = sanitizeImageSrc(node.attrs?.src || "");
   img.alt = node.attrs?.alt || "";
   img.decoding = "async";
   img.loading = "lazy";
@@ -63,17 +64,25 @@ export const imageNodeSpec: NodeSpec = {
   parseDOM: [
     {
       tag: "img[src]",
-      getAttrs: (dom) => ({
-        id: readIdAttr(dom),
-        src: dom.getAttribute("src") || "",
-        alt: dom.getAttribute("alt") || "",
-        width: dom.getAttribute("width"),
-        height: dom.getAttribute("height"),
-      }),
+      getAttrs: (dom) => {
+        const src = sanitizeImageSrc(dom.getAttribute("src") || "");
+        if (!src) {
+          return false;
+        }
+        return {
+          id: readIdAttr(dom),
+          src,
+          alt: dom.getAttribute("alt") || "",
+          width: dom.getAttribute("width"),
+          height: dom.getAttribute("height"),
+        };
+      },
     },
   ],
   toDOM(node) {
-    const attrs: Record<string, unknown> = { src: node.attrs?.src || "" };
+    const attrs: Record<string, unknown> = {};
+    const safeSrc = sanitizeImageSrc(node.attrs?.src || "");
+    if (safeSrc) attrs.src = safeSrc;
     if (node.attrs?.id) attrs["data-node-id"] = node.attrs.id;
     if (node.attrs?.alt) attrs.alt = node.attrs.alt;
     if (node.attrs?.width) attrs.width = node.attrs.width;
@@ -87,6 +96,7 @@ export const imageRenderer = {
 
   layoutBlock({ node, settings }) {
     const attrs = node.attrs || {};
+    const safeSrc = sanitizeImageSrc(attrs.src || "");
     const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
     const desiredWidth = toNumber(attrs.width) || Math.min(320, maxWidth);
     const width = Math.max(1, Math.min(maxWidth, desiredWidth));
@@ -102,7 +112,7 @@ export const imageRenderer = {
       x: settings.margin.left,
       blockType: "image",
       blockAttrs: { lineHeight: height, width, height },
-      imageMeta: { src: attrs.src || "", alt: attrs.alt || "", width, height },
+      imageMeta: { src: safeSrc, alt: attrs.alt || "", width, height },
     };
 
     return {
@@ -161,7 +171,7 @@ export const imageRenderer = {
     let currentNode = node;
 
     const updateImage = (nextNode) => {
-      const src = nextNode.attrs?.src || "";
+      const src = sanitizeImageSrc(nextNode.attrs?.src || "");
       if (image.src !== src) image.src = src;
       const alt = nextNode.attrs?.alt || "";
       if (image.alt !== alt) image.alt = alt;
@@ -196,3 +206,6 @@ export const imageRenderer = {
     };
   },
 };
+
+
+

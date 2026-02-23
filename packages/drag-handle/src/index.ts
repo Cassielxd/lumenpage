@@ -330,6 +330,35 @@ export const createDragHandlePlugin = (options: DragHandleOptions) =>
         const color = context?.color || "#2563eb";
         const width = Number.isFinite(context?.width) ? context.width : 2;
         const height = Number.isFinite(context?.height) ? context.height : 22;
+        const isBlockBoundary = context?.isBlockBoundary === true;
+        const isVisualBlock = context?.isVisualBlock === true;
+        const blockWidth = Number.isFinite(context?.blockWidth) ? Number(context.blockWidth) : 0;
+        const isLineEnd = context?.isLineEnd === true;
+        const lineX = Number.isFinite(context?.lineX) ? Number(context.lineX) : null;
+        const marginLeft = Number.isFinite(context?.marginLeft) ? Number(context.marginLeft) : null;
+        const contentWidth = Number.isFinite(context?.contentWidth)
+          ? Math.max(1, Number(context.contentWidth))
+          : blockWidth;
+        if ((isBlockBoundary || isVisualBlock) && contentWidth > 0) {
+          const thickness = Math.max(1, Math.round(width));
+          return Decoration.widget(
+            pos,
+            (ctx, x, y, renderHeight) => {
+              const effectiveHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
+              const lineStartX = isLineEnd ? x - blockWidth : x;
+              const left =
+                Number.isFinite(lineX) && Number.isFinite(marginLeft)
+                  ? lineStartX - (lineX - marginLeft)
+                  : lineStartX;
+              const top = isLineEnd
+                ? y + effectiveHeight - thickness / 2
+                : y - thickness / 2;
+              ctx.fillStyle = color;
+              ctx.fillRect(left, top, contentWidth, thickness);
+            },
+            { side: isLineEnd ? 1 : -1 }
+          );
+        }
         return Decoration.widget(
           pos,
           (ctx, x, y) => {
