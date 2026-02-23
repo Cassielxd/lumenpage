@@ -26,6 +26,15 @@ export const createPointerHandlers = ({
   let pointerAnchorOffset = 0;
   let pointerId = null;
   let pendingInternalDrag = null;
+  let pointerAreaRect: DOMRect | null = null;
+
+  const getPointerAreaRect = () => {
+    if (pointerAreaRect) {
+      return pointerAreaRect;
+    }
+    pointerAreaRect = scrollArea.getBoundingClientRect();
+    return pointerAreaRect;
+  };
 
   const handlePointerDown = (event) => {
     if (event.button !== 0) {
@@ -36,7 +45,7 @@ export const createPointerHandlers = ({
     const fromResolver = resolveDragNodePos?.(event);
     const dragNodePos = Number.isFinite(fromResolver) ? fromResolver : null;
     if (Number.isFinite(dragNodePos)) {
-      const rect = scrollArea.getBoundingClientRect();
+      const rect = getPointerAreaRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       setNodeSelectionAtPos?.(dragNodePos, event);
@@ -58,7 +67,7 @@ export const createPointerHandlers = ({
       return;
     }
 
-    const rect = scrollArea.getBoundingClientRect();
+    const rect = getPointerAreaRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const hit = typeof getHitAtCoords === "function"
@@ -140,7 +149,7 @@ export const createPointerHandlers = ({
 
   const handlePointerMove = (event) => {
     if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
-      const rect = scrollArea.getBoundingClientRect();
+      const rect = getPointerAreaRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
       const dx = x - pendingInternalDrag.startX;
@@ -174,7 +183,7 @@ export const createPointerHandlers = ({
       return;
     }
 
-    const rect = scrollArea.getBoundingClientRect();
+    const rect = getPointerAreaRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const hitOffset = posAtCoords(
@@ -197,12 +206,13 @@ export const createPointerHandlers = ({
     }
     isPointerSelecting = false;
     pointerId = null;
+    pointerAreaRect = null;
   };
 
   const handlePointerUp = (event) => {
     if (pendingInternalDrag && event.pointerId === pendingInternalDrag.pointerId) {
       if (pendingInternalDrag.active) {
-        const rect = scrollArea.getBoundingClientRect();
+        const rect = getPointerAreaRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
         finishInternalDrag?.(event, { x, y });
@@ -217,6 +227,7 @@ export const createPointerHandlers = ({
         setSelectionOffsets(pendingInternalDrag.hitOffset, pendingInternalDrag.hitOffset, true);
       }
       pendingInternalDrag = null;
+      pointerAreaRect = null;
       return;
     }
 

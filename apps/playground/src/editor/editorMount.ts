@@ -34,6 +34,7 @@ import { applyLumenDevTools } from "lumenpage-dev-tools";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
+import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { normalizePastedText, sanitizePastedHtml } from "./pastePolicy";
@@ -88,7 +89,20 @@ export const mountPlaygroundEditor = ({
   flags,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   clearLegacyConfigHits();
-  const settings = createCanvasSettings(flags.debugPerf);
+  const paginationDocWorkerClient =
+    flags.enablePaginationWorker ? new PaginationDocWorkerClient() : null;
+  const settings = createCanvasSettings(
+    flags.debugPerf,
+    flags.enablePaginationWorker,
+    flags.forcePaginationWorker
+  );
+  if (flags.enablePaginationWorker) {
+    settings.paginationWorker = {
+      ...(settings.paginationWorker || {}),
+      enabled: true,
+      provider: paginationDocWorkerClient,
+    };
+  }
   const nodeRegistry = createDefaultNodeRendererRegistry();
 
   const plugins: any[] = [
@@ -458,6 +472,7 @@ export const mountPlaygroundEditor = ({
     destroy: () => {
       detachDevTools?.();
       detachDevTools = null;
+      paginationDocWorkerClient?.destroy?.();
       view.destroy();
     },
   };

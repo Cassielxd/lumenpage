@@ -33,6 +33,8 @@ export type PlaygroundDebugFlags = {
   enableInputRules: boolean;
   enableGapCursor: boolean;
   debugPerf: boolean;
+  enablePaginationWorker: boolean;
+  forcePaginationWorker: boolean;
 };
 
 const resolveQueryParam = (key: string) => {
@@ -104,10 +106,17 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   enableInputRules: resolveDebugFlag("inputRules"),
   enableGapCursor: resolveDebugFlag("gapCursor"),
   debugPerf: resolveDebugFlag("debugPerf"),
+  enablePaginationWorker:
+    resolveDebugFlag("paginationWorker") || resolveDebugFlag("workerUsed"),
+  forcePaginationWorker: resolveDebugFlag("paginationWorkerForce"),
 });
 
 // 编辑器布局配置集中到单独函数，便于复用和后续扩展。
-export const createCanvasSettings = (debugPerf: boolean) => ({
+export const createCanvasSettings = (
+  debugPerf: boolean,
+  enablePaginationWorker = false,
+  forcePaginationWorker = false
+) => ({
   pageWidth: 794,
   pageHeight: 1123,
   pageGap: 24,
@@ -127,4 +136,21 @@ export const createCanvasSettings = (debugPerf: boolean) => ({
   maxPageCache: 32,
   debugPerf,
   disablePageReuse: false,
+  paginationWorker: (enablePaginationWorker
+    ? {
+        enabled: true,
+        mode: "experimental-runs",
+        timeoutMs: 5000,
+        force: forcePaginationWorker,
+        useForDocChanged: true,
+        useForInitial: false,
+        incremental: {
+          enabled: true,
+          maxPages: 24,
+          settleDelayMs: 120,
+        },
+      }
+    : {
+        enabled: false,
+      }) as any,
 });

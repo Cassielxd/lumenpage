@@ -39,6 +39,7 @@ type LayoutFromDocOptions = {
   previousLayout?: LayoutResult | null;
   changeSummary?: LayoutChangeSummary | null;
   docPosToTextOffset?: (doc: any, pos: number) => number;
+  progressiveMaxPages?: number | null;
 };
 
 
@@ -675,6 +676,10 @@ export class LayoutPipeline {
     }
     // 表格分页已修正，恢复增量复用（由 changeSummary 决定重排范围）
     const docPosToTextOffset = options?.docPosToTextOffset ?? null;
+    const progressiveMaxPages = Number.isFinite(options?.progressiveMaxPages)
+      ? Math.max(0, Number(options.progressiveMaxPages))
+      : 0;
+    let progressiveApplied = false;
     // 输出页集合。
     let pages = [];
     // 当前页索引与页容器。
@@ -702,6 +707,7 @@ export class LayoutPipeline {
     let resumeAnchorTargetY: { y: number; relativeY: number } | null = null;
     let resumeAnchorApplied = false;
     let previousPageFirstBlockIdIndex: Map<string, number[]> | null = null;
+    let previousPageSignatureIndex: Map<string, number[]> | null = null;
     const offsetDelta =
       changeSummary?.docChanged && changeSummary?.oldRange && changeSummary?.newRange
         ? Number(changeSummary.newRange.to - changeSummary.newRange.from) -
@@ -709,15 +715,24 @@ export class LayoutPipeline {
         : 0;
     if (previousLayout?.pages?.length) {
       previousPageFirstBlockIdIndex = new Map();
+      previousPageSignatureIndex = new Map();
       for (let idx = 0; idx < previousLayout.pages.length; idx += 1) {
-        const firstLine = previousLayout.pages[idx]?.lines?.[0];
+        const prevPage = previousLayout.pages[idx];
+        const firstLine = prevPage?.lines?.[0];
         const firstBlockId = firstLine?.blockId;
         if (!firstBlockId) {
-          continue;
+          // continue scanning signature index even when first block id is missing
+        } else {
+          const bucket = previousPageFirstBlockIdIndex.get(firstBlockId) || [];
+          bucket.push(idx);
+          previousPageFirstBlockIdIndex.set(firstBlockId, bucket);
         }
-        const bucket = previousPageFirstBlockIdIndex.get(firstBlockId) || [];
-        bucket.push(idx);
-        previousPageFirstBlockIdIndex.set(firstBlockId, bucket);
+        const lineCount = Array.isArray(prevPage?.lines) ? prevPage.lines.length : 0;
+        const sig = getPageSignature(prevPage, 0, false);
+        const sigKey = `${lineCount}:${sig}`;
+        const sigBucket = previousPageSignatureIndex.get(sigKey) || [];
+        sigBucket.push(idx);
+        previousPageSignatureIndex.set(sigKey, sigBucket);
       }
     }
     // 增量布局：在旧布局中定位锚点。
@@ -851,14 +866,49 @@ export class LayoutPipeline {
         candidateSet.add(Number(idx));
       };
       addCandidate(pageIndex);
-      addCandidate(pageIndex - 1);
-      addCandidate(pageIndex + 1);
-      addCandidate(pageIndex - 2);
-      addCandidate(pageIndex + 2);
+      const probeRadius = Number.isFinite(baseSettings?.pageReuseProbeRadius)
+        ? Math.max(2, Number(baseSettings.pageReuseProbeRadius))
+        : 8;
+      for (let delta = 1; delta <= probeRadius; delta += 1) {
+        addCandidate(pageIndex - delta);
+        addCandidate(pageIndex + delta);
+      }
       const pageFirstBlockId = page?.lines?.[0]?.blockId;
       if (pageFirstBlockId && previousPageFirstBlockIdIndex?.has(pageFirstBlockId)) {
         const byBlockId = previousPageFirstBlockIdIndex.get(pageFirstBlockId) || [];
         for (const idx of byBlockId) {
+          addCandidate(idx);
+          addCandidate(idx - 1);
+          addCandidate(idx + 1);
+        }
+      }
+      // changed-range 之后，优先把“覆盖该 rootIndex”的旧页加入候选，
+      // 能减少连续输入时页号漂移导致的 page-not-equivalent。
+      if (Number.isFinite(syncAfterIndex) && Array.isArray(previousLayout?.pages)) {
+        const targetRootIndex = Number(syncAfterIndex);
+        const rootIndexProbeRadius = Number.isFinite(baseSettings?.pageReuseRootIndexProbeRadius)
+          ? Math.max(0, Number(baseSettings.pageReuseRootIndexProbeRadius))
+          : 2;
+        for (let idx = 0; idx < previousLayout.pages.length; idx += 1) {
+          const candidatePage: any = previousLayout.pages[idx];
+          const min = Number(candidatePage?.rootIndexMin);
+          const max = Number(candidatePage?.rootIndexMax);
+          if (!Number.isFinite(min) || !Number.isFinite(max)) {
+            continue;
+          }
+          if (targetRootIndex >= min - rootIndexProbeRadius && targetRootIndex <= max + rootIndexProbeRadius) {
+            addCandidate(idx);
+            addCandidate(idx - 1);
+            addCandidate(idx + 1);
+          }
+        }
+      }
+      const pageLineCount = Array.isArray(page?.lines) ? page.lines.length : 0;
+      const pageSignature = getPageSignature(page, 0, false);
+      const signatureKey = `${pageLineCount}:${pageSignature}`;
+      if (previousPageSignatureIndex?.has(signatureKey)) {
+        const bySignature = previousPageSignatureIndex.get(signatureKey) || [];
+        for (const idx of bySignature) {
           addCandidate(idx);
           addCandidate(idx - 1);
           addCandidate(idx + 1);
@@ -897,6 +947,23 @@ export class LayoutPipeline {
     const finalizePage = () => {
       if (page.lines.length > 0) {
         pages.push(page);
+      }
+      if (progressiveMaxPages > 0 && previousLayout && pages.length >= progressiveMaxPages) {
+        const tailStartIndex = pageIndex + 1;
+        if (tailStartIndex < previousLayout.pages.length) {
+          const reusedTail = cloneAndShiftPages(
+            previousLayout.pages.slice(tailStartIndex),
+            offsetDelta
+          );
+          pages.push(...markReusedPages(reusedTail));
+        }
+        progressiveApplied = true;
+        if (perf) {
+          perf.maybeSyncReason = "progressive-cutoff";
+          perf.syncFromIndex = tailStartIndex;
+        }
+        shouldStop = true;
+        return true;
       }
       if (maybeSync()) {
         return true;
@@ -1532,6 +1599,7 @@ export class LayoutPipeline {
       lineHeight,
       font,
       totalHeight,
+      __progressiveApplied: progressiveApplied,
     };
   }
   // 纯文本分页入口。

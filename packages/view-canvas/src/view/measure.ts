@@ -3,9 +3,22 @@
  * 主要职责：测量文本宽度与字号，带缓存以减少重复计算。
  */
 
-const measureCanvas = document.createElement("canvas");
+const createMeasureContext = () => {
+  if (typeof OffscreenCanvas !== "undefined") {
+    const offscreen = new OffscreenCanvas(1, 1);
+    const ctx = offscreen.getContext("2d");
+    if (ctx) {
+      return ctx;
+    }
+  }
+  if (typeof document !== "undefined" && typeof document.createElement === "function") {
+    const canvas = document.createElement("canvas");
+    return canvas.getContext("2d");
+  }
+  return null;
+};
 
-const measureCtx = measureCanvas.getContext("2d");
+const measureCtx = createMeasureContext();
 
 const measureCache = new Map();
 
@@ -27,9 +40,14 @@ export function measureTextWidth(font, text) {
     return cached;
   }
 
-  measureCtx.font = font;
-
-  const width = measureCtx.measureText(text).width;
+  let width = 0;
+  if (measureCtx) {
+    measureCtx.font = font;
+    width = measureCtx.measureText(text).width;
+  } else {
+    // 极端降级：无 canvas 能力时估算宽度，保证流程不中断。
+    width = (text || "").length * getFontSize(font) * 0.6;
+  }
 
   cache.set(text, width);
 

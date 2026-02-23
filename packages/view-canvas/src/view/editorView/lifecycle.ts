@@ -60,6 +60,7 @@ export const destroyView = (view) => {
   if (rafId) {
     cancelAnimationFrame(rafId);
   }
+  view?._internals?.renderSync?.destroy?.();
 
   if (view.dom.parentNode) {
     view.dom.parentNode.removeChild(view.dom);
