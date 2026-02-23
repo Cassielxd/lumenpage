@@ -53,6 +53,9 @@ export const createRenderSync = ({
   let layoutRafId = 0;
   let stateSyncRafId = 0;
   let overlaySyncRafId = 0;
+  let layoutDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastDocLayoutFinishedAt = 0;
+  let lastDocLayoutMs = 0;
   let pendingOverlaySyncContext: { layout: any; layoutIndex: any } | null = null;
   let lastRenderTimingLogAt = 0;
   let lastSelectionRectsKey = "";
@@ -328,6 +331,21 @@ export const createRenderSync = ({
   };
   const updateLayout = () => {
     const changeSummary = getPendingChangeSummary?.() ?? null;
+    const isDocChanged = changeSummary?.docChanged === true;
+    const ts = now();
+    const rapidDocChanges =
+      isDocChanged && lastDocLayoutFinishedAt > 0 && ts - lastDocLayoutFinishedAt < 140;
+    const heavyLastLayout = lastDocLayoutMs > 120;
+    if (rapidDocChanges && heavyLastLayout) {
+      if (!layoutDebounceTimer) {
+        layoutDebounceTimer = setTimeout(() => {
+          layoutDebounceTimer = null;
+          updateLayout();
+        }, 90);
+      }
+      return;
+    }
+
     const nextPageWidth = resolvePageWidth?.();
     const prevLayout = getLayout?.() ?? null;
     const currentPageWidth = Number(layoutPipeline.settings.pageWidth);
@@ -363,6 +381,10 @@ export const createRenderSync = ({
       changeSummary,
       docPosToTextOffset,
     });
+    if (isDocChanged) {
+      lastDocLayoutFinishedAt = now();
+      lastDocLayoutMs = lastDocLayoutFinishedAt - paginationStart;
+    }
     if (paginationTiming) {
       const ms = Math.round((now() - paginationStart) * 100) / 100;
       const layoutPerf = layoutPipeline?.settings?.__perf?.layout ?? null;
@@ -391,6 +413,10 @@ export const createRenderSync = ({
   };
 
   const scheduleLayout = () => {
+    if (layoutDebounceTimer) {
+      clearTimeout(layoutDebounceTimer);
+      layoutDebounceTimer = null;
+    }
     if (layoutRafId) {
       return;
     }

@@ -701,11 +701,25 @@ export class LayoutPipeline {
     let resumeHasPrefixLines = false;
     let resumeAnchorTargetY: { y: number; relativeY: number } | null = null;
     let resumeAnchorApplied = false;
+    let previousPageFirstBlockIdIndex: Map<string, number[]> | null = null;
     const offsetDelta =
       changeSummary?.docChanged && changeSummary?.oldRange && changeSummary?.newRange
         ? Number(changeSummary.newRange.to - changeSummary.newRange.from) -
           Number(changeSummary.oldRange.to - changeSummary.oldRange.from)
         : 0;
+    if (previousLayout?.pages?.length) {
+      previousPageFirstBlockIdIndex = new Map();
+      for (let idx = 0; idx < previousLayout.pages.length; idx += 1) {
+        const firstLine = previousLayout.pages[idx]?.lines?.[0];
+        const firstBlockId = firstLine?.blockId;
+        if (!firstBlockId) {
+          continue;
+        }
+        const bucket = previousPageFirstBlockIdIndex.get(firstBlockId) || [];
+        bucket.push(idx);
+        previousPageFirstBlockIdIndex.set(firstBlockId, bucket);
+      }
+    }
     // 增量布局：在旧布局中定位锚点。
     if (previousLayout && changeSummary?.docChanged && typeof docPosToTextOffset === "function") {
       const settingsMatch =
@@ -825,9 +839,32 @@ export class LayoutPipeline {
         }
         return false;
       }
-      const candidateIndexes = [pageIndex, pageIndex - 1, pageIndex + 1, pageIndex - 2, pageIndex + 2]
-        .filter((idx) => Number.isFinite(idx))
-        .filter((idx) => idx >= 0 && idx < (previousLayout.pages?.length ?? 0));
+      const candidateSet = new Set<number>();
+      const maxPageIndex = (previousLayout.pages?.length ?? 1) - 1;
+      const addCandidate = (idx) => {
+        if (!Number.isFinite(idx)) {
+          return;
+        }
+        if (idx < 0 || idx > maxPageIndex) {
+          return;
+        }
+        candidateSet.add(Number(idx));
+      };
+      addCandidate(pageIndex);
+      addCandidate(pageIndex - 1);
+      addCandidate(pageIndex + 1);
+      addCandidate(pageIndex - 2);
+      addCandidate(pageIndex + 2);
+      const pageFirstBlockId = page?.lines?.[0]?.blockId;
+      if (pageFirstBlockId && previousPageFirstBlockIdIndex?.has(pageFirstBlockId)) {
+        const byBlockId = previousPageFirstBlockIdIndex.get(pageFirstBlockId) || [];
+        for (const idx of byBlockId) {
+          addCandidate(idx);
+          addCandidate(idx - 1);
+          addCandidate(idx + 1);
+        }
+      }
+      const candidateIndexes = Array.from(candidateSet.values());
       let matchedOldPageIndex = null;
       let lastDiff = null;
       for (const candidateIndex of candidateIndexes) {
