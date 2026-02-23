@@ -33,10 +33,6 @@ export const DEFAULT_SETTINGS = {
     radius: 2,
     inset: 0,
   },
-  blockSelection: {
-    enabled: true,
-    onlyWhenFocused: true,
-  },
   blockSpacing: 8,
   paragraphSpacingBefore: 0,
   paragraphSpacingAfter: 8,

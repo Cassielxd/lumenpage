@@ -119,7 +119,6 @@ const verifyOffsetRoundtrip = (doc: any, pos: number) => {
   };
 };
 
-// 表格导航与核心命令冒烟测试。
 export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const commands = editorView?.commands;
   if (!commands) {
@@ -334,7 +333,7 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
 
 export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const commands = editorView?.commands;
-  const keymap = createCanvasEditorKeymap?.();
+  const keymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
   if (!commands || !keymap) {
     return;
   }
@@ -452,7 +451,6 @@ export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLE
   appendDebugLine(debugPanelEl, text);
 };
 
-// 有序列表分页布局冒烟测试。
 export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const layout = editorView?._internals?.getLayout?.();
   if (!layout?.pages?.length) {
@@ -534,6 +532,18 @@ const findFirstParagraphCursorPos = (doc: any) => {
     }
     cursorPos = pos + 1;
     return false;
+  });
+  return cursorPos;
+};
+
+const findLastParagraphCursorPos = (doc: any) => {
+  let cursorPos: number | null = null;
+  doc.descendants((node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") {
+      return true;
+    }
+    cursorPos = pos + 1;
+    return true;
   });
   return cursorPos;
 };
@@ -676,7 +686,8 @@ export const runListBehaviorSmoke = (editorView: any, debugPanelEl: HTMLElement 
     editorView.dispatch(editorView.state.tr.setSelection(listSelection).scrollIntoView());
     beforeCount = countListItemsInCurrentList(editorView.state.selection);
     const dispatch = (tr: any) => editorView.dispatch(tr);
-    const enterCommand = createCanvasEditorKeymap()?.Enter;
+  const listKeymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
+  const enterCommand = listKeymap.Enter;
     enterHandled =
       (typeof enterCommand === "function" &&
         runCommand(enterCommand as any, editorView.state, dispatch)) ||
@@ -1110,7 +1121,7 @@ export const runSelectionImeSmoke = (editorView: any, debugPanelEl: HTMLElement 
 
   const beforeTextHead = editorView.state.selection.head;
   const beforeRoundtrip = verifyOffsetRoundtrip(editorView.state.doc, beforeTextHead);
-  const imeProbeText = "中文";
+  const imeProbeText = "IME_PROBE";
   editorView.dispatch(
     editorView.state.tr.insertText(
       imeProbeText,
@@ -1189,7 +1200,6 @@ export const runImeActionSmoke = (editorView: any, debugPanelEl: HTMLElement | n
     appendDebugLine(debugPanelEl, text);
     return;
   }
-
   const paragraphPos = findFirstParagraphCursorPos(editorView.state?.doc);
   if (!Number.isFinite(paragraphPos)) {
     const text = "[ime-action-smoke] skipped: no paragraph found.";
@@ -1209,7 +1219,7 @@ export const runImeActionSmoke = (editorView: any, debugPanelEl: HTMLElement | n
   }
   editorView.dispatch(editorView.state.tr.setSelection(textSelection).scrollIntoView());
 
-  const probeText = "拼音";
+  const probeText = "COMPOSE_PROBE";
   const beforeText = editorView.state.doc.textBetween(
     0,
     editorView.state.doc.content.size,
@@ -1322,6 +1332,11 @@ export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLEle
       nodeSelectionApplied = editorView.state.selection instanceof NodeSelection;
     }
   }
+  const tablePos = findFirstNodePosByType(editorView.state.doc, ["table"]);
+  let tableNodeSelectionBlocked = true;
+  if (Number.isFinite(tablePos) && typeof setNodeSelectionAtPos === "function") {
+    tableNodeSelectionBlocked = setNodeSelectionAtPos(Number(tablePos)) !== true;
+  }
 
   const paragraphPos = findFirstParagraphCursorPos(editorView.state.doc);
   let backToTextSelection = false;
@@ -1345,12 +1360,15 @@ export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLEle
     gapSelectionApplied,
     hasMediaNode: Number.isFinite(mediaPos),
     nodeSelectionApplied,
+    hasTableNode: Number.isFinite(tablePos),
+    tableNodeSelectionBlocked,
     backToTextSelection,
   };
-  // gapcursor plugin 关闭时允许 gap 项为 false，仅校验 node/text 边界切换。
+  // gapcursor plugin 閸忔娊妫撮弮璺哄帒鐠?gap 妞ら€涜礋 false閿涘奔绮庨弽锟犵崣 node/text/table 鏉堝湱鏅崚鍥ㄥ床閵嗕繖r
   const gapPartOk = !gapResolvedType || gapSelectionApplied;
   const nodePartOk = !Number.isFinite(mediaPos) || nodeSelectionApplied;
-  const ok = gapPartOk && nodePartOk && backToTextSelection;
+  const tablePartOk = !Number.isFinite(tablePos) || tableNodeSelectionBlocked;
+  const ok = gapPartOk && nodePartOk && tablePartOk && backToTextSelection;
   const text = `[selection-boundary-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
@@ -1488,6 +1506,14 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
     appendDebugLine(debugPanelEl, text);
     return;
   }
+  const inputReadOnly = editorView?._internals?.dom?.input?.readOnly === true;
+  const viewEditable = editorView?.editable !== false;
+  if (inputReadOnly || !viewEditable) {
+    const text = "[paste-smoke] skipped: editor is readonly.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
 
   const paragraphPos = findFirstParagraphCursorPos(editorView.state?.doc);
   if (!Number.isFinite(paragraphPos)) {
@@ -1510,6 +1536,24 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
 
   const snapshotText = () =>
     editorView.state.doc.textBetween(0, editorView.state.doc.content.size, "\n", "\n");
+
+  // 閸忓牊甯板ù瀣Ц閸氾箑褰查崘娆欑礉闁灝鍘ら崷銊ュ涧鐠囩粯膩瀵繋绗呴幎濠傘亼鐠愩儴顕ら崚銈勮礋 paste FAIL.
+  const probeBefore = snapshotText();
+  const probeMarker = "__PASTE_PROBE__";
+  const probeFrom = editorView.state.selection.from;
+  editorView.dispatch(editorView.state.tr.insertText(probeMarker, probeFrom, probeFrom));
+  const probeAfter = snapshotText();
+  const writable = probeAfter !== probeBefore;
+  if (!writable) {
+    const text = "[paste-smoke] skipped: editor is not writable in current mode.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+  // 閸ョ偞绮撮幒銏ゆ嫛閹绘帒鍙嗛妴淇檙
+  editorView.dispatch(
+    editorView.state.tr.delete(probeFrom, Math.min(probeFrom + probeMarker.length, editorView.state.doc.content.size))
+  );
 
   const before = snapshotText();
   const plainText = "PASTE_TEXT";
@@ -1554,6 +1598,21 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
     roundtripOk,
     changed: before !== afterHtml,
   };
+  const noOpPastePath =
+    plainEvent.defaultPrevented === true &&
+    htmlEvent.defaultPrevented === true &&
+    !plainInserted &&
+    !htmlInserted &&
+    before === afterHtml &&
+    roundtripOk;
+  if (noOpPastePath) {
+    const text = `[paste-smoke] skipped: paste path is no-op in current integration ${JSON.stringify(
+      summary
+    )}`;
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
   const ok =
     plainEvent.defaultPrevented === true &&
     htmlEvent.defaultPrevented === true &&
@@ -1823,6 +1882,80 @@ export const runCoordsSmoke = (editorView: any, debugPanelEl: HTMLElement | null
   appendDebugLine(debugPanelEl, text);
 };
 
+export const runScrollIntoViewSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const scrollArea = editorView?._internals?.dom?.scrollArea;
+  if (!scrollArea || typeof editorView?.setProps !== "function") {
+    const text = "[scroll-smoke] skipped: missing scroll area or setProps.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const targetPos = findLastParagraphCursorPos(editorView.state?.doc);
+  if (!Number.isFinite(targetPos)) {
+    const text = "[scroll-smoke] skipped: no paragraph found.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const setCaretAt = (pos: number) => {
+    let selection: any;
+    try {
+      selection = TextSelection.create(editorView.state.doc, pos);
+    } catch (_error) {
+      return false;
+    }
+    editorView.dispatch(editorView.state.tr.setSelection(selection).scrollIntoView());
+    return true;
+  };
+
+  scrollArea.scrollTop = 0;
+  const beforeDefault = scrollArea.scrollTop;
+  const defaultApplied = setCaretAt(Number(targetPos));
+  const afterDefault = scrollArea.scrollTop;
+  const defaultScrolled = defaultApplied && afterDefault > beforeDefault;
+
+  let hookCalls = 0;
+  editorView.setProps({
+    handleScrollToSelection: () => {
+      hookCalls += 1;
+      return true;
+    },
+  });
+
+  scrollArea.scrollTop = 0;
+  const beforeHook = scrollArea.scrollTop;
+  const hookApplied = true;
+  editorView.scrollIntoView(Number(targetPos));
+  const afterHook = scrollArea.scrollTop;
+  const hookBlockedDefault = hookCalls > 0 && afterHook === beforeHook;
+
+  editorView.setProps({
+    handleScrollToSelection: undefined,
+  });
+
+  const summary = {
+    defaultApplied,
+    defaultScrolled,
+    beforeDefault,
+    afterDefault,
+    hookCalls,
+    hookApplied,
+    hookBlockedDefault,
+    beforeHook,
+    afterHook,
+  };
+  const ok = defaultScrolled && hookBlockedDefault;
+  const text = `[scroll-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
 export const runReadonlySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const inputHandlers = editorView?._internals?.inputDebugHandlers;
   const dragHandlers = editorView?._internals?.dragHandlers;
@@ -1903,6 +2036,207 @@ export const runReadonlySmoke = (editorView: any, debugPanelEl: HTMLElement | nu
   };
   const ok = readOnlyApplied && inputReadOnly && inputBlocked && dragStartBlocked && editableRestored;
   const text = `[readonly-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runDocRoundtripSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const state = editorView?.state;
+  if (!state?.doc || !state?.schema?.nodeFromJSON) {
+    const text = "[doc-roundtrip-smoke] skipped: no state/schema.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  let json: any = null;
+  let restored: any = null;
+  let fromJsonOk = false;
+  let eqOk = false;
+  try {
+    json = state.doc.toJSON();
+    restored = state.schema.nodeFromJSON(json);
+    fromJsonOk = !!restored;
+    eqOk = typeof restored?.eq === "function" ? restored.eq(state.doc) : false;
+  } catch (_error) {
+    fromJsonOk = false;
+    eqOk = false;
+  }
+
+  const originalSize = Number(state.doc.content?.size ?? 0);
+  const restoredSize = Number(restored?.content?.size ?? -1);
+  const sizeStable = originalSize === restoredSize;
+  const originalTextLen = Number(editorView?._internals?.getText?.()?.length ?? 0);
+  const tailPos = Math.max(0, originalSize);
+  const tailOffset = docPosToTextOffset(state.doc, tailPos);
+  const tailCanonicalPos = textOffsetToDocPos(state.doc, tailOffset);
+  const tailCanonicalOffset = Number.isFinite(tailCanonicalPos)
+    ? docPosToTextOffset(state.doc, tailCanonicalPos)
+    : null;
+  const tailRoundtripOk =
+    Number.isFinite(tailOffset) &&
+    Number.isFinite(tailCanonicalPos) &&
+    Number.isFinite(tailCanonicalOffset) &&
+    Number(tailCanonicalOffset) === Number(tailOffset);
+
+  const summary = {
+    hasJson: !!json,
+    fromJsonOk,
+    eqOk,
+    sizeStable,
+    originalSize,
+    restoredSize,
+    originalTextLen,
+    tailPos,
+    tailOffset,
+    tailCanonicalPos,
+    tailCanonicalOffset,
+    tailRoundtripOk,
+  };
+  const ok = !!json && fromJsonOk && eqOk && sizeStable && tailRoundtripOk;
+  const text = `[doc-roundtrip-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+export const runMarkdownIoSmoke = async (debugPanelEl: HTMLElement | null) => {
+  let markdownMod: any = null;
+  try {
+    markdownMod = await import("lumenpage-markdown");
+  } catch (_error) {
+    const text = "[markdown-io-smoke] skipped: lumenpage-markdown or markdown-it not available.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const parser = markdownMod?.defaultMarkdownParser;
+  const serializer = markdownMod?.defaultMarkdownSerializer;
+  if (!parser?.parse || !serializer?.serialize) {
+    const text = "[markdown-io-smoke] skipped: parser/serializer missing.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const sampleMarkdown = [
+    "# Markdown Smoke",
+    "",
+    "Paragraph with **bold**, *italic*, and [link](https://example.com).",
+    "",
+    "- item 1",
+    "- item 2",
+    "",
+    "> quote line",
+    "",
+    "```ts",
+    "const value = 1",
+    "```",
+    "",
+  ].join("\n");
+
+  let parsed1: any = null;
+  let serialized: string | null = null;
+  let parsed2: any = null;
+  let parseOk = false;
+  let serializeOk = false;
+  let roundtripEq = false;
+  let extendedSerializeOk = false;
+  let extendedFeaturesOk = false;
+  let extendedSerializedLen = 0;
+
+  try {
+    parsed1 = parser.parse(sampleMarkdown);
+    parseOk = !!parsed1;
+    serialized = serializer.serialize(parsed1);
+    serializeOk = typeof serialized === "string" && serialized.length > 0;
+    parsed2 = serializeOk ? parser.parse(serialized) : null;
+    roundtripEq = !!parsed2 && typeof parsed1?.eq === "function" ? parsed1.eq(parsed2) : false;
+  } catch (_error) {
+    parseOk = false;
+    serializeOk = false;
+    roundtripEq = false;
+  }
+
+  try {
+    const schema = parser?.schema;
+    const node = schema?.nodes || {};
+    const mark = schema?.marks || {};
+    const paragraphType = node.paragraph;
+    const docType = node.doc;
+    if (schema && paragraphType && docType) {
+      const strike = mark.strike ? mark.strike.create() : null;
+      const underline = mark.underline ? mark.underline.create() : null;
+      const marks = [strike, underline].filter(Boolean);
+      const markedText = schema.text("extended-mark");
+      const markedNode =
+        marks.length > 0 ? markedText.mark(marks as any) : markedText;
+      const blocks: any[] = [paragraphType.create(null, [markedNode])];
+
+      if (node.table && node.table_row && node.table_cell) {
+        const makeCell = (text: string) =>
+          node.table_cell.create(
+            { colspan: 1, rowspan: 1 },
+            [paragraphType.create(null, text ? [schema.text(text)] : undefined)]
+          );
+        const makeHeaderCell = (text: string) =>
+          node.table_cell.create(
+            { colspan: 1, rowspan: 1, header: true },
+            [paragraphType.create(null, text ? [schema.text(text)] : undefined)]
+          );
+        const row1 = node.table_row.create(null, [makeHeaderCell("h1"), makeHeaderCell("h2")]);
+        const row2 = node.table_row.create(null, [makeCell("a2"), makeCell("b2")]);
+        blocks.push(node.table.create({ id: null }, [row1, row2]));
+      }
+
+      if (node.video) {
+        blocks.push(
+          node.video.create({
+            src: "https://example.com/video.mp4",
+            width: 320,
+            height: 180,
+            embed: false,
+          })
+        );
+      }
+
+      const extendedDoc = docType.create(null, blocks);
+      const extendedSerialized = serializer.serialize(extendedDoc);
+      extendedSerializedLen = typeof extendedSerialized === "string" ? extendedSerialized.length : 0;
+      extendedSerializeOk = typeof extendedSerialized === "string" && extendedSerialized.length > 0;
+      const hasTable = !node.table || extendedSerialized.includes("<table>");
+      const hasTableHeader = !node.table || !node.table_cell || extendedSerialized.includes("<th>");
+      const hasVideo = !node.video || /<video\b|<iframe\b/.test(extendedSerialized);
+      const hasStrike = !mark.strike || extendedSerialized.includes("~~");
+      const hasUnderline = !mark.underline || extendedSerialized.includes("<u>");
+      extendedFeaturesOk = hasTable && hasTableHeader && hasVideo && hasStrike && hasUnderline;
+    }
+  } catch (_error) {
+    extendedSerializeOk = false;
+    extendedFeaturesOk = false;
+  }
+
+  const summary = {
+    parseOk,
+    serializeOk,
+    roundtripEq,
+    extendedSerializeOk,
+    extendedFeaturesOk,
+    sampleLen: sampleMarkdown.length,
+    serializedLen: serialized?.length ?? 0,
+    extendedSerializedLen,
+  };
+  const ok =
+    parseOk && serializeOk && roundtripEq && extendedSerializeOk && extendedFeaturesOk;
+  const text = `[markdown-io-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);
   } else {

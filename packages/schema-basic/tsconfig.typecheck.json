@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
+      "lumenpage-node-paragraph": ["../node-paragraph/src/index.ts"],
+      "lumenpage-node-heading": ["../node-heading/src/index.ts"],
+      "lumenpage-node-table": ["../node-table/src/index.ts"],
+      "lumenpage-node-list": ["../node-list/src/index.ts"],
+      "lumenpage-node-image": ["../node-image/src/index.ts"],
+      "lumenpage-node-video": ["../node-video/src/index.ts"],
+      "lumenpage-node-blockquote": ["../node-blockquote/src/index.ts"],
+      "lumenpage-node-code-block": ["../node-code-block/src/index.ts"],
+      "lumenpage-node-horizontal-rule": ["../node-horizontal-rule/src/index.ts"],
+      "lumenpage-node-hard-break": ["../node-hard-break/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

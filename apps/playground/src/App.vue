@@ -6,6 +6,7 @@
         <div class="brand">腾讯文档</div>
         <t-input v-model="docTitle" class="title-input" size="small" />
         <t-tag size="small" theme="success" variant="light">已保存</t-tag>
+        <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
       </div>
       <div class="topbar-right">
         <t-button size="small" theme="primary">分享</t-button>
@@ -14,6 +15,7 @@
       </div>
     </t-header>
 
+    <EditorMenuBar :editorView="view" />
     <EditorToolbar ref="toolbarRef" :editorView="view" />
 
   <t-content class="editor-area">
@@ -28,8 +30,9 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
+import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { mountPlaygroundEditor } from "./editor/editorMount";
@@ -42,6 +45,15 @@ const view = shallowRef<CanvasEditorView | null>(null);
 const tableDebugPanel = ref<HTMLElement | null>(null);
 const debugFlags = createPlaygroundDebugFlags();
 const debugTablePagination = debugFlags.debugTablePagination;
+const permissionLabel = computed(() => {
+  if (debugFlags.permissionMode === "readonly") {
+    return "只读态";
+  }
+  if (debugFlags.permissionMode === "comment") {
+    return "评论态";
+  }
+  return "编辑态";
+});
 let detachEditor: null | (() => void) = null;
 
 onMounted(async () => {

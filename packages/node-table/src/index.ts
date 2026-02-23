@@ -321,6 +321,7 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
     attrs: {
       colspan: { default: 1 },
       rowspan: { default: 1 },
+      header: { default: false },
     },
 
     content: "block+",
@@ -332,6 +333,7 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
         getAttrs: (dom) => ({
           colspan: Math.max(1, Number.parseInt(dom.getAttribute("colspan") || "1", 10) || 1),
           rowspan: Math.max(1, Number.parseInt(dom.getAttribute("rowspan") || "1", 10) || 1),
+          header: false,
         }),
       },
       {
@@ -339,6 +341,7 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
         getAttrs: (dom) => ({
           colspan: Math.max(1, Number.parseInt(dom.getAttribute("colspan") || "1", 10) || 1),
           rowspan: Math.max(1, Number.parseInt(dom.getAttribute("rowspan") || "1", 10) || 1),
+          header: true,
         }),
       },
     ],
@@ -353,7 +356,8 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
       if (rowspan > 1) {
         attrs.rowspan = rowspan;
       }
-      return ["td", attrs, 0];
+      const isHeader = node.attrs?.header === true;
+      return [isHeader ? "th" : "td", attrs, 0];
     },
   },
 };
@@ -737,6 +741,7 @@ export const tableRenderer = {
           colStart: logicalCol,
           colspan,
           rowspan,
+          header: cell?.attrs?.header === true,
 
           startOffset: tableOffset,
 
@@ -797,6 +802,7 @@ export const tableRenderer = {
           y: rowTops[r] || 0,
           width: colWidth * Math.max(1, Number.isFinite(cell.colspan) ? cell.colspan : 1),
           height: cellHeight,
+          header: cell.header === true,
         });
       }
     }
@@ -1395,6 +1401,22 @@ export const tableRenderer = {
       const showBottom = !suppressBottom && (!continuesAfter || forceBottom);
 
       ctx.save();
+      // Header cells keep semantic emphasis in canvas mode.
+      if (Array.isArray(cells) && cells.length > 0) {
+        ctx.fillStyle = "#f3f4f6";
+        for (const cell of cells) {
+          if (cell?.header !== true) {
+            continue;
+          }
+          const x = tableX + (Number.isFinite(cell.x) ? cell.x : 0);
+          const y = tableY + (Number.isFinite(cell.y) ? cell.y : 0);
+          const width = Number.isFinite(cell.width) ? cell.width : 0;
+          const height = Number.isFinite(cell.height) ? cell.height : 0;
+          if (width > 0 && height > 0) {
+            ctx.fillRect(x, y, width, height);
+          }
+        }
+      }
       ctx.strokeStyle = "#6b7280";
       ctx.lineWidth = 1;
 

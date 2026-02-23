@@ -38,23 +38,6 @@ export const createRuntimeHelpers = ({
     dom.input.style.top = `${y}px`;
   };
 
-  const isInNodeTypeAtPos = (state, pos, nodeTypeName) => {
-    if (!state?.doc || !Number.isFinite(pos) || !nodeTypeName) {
-      return false;
-    }
-    try {
-      const $pos = state.doc.resolve(pos);
-      for (let depth = $pos.depth; depth >= 0; depth -= 1) {
-        if ($pos.node(depth)?.type?.name === nodeTypeName) {
-          return true;
-        }
-      }
-    } catch (_error) {
-      return false;
-    }
-    return false;
-  };
-
   const isInSpecialStructureAtPos = (state, pos) => {
     const fromProps = queryEditorProp?.("isInSpecialStructureAtPos", state, pos);
     if (typeof fromProps === "boolean") {
@@ -64,7 +47,7 @@ export const createRuntimeHelpers = ({
     if (typeof fromConfig === "function") {
       return fromConfig(state, pos);
     }
-    return isInNodeTypeAtPos(state, pos, "table");
+    return false;
   };
 
   const shouldAutoAdvanceAfterEnter = (args) => {

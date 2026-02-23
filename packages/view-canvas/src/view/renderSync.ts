@@ -1,4 +1,4 @@
-import { buildDecorationDrawData } from "./render/decorations";
+﻿import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
 import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
 export const createRenderSync = ({
@@ -17,9 +17,7 @@ export const createRenderSync = ({
   getSelectionOffsets,
   getDecorations,
   selectionToRects,
-  activeBlockToRects,
   buildLayoutIndex,
-  blockSelectionConfig,
   coordsAtPos,
   logSelection,
   getCaretOffset,
@@ -57,40 +55,65 @@ export const createRenderSync = ({
     status.textContent = `${pageCount} pages | ${focused}`;
   };
 
-  const resolveBlockSelection = () => {
-    const config = blockSelectionConfig || {};
-    const focused = getActiveElement() === inputEl;
-    const onlyWhenFocused = config.onlyWhenFocused !== false;
-    let enabled = config.enabled !== false && (!onlyWhenFocused || focused);
-    let types = Array.isArray(config.types) ? config.types : null;
-    let excludeTypes = Array.isArray(config.excludeTypes) ? config.excludeTypes : null;
-    if (!types && !excludeTypes) {
-      // Default behavior: keep generic block highlight, but avoid table-level flood highlight.
-      excludeTypes = ["table"];
+  // 选区几何扩展点：允许外部替换表格选区矩形计算，核心仅负责分发与兜底。
+  const resolveSelectionGeometry = () => {
+    const fromProps =
+      typeof queryEditorProp === "function" ? queryEditorProp("selectionGeometry") : null;
+    if (fromProps && typeof fromProps === "object") {
+      return fromProps;
+    }
+    return null;
+  };
+
+  // 统一解析“表格相关选区矩形”，优先外部 provider，缺失时回退内置默认实现。
+  const resolveTableSelectionRects = ({
+    layout,
+    editorState,
+    selection,
+    layoutIndex,
+  }: {
+    layout: any;
+    editorState: any;
+    selection: { from: number; to: number };
+    layoutIndex: any;
+  }) => {
+    const geometry = resolveSelectionGeometry();
+    const tableCellRectsResolver =
+      typeof geometry?.tableCellSelectionToRects === "function"
+        ? geometry.tableCellSelectionToRects
+        : tableCellSelectionToRects;
+    const tableRangeRectsResolver =
+      typeof geometry?.tableRangeSelectionToCellRects === "function"
+        ? geometry.tableRangeSelectionToCellRects
+        : tableRangeSelectionToCellRects;
+
+    const tableCellRects = tableCellRectsResolver({
+      layout,
+      selection: editorState?.selection,
+      doc: editorState?.doc,
+      scrollTop: scrollArea.scrollTop,
+      viewportWidth: scrollArea.clientWidth,
+      layoutIndex,
+      docPosToTextOffset,
+    });
+    if (Array.isArray(tableCellRects) && tableCellRects.length > 0) {
+      return [...tableCellRects, ...tableCellRects];
     }
 
-    // 支持通过 EditorProps/PluginProps 下沉活动块高亮策略，避免核心白名单硬编码。
-    const fromProps = typeof queryEditorProp === "function" ? queryEditorProp("blockSelection") : null;
-    if (fromProps === false) {
-      enabled = false;
-    } else if (Array.isArray(fromProps)) {
-      types = fromProps;
-      excludeTypes = null;
-    } else if (fromProps && typeof fromProps === "object") {
-      if (fromProps.enabled === false) {
-        enabled = false;
-      } else if (fromProps.enabled === true) {
-        enabled = !onlyWhenFocused || focused;
-      }
-      if (Array.isArray(fromProps.types)) {
-        types = fromProps.types;
-        excludeTypes = null;
-      }
-      if (Array.isArray(fromProps.excludeTypes)) {
-        excludeTypes = fromProps.excludeTypes;
-      }
+    const tableRangeRects = tableRangeRectsResolver({
+      layout,
+      fromOffset: selection.from,
+      toOffset: selection.to,
+      scrollTop: scrollArea.scrollTop,
+      viewportWidth: scrollArea.clientWidth,
+      layoutIndex,
+      docPosToTextOffset,
+    });
+    if (Array.isArray(tableRangeRects) && tableRangeRects.length > 0) {
+      return [...tableRangeRects, ...tableRangeRects];
     }
-    return { enabled, types, excludeTypes };
+
+    return null;
   };
 
   const scheduleRender = () => {
@@ -114,47 +137,14 @@ export const createRenderSync = ({
           getText().length,
           layoutIndex
         );
-        const tableCellRects = tableCellSelectionToRects({
+        const tableSelectionRects = resolveTableSelectionRects({
           layout,
-          selection: editorState?.selection,
-          doc: editorState?.doc,
-          scrollTop: scrollArea.scrollTop,
-          viewportWidth: scrollArea.clientWidth,
+          editorState,
+          selection,
           layoutIndex,
-          docPosToTextOffset,
         });
-        if (tableCellRects.length > 0) {
-          // Draw twice to increase perceived emphasis for cell-range selections.
-          selectionRects = [...tableCellRects, ...tableCellRects];
-        } else {
-          const tableRangeRects = tableRangeSelectionToCellRects({
-            layout,
-            fromOffset: selection.from,
-            toOffset: selection.to,
-            scrollTop: scrollArea.scrollTop,
-            viewportWidth: scrollArea.clientWidth,
-            layoutIndex,
-          });
-          if (tableRangeRects.length > 0) {
-            selectionRects = [...tableRangeRects, ...tableRangeRects];
-          }
-        }
-        let blockRects = [];
-        const blockSelection = resolveBlockSelection();
-        if (
-          selection.from === selection.to &&
-          blockSelection.enabled &&
-          typeof activeBlockToRects === "function"
-        ) {
-          blockRects = activeBlockToRects(
-            layout,
-            selection.from,
-            scrollArea.scrollTop,
-            scrollArea.clientWidth,
-            getText().length,
-            { blockTypes: blockSelection.types, excludeBlockTypes: blockSelection.excludeTypes },
-            layoutIndex
-          );
+        if (Array.isArray(tableSelectionRects) && tableSelectionRects.length > 0) {
+          selectionRects = tableSelectionRects;
         }
         const decorationData = buildDecorationDrawData({
           layout,
@@ -168,7 +158,7 @@ export const createRenderSync = ({
           coordsAtPos,
         });
         syncNodeViewOverlays?.();
-        renderer.render(layout, scrollArea, getCaretRect(), selectionRects, blockRects, decorationData);
+        renderer.render(layout, scrollArea, getCaretRect(), selectionRects, [], decorationData);
       })
     );
   };
@@ -279,6 +269,7 @@ export const createRenderSync = ({
     dispatchTransaction,
   };
 };
+
 
 
 

@@ -41,9 +41,15 @@ importers:
       lumenpage-kit-basic:
         specifier: workspace:*
         version: link:../../packages/kit-basic
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../packages/link
       lumenpage-model:
         specifier: workspace:*
         version: link:../../packages/model
+      lumenpage-plugin-active-block:
+        specifier: workspace:*
+        version: link:../../packages/plugin-active-block
       lumenpage-state:
         specifier: workspace:*
         version: link:../../packages/state
@@ -72,9 +78,6 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^5.2.0
         version: 5.2.4(vite@5.4.21)(vue@3.5.28(typescript@5.9.3))
-      prosemirror-view:
-        specifier: ^1.41.6
-        version: 1.41.6
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
@@ -123,15 +126,18 @@ importers:
       jsondiffpatch:
         specifier: ^0.7.3
         version: 0.7.3
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../state
+      lumenpage-view-types:
+        specifier: workspace:*
+        version: link:../view-types
       nanoid:
         specifier: ^5.1.6
         version: 5.1.6
-      prosemirror-model:
-        specifier: '>=1.0.0'
-        version: 1.25.4
-      prosemirror-state:
-        specifier: '>=1.0.0'
-        version: 1.4.4
       react-dock:
         specifier: ^0.8.0
         version: 0.8.0(@types/react@19.2.14)(react@19.2.4)
@@ -354,6 +360,9 @@ importers:
       lumenpage-node-video:
         specifier: workspace:*
         version: link:../node-video
+      lumenpage-schema-basic:
+        specifier: workspace:*
+        version: link:../schema-basic
       lumenpage-state:
         specifier: workspace:*
         version: link:../state
@@ -363,6 +372,31 @@ importers:
       lumenpage-view-canvas:
         specifier: workspace:*
         version: link:../view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/link:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/markdown:
+    dependencies:
+      '@types/markdown-it':
+        specifier: ^14.0.0
+        version: 14.1.2
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../model
+      lumenpage-schema-basic:
+        specifier: workspace:*
+        version: link:../schema-basic
+      markdown-it:
+        specifier: ^14.0.0
+        version: 14.1.1
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -517,11 +551,61 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/plugin-active-block:
+    dependencies:
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/schema-basic:
     dependencies:
       lumenpage-model:
         specifier: workspace:*
         version: link:../model
+      lumenpage-node-blockquote:
+        specifier: workspace:*
+        version: link:../node-blockquote
+      lumenpage-node-code-block:
+        specifier: workspace:*
+        version: link:../node-code-block
+      lumenpage-node-hard-break:
+        specifier: workspace:*
+        version: link:../node-hard-break
+      lumenpage-node-heading:
+        specifier: workspace:*
+        version: link:../node-heading
+      lumenpage-node-horizontal-rule:
+        specifier: workspace:*
+        version: link:../node-horizontal-rule
+      lumenpage-node-image:
+        specifier: workspace:*
+        version: link:../node-image
+      lumenpage-node-list:
+        specifier: workspace:*
+        version: link:../node-list
+      lumenpage-node-paragraph:
+        specifier: workspace:*
+        version: link:../node-paragraph
+      lumenpage-node-table:
+        specifier: workspace:*
+        version: link:../node-table
+      lumenpage-node-video:
+        specifier: workspace:*
+        version: link:../node-video
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
 
   packages/state:
     dependencies:
@@ -1717,11 +1801,20 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==, tarball: https://registry.npmmirror.com/@types/json-schema/-/json-schema-7.0.15.tgz}
 
+  '@types/linkify-it@5.0.0':
+    resolution: {integrity: sha512-sVDA58zAw4eWAffKOaQH5/5j3XeayukzDk+ewSsnv3p4yJEZHCCzMDiZM8e0OUrRvmpGZ85jf4yDHkHsgBNr9Q==, tarball: https://registry.npmmirror.com/@types/linkify-it/-/linkify-it-5.0.0.tgz}
+
   '@types/lodash-es@4.17.12':
     resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==, tarball: https://registry.npmmirror.com/@types/lodash-es/-/lodash-es-4.17.12.tgz}
 
   '@types/lodash@4.17.23':
     resolution: {integrity: sha512-RDvF6wTulMPjrNdCoYRC8gNR880JNGT8uB+REUpC2Ns4pRqQJhGz90wh7rgdXDPpCczF3VGktDuFGVnz8zP7HA==, tarball: https://registry.npmmirror.com/@types/lodash/-/lodash-4.17.23.tgz}
+
+  '@types/markdown-it@14.1.2':
+    resolution: {integrity: sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==, tarball: https://registry.npmmirror.com/@types/markdown-it/-/markdown-it-14.1.2.tgz}
+
+  '@types/mdurl@2.0.0':
+    resolution: {integrity: sha512-RGdgjQUZba5p6QEFAVx2OGb8rQDL/cPRG7GiedRzMcJ1tYnUANBncjbSB1NRGwbvjcPeikRABz2nshyPk1bhWg==, tarball: https://registry.npmmirror.com/@types/mdurl/-/mdurl-2.0.0.tgz}
 
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==, tarball: https://registry.npmmirror.com/@types/react-dom/-/react-dom-19.2.3.tgz}
@@ -2253,6 +2346,10 @@ packages:
 
   entities@2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==, tarball: https://registry.npmmirror.com/entities/-/entities-2.2.0.tgz}
+
+  entities@4.5.0:
+    resolution: {integrity: sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw==, tarball: https://registry.npmmirror.com/entities/-/entities-4.5.0.tgz}
+    engines: {node: '>=0.12'}
 
   entities@6.0.1:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==, tarball: https://registry.npmmirror.com/entities/-/entities-6.0.1.tgz}
@@ -2800,6 +2897,9 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==, tarball: https://registry.npmmirror.com/levn/-/levn-0.4.1.tgz}
     engines: {node: '>= 0.8.0'}
 
+  linkify-it@5.0.0:
+    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==, tarball: https://registry.npmmirror.com/linkify-it/-/linkify-it-5.0.0.tgz}
+
   lint-staged@16.2.7:
     resolution: {integrity: sha512-lDIj4RnYmK7/kXMya+qJsmkRFkGolciXjrsZ6PC25GdTfWOAWetR0ZbsNXRAj1EHHImRSalc+whZFg56F5DVow==, tarball: https://registry.npmmirror.com/lint-staged/-/lint-staged-16.2.7.tgz}
     engines: {node: '>=20.17'}
@@ -2853,12 +2953,19 @@ packages:
     resolution: {integrity: sha512-LS9X+dc8KLxXCb8dni79fLIIUA5VyZoyjSMCwTluaXA0o27cCK0bhXkpgw+sTXVpPy/lSO57ilRixqk0vDmtRA==, tarball: https://registry.npmmirror.com/make-dir/-/make-dir-2.1.0.tgz}
     engines: {node: '>=6'}
 
+  markdown-it@14.1.1:
+    resolution: {integrity: sha512-BuU2qnTti9YKgK5N+IeMubp14ZUKUUw7yeJbkjtosvHiP0AZ5c8IAgEMk79D0eC8F23r4Ac/q8cAIFdm2FtyoA==, tarball: https://registry.npmmirror.com/markdown-it/-/markdown-it-14.1.1.tgz}
+    hasBin: true
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==, tarball: https://registry.npmmirror.com/math-intrinsics/-/math-intrinsics-1.1.0.tgz}
     engines: {node: '>= 0.4'}
 
   mdn-data@2.0.14:
     resolution: {integrity: sha512-dn6wd0uw5GsdswPFfsgMp5NSB0/aDe6fK94YJV/AJDYXL6HVLWBsxeq7js7Ad+mU2K9LAlwpk6kN2D5mwCPVow==, tarball: https://registry.npmmirror.com/mdn-data/-/mdn-data-2.0.14.tgz}
+
+  mdurl@2.0.0:
+    resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==, tarball: https://registry.npmmirror.com/mdurl/-/mdurl-2.0.0.tgz}
 
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==, tarball: https://registry.npmmirror.com/merge2/-/merge2-1.4.1.tgz}
@@ -3323,6 +3430,10 @@ packages:
   psl@1.15.0:
     resolution: {integrity: sha512-JZd3gMVBAVQkSs6HdNZo9Sdo0LNcQeMNP3CozBJb3JYC/QUYZTnKxP+f8oWRX4rHP5EurWxqAHTSwUCjlNKa1w==, tarball: https://registry.npmmirror.com/psl/-/psl-1.15.0.tgz}
 
+  punycode.js@2.3.1:
+    resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==, tarball: https://registry.npmmirror.com/punycode.js/-/punycode.js-2.3.1.tgz}
+    engines: {node: '>=6'}
+
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==, tarball: https://registry.npmmirror.com/punycode/-/punycode-2.3.1.tgz}
     engines: {node: '>=6'}
@@ -3722,6 +3833,9 @@ packages:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==, tarball: https://registry.npmmirror.com/typescript/-/typescript-5.9.3.tgz}
     engines: {node: '>=14.17'}
     hasBin: true
+
+  uc.micro@2.1.0:
+    resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==, tarball: https://registry.npmmirror.com/uc.micro/-/uc.micro-2.1.0.tgz}
 
   unbox-primitive@1.1.0:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==, tarball: https://registry.npmmirror.com/unbox-primitive/-/unbox-primitive-1.1.0.tgz}
@@ -5102,11 +5216,20 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
+  '@types/linkify-it@5.0.0': {}
+
   '@types/lodash-es@4.17.12':
     dependencies:
       '@types/lodash': 4.17.23
 
   '@types/lodash@4.17.23': {}
+
+  '@types/markdown-it@14.1.2':
+    dependencies:
+      '@types/linkify-it': 5.0.0
+      '@types/mdurl': 2.0.0
+
+  '@types/mdurl@2.0.0': {}
 
   '@types/react-dom@19.2.3(@types/react@19.2.14)':
     dependencies:
@@ -5761,6 +5884,8 @@ snapshots:
   emoji-regex@10.6.0: {}
 
   entities@2.2.0: {}
+
+  entities@4.5.0: {}
 
   entities@6.0.1: {}
 
@@ -6485,6 +6610,10 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
+  linkify-it@5.0.0:
+    dependencies:
+      uc.micro: 2.1.0
+
   lint-staged@16.2.7:
     dependencies:
       commander: 14.0.3
@@ -6550,9 +6679,20 @@ snapshots:
       pify: 4.0.1
       semver: 5.7.2
 
+  markdown-it@14.1.1:
+    dependencies:
+      argparse: 2.0.1
+      entities: 4.5.0
+      linkify-it: 5.0.0
+      mdurl: 2.0.0
+      punycode.js: 2.3.1
+      uc.micro: 2.1.0
+
   math-intrinsics@1.1.0: {}
 
   mdn-data@2.0.14: {}
+
+  mdurl@2.0.0: {}
 
   merge2@1.4.1: {}
 
@@ -7016,6 +7156,8 @@ snapshots:
   psl@1.15.0:
     dependencies:
       punycode: 2.3.1
+
+  punycode.js@2.3.1: {}
 
   punycode@2.3.1: {}
 
@@ -7514,6 +7656,8 @@ snapshots:
   typedarray@0.0.6: {}
 
   typescript@5.9.3: {}
+
+  uc.micro@2.1.0: {}
 
   unbox-primitive@1.1.0:
     dependencies:

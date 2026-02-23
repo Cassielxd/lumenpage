@@ -8,7 +8,8 @@
       "lumenpage-node-paragraph": ["../node-paragraph/src/index.ts"],
       "lumenpage-node-heading": ["../node-heading/src/index.ts"],
       "lumenpage-node-table": ["../node-table/src/index.ts"],
-      "lumenpage-state": ["../state/src/index.ts"]
+      "lumenpage-state": ["../state/src/index.ts"],
+      "lumenpage-schema-basic": ["../schema-basic/src/index.ts"]
     }
   },
   "include": ["src"]

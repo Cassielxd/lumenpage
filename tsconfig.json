@@ -5,7 +5,16 @@
       "path": "packages/view-canvas"
     },
     {
+      "path": "packages/schema-basic"
+    },
+    {
       "path": "packages/drag-handle"
+    },
+    {
+      "path": "packages/link"
+    },
+    {
+      "path": "packages/markdown"
     },
     {
       "path": "apps/playground"

@@ -172,6 +172,23 @@ const settings = {
 };
 ```
 
+### 6.5 文档 I/O API
+
+`CanvasEditorView` 现提供基础文档读写能力：
+
+- `view.getJSON()`：获取当前文档 JSON 快照。
+- `view.setJSON(json)`：将 JSON 文档替换到当前编辑器实例（保留插件与视图实例）。
+- `view.getTextContent()`：获取当前纯文本快照。
+
+### 6.6 事务权限（插件实现）
+
+权限控制建议通过状态插件的 `filterTransaction(tr, state)` 实现。
+
+- 返回 `false`：阻断本次事务。
+- 返回 `true`：允许事务继续应用。
+
+适用于只读策略、角色权限、敏感节点保护等场景，核心视图层不内置业务权限判断。
+
 ## 7. 架构思想（灵感来源）
 
 - 架构设计灵感来源于 ProseMirror：
@@ -187,8 +204,10 @@ const settings = {
 
 - `apps/playground`：演示应用
 - `packages/view-canvas`：Canvas EditorView 与分页布局引擎
+- `packages/schema-basic`：统一基础 schema（节点/mark 定义）
 - `packages/kit-basic`：默认 schema + commands + registry
 - `packages/drag-handle`：拖拽句柄插件
+- `packages/link`：链接解析与安全跳转工具
 - `packages/node-*`：节点实现包
 - `docs/`：设计文档与差异记录
 
@@ -210,7 +229,7 @@ const settings = {
 
 ### P1（产品可用）
 
-- 粘贴与导入导出：HTML/Markdown/JSON 保真与清洗策略。
+- 粘贴与导入导出：HTML/Markdown/JSON 保真与清洗策略（已接入基础 HTML/Text 粘贴清洗与 JSON 导入导出入口）。
 - 历史与协作：Undo/Redo 边界、批事务、远端选区与冲突收敛。
 - 只读与权限模型：view-only / 受限编辑 / 评论态。
 - 链接与语义交互：编辑态、跳转态、键盘导航、包裹/拆除一致性。
@@ -226,6 +245,13 @@ const settings = {
 ## 11. 回归 Smoke 开关
 
 Playground 支持通过 URL 查询参数开启回归 smoke：
+
+- `?permissionMode=full|comment|readonly`：Playground 权限模式（插件实现）。
+
+说明：
+- `full`：正常编辑。
+- `comment`：当前与 `full` 一致（预留评论态扩展入口）。
+- `readonly`：通过插件阻断文档写入事务，并设置 `editable=false`。
 
 - `?allSmoke=1`：一键执行全套 smoke（推荐本地回归入口）。
 - `?tableSmoke=1`：表格导航与命令冒烟。
@@ -244,11 +270,26 @@ Playground 支持通过 URL 查询参数开启回归 smoke：
 - `?mappingSmoke=1`：`pos <-> offset` 映射冒烟（roundtrip 与单调性）。
 - `?coordsSmoke=1`：`coordsAtPos/posAtCoords` 命中回环冒烟。
 - `?readonlySmoke=1`：只读态冒烟（输入与内部拖拽阻断）。
+- `?docRoundtripSmoke=1`：文档 JSON 往返冒烟（`toJSON -> nodeFromJSON`）。
+- `?markdownIoSmoke=1`：Markdown 解析/序列化回环冒烟（`parse -> serialize -> parse`）。
+
+Playground 额外能力：
+
+- 工具栏提供 `导入JSON/导出JSON`（基于 `CanvasEditorView.setJSON/getJSON`）。
+- 工具栏提供 `导入HTML/导出HTML`（基于 schema DOM parser/serializer）。
+- 工具栏提供历史边界控制：`切分历史`（`closeHistory`）与 `Undo/Redo depth` 显示。
+- 粘贴链路接入 `transformPastedText/transformPastedHTML`：
+  - 统一换行与空格（`CRLF -> LF`，`NBSP -> 空格`）。
+  - 清洗危险标签与事件属性（移除 `script/style/iframe/...`、`on*`、`javascript:` URL）。
+- 链接交互区分编辑态与跳转态：
+  - `full/comment`：`Ctrl/Cmd + 点击` 才跳转，普通点击用于编辑。
+  - `readonly`：单击直接跳转。
+  - 键盘支持 `Ctrl/Cmd + Enter`：当光标位于链接内时直接跳转。
 
 建议联调参数：
 
 ```txt
-?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&readonlySmoke=1
+?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&readonlySmoke=1&docRoundtripSmoke=1
 ```
 
 或直接：

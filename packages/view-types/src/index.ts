@@ -49,14 +49,6 @@ export type EditorProps<T = any> = {
   handlePaste?: (view: EditorView, event: ClipboardEvent, slice?: any) => boolean;
   scrollThreshold?: number | { top?: number; right?: number; bottom?: number; left?: number };
   scrollMargin?: number | { top?: number; right?: number; bottom?: number; left?: number };
-  blockSelection?:
-    | boolean
-    | string[]
-    | {
-        enabled?: boolean;
-        types?: string[];
-        excludeTypes?: string[];
-      };
   dropCursor?:
     | boolean
     | {

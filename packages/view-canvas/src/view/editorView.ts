@@ -1,5 +1,5 @@
 ﻿import { DOMParser as PMDOMParser } from "lumenpage-model";
-import { NodeSelection } from "lumenpage-state";
+import { NodeSelection, Selection } from "lumenpage-state";
 
 import {
   applyTransaction,
@@ -15,7 +15,7 @@ import {
 
 import { createRenderSync } from "./renderSync";
 import { coordsAtPos, posAtCoords } from "./posIndex";
-import { selectionToRects, activeBlockToRects } from "./render/selection";
+import { selectionToRects } from "./render/selection";
 import { buildLayoutIndex } from "./layoutIndex";
 
 import { Renderer } from "./renderer";
@@ -231,9 +231,7 @@ export class CanvasEditorView {
       getSelectionOffsets,
       getDecorations,
       selectionToRects,
-      activeBlockToRects,
       buildLayoutIndex,
-      blockSelectionConfig: settings.blockSelection,
       coordsAtPos,
       logSelection,
       getCaretOffset: () => caretOffset,
@@ -635,6 +633,37 @@ export class CanvasEditorView {
 
   getPaginationInfo() {
     return getViewPaginationInfo(this);
+  }
+
+  // 返回当前文档 JSON 快照。
+  getJSON() {
+    return this.state?.doc?.toJSON?.() ?? null;
+  }
+
+  // 用 JSON 替换当前文档内容（保留现有插件与视图实例）。
+  setJSON(json) {
+    if (!json || !this.state?.schema?.nodeFromJSON) {
+      return false;
+    }
+    let nextDoc = null;
+    try {
+      nextDoc = this.state.schema.nodeFromJSON(json);
+    } catch (_error) {
+      return false;
+    }
+    if (!nextDoc || nextDoc.type?.name !== "doc") {
+      return false;
+    }
+    const tr = this.state.tr.replaceWith(0, this.state.doc.content.size, nextDoc.content);
+    const head = Math.min(this.state.selection?.head ?? 0, tr.doc.content.size);
+    const selection = Selection.near(tr.doc.resolve(Math.max(0, head)), 1);
+    this.dispatch(tr.setSelection(selection).scrollIntoView());
+    return true;
+  }
+
+  // 返回当前编辑器维护的纯文本快照。
+  getTextContent() {
+    return this?._internals?.getText?.() ?? "";
   }
 
   // 绉婚櫎浜嬩欢鐩戝惉涓?DOM銆?

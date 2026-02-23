@@ -61,6 +61,18 @@ export const createSelectionInteractions = ({
     });
   };
 
+  // 与点击命中路径保持一致：优先走白名单，否则允许可选且非 textblock 的节点。
+  const allowDefaultNodeSelection = (node) => {
+    if (!node || !NodeSelection.isSelectable(node)) {
+      return false;
+    }
+    const fromProps = queryEditorProp("nodeSelectionTypes");
+    if (Array.isArray(fromProps) && fromProps.length > 0) {
+      return fromProps.includes(node.type?.name);
+    }
+    return node.isTextblock !== true;
+  };
+
   const setSelectionFromHit = (hit, event) => {
     if (!hit || !hit.line || event?.shiftKey) {
       return false;
@@ -83,7 +95,20 @@ export const createSelectionInteractions = ({
       return false;
     }
     const node = state.doc.nodeAt(pos);
-    if (!node) {
+    if (!node || !NodeSelection.isSelectable(node)) {
+      return false;
+    }
+    // 与点击命中路径对齐：允许通过 isNodeSelectionTarget 拦截节点级选中。
+    const decision = queryEditorProp("isNodeSelectionTarget", {
+      node,
+      pos,
+      hit: null,
+      event: null,
+    });
+    if (decision === false) {
+      return false;
+    }
+    if (decision !== true && !allowDefaultNodeSelection(node)) {
       return false;
     }
     const tr = state.tr.setSelection(NodeSelection.create(state.doc, pos));

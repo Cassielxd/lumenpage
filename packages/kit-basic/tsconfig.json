@@ -40,6 +40,9 @@
       ],
       "lumenpage-node-hard-break": [
         "../node-hard-break/dist/index.d.ts"
+      ],
+      "lumenpage-schema-basic": [
+        "../schema-basic/dist/index.d.ts"
       ]
     }
   },

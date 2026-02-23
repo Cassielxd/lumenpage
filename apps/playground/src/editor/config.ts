@@ -1,5 +1,7 @@
 export type PlaygroundDebugFlags = {
+  permissionMode: "full" | "comment" | "readonly";
   debugAllSmoke: boolean;
+  debugP0Smoke: boolean;
   debugTablePagination: boolean;
   debugTableSmoke: boolean;
   debugTableBehaviorSmoke: boolean;
@@ -16,7 +18,10 @@ export type PlaygroundDebugFlags = {
   debugHistorySmoke: boolean;
   debugMappingSmoke: boolean;
   debugCoordsSmoke: boolean;
+  debugScrollSmoke: boolean;
   debugReadonlySmoke: boolean;
+  debugDocRoundtripSmoke: boolean;
+  debugMarkdownIoSmoke: boolean;
   debugDuplicateDecorations: boolean;
   debugDevTools: boolean;
   enableInputRules: boolean;
@@ -24,12 +29,32 @@ export type PlaygroundDebugFlags = {
   debugPerf: boolean;
 };
 
-export const resolveDebugFlag = (key: string) => {
+const resolveQueryParam = (key: string) => {
   if (typeof window === "undefined") {
-    return false;
+    return null;
   }
   const params = new URLSearchParams(window.location.search);
   const value = params.get(key);
+  if (value == null) {
+    return null;
+  }
+  return value.trim();
+};
+
+const resolvePermissionMode = (): "full" | "comment" | "readonly" => {
+  const value = resolveQueryParam("permissionMode");
+  const normalized = (value || "").toLowerCase();
+  if (normalized === "comment") {
+    return "comment";
+  }
+  if (normalized === "readonly" || normalized === "read-only" || normalized === "read_only") {
+    return "readonly";
+  }
+  return "full";
+};
+
+export const resolveDebugFlag = (key: string) => {
+  const value = resolveQueryParam(key);
   if (!value) {
     return false;
   }
@@ -39,7 +64,9 @@ export const resolveDebugFlag = (key: string) => {
 
 // Playground 调试开关集中管理，避免散落在页面组件中。
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
+  permissionMode: resolvePermissionMode(),
   debugAllSmoke: resolveDebugFlag("allSmoke"),
+  debugP0Smoke: resolveDebugFlag("p0Smoke"),
   debugTablePagination: resolveDebugFlag("debugTablePagination"),
   debugTableSmoke: resolveDebugFlag("tableSmoke"),
   debugTableBehaviorSmoke: resolveDebugFlag("tableBehaviorSmoke"),
@@ -56,7 +83,10 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugHistorySmoke: resolveDebugFlag("historySmoke"),
   debugMappingSmoke: resolveDebugFlag("mappingSmoke"),
   debugCoordsSmoke: resolveDebugFlag("coordsSmoke"),
+  debugScrollSmoke: resolveDebugFlag("scrollSmoke"),
   debugReadonlySmoke: resolveDebugFlag("readonlySmoke"),
+  debugDocRoundtripSmoke: resolveDebugFlag("docRoundtripSmoke"),
+  debugMarkdownIoSmoke: resolveDebugFlag("markdownIoSmoke"),
   debugDuplicateDecorations: resolveDebugFlag("dupDecor"),
   debugDevTools: resolveDebugFlag("devTools"),
   enableInputRules: resolveDebugFlag("inputRules"),

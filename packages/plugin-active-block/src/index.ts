@@ -13,7 +13,7 @@ const resolveActiveTopLevelRange = (state: any) => {
   if (!selection || !state?.doc) {
     return null;
   }
-  // 和原有行为保持一致：仅光标态 + NodeSelection 显示活动块边框。
+  // Keep previous behavior: only collapsed selection and NodeSelection show active block outline.
   if (!(selection instanceof NodeSelection) && !selection.empty) {
     return null;
   }
@@ -76,7 +76,7 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
   ]);
 };
 
-// 活动块高亮插件：以 decorations 扩展“当前块边框”视觉，不耦合核心渲染逻辑。
+// Active block outline plugin. Visual behavior is fully driven by decorations.
 export const createActiveBlockSelectionPlugin = (options: ActiveBlockPluginOptions = {}) =>
   new Plugin({
     state: {
@@ -85,8 +85,6 @@ export const createActiveBlockSelectionPlugin = (options: ActiveBlockPluginOptio
         createActiveBlockDecorations(newState, options),
     },
     props: {
-      // 关闭核心内置块高亮，完全由本插件接管活动块视觉。
-      blockSelection: false,
       decorations(state: any) {
         return (this as any).getState(state) || null;
       },

@@ -28,11 +28,7 @@ export const createNodeViewManager = ({
     if (defaultNodeSelectionTypes) {
       return defaultNodeSelectionTypes.has(node.type?.name);
     }
-    // Default behavior aligns with PM table UX:
-    // table internals should keep text/cell selection semantics, not NodeSelection on table.
-    if (node.type?.name === "table") {
-      return false;
-    }
+    // Default behavior: selectable non-textblock nodes can become NodeSelection targets.
     return node.isTextblock !== true;
   };
 
@@ -440,9 +436,6 @@ export const createNodeViewManager = ({
         hit: null,
         event,
       });
-      if (decision !== true && entry?.node?.type?.name === "table") {
-        return false;
-      }
       if (
         decision !== true &&
         (decision === false || !allowDefaultNodeSelection(entry.node))

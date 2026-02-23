@@ -15,6 +15,7 @@
     "lumenpage-commands": "workspace:*",
     "lumenpage-history": "workspace:*",
     "lumenpage-keymap": "workspace:*",
+    "lumenpage-link": "workspace:*",
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",
     "lumenpage-transform": "workspace:*",

@@ -10,7 +10,12 @@
       "lumenpage-node-paragraph": ["../../packages/node-paragraph/dist/index.d.ts"],
       "lumenpage-node-heading": ["../../packages/node-heading/dist/index.d.ts"],
       "lumenpage-node-table": ["../../packages/node-table/dist/index.d.ts"],
-      "lumenpage-keymap": ["../../packages/keymap/dist/index.d.ts"]
+      "lumenpage-state": ["../../packages/state/dist/index.d.ts"],
+      "lumenpage-transform": ["../../packages/transform/dist/index.d.ts"],
+      "lumenpage-keymap": ["../../packages/keymap/dist/index.d.ts"],
+      "lumenpage-link": ["../../packages/link/src/index.ts"],
+      "lumenpage-schema-basic": ["../../packages/schema-basic/src/index.ts"],
+      "lumenpage-markdown": ["../../packages/markdown/src/index.ts"]
     }
   },
   "include": ["src", "src/**/*.vue"]

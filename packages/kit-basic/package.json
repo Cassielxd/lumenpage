@@ -31,6 +31,7 @@
     "lumenpage-node-paragraph": "workspace:*",
     "lumenpage-node-table": "workspace:*",
     "lumenpage-state": "workspace:*",
+    "lumenpage-schema-basic": "workspace:*",
     "lumenpage-transform": "workspace:*",
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-node-video": "workspace:*",

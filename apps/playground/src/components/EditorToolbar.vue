@@ -24,6 +24,12 @@
             <Icon name="arrow-right" />
           </t-button>
         </t-tooltip>
+        <t-tooltip content="切分历史分组（下一次编辑独立撤销）">
+          <t-button size="small" variant="text" class="icon-btn" @click="markHistoryBoundary">
+            <span class="history-cut">||</span>
+          </t-button>
+        </t-tooltip>
+        <span class="history-depth">U{{ undoDepthCount }}/R{{ redoDepthCount }}</span>
       </div>
 
       <t-divider layout="vertical" class="toolbar-divider" />
@@ -155,69 +161,11 @@
       <t-divider layout="vertical" class="toolbar-divider" />
 
       <div class="toolbar-group">
-        <t-popup trigger="click" placement="bottom">
-          <template #content>
-            <div class="table-tools-panel" @mousedown.prevent>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('addTableRowAfter')"
-                @click="addTableRowAfter"
-              >
-                表格加行
-              </t-button>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('deleteTableRow')"
-                @click="deleteTableRow"
-              >
-                表格删行
-              </t-button>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('addTableColumnAfter')"
-                @click="addTableColumnAfter"
-              >
-                表格加列
-              </t-button>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('deleteTableColumn')"
-                @click="deleteTableColumn"
-              >
-                表格删列
-              </t-button>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('mergeTableCellRight')"
-                @click="mergeTableCellRight"
-              >
-                合并右侧单元格
-              </t-button>
-              <t-button
-                size="small"
-                variant="text"
-                block
-                :disabled="!canRun('splitTableCell')"
-                @click="splitTableCell"
-              >
-                拆分单元格
-              </t-button>
-            </div>
-          </template>
+        <t-dropdown :options="tableMenuOptions" trigger="click" @click="handleTableMenuClick">
           <t-button size="small" variant="outline" class="table-tools-btn">
             <Icon name="table" />
           </t-button>
-        </t-popup>
+        </t-dropdown>
       </div>
     </div>
     <div class="toolbar-right">
@@ -274,7 +222,9 @@
             </div>
           </div>
         </template>
-        <t-button size="small" variant="outline">设置</t-button>
+        <t-button size="small" variant="outline" class="settings-icon-btn" title="设置">
+          <Icon name="setting-1" />
+        </t-button>
       </t-popup>
       <span ref="statusEl" class="status">0 pages</span>
     </div>
@@ -285,6 +235,7 @@
 import { computed, ref, toRaw, watch } from "vue";
 import { Icon } from "tdesign-icons-vue-next";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
+import { closeHistory, redoDepth, undoDepth } from "lumenpage-history";
 
 const props = defineProps<{
   editorView: CanvasEditorView | null;
@@ -468,6 +419,15 @@ const handleToolbarMouseDown = (event: MouseEvent) => {
 
 const runUndo = () => runWithNotice("undo", "当前没有可撤销的操作");
 const runRedo = () => runWithNotice("redo", "当前没有可重做的操作");
+const markHistoryBoundary = () => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  if (!view?.state?.tr) {
+    return false;
+  }
+  const tr = closeHistory(view.state.tr);
+  view.dispatch(tr);
+  return true;
+};
 const toggleBold = () => run("toggleBold");
 const toggleItalic = () => run("toggleItalic");
 const toggleUnderline = () => run("toggleUnderline");
@@ -552,6 +512,41 @@ const mergeTableCellRight = () =>
   runWithNotice("mergeTableCellRight", "当前单元格无法向右合并");
 const splitTableCell = () => runWithNotice("splitTableCell", "当前单元格无法拆分");
 
+const tableMenuOptions = computed(() => [
+  { content: "表格加行", value: "addTableRowAfter", disabled: !canRun("addTableRowAfter") },
+  { content: "表格删行", value: "deleteTableRow", disabled: !canRun("deleteTableRow") },
+  { content: "表格加列", value: "addTableColumnAfter", disabled: !canRun("addTableColumnAfter") },
+  { content: "表格删列", value: "deleteTableColumn", disabled: !canRun("deleteTableColumn") },
+  { content: "合并右侧单元格", value: "mergeTableCellRight", disabled: !canRun("mergeTableCellRight") },
+  { content: "拆分单元格", value: "splitTableCell", disabled: !canRun("splitTableCell") },
+]);
+
+const handleTableMenuClick = (payload: any) => {
+  const value = payload?.value ?? payload;
+  switch (value) {
+    case "addTableRowAfter":
+      addTableRowAfter();
+      break;
+    case "deleteTableRow":
+      deleteTableRow();
+      break;
+    case "addTableColumnAfter":
+      addTableColumnAfter();
+      break;
+    case "deleteTableColumn":
+      deleteTableColumn();
+      break;
+    case "mergeTableCellRight":
+      mergeTableCellRight();
+      break;
+    case "splitTableCell":
+      splitTableCell();
+      break;
+    default:
+      break;
+  }
+};
+
 const handleBlockTypeChange = (value: string) => {
   if (value === "paragraph") {
     run("setBlockType", "paragraph");
@@ -570,6 +565,22 @@ watch(blockType, (value) => {
 });
 
 const statusEl = ref<HTMLElement | null>(null);
+
+const undoDepthCount = computed(() => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  if (!view?.state) {
+    return 0;
+  }
+  return undoDepth(view.state) || 0;
+});
+
+const redoDepthCount = computed(() => {
+  const view = props.editorView ? toRaw(props.editorView) : null;
+  if (!view?.state) {
+    return 0;
+  }
+  return redoDepth(view.state) || 0;
+});
 
 const applyLineHeightMultiplier = (value: number) => {
   const view = props.editorView ? toRaw(props.editorView) : null;
@@ -772,6 +783,20 @@ defineExpose({ statusEl });
   color: #8f959e;
 }
 
+.history-cut {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.history-depth {
+  font-size: 11px;
+  color: #8f959e;
+  padding-left: 2px;
+  min-width: 48px;
+}
+
 .settings-panel {
   padding: 10px 12px;
   min-width: 160px;
@@ -802,11 +827,17 @@ defineExpose({ statusEl });
   gap: 4px;
 }
 
-.table-tools-panel {
-  display: flex;
-  flex-direction: column;
-  min-width: 168px;
-  padding: 6px;
-  gap: 2px;
+.settings-icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #d9dce3 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
 }
+
+.settings-icon-btn :deep(.t-icon) {
+  font-size: 16px;
+}
+
 </style>

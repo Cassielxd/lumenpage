@@ -1,36 +1,41 @@
-﻿{
+{
   "name": "lumenpage-schema-basic",
   "version": "0.0.1",
-  "description": "Basic schema elements for ProseMirror",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts",
       "development": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "require": "./src/index.ts"
     }
   },
-  "sideEffects": false,
-  "license": "MIT",
-  "maintainers": [
-    {
-      "name": "Marijn Haverbeke",
-      "email": "marijn@haverbeke.berlin",
-      "web": "http://marijnhaverbeke.nl"
-    }
+  "files": [
+    "dist"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/prosemirror/prosemirror-schema-basic.git"
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
   },
   "dependencies": {
-    "lumenpage-model": "workspace:*"
+    "lumenpage-model": "workspace:*",
+    "lumenpage-node-blockquote": "workspace:*",
+    "lumenpage-node-code-block": "workspace:*",
+    "lumenpage-node-hard-break": "workspace:*",
+    "lumenpage-node-heading": "workspace:*",
+    "lumenpage-node-horizontal-rule": "workspace:*",
+    "lumenpage-node-image": "workspace:*",
+    "lumenpage-node-list": "workspace:*",
+    "lumenpage-node-paragraph": "workspace:*",
+    "lumenpage-node-table": "workspace:*",
+    "lumenpage-node-video": "workspace:*",
+    "lumenpage-view-canvas": "workspace:*"
   },
-  "scripts": {}
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
 }
-

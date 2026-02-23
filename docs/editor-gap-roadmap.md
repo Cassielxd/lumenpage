@@ -39,6 +39,7 @@
 - 验收标准：
   - 至少包含表格、列表、块容器几何 3 类 smoke。
   - 每次改动可快速执行并产出 PASS/FAIL 明确结论。
+  - `allSmoke` 汇总已改为串行等待异步 smoke（含 markdown I/O），避免统计提前结束。
 
 ## P1 清单（产品化）
 
@@ -58,6 +59,7 @@
 ## 已开始的第一批完善
 
 - 新增 Playground 回归开关：
+  - `p0Smoke=1`（仅执行 P0 必需子集，快速回归）
   - `allSmoke=1`（一键执行全套）
   - `tableSmoke=1`
   - `tableBehaviorSmoke=1`
@@ -74,17 +76,26 @@
   - `historySmoke=1`
   - `mappingSmoke=1`
   - `coordsSmoke=1`
+  - `scrollSmoke=1`
   - `readonlySmoke=1`
+  - `docRoundtripSmoke=1`
+  - `markdownIoSmoke=1`
 - 新增 `blockOutlineSmoke`，用于检查 `code_block` 和 `blockquote` 的块容器几何一致性，提前发现“选中框与可视块错位”问题。
+- 核心视图新增基础文档 I/O API：`getJSON / setJSON / getTextContent`，为导入导出与模板能力提供统一入口。
+- 权限控制采用插件 `filterTransaction`，核心视图层不引入业务权限耦合。
 
 ## 使用方式
 
 ```txt
-http://localhost:5173/?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&readonlySmoke=1
+http://localhost:5173/?devTools=1&tableSmoke=1&tableBehaviorSmoke=1&listSmoke=1&listBehaviorSmoke=1&blockOutlineSmoke=1&dragSmoke=1&dragActionSmoke=1&selectionImeSmoke=1&imeActionSmoke=1&selectionBoundarySmoke=1&toolSmoke=1&pasteSmoke=1&historySmoke=1&mappingSmoke=1&coordsSmoke=1&scrollSmoke=1&readonlySmoke=1&docRoundtripSmoke=1&markdownIoSmoke=1
 
 或：
 
 http://localhost:5173/?devTools=1&allSmoke=1
+
+或（P0 快速回归）：
+
+http://localhost:5173/?devTools=1&p0Smoke=1
 ```
 
 在调试面板或控制台查看：
@@ -104,5 +115,10 @@ http://localhost:5173/?devTools=1&allSmoke=1
 - `[history-smoke] PASS|FAIL`
 - `[mapping-smoke] PASS|FAIL`
 - `[coords-smoke] PASS|FAIL`
+- `[scroll-smoke] PASS|FAIL`
 - `[readonly-smoke] PASS|FAIL`
+- `[doc-roundtrip-smoke] PASS|FAIL`
+- `[markdown-io-smoke] PASS|FAIL`
 - `[all-smoke-summary] total=... pass=... fail=...`
+- `[p0-smoke-summary] total=... pass=... fail=...`
+  - `p0Smoke` 会校验 P0 必需项是否漏跑，漏跑会在 summary 的 `missing=[...]` 中给出。
