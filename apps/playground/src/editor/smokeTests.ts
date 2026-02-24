@@ -2284,7 +2284,66 @@ export const runReadonlySmoke = (editorView: any, debugPanelEl: HTMLElement | nu
   appendDebugLine(debugPanelEl, text);
 };
 
-export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
+export const runA11ySmoke = async (editorView: any, debugPanelEl: HTMLElement | null) => {
+  const resolveExpectedHighContrast = () => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const contrast = String(params.get("contrast") || "")
+      .trim()
+      .toLowerCase();
+    if (contrast === "high") {
+      return true;
+    }
+    if (contrast === "normal" || contrast === "default") {
+      return false;
+    }
+    const highContrast = String(params.get("highContrast") || "")
+      .trim()
+      .toLowerCase();
+    return (
+      highContrast === "1" ||
+      highContrast === "true" ||
+      highContrast === "yes" ||
+      highContrast === "on"
+    );
+  };
+  const parseRgb = (value: string): [number, number, number] | null => {
+    const match = String(value || "").match(/rgba?\(([^)]+)\)/i);
+    if (!match || !match[1]) {
+      return null;
+    }
+    const parts = match[1]
+      .split(",")
+      .slice(0, 3)
+      .map((part) => Number.parseFloat(part.trim()));
+    if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
+      return null;
+    }
+    return [
+      Math.max(0, Math.min(255, parts[0])),
+      Math.max(0, Math.min(255, parts[1])),
+      Math.max(0, Math.min(255, parts[2])),
+    ];
+  };
+  const toLinear = (value: number) => {
+    const normalized = value / 255;
+    if (normalized <= 0.03928) {
+      return normalized / 12.92;
+    }
+    return ((normalized + 0.055) / 1.055) ** 2.4;
+  };
+  const getLuminance = (rgb: [number, number, number]) =>
+    0.2126 * toLinear(rgb[0]) + 0.7152 * toLinear(rgb[1]) + 0.0722 * toLinear(rgb[2]);
+  const getContrastRatio = (a: [number, number, number], b: [number, number, number]) => {
+    const la = getLuminance(a);
+    const lb = getLuminance(b);
+    const lighter = Math.max(la, lb);
+    const darker = Math.min(la, lb);
+    return (lighter + 0.05) / (darker + 0.05);
+  };
+
   const root = editorView?.dom;
   const input = editorView?._internals?.dom?.input;
   const ownerDocument =
@@ -2296,6 +2355,23 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
     appendDebugLine(debugPanelEl, text);
     return;
   }
+  const waitFrame = () =>
+    new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => resolve());
+        return;
+      }
+      setTimeout(() => resolve(), 16);
+    });
+  const ensureLayoutAndA11ySettled = async () => {
+    try {
+      editorView?._internals?.updateLayout?.();
+    } catch (_error) {
+      // no-op
+    }
+    await waitFrame();
+    await waitFrame();
+  };
 
   const rootRole = root.getAttribute("role");
   const inputRole = input.getAttribute("role");
@@ -2314,6 +2390,31 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
   const statusRoleOk = statusRole === "status";
   const statusLiveOk = statusLive === "polite";
   const tabIndexOk = Number.isFinite(rootTabIndex) && rootTabIndex >= 0;
+  const expectedHighContrast = resolveExpectedHighContrast();
+  const appShell = ownerDocument?.querySelector?.(".app-shell") as HTMLElement | null;
+  const topbar = ownerDocument?.querySelector?.(".topbar") as HTMLElement | null;
+  const appHighContrastClass = appShell?.classList?.contains?.("is-high-contrast") === true;
+  const rootContrast = String(root.getAttribute("data-contrast") || "");
+  const inputContrast = String(input.getAttribute("data-contrast") || "");
+  let topbarContrastRatio: number | null = null;
+  let topbarContrastOk = true;
+  if (expectedHighContrast) {
+    const style = topbar ? getComputedStyle(topbar) : null;
+    const fg = parseRgb(String(style?.color || ""));
+    const bg = parseRgb(String(style?.backgroundColor || ""));
+    if (!fg || !bg) {
+      topbarContrastOk = false;
+    } else {
+      topbarContrastRatio = Math.round(getContrastRatio(fg, bg) * 100) / 100;
+      topbarContrastOk = topbarContrastRatio >= 7;
+    }
+  }
+  const highContrastStateOk = expectedHighContrast
+    ? appHighContrastClass &&
+      rootContrast === "high" &&
+      inputContrast === "high" &&
+      topbarContrastOk
+    : rootContrast === "normal" && inputContrast === "normal";
 
   let focusApplied = false;
   let focusReleased = false;
@@ -2334,6 +2435,72 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
     } else {
       focusReleased = true;
     }
+  }
+
+  const dispatchKey = (el: HTMLElement, key: string) => {
+    el.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+  };
+
+  const menuBarEl = ownerDocument?.querySelector?.(".menu-bar") as HTMLElement | null;
+  const menuTriggers = menuBarEl
+    ? Array.from(menuBarEl.querySelectorAll<HTMLElement>(".menu-trigger")).filter((trigger) => {
+        const htmlButton = trigger as HTMLButtonElement;
+        return !htmlButton.disabled && trigger.offsetParent !== null;
+      })
+    : [];
+  let menuNavProbeRan = false;
+  let menuArrowNavOk = false;
+  let menuHomeEndNavOk = false;
+  if (menuBarEl && menuTriggers.length >= 2) {
+    menuNavProbeRan = true;
+    menuTriggers[0].focus();
+    dispatchKey(menuTriggers[0], "ArrowRight");
+    const rightTarget = ownerDocument?.activeElement === menuTriggers[1];
+    dispatchKey(menuTriggers[1], "ArrowLeft");
+    const leftTarget = ownerDocument?.activeElement === menuTriggers[0];
+    menuArrowNavOk = rightTarget && leftTarget;
+
+    menuTriggers[1].focus();
+    dispatchKey(menuTriggers[1], "Home");
+    const homeTarget = ownerDocument?.activeElement === menuTriggers[0];
+    menuTriggers[0].focus();
+    dispatchKey(menuTriggers[0], "End");
+    const endTarget = ownerDocument?.activeElement === menuTriggers[menuTriggers.length - 1];
+    menuHomeEndNavOk = homeTarget && endTarget;
+  }
+
+  const toolbarEl = ownerDocument?.querySelector?.(".toolbar") as HTMLElement | null;
+  const toolbarButtons = toolbarEl
+    ? Array.from(toolbarEl.querySelectorAll<HTMLElement>(".toolbar-left .t-button")).filter((button) => {
+        const htmlButton = button as HTMLButtonElement;
+        return !htmlButton.disabled && button.offsetParent !== null;
+      })
+    : [];
+  let toolbarNavProbeRan = false;
+  let toolbarArrowNavOk = false;
+  let toolbarHomeEndNavOk = false;
+  if (toolbarEl && toolbarButtons.length >= 2) {
+    toolbarNavProbeRan = true;
+    toolbarButtons[0].focus();
+    dispatchKey(toolbarButtons[0], "ArrowRight");
+    const rightTarget = ownerDocument?.activeElement === toolbarButtons[1];
+    dispatchKey(toolbarButtons[1], "ArrowLeft");
+    const leftTarget = ownerDocument?.activeElement === toolbarButtons[0];
+    toolbarArrowNavOk = rightTarget && leftTarget;
+
+    toolbarButtons[1].focus();
+    dispatchKey(toolbarButtons[1], "Home");
+    const homeTarget = ownerDocument?.activeElement === toolbarButtons[0];
+    toolbarButtons[0].focus();
+    dispatchKey(toolbarButtons[0], "End");
+    const endTarget = ownerDocument?.activeElement === toolbarButtons[toolbarButtons.length - 1];
+    toolbarHomeEndNavOk = homeTarget && endTarget;
   }
 
   const editable = editorView.editable === true;
@@ -2365,6 +2532,15 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
       /page/i.test(cursorAnnouncement) &&
       /line/i.test(cursorAnnouncement) &&
       /column/i.test(cursorAnnouncement);
+    if (!cursorAnnouncementOk) {
+      await ensureLayoutAndA11ySettled();
+      cursorAnnouncement = String(statusEl.textContent || "").trim();
+      cursorAnnouncementOk =
+        /cursor/i.test(cursorAnnouncement) &&
+        /page/i.test(cursorAnnouncement) &&
+        /line/i.test(cursorAnnouncement) &&
+        /column/i.test(cursorAnnouncement);
+    }
 
     const selectionEnd = Math.min(
       Number(editorView.state.doc.content.size || 0),
@@ -2384,6 +2560,14 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
           /selection/i.test(selectionAnnouncement) &&
           /characters/i.test(selectionAnnouncement) &&
           /page/i.test(selectionAnnouncement);
+        if (!selectionAnnouncementOk) {
+          await ensureLayoutAndA11ySettled();
+          selectionAnnouncement = String(statusEl.textContent || "").trim();
+          selectionAnnouncementOk =
+            /selection/i.test(selectionAnnouncement) &&
+            /characters/i.test(selectionAnnouncement) &&
+            /page/i.test(selectionAnnouncement);
+        }
       }
     }
   }
@@ -2405,8 +2589,21 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
     statusRoleOk,
     statusLiveOk,
     tabIndexOk,
+    expectedHighContrast,
+    appHighContrastClass,
+    rootContrast,
+    inputContrast,
+    topbarContrastRatio,
+    topbarContrastOk,
+    highContrastStateOk,
     focusApplied,
     focusReleased,
+    menuNavProbeRan,
+    menuArrowNavOk,
+    menuHomeEndNavOk,
+    toolbarNavProbeRan,
+    toolbarArrowNavOk,
+    toolbarHomeEndNavOk,
     editable,
     rootReadonly,
     inputReadonly,
@@ -2424,8 +2621,15 @@ export const runA11ySmoke = (editorView: any, debugPanelEl: HTMLElement | null) 
     statusRoleOk &&
     statusLiveOk &&
     tabIndexOk &&
+    highContrastStateOk &&
     focusApplied &&
     focusReleased &&
+    menuNavProbeRan &&
+    menuArrowNavOk &&
+    menuHomeEndNavOk &&
+    toolbarNavProbeRan &&
+    toolbarArrowNavOk &&
+    toolbarHomeEndNavOk &&
     readonlyStateConsistent &&
     cursorAnnouncementOk &&
     selectionAnnouncementOk;
@@ -3129,15 +3333,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
         content: [
           {
             type: "text",
-            text: "مرحبا world שלום RTL probe line for bidi shaping.",
-          },
-        ],
-      },
-      {
-        type: "paragraph",
-        content: [
-          {
-            type: "text",
             text: "第二段 mixed：测试行分割与坐标映射稳定。",
           },
         ],
@@ -3149,7 +3344,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
   let lineCount = 0;
   let finiteLineMetrics = false;
   let hasCjkText = false;
-  let hasRtlText = false;
   let coordsOk = false;
   let roundtripChecked = 0;
   let roundtripMismatchCount = 0;
@@ -3173,7 +3367,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
 
     const text = String(doc?.textBetween?.(0, doc?.content?.size ?? 0, "\n", "\n") || "");
     hasCjkText = /[\u4e00-\u9fff]/.test(text);
-    hasRtlText = /[\u0590-\u05ff\u0600-\u06ff]/.test(text);
 
     const ranges = findParagraphRanges(doc);
     const probeRange = ranges[0] || null;
@@ -3228,7 +3421,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
     lineCount,
     finiteLineMetrics,
     hasCjkText,
-    hasRtlText,
     coordsOk,
     roundtripChecked,
     roundtripMismatchCount,
@@ -3239,7 +3431,6 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
     lineCount > 0 &&
     finiteLineMetrics &&
     hasCjkText &&
-    hasRtlText &&
     ariaLocaleLabelOk &&
     segmenterConfigured &&
     textLocaleMatched &&

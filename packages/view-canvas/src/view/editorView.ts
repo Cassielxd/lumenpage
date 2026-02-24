@@ -100,6 +100,19 @@ export class CanvasEditorView {
     let isComposing = false;
     this.composing = false;
     let editorProps = viewProps;
+    const setPendingChangeSummaryValue = (value) => {
+      const next =
+        value && typeof value === "object" ? value : value == null ? null : { docChanged: false };
+      if (pendingChangeSummary?.docChanged === true) {
+        if (next?.docChanged === true) {
+          // Multiple doc changes were coalesced before layout consumed the previous summary.
+          // Downgrade to a safe broad summary to avoid incorrect incremental reuse.
+          pendingChangeSummary = { docChanged: true };
+        }
+        return;
+      }
+      pendingChangeSummary = next;
+    };
     const onChange = resolveCanvasConfig("onChange", null);
     const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
     const { runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } = createCommandRuntime({
@@ -274,6 +287,9 @@ export class CanvasEditorView {
       syncNodeViewOverlays,
       resolvePageWidth,
       queryEditorProp,
+      scrollIntoViewAtPos: (pos?: number) => {
+        scrollViewIntoView(this, pos, docPosToTextOffset, coordsAtPos);
+      },
       getPendingChangeSummary: () => pendingChangeSummary,
       clearPendingChangeSummary: () => {
         pendingChangeSummary = null;
@@ -282,11 +298,18 @@ export class CanvasEditorView {
       clearPendingSteps: () => {
         pendingSteps = null;
       },
-      paginationTiming: debugConfig?.timing === true || debugConfig?.paginationTiming === true,
-      renderTiming: debugConfig?.timing === true || debugConfig?.renderTiming === true,
+      paginationTiming: false,
+      renderTiming: false,
     });
 
-    const { updateStatus, scheduleRender, updateCaret, updateLayout, syncAfterStateChange } =
+    const {
+      updateStatus,
+      scheduleRender,
+      scheduleLayout,
+      updateCaret,
+      updateLayout,
+      syncAfterStateChange,
+    } =
       renderSync;
 
     const { dispatchTransaction: applyDispatchTransaction, setSelectionOffsets } = createStateFlow({
@@ -298,7 +321,7 @@ export class CanvasEditorView {
       layoutPipeline,
       onChange,
       setPendingChangeSummary: (value) => {
-        pendingChangeSummary = value;
+        setPendingChangeSummaryValue(value);
       },
       setPendingSteps: (value) => {
         pendingSteps = value;
@@ -493,7 +516,7 @@ export class CanvasEditorView {
       updateStatus,
       updateCaret,
       scheduleRender,
-      eventTiming: debugConfig?.timing === true || debugConfig?.eventTiming === true,
+      eventTiming: false,
     });
     const {
       onClickFocus,
@@ -539,10 +562,11 @@ export class CanvasEditorView {
         editorProps = value ?? {};
       },
       setPendingChangeSummary: (value) => {
-        pendingChangeSummary = value;
+        setPendingChangeSummaryValue(value);
       },
       dispatchTransaction: dispatchViaView,
       updateLayout,
+      scheduleLayout,
       updatePluginViews,
       syncNodeViews,
       destroyNodeViews,
@@ -593,8 +617,21 @@ export class CanvasEditorView {
 
     this._internals.updatePluginViews?.(prev, state);
 
-    if (prev?.doc !== state?.doc) {
-      this._internals.updateLayout();
+    const docChanged = prev?.doc !== state?.doc;
+    if (docChanged) {
+      let immediateLayoutHint = false;
+      try {
+        immediateLayoutHint = (globalThis as any).__lumenImmediateLayoutHint === true;
+        (globalThis as any).__lumenImmediateLayoutHint = false;
+      } catch (_error) {
+        immediateLayoutHint = false;
+      }
+      if (immediateLayoutHint) {
+        this._internals.updateLayout?.();
+      } else {
+        // Coalesce rapid typing updates into the next frame to avoid long sync layout stalls.
+        this._internals.scheduleLayout?.();
+      }
     }
     this._internals.syncNodeViews?.();
     this._internals.syncAfterStateChange();

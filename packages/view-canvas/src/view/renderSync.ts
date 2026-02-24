@@ -52,6 +52,7 @@ export const createRenderSync = ({
   clearPendingSteps,
   resolvePageWidth,
   queryEditorProp,
+  scrollIntoViewAtPos,
   paginationTiming = false,
   renderTiming = false,
 }) => {
@@ -63,7 +64,6 @@ export const createRenderSync = ({
   let lastOverlayLayoutToken = -1;
   let lastOverlayScrollTop = Number.NaN;
   let lastOverlayViewportWidth = -1;
-  let lastRenderTimingLogAt = 0;
   let lastSelectionRectsKey = "";
   let lastSelectionRects: any[] | null = null;
   let lastSelectionScrollTop = Number.NaN;
@@ -72,6 +72,8 @@ export const createRenderSync = ({
   let lastTableSelectionScrollTop = Number.NaN;
   let asyncLayoutInFlight = false;
   let asyncLayoutQueued = false;
+  let pendingScrollIntoViewPos: number | null = null;
+  let hasPendingScrollIntoView = false;
   let fullSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let forceFullPass = false;
   const workerConfig = layoutPipeline?.settings?.paginationWorker ?? null;
@@ -89,7 +91,66 @@ export const createRenderSync = ({
     const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
     return ownerDocument?.activeElement ?? null;
   };
-
+  const hasPendingLayoutWork = () => layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
+  const flushPendingScrollIntoView = () => {
+    if (!hasPendingScrollIntoView) {
+      return;
+    }
+    const requestedPos = pendingScrollIntoViewPos;
+    hasPendingScrollIntoView = false;
+    pendingScrollIntoViewPos = null;
+    if (typeof scrollIntoViewAtPos !== "function") {
+      return;
+    }
+    try {
+      scrollIntoViewAtPos(Number.isFinite(requestedPos) ? Number(requestedPos) : undefined);
+    } catch (_error) {
+      // no-op
+    }
+  };
+  const requestScrollIntoView = (pos?: number | null) => {
+    pendingScrollIntoViewPos = Number.isFinite(pos) ? Number(pos) : null;
+    hasPendingScrollIntoView = true;
+    if (!hasPendingLayoutWork()) {
+      flushPendingScrollIntoView();
+    }
+  };
+  const flushPendingScrollIntoViewIfReady = () => {
+    if (!hasPendingLayoutWork()) {
+      flushPendingScrollIntoView();
+    }
+  };
+  const findPageIndexForOffset = (layout: any, offset: number) => {
+    if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
+      return null;
+    }
+    const target = Number.isFinite(offset) ? Number(offset) : 0;
+    let lineEndFallback: number | null = null;
+    for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
+      const page = layout.pages[pageIndex];
+      const lines = Array.isArray(page?.lines) ? page.lines : [];
+      for (const line of lines) {
+        const start = Number.isFinite(line?.start) ? Number(line.start) : null;
+        const end = Number.isFinite(line?.end) ? Number(line.end) : null;
+        if (start == null || end == null) {
+          continue;
+        }
+        if (start === end && target === start) {
+          return pageIndex;
+        }
+        if (target >= start && target < end) {
+          return pageIndex;
+        }
+        if (target === end && end > start && lineEndFallback == null) {
+          lineEndFallback = pageIndex;
+        }
+      }
+    }
+    if (lineEndFallback != null) {
+      return lineEndFallback;
+    }
+    return layout.pages.length - 1;
+  };
   const updateStatus = () => {
     const layout = getLayout();
     const pageCount = layout ? layout.pages.length : 0;
@@ -105,7 +166,7 @@ export const createRenderSync = ({
         : `${pageCount} pages | ${focused}`;
   };
 
-  // 选区几何扩展点：允许外部替换表格选区矩形计算，核心仅负责分发与兜底。
+  // 閫夊尯鍑犱綍鎵╁睍鐐癸細鍏佽澶栭儴鏇挎崲琛ㄦ牸閫夊尯鐭╁舰璁＄畻锛屾牳蹇冧粎璐熻矗鍒嗗彂涓庡厹搴曘€?
   const resolveSelectionGeometry = () => {
     const fromProps =
       typeof queryEditorProp === "function" ? queryEditorProp("selectionGeometry") : null;
@@ -115,7 +176,7 @@ export const createRenderSync = ({
     return null;
   };
 
-  // 统一解析“表格相关选区矩形”，优先外部 provider，缺失时回退内置默认实现。
+  // 缁熶竴瑙ｆ瀽鈥滆〃鏍肩浉鍏抽€夊尯鐭╁舰鈥濓紝浼樺厛澶栭儴 provider锛岀己澶辨椂鍥為€€鍐呯疆榛樿瀹炵幇銆?
   const resolveTableSelectionRects = ({
     layout,
     editorState,
@@ -308,27 +369,12 @@ export const createRenderSync = ({
           const rendererMs = renderTiming ? Math.round((now() - rendererStart) * 100) / 100 : 0;
 
           if (renderTiming) {
-            const totalMs = Math.round((now() - renderStart) * 100) / 100;
-            const current = now();
-            if (!lastRenderTimingLogAt || current - lastRenderTimingLogAt >= 120) {
-              lastRenderTimingLogAt = current;
-              const renderPerf = layoutPipeline?.settings?.__perf?.render ?? null;
-              console.info(
-                `[render-timing] ${JSON.stringify({
-                  totalMs,
-                  selectionMs,
-                  tableSelectionMs,
-                  decorationMs,
-                  nodeOverlayMs,
-                  rendererMs,
-                  activePages: renderPerf?.activePages ?? null,
-                  redrawPages: renderPerf?.redrawPages ?? null,
-                  cachedPages: renderPerf?.cachedPages ?? null,
-                  compositeMs: renderPerf?.compositeMs ?? null,
-                  overlayMs: renderPerf?.overlayMs ?? null,
-                })}`
-              );
-            }
+            void renderStart;
+            void selectionMs;
+            void tableSelectionMs;
+            void decorationMs;
+            void nodeOverlayMs;
+            void rendererMs;
           }
         } catch (error) {
           setRafId(0);
@@ -349,13 +395,30 @@ export const createRenderSync = ({
       setInputPosition?.(-9999, -9999);
       return;
     }
+    const headParent = selection?.$head?.parent ?? null;
+    const headParentOffset = Number.isFinite(selection?.$head?.parentOffset)
+      ? Number(selection.$head.parentOffset)
+      : null;
+    const headParentSize =
+      Number.isFinite(headParent?.content?.size) && headParent != null
+        ? Number(headParent.content.size)
+        : null;
+    const preferBoundary =
+      selection?.empty === true && headParent?.isTextblock === true
+        ? headParentOffset === 0
+          ? "start"
+          : headParentSize != null && headParentOffset === headParentSize
+          ? "end"
+          : "start"
+        : "start";
 
     const caretRect = coordsAtPos(
       layout,
       getCaretOffset(),
       scrollArea.scrollTop,
       scrollArea.clientWidth,
-      getText().length
+      getText().length,
+      { preferBoundary }
     );
     setCaretRect(caretRect);
     if (caretRect) {
@@ -381,8 +444,14 @@ export const createRenderSync = ({
       setLayoutIndex(buildLayoutIndex(nextLayout));
     }
     spacer.style.height = `${nextLayout.totalHeight}px`;
+    const latestState = getEditorState();
+    const latestCaretOffset = clampOffset(
+      docPosToTextOffset(latestState.doc, latestState.selection.head)
+    );
+    setCaretOffsetValue(latestCaretOffset);
     updateCaret(true);
     updateStatus();
+    flushPendingScrollIntoView();
     scheduleRender();
   };
   const updateLayout = () => {
@@ -394,15 +463,16 @@ export const createRenderSync = ({
       Number.isFinite(nextPageWidth) && nextPageWidth > 0
         ? Math.abs(currentPageWidth - Number(nextPageWidth))
         : 0;
-    // 忽略浮点抖动，避免每次都误判为页宽变化导致清空缓存。
+    // 蹇界暐娴偣鎶栧姩锛岄伩鍏嶆瘡娆￠兘璇垽涓洪〉瀹藉彉鍖栧鑷存竻绌虹紦瀛樸€?
     const widthChanged =
       Number.isFinite(nextPageWidth) && nextPageWidth > 0 && Number(widthDiff) > 0.5;
 
-    // 性能快路径：文档未变化且页宽未变化时，直接复用当前布局，避免重复全量分页。
+    // 鎬ц兘蹇矾寰勶細鏂囨。鏈彉鍖栦笖椤靛鏈彉鍖栨椂锛岀洿鎺ュ鐢ㄥ綋鍓嶅竷灞€锛岄伩鍏嶉噸澶嶅叏閲忓垎椤点€?
     if (prevLayout && !widthChanged && changeSummary?.docChanged !== true) {
       clearPendingChangeSummary?.();
       clearPendingSteps?.();
       updateStatus();
+      flushPendingScrollIntoViewIfReady();
       scheduleRender();
       return;
     }
@@ -416,7 +486,17 @@ export const createRenderSync = ({
     const doc = getEditorState().doc;
     const workerForce = workerConfig?.force === true;
     const allowWorkerForDocChanged = workerConfig?.useForDocChanged === true;
+    const allowWorkerForInitial = workerConfig?.useForInitial === true;
     const docChanged = changeSummary?.docChanged === true;
+    let forceSyncLayoutOnce = false;
+    try {
+      forceSyncLayoutOnce = (globalThis as any).__lumenForceSyncLayoutOnce === true;
+      if (forceSyncLayoutOnce) {
+        (globalThis as any).__lumenForceSyncLayoutOnce = false;
+      }
+    } catch (_error) {
+      forceSyncLayoutOnce = false;
+    }
     const incrementalConfig =
       workerConfig?.incremental && typeof workerConfig.incremental === "object"
         ? workerConfig.incremental
@@ -426,15 +506,49 @@ export const createRenderSync = ({
     if (runForceFullPass) {
       forceFullPass = false;
     }
-    const progressiveMaxPages =
+    let progressiveMaxPages =
       docChanged && incrementalEnabled && !runForceFullPass
         ? Math.max(0, Number(incrementalConfig?.maxPages) || 24)
         : 0;
+    let progressiveDisabledReason: string | null = null;
+    let progressiveHeadPageIndex: number | null = null;
+    if (progressiveMaxPages > 0 && forceSyncLayoutOnce) {
+      progressiveMaxPages = 0;
+      progressiveDisabledReason = "force-sync-once";
+    }
+    if (
+      progressiveMaxPages > 0 &&
+      docChanged &&
+      prevLayout &&
+      Array.isArray(prevLayout?.pages) &&
+      prevLayout.pages.length > progressiveMaxPages
+    ) {
+      const headPos = getEditorState()?.selection?.head;
+      const headOffset = Number.isFinite(headPos)
+        ? clampOffset(docPosToTextOffset(doc, Number(headPos)))
+        : null;
+      progressiveHeadPageIndex =
+        headOffset != null ? findPageIndexForOffset(prevLayout, Number(headOffset)) : null;
+      if (
+        Number.isFinite(progressiveHeadPageIndex) &&
+        Number(progressiveHeadPageIndex) >= progressiveMaxPages - 1
+      ) {
+        progressiveMaxPages = 0;
+        progressiveDisabledReason = "tail-edit-near-cutoff";
+      }
+    }
     const workerIneligibleReason = getWorkerPaginationIneligibleReason(doc, layoutPipeline?.registry);
     const isEligible = isWorkerPaginationEligibleDoc(doc, layoutPipeline?.registry);
-    // force 仅用于调试开关，不允许绕过复杂块安全门禁，否则会出现布局错乱。
-    const canUseWorkerProvider = !!paginationWorkerProvider && (!docChanged || allowWorkerForDocChanged);
-    const canUseWorker = !!paginationWorker && isEligible;
+    const isInitialLayoutPass = !prevLayout;
+    const workerAllowedForPass = docChanged
+      ? allowWorkerForDocChanged
+      : !isInitialLayoutPass || allowWorkerForInitial;
+    // force 浠呯敤浜庤皟璇曞紑鍏筹紝涓嶅厑璁哥粫杩囧鏉傚潡瀹夊叏闂ㄧ锛屽惁鍒欎細鍑虹幇甯冨眬閿欎贡銆?
+    const canUseWorkerProvider =
+      !forceSyncLayoutOnce &&
+      !!paginationWorkerProvider &&
+      workerAllowedForPass;
+    const canUseWorker = !forceSyncLayoutOnce && !!paginationWorker && isEligible && workerAllowedForPass;
     if ((canUseWorkerProvider || canUseWorker) && asyncLayoutInFlight) {
       asyncLayoutQueued = true;
       return;
@@ -442,39 +556,10 @@ export const createRenderSync = ({
     const version = (layoutVersion += 1);
     clearPendingChangeSummary?.();
     clearPendingSteps?.();
-    const paginationStart = paginationTiming ? now() : 0;
     const applyAndLogLayout = (layout) => {
-      if (paginationTiming) {
-        const ms = Math.round((now() - paginationStart) * 100) / 100;
-        const layoutPerf = layoutPipeline?.settings?.__perf?.layout ?? null;
-        const payload = {
-          version,
-          ms,
-          pages: Array.isArray(layout?.pages) ? layout.pages.length : 0,
-          docChanged: !!changeSummary?.docChanged,
-          beforeFrom: changeSummary?.blocks?.before?.fromIndex ?? null,
-          beforeTo: changeSummary?.blocks?.before?.toIndex ?? null,
-          afterFrom: changeSummary?.blocks?.after?.fromIndex ?? null,
-          afterTo: changeSummary?.blocks?.after?.toIndex ?? null,
-          reusedPages: layoutPerf?.reusedPages ?? null,
-          reuseReason: layoutPerf?.reuseReason ?? null,
-          syncAfterIndex: layoutPerf?.syncAfterIndex ?? null,
-          syncFromIndex: layoutPerf?.syncFromIndex ?? null,
-          maybeSyncReason: layoutPerf?.maybeSyncReason ?? null,
-          blocks: layoutPerf?.blocks ?? null,
-          cachedBlocks: layoutPerf?.cachedBlocks ?? null,
-          blockCacheHitRate: layoutPerf?.blockCacheHitRate ?? null,
-          disablePageReuse: layoutPerf?.disablePageReuse ?? null,
-          progressiveApplied: layout?.__progressiveApplied === true,
-          workerUsed: canUseWorkerProvider || canUseWorker,
-          workerReason: canUseWorkerProvider
-            ? (docChanged ? "provider-docChanged" : "provider")
-            : canUseWorker
-            ? (workerForce ? "force-safe" : "eligible")
-            : workerIneligibleReason,
-        };
-        console.info(`[pagination-timing] ${JSON.stringify(payload)}`);
-      }
+      void paginationTiming;
+      void workerForce;
+      void workerIneligibleReason;
       applyLayout(layout, version, changeSummary);
       if (layout?.__progressiveApplied === true && incrementalEnabled) {
         const settleDelayMs = Math.max(0, Number(incrementalConfig?.settleDelayMs) || 120);
@@ -522,6 +607,7 @@ export const createRenderSync = ({
             asyncLayoutQueued = false;
             scheduleLayout();
           }
+          flushPendingScrollIntoViewIfReady();
         });
       return;
     }
@@ -552,6 +638,7 @@ export const createRenderSync = ({
             asyncLayoutQueued = false;
             scheduleLayout();
           }
+          flushPendingScrollIntoViewIfReady();
         });
       return;
     }
@@ -572,6 +659,7 @@ export const createRenderSync = ({
     layoutRafId = requestAnimationFrame(() => {
       layoutRafId = 0;
       updateLayout();
+      flushPendingScrollIntoViewIfReady();
     });
   };
 
@@ -611,15 +699,24 @@ export const createRenderSync = ({
       docPosToTextOffset(editorState.doc, editorState.selection.head)
     );
     setCaretOffsetValue(nextCaretOffset);
+    const hasPendingLayout = layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
+    if (hasPendingLayout) {
+      // Layout is about to refresh. Keep caret offset in sync but avoid rendering against stale layout.
+      setPendingPreferredUpdate(true);
+      updateStatus();
+      return;
+    }
     updateCaret(getPendingPreferredUpdate());
     setPendingPreferredUpdate(true);
     logSelection(editorState);
     updateStatus();
+    flushPendingScrollIntoView();
     scheduleRender();
   };
 
   const dispatchTransaction = (tr) => {
-    const nextState = applyTransaction(getEditorState(), tr);
+    const prevState = getEditorState();
+    const nextState = applyTransaction(prevState, tr);
     setEditorState(nextState);
     if (tr.docChanged) {
       const nextCaretOffset = clampOffset(
@@ -632,16 +729,30 @@ export const createRenderSync = ({
       scheduleLayout();
       return;
     }
+    const hasPendingLayout = layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
+    if (hasPendingLayout) {
+      // A layout refresh is already pending for a recent doc change. Avoid syncing caret/selection
+      // against stale page geometry; defer visual sync until applyLayout.
+      const nextCaretOffset = clampOffset(
+        docPosToTextOffset(nextState.doc, nextState.selection.head)
+      );
+      setCaretOffsetValue(nextCaretOffset);
+      setPendingPreferredUpdate(true);
+      updateStatus();
+      return;
+    }
     syncAfterStateChange();
   };
-
   return {
     updateStatus,
     scheduleRender,
+    scheduleLayout,
     updateCaret,
     updateLayout,
     syncAfterStateChange,
     dispatchTransaction,
+    requestScrollIntoView,
+    isLayoutPending: hasPendingLayoutWork,
     destroy: () => {
       if (fullSettleTimer) {
         clearTimeout(fullSettleTimer);

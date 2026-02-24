@@ -1,0 +1,341 @@
+import type { PlaygroundLocale } from "./i18n";
+
+export type ToolbarMenuKey = "base" | "insert" | "table" | "tools" | "page" | "export";
+
+type LocaleText = Record<PlaygroundLocale, string>;
+
+export type ToolbarMenuTab = {
+  value: ToolbarMenuKey;
+  label: LocaleText;
+};
+
+export type ToolbarItemConfig = {
+  id: string;
+  icon: string;
+  label: LocaleText;
+  action: string;
+  implemented: boolean;
+  command?: string;
+};
+
+export type ToolbarGroupConfig = {
+  id: string;
+  items: ToolbarItemConfig[];
+};
+
+const text = (zh: string, en: string): LocaleText => ({ "zh-CN": zh, "en-US": en });
+
+const item = (
+  id: string,
+  icon: string,
+  zh: string,
+  en: string,
+  action = id,
+  implemented = false,
+  command?: string
+): ToolbarItemConfig => ({ id, icon, label: text(zh, en), action, implemented, command });
+
+export const TOOLBAR_MENU_TABS: ToolbarMenuTab[] = [
+  { value: "base", label: text("开始", "Home") },
+  { value: "insert", label: text("插入", "Insert") },
+  { value: "table", label: text("表格", "Table") },
+  { value: "tools", label: text("工具", "Tools") },
+  { value: "page", label: text("页面", "Page") },
+  { value: "export", label: text("导出", "Export") },
+];
+
+export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> = {
+  base: [
+    {
+      id: "history",
+      items: [
+        item("undo", "undo", "撤销", "Undo", "undo", true, "undo"),
+        item("redo", "redo", "重做", "Redo", "redo", true, "redo"),
+        item("format-painter", "format-painter", "格式刷", "Format Painter"),
+        item("clear-format", "clear-format", "清除格式", "Clear Format"),
+      ],
+    },
+    {
+      id: "font",
+      items: [
+        item("heading", "heading", "标题", "Heading", "heading", true),
+        item("font-family", "font-family", "字体", "Font Family"),
+        item("font-size", "font-size", "字号", "Font Size"),
+        item("bold", "bold", "加粗", "Bold", "bold", true),
+        item("italic", "italic", "斜体", "Italic", "italic", true),
+        item("underline", "underline", "下划线", "Underline", "underline", true),
+        item("strike", "strike", "删除线", "Strikethrough", "strike", true),
+        item("subscript", "subscript", "下标", "Subscript"),
+        item("superscript", "superscript", "上标", "Superscript"),
+        item("color", "color", "文字颜色", "Text Color"),
+        item("background-color", "background-color", "背景色", "Background Color"),
+        item("highlight", "highlight", "高亮", "Highlight"),
+      ],
+    },
+    {
+      id: "paragraph",
+      items: [
+        item("ordered-list", "ordered-list", "有序列表", "Ordered List", "ordered-list", true),
+        item("bullet-list", "bullet-list", "无序列表", "Bullet List", "bullet-list", true),
+        item("task-list", "task-list", "任务列表", "Task List"),
+        item("indent", "indent", "增加缩进", "Indent", "indent", true),
+        item("outdent", "outdent", "减少缩进", "Outdent", "outdent", true),
+        item("line-height", "line-height", "行高", "Line Height"),
+        item("margin", "margin", "段间距", "Paragraph Spacing"),
+        item("align-left", "align-left", "左对齐", "Align Left", "align-left", true),
+        item("align-center", "align-center", "居中", "Align Center", "align-center", true),
+        item("align-right", "align-right", "右对齐", "Align Right", "align-right", true),
+        item("align-justify", "align-justify", "两端对齐", "Align Justify"),
+        item("align-distributed", "align-distributed", "分散对齐", "Align Distributed"),
+        item("quote", "quote", "引用", "Quote", "quote", true),
+        item("inline-code", "code", "行内代码", "Inline Code", "inline-code", true),
+        item("select-all", "select-all", "全选", "Select All"),
+      ],
+    },
+    {
+      id: "document",
+      items: [
+        item("import-word", "word", "导入 Word", "Import Word"),
+        item("markdown", "markdown", "Markdown", "Markdown"),
+        item("search-replace", "search-replace", "查找替换", "Search & Replace"),
+      ],
+    },
+    {
+      id: "view",
+      items: [
+        item("viewer", "viewer", "阅读模式", "Viewer"),
+        item("print", "print", "打印", "Print"),
+      ],
+    },
+  ],
+  insert: [
+    {
+      id: "insert-media",
+      items: [
+        item("link", "link", "链接", "Link", "link", true),
+        item("image", "image", "图片", "Image", "image", true),
+        item("video", "video", "视频", "Video", "video", true),
+        item("audio", "audio", "音频", "Audio"),
+        item("file", "file", "文件", "File"),
+        item("code-block", "code-block", "代码块", "Code Block", "code-block", true),
+        item("symbol", "symbol", "符号", "Symbol"),
+        item("chinese-date", "date", "中文日期", "Chinese Date"),
+        item("emoji", "emoji", "表情", "Emoji"),
+        item("math", "math", "公式", "Math"),
+      ],
+    },
+    {
+      id: "insert-advanced",
+      items: [
+        item("columns", "columns", "分栏", "Columns"),
+        item("tag", "tag", "标签", "Tag"),
+        item("callout", "callout", "提示块", "Callout"),
+        item("mention", "mention", "提及", "Mention"),
+        item("bookmark", "bookmark", "书签", "Bookmark"),
+        item("option-box", "option-box", "选项框", "Option Box"),
+      ],
+    },
+    {
+      id: "insert-layout",
+      items: [
+        item("hard-break", "hard-break", "硬换行", "Hard Break"),
+        item("hr", "hr", "分割线", "Horizontal Rule", "hr", true),
+        item("toc", "toc", "目录", "Table of Contents"),
+        item("text-box", "text-box", "文本框", "Text Box"),
+      ],
+    },
+    {
+      id: "insert-template",
+      items: [
+        item("template", "template", "模板", "Template"),
+        item("web-page", "web-page", "网页嵌入", "Web Page"),
+      ],
+    },
+  ],
+  table: [
+    {
+      id: "table-main",
+      items: [
+        item("table-insert", "table", "插入表格", "Insert Table"),
+        item("table-fix", "table-fix", "修复表格", "Fix Table"),
+      ],
+    },
+    {
+      id: "table-style",
+      items: [
+        item("cells-align", "table-cells-align", "单元格对齐", "Cell Alignment"),
+        item("cells-background", "table-cells-background", "单元格背景", "Cell Background"),
+      ],
+    },
+    {
+      id: "table-add",
+      items: [
+        item("add-row-before", "table-add-row-before", "上方加行", "Add Row Before"),
+        item(
+          "add-row-after",
+          "table-add-row-after",
+          "下方加行",
+          "Add Row After",
+          "add-row-after",
+          true,
+          "addTableRowAfter"
+        ),
+        item("add-column-before", "table-add-column-before", "左侧加列", "Add Column Before"),
+        item(
+          "add-column-after",
+          "table-add-column-after",
+          "右侧加列",
+          "Add Column After",
+          "add-column-after",
+          true,
+          "addTableColumnAfter"
+        ),
+      ],
+    },
+    {
+      id: "table-delete",
+      items: [
+        item(
+          "delete-row",
+          "table-delete-row",
+          "删除行",
+          "Delete Row",
+          "delete-row",
+          true,
+          "deleteTableRow"
+        ),
+        item(
+          "delete-column",
+          "table-delete-column",
+          "删除列",
+          "Delete Column",
+          "delete-column",
+          true,
+          "deleteTableColumn"
+        ),
+      ],
+    },
+    {
+      id: "table-merge",
+      items: [
+        item(
+          "merge-cells",
+          "table-merge-cell",
+          "合并单元格",
+          "Merge Cells",
+          "merge-cells",
+          true,
+          "mergeTableCellRight"
+        ),
+        item(
+          "split-cell",
+          "table-split-cell",
+          "拆分单元格",
+          "Split Cell",
+          "split-cell",
+          true,
+          "splitTableCell"
+        ),
+      ],
+    },
+    {
+      id: "table-header",
+      items: [
+        item("toggle-header-row", "table-header-row", "切换标题行", "Toggle Header Row"),
+        item("toggle-header-column", "table-header-column", "切换标题列", "Toggle Header Column"),
+        item("toggle-header-cell", "table-header-cell", "切换标题单元格", "Toggle Header Cell"),
+      ],
+    },
+    {
+      id: "table-nav",
+      items: [
+        item("next-cell", "table-next-cell", "下一个单元格", "Next Cell"),
+        item("previous-cell", "table-previous-cell", "上一个单元格", "Previous Cell"),
+      ],
+    },
+    {
+      id: "table-remove",
+      items: [item("delete-table", "table-delete", "删除表格", "Delete Table")],
+    },
+  ],
+  tools: [
+    {
+      id: "tools-code",
+      items: [
+        item("qrcode", "qrcode", "二维码", "QR Code"),
+        item("barcode", "barcode", "条形码", "Barcode"),
+      ],
+    },
+    {
+      id: "tools-sign",
+      items: [
+        item("signature", "signature", "签名", "Signature"),
+        item("seal", "seal", "印章", "Seal"),
+      ],
+    },
+    {
+      id: "tools-chart",
+      items: [
+        item("diagrams", "diagrams", "流程图", "Diagrams"),
+        item("echarts", "echarts", "图表", "ECharts"),
+        item("mermaid", "mermaid", "Mermaid", "Mermaid"),
+        item("mind-map", "mind-map", "思维导图", "Mind Map"),
+      ],
+    },
+    {
+      id: "tools-text",
+      items: [item("chinese-case", "chinese-case", "中文大小写", "Chinese Case")],
+    },
+  ],
+  page: [
+    {
+      id: "page-toc",
+      items: [item("toggle-toc", "toc", "目录", "TOC")],
+    },
+    {
+      id: "page-layout",
+      items: [
+        item("page-margin", "margin", "页边距", "Page Margin"),
+        item("page-size", "size", "纸张大小", "Page Size"),
+        item("page-orientation", "orientation", "纸张方向", "Page Orientation"),
+      ],
+    },
+    {
+      id: "page-mark",
+      items: [
+        item("page-break", "page-break", "分页符", "Page Break"),
+        item("page-break-marks", "break-marks", "分页标记", "Break Marks"),
+        item("page-line-number", "line-number", "行号", "Line Number"),
+        item("page-watermark", "watermark", "水印", "Watermark"),
+        item("page-background", "background", "页面背景", "Page Background"),
+      ],
+    },
+    {
+      id: "page-view",
+      items: [
+        item("page-preview", "preview", "预览", "Preview"),
+        item("page-header", "header", "页眉", "Header"),
+        item("page-footer", "footer", "页脚", "Footer"),
+      ],
+    },
+  ],
+  export: [
+    {
+      id: "export-file",
+      items: [
+        item("export-image", "image", "导出图片", "Export Image"),
+        item("export-pdf", "pdf", "导出 PDF", "Export PDF"),
+        item("export-text", "text", "导出文本", "Export Text"),
+        item("export-html", "html5", "导出 HTML", "Export HTML"),
+        item("export-word", "word", "导出 Word", "Export Word"),
+      ],
+    },
+    {
+      id: "export-share",
+      items: [
+        item("share", "share", "分享", "Share"),
+        item("embed", "embed", "嵌入", "Embed"),
+      ],
+    },
+  ],
+};

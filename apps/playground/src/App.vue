@@ -1,5 +1,5 @@
 ﻿<template>
-  <t-layout class="app-shell">
+  <t-layout :class="['app-shell', { 'is-high-contrast': debugFlags.highContrast }]">
     <t-header class="topbar">
       <div class="topbar-left">
         <div class="logo">LP</div>
@@ -193,5 +193,53 @@ onBeforeUnmount(() => {
   pointer-events: auto;
   user-select: text;
   z-index: 10;
+}
+
+.app-shell.is-high-contrast {
+  background: #000;
+  color: #fff;
+}
+
+.app-shell.is-high-contrast .topbar {
+  background: #000;
+  color: #fff;
+  border-bottom-color: #fff;
+}
+
+.app-shell.is-high-contrast .logo {
+  background: #fff;
+  color: #000;
+}
+
+.app-shell.is-high-contrast .editor-area {
+  background: #000;
+}
+
+.app-shell.is-high-contrast :deep(.menu-bar) {
+  background: #000;
+  border-bottom-color: #fff;
+}
+
+.app-shell.is-high-contrast :deep(.menu-trigger) {
+  color: #fff !important;
+}
+
+.app-shell.is-high-contrast :deep(.toolbar) {
+  background: #000;
+  border-bottom-color: #fff;
+}
+
+.app-shell.is-high-contrast :deep(.status) {
+  color: #fff;
+}
+
+.app-shell.is-high-contrast .editor-host :deep(.lumenpage-scroll-area) {
+  background: #000;
+}
+
+.app-shell.is-high-contrast .editor-host :deep(.page-canvas) {
+  border-radius: 0;
+  box-shadow: none;
+  border: 2px solid #fff;
 }
 </style>

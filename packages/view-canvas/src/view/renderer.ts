@@ -17,6 +17,8 @@ const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
 const getBaselineOffset = (lineHeight, fontSize) => Math.max(0, (lineHeight - fontSize) / 2);
+const alignToDevicePixel = (value, dpr) => Math.round(value * dpr) / dpr;
+const toDevicePixels = (value, dpr) => Math.max(1, Math.round(value * dpr));
 
 const hashNumber = (hash, value) => {
   const num = Number.isFinite(value) ? Math.round(value) : 0;
@@ -317,7 +319,8 @@ export class Renderer {
     ctx: CanvasRenderingContext2D;
     pageIndex: number | null;
     signature: number | null;
-    dpr: number;
+    dprX: number;
+    dprY: number;
   }>;
   lastDpr: number;
   lastLayoutDebug: string | null;
@@ -481,7 +484,8 @@ export class Renderer {
           ctx: canvas.getContext("2d"),
           pageIndex: null,
           signature: null,
-          dpr: 0,
+          dprX: 0,
+          dprY: 0,
         });
       }
     } else if (current > count) {
@@ -501,15 +505,16 @@ export class Renderer {
     const height = layout.pageHeight;
 
     if (!entry || entry.width != width || entry.height != height || entry.dpr != dpr) {
+      const pixelWidth = toDevicePixels(width, dpr);
+      const pixelHeight = toDevicePixels(height, dpr);
       const canvas =
         typeof OffscreenCanvas !== "undefined"
-          ? new OffscreenCanvas(width * dpr, height * dpr)
+          ? new OffscreenCanvas(pixelWidth, pixelHeight)
           : document.createElement("canvas");
 
       if (!(canvas instanceof OffscreenCanvas)) {
-        canvas.width = Math.max(1, Math.floor(width * dpr));
-
-        canvas.height = Math.max(1, Math.floor(height * dpr));
+        canvas.width = pixelWidth;
+        canvas.height = pixelHeight;
       }
 
       const ctx = canvas.getContext("2d");
@@ -524,6 +529,8 @@ export class Renderer {
         height,
 
         dpr,
+        dprX: pixelWidth / Math.max(1, width),
+        dprY: pixelHeight / Math.max(1, height),
 
         dirty: true,
 
@@ -623,11 +630,11 @@ export class Renderer {
   }
 
   renderPage(pageIndex, layout, entry) {
-    const { ctx, width, height, dpr } = entry;
+    const { ctx, width, height, dprX, dprY } = entry;
 
     const page = layout.pages[pageIndex];
 
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(dprX, 0, 0, dprY, 0, 0);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -749,18 +756,26 @@ export class Renderer {
     let overlayMs = 0;
 
     const layoutVersion = typeof layout.__version === "number" ? layout.__version : null;
-    const forceRedraw = !!layout.__forceRedraw;
+    const prevLayoutVersion = this.lastLayoutVersion;
+    const layoutVersionChanged = layoutVersion !== prevLayoutVersion;
+    const skippedLayoutVersions =
+      Number.isFinite(layoutVersion) &&
+      Number.isFinite(prevLayoutVersion) &&
+      Number(layoutVersion) > Number(prevLayoutVersion) + 1;
+    let forceRedraw = !!layout.__forceRedraw || skippedLayoutVersions;
     if (forceRedraw) {
       this.pageCache.clear();
       layout.__forceRedraw = false;
     }
-    const layoutVersionChanged = layoutVersion !== this.lastLayoutVersion;
     if (layoutVersionChanged) {
       this.lastLayoutVersion = layoutVersion;
     }
     const { clientWidth, clientHeight, scrollTop } = viewport;
 
-    const dpr = window.devicePixelRatio || 1;
+    const rawDpr = window.devicePixelRatio || 1;
+    const dprStrategy = this.settings?.pixelRatioStrategy;
+    const dpr =
+      dprStrategy === "integer" ? Math.max(1, Math.ceil(rawDpr)) : rawDpr;
 
     if (this.lastDpr !== dpr) {
       this.pageCache.clear();
@@ -769,19 +784,21 @@ export class Renderer {
     }
 
     if (clientWidth !== this.lastViewportWidth || clientHeight !== this.lastViewportHeight) {
-      this.overlayCanvas.width = Math.max(1, Math.floor(clientWidth * dpr));
-      this.overlayCanvas.height = Math.max(1, Math.floor(clientHeight * dpr));
+      this.overlayCanvas.width = toDevicePixels(clientWidth, dpr);
+      this.overlayCanvas.height = toDevicePixels(clientHeight, dpr);
       this.overlayCanvas.style.width = `${clientWidth}px`;
       this.overlayCanvas.style.height = `${clientHeight}px`;
       this.lastViewportWidth = clientWidth;
       this.lastViewportHeight = clientHeight;
     }
 
-    this.overlayCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const overlayDprX = this.overlayCanvas.width / Math.max(1, clientWidth);
+    const overlayDprY = this.overlayCanvas.height / Math.max(1, clientHeight);
+    this.overlayCtx.setTransform(overlayDprX, 0, 0, overlayDprY, 0, 0);
 
     this.overlayCtx.clearRect(0, 0, clientWidth, clientHeight);
 
-    const pageX = Math.max(0, (clientWidth - layout.pageWidth) / 2);
+    const pageX = alignToDevicePixel(Math.max(0, (clientWidth - layout.pageWidth) / 2), dpr);
 
     if (this.settings?.debugLayout) {
       const signature = `${clientWidth}|${layout.pageWidth}|${layout.pageAlign}|${layout.pageOffsetX}|${pageX}`;
@@ -875,11 +892,11 @@ export class Renderer {
 
       const ctx = canvasEntry.ctx;
 
-      const pageTop = pageIndex * pageSpan - scrollTop;
+      const pageTop = alignToDevicePixel(pageIndex * pageSpan - scrollTop, dpr);
 
       let resized = false;
-      const nextWidth = Math.max(1, Math.floor(layout.pageWidth * dpr));
-      const nextHeight = Math.max(1, Math.floor(layout.pageHeight * dpr));
+      const nextWidth = toDevicePixels(layout.pageWidth, dpr);
+      const nextHeight = toDevicePixels(layout.pageHeight, dpr);
       if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
         canvas.width = nextWidth;
         canvas.height = nextHeight;
@@ -904,14 +921,17 @@ export class Renderer {
         onPageCanvasStyle({ canvas, pageIndex, layout });
       }
 
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const canvasDprX = canvas.width / Math.max(1, layout.pageWidth);
+      const canvasDprY = canvas.height / Math.max(1, layout.pageHeight);
+      ctx.setTransform(canvasDprX, 0, 0, canvasDprY, 0, 0);
 
       const needsComposite =
         entry.dirty ||
         resized ||
         canvasEntry.pageIndex !== pageIndex ||
         canvasEntry.signature !== entry.signature ||
-        canvasEntry.dpr !== dpr;
+        canvasEntry.dprX !== canvasDprX ||
+        canvasEntry.dprY !== canvasDprY;
       if (needsComposite) {
         const compositeStart = this.settings?.debugPerf ? now() : 0;
         ctx.clearRect(0, 0, layout.pageWidth, layout.pageHeight);
@@ -919,8 +939,8 @@ export class Renderer {
           entry.canvas,
           0,
           0,
-          entry.width * dpr,
-          entry.height * dpr,
+          entry.canvas.width,
+          entry.canvas.height,
           0,
           0,
           entry.width,
@@ -929,7 +949,8 @@ export class Renderer {
         canvasEntry.pageIndex = pageIndex;
         canvasEntry.signature =
           typeof entry.signature === "number" ? Number(entry.signature) : null;
-        canvasEntry.dpr = dpr;
+        canvasEntry.dprX = canvasDprX;
+        canvasEntry.dprY = canvasDprY;
         if (this.settings?.debugPerf) {
           compositeMs += now() - compositeStart;
         }

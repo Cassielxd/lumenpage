@@ -20,6 +20,9 @@
       "path": "apps/playground"
     },
     {
+      "path": "apps/lumen"
+    },
+    {
       "path": "packages/node-paragraph"
     },
     {

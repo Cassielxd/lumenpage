@@ -15,6 +15,13 @@ export const createEditorOps = ({
   logDelete,
   isInSpecialStructureAtPos = (_state, _pos) => false,
   shouldAutoAdvanceAfterEnter = ({ prevState, nextState, prevHead }) => {
+    const prevSelectionEmpty = prevState?.selection?.empty === true;
+    const nextSelectionEmpty = nextState?.selection?.empty === true;
+    // Auto-advance is only safe for caret-enter. When replacing a range with Enter,
+    // forcing +1 may shift caret to an unexpected position.
+    if (!prevSelectionEmpty || !nextSelectionEmpty) {
+      return false;
+    }
     const specialStructureChanged =
       isInSpecialStructureAtPos(prevState, prevHead) ||
       isInSpecialStructureAtPos(nextState, nextState.selection.head);

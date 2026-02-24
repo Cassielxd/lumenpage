@@ -3,6 +3,7 @@ import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
 
 export type PlaygroundDebugFlags = {
   locale: PlaygroundLocale;
+  highContrast: boolean;
   permissionMode: "full" | "comment" | "readonly";
   debugAllSmoke: boolean;
   debugP0Smoke: boolean;
@@ -76,6 +77,17 @@ export const resolveDebugFlag = (key: string) => {
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
 
+const resolveHighContrast = () => {
+  const contrast = (resolveQueryParam("contrast") || "").trim().toLowerCase();
+  if (contrast === "high") {
+    return true;
+  }
+  if (contrast === "normal" || contrast === "default") {
+    return false;
+  }
+  return resolveDebugFlag("highContrast");
+};
+
 const resolveNumberParam = (key: string, fallback: number) => {
   const raw = resolveQueryParam(key);
   if (!raw) {
@@ -98,6 +110,7 @@ const resolveWorkerEnabled = () => {
 // Playground 调试开关集中管理，避免散落在页面组件中。
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   locale: resolvePlaygroundLocale(),
+  highContrast: resolveHighContrast(),
   permissionMode: resolvePermissionMode(),
   debugAllSmoke: resolveDebugFlag("allSmoke"),
   debugP0Smoke: resolveDebugFlag("p0Smoke"),
@@ -143,7 +156,8 @@ export const createCanvasSettings = (
   debugPerf: boolean,
   enablePaginationWorker = false,
   forcePaginationWorker = false,
-  locale: PlaygroundLocale = "zh-CN"
+  locale: PlaygroundLocale = "zh-CN",
+  highContrast = false
 ) => {
   const incrementalEnabled = resolveDebugFlag("paginationIncremental")
     ? true
@@ -176,6 +190,7 @@ export const createCanvasSettings = (
   paragraphSpacingAfter: 8,
   font: "16px Arial",
   textLocale: locale,
+  highContrast,
   segmentText: createLinebreakSegmentText({ locale }),
   wrapTolerance: 2,
   pageBuffer: 1,

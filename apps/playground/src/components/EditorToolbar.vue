@@ -1,5 +1,11 @@
 ﻿<template>
-  <t-header class="toolbar" @mousedown="handleToolbarMouseDown">
+  <t-header
+    class="toolbar"
+    role="toolbar"
+    :aria-label="toolbarAriaLabel"
+    @mousedown="handleToolbarMouseDown"
+    @keydown="handleToolbarKeyDown"
+  >
     <div class="toolbar-left">
       <div class="toolbar-group">
         <t-tooltip :content="i18n.toolbar.undo">
@@ -245,6 +251,9 @@ const props = defineProps<{
 }>();
 
 const i18n = computed(() => createPlaygroundI18n(props.locale));
+const toolbarAriaLabel = computed(() =>
+  props.locale === "en-US" ? "Editor formatting toolbar" : "编辑格式工具栏"
+);
 
 const defaultBlockTypeOptions = computed(() => [
   { label: i18n.value.toolbar.blockTypeParagraph, value: "paragraph" },
@@ -439,6 +448,58 @@ const handleToolbarMouseDown = (event: MouseEvent) => {
   if (target.closest(".t-button")) {
     event.preventDefault();
   }
+};
+
+const getFocusableToolbarButtons = (scope: HTMLElement | null) => {
+  if (!scope) {
+    return [] as HTMLElement[];
+  }
+  const buttons = Array.from(scope.querySelectorAll<HTMLElement>(".toolbar-left .t-button"));
+  return buttons.filter((button) => {
+    const htmlButton = button as HTMLButtonElement;
+    if (htmlButton.disabled || button.getAttribute("aria-disabled") === "true") {
+      return false;
+    }
+    return button.offsetParent !== null;
+  });
+};
+
+const handleToolbarKeyDown = (event: KeyboardEvent) => {
+  if (
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowRight" &&
+    event.key !== "Home" &&
+    event.key !== "End"
+  ) {
+    return;
+  }
+  const scope = event.currentTarget as HTMLElement | null;
+  const buttons = getFocusableToolbarButtons(scope);
+  if (buttons.length === 0) {
+    return;
+  }
+  const target = event.target as HTMLElement | null;
+  const activeButton = target?.closest?.(".t-button") as HTMLElement | null;
+  const currentIndex = activeButton ? buttons.indexOf(activeButton) : -1;
+  if (currentIndex < 0) {
+    return;
+  }
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight") {
+    nextIndex = (currentIndex + 1) % buttons.length;
+  } else if (event.key === "ArrowLeft") {
+    nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = buttons.length - 1;
+  }
+  const nextButton = buttons[nextIndex];
+  if (!nextButton || nextButton === activeButton) {
+    return;
+  }
+  event.preventDefault();
+  nextButton.focus();
 };
 
 const runUndo = () => runWithNotice("undo", i18n.value.toolbar.alertCannotUndo);

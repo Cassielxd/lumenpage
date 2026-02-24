@@ -5,8 +5,8 @@
 
 import { getCaretFromPoint, getCaretRect } from "./caret";
 
-export function coordsAtPos(layout, offset, scrollTop, viewportWidth, textLength) {
-  return getCaretRect(layout, offset, scrollTop, viewportWidth, textLength);
+export function coordsAtPos(layout, offset, scrollTop, viewportWidth, textLength, options = null) {
+  return getCaretRect(layout, offset, scrollTop, viewportWidth, textLength, options);
 }
 
 export function posAtCoords(layout, x, y, scrollTop, viewportWidth, textLength) {

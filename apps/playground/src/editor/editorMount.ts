@@ -10,6 +10,7 @@ import {
 } from "lumenpage-kit-basic";
 import { baseKeymap } from "lumenpage-commands";
 import { keymap } from "lumenpage-keymap";
+import { Selection, TextSelection } from "lumenpage-state";
 import {
   normalizeNavigableHref,
   resolveLinkHrefAtPos,
@@ -142,7 +143,8 @@ export const mountPlaygroundEditor = ({
     flags.debugPerf,
     flags.enablePaginationWorker,
     flags.forcePaginationWorker,
-    flags.locale
+    flags.locale,
+    flags.highContrast
   );
   if (flags.enablePaginationWorker) {
     settings.paginationWorker = {
@@ -217,6 +219,8 @@ export const mountPlaygroundEditor = ({
     state: readyState,
     attributes: {
       "aria-label": i18n.app.editorAriaLabel,
+      lang: flags.locale,
+      "data-contrast": flags.highContrast ? "high" : "normal",
     },
     formatStatusText: (_view: CanvasEditorView, args: any) => {
       const pageCount = Math.max(0, Number(args?.pageCount) || 0);
@@ -474,9 +478,32 @@ export const mountPlaygroundEditor = ({
   if (smokeQueue.length > 0) {
     requestAnimationFrame(() => {
       const runSmokeQueue = async () => {
-      const globalObj = globalThis as any;
-      globalObj.__lumenSmokeLogs = [];
-      for (const runSmoke of smokeQueue) {
+        const globalObj = globalThis as any;
+        globalObj.__lumenSmokeLogs = [];
+        const snapshot = (() => {
+          const rawView = view as any;
+          const state = rawView?.state;
+          const selection = state?.selection;
+          const scrollArea = rawView?._internals?.dom?.scrollArea ?? null;
+          const json =
+            typeof rawView?.getJSON === "function"
+              ? rawView.getJSON()
+              : state?.doc?.toJSON?.() ?? null;
+          return {
+            json,
+            docRef: state?.doc ?? null,
+            selection:
+              Number.isFinite(selection?.from) && Number.isFinite(selection?.to)
+                ? {
+                    from: Number(selection.from),
+                    to: Number(selection.to),
+                    head: Number.isFinite(selection?.head) ? Number(selection.head) : Number(selection.to),
+                  }
+                : null,
+            scrollTop: Number.isFinite(scrollArea?.scrollTop) ? Number(scrollArea.scrollTop) : null,
+          };
+        })();
+        for (const runSmoke of smokeQueue) {
           try {
             await Promise.resolve(runSmoke());
           } catch (error) {
@@ -487,63 +514,97 @@ export const mountPlaygroundEditor = ({
               tableDebugPanelElement.textContent = `${prev}\n${text}`.trim();
             }
           }
-      }
-      const shouldSummarizeBatch = flags.debugAllSmoke || flags.debugP0Smoke;
-      if (shouldSummarizeBatch) {
-        const logLines = Array.isArray(globalObj.__lumenSmokeLogs) ? globalObj.__lumenSmokeLogs : [];
-        const lines = logLines
-          .map((line: string) => String(line || "").trim())
-          .filter((line: string) => /^\[[^\]]+-smoke\]\s+(PASS|FAIL)\b/.test(line));
-        const passLines = lines.filter((line: string) => /\]\s+PASS\b/.test(line));
-        const failLines = lines.filter((line: string) => /\]\s+FAIL\b/.test(line));
-        const failNames = failLines
-          .map((line: string) => {
-            const match = line.match(/^\[([^\]]+)\]/);
-            return match?.[1] ?? line;
-          })
-          .join(", ");
-        const smokeNames = lines
-          .map((line: string) => {
-            const match = line.match(/^\[([^\]]+)\]/);
-            return match?.[1] ?? "";
-          })
-          .filter(Boolean);
-        let missingNames: string[] = [];
-        if (flags.debugP0Smoke) {
-          const requiredP0Smokes = [
-            "table-behavior-smoke",
-            "table-smoke",
-            "list-smoke",
-            "list-behavior-smoke",
-            "block-outline-smoke",
-            "drag-smoke",
-            "drag-action-smoke",
-            "selection-ime-smoke",
-            "ime-action-smoke",
-            "selection-boundary-smoke",
-            "paste-smoke",
-            "doc-roundtrip-smoke",
-            "scroll-smoke",
-            "legacy-config-smoke",
-          ];
-          missingNames = requiredP0Smokes.filter((name) => !smokeNames.includes(name));
         }
-        const summaryTag = flags.debugAllSmoke ? "all-smoke-summary" : "p0-smoke-summary";
-        const summary = `[${summaryTag}] total=${lines.length} pass=${passLines.length} fail=${failLines.length}${
-          failLines.length > 0 ? ` failed=[${failNames}]` : ""
-        }${
-          missingNames.length > 0 ? ` missing=[${missingNames.join(", ")}]` : ""
-        }`;
-        if (tableDebugPanelElement) {
-          const text = tableDebugPanelElement.textContent || "";
-          tableDebugPanelElement.textContent = `${text}\n${summary}`.trim();
+        const shouldSummarizeBatch = flags.debugAllSmoke || flags.debugP0Smoke;
+        if (shouldSummarizeBatch) {
+          const logLines = Array.isArray(globalObj.__lumenSmokeLogs) ? globalObj.__lumenSmokeLogs : [];
+          const lines = logLines
+            .map((line: string) => String(line || "").trim())
+            .filter((line: string) => /^\[[^\]]+-smoke\]\s+(PASS|FAIL)\b/.test(line));
+          const passLines = lines.filter((line: string) => /\]\s+PASS\b/.test(line));
+          const failLines = lines.filter((line: string) => /\]\s+FAIL\b/.test(line));
+          const failNames = failLines
+            .map((line: string) => {
+              const match = line.match(/^\[([^\]]+)\]/);
+              return match?.[1] ?? line;
+            })
+            .join(", ");
+          const smokeNames = lines
+            .map((line: string) => {
+              const match = line.match(/^\[([^\]]+)\]/);
+              return match?.[1] ?? "";
+            })
+            .filter(Boolean);
+          let missingNames: string[] = [];
+          if (flags.debugP0Smoke) {
+            const requiredP0Smokes = [
+              "table-behavior-smoke",
+              "table-smoke",
+              "list-smoke",
+              "list-behavior-smoke",
+              "block-outline-smoke",
+              "drag-smoke",
+              "drag-action-smoke",
+              "selection-ime-smoke",
+              "ime-action-smoke",
+              "selection-boundary-smoke",
+              "paste-smoke",
+              "doc-roundtrip-smoke",
+              "scroll-smoke",
+              "legacy-config-smoke",
+            ];
+            missingNames = requiredP0Smokes.filter((name) => !smokeNames.includes(name));
+          }
+          const summaryTag = flags.debugAllSmoke ? "all-smoke-summary" : "p0-smoke-summary";
+          const summary = `[${summaryTag}] total=${lines.length} pass=${passLines.length} fail=${failLines.length}${
+            failLines.length > 0 ? ` failed=[${failNames}]` : ""
+          }${
+            missingNames.length > 0 ? ` missing=[${missingNames.join(", ")}]` : ""
+          }`;
+          if (tableDebugPanelElement) {
+            const text = tableDebugPanelElement.textContent || "";
+            tableDebugPanelElement.textContent = `${text}\n${summary}`.trim();
+          }
+          if (failLines.length > 0 || missingNames.length > 0) {
+            console.error(summary);
+          } else {
+            console.info(summary);
+          }
         }
-        if (failLines.length > 0 || missingNames.length > 0) {
-          console.error(summary);
-        } else {
-          console.info(summary);
+        try {
+          const rawView = view as any;
+          const docChangedBySmoke =
+            snapshot.docRef != null && rawView?.state?.doc != null
+              ? rawView.state.doc !== snapshot.docRef
+              : true;
+          if (docChangedBySmoke && snapshot.json && typeof rawView?.setJSON === "function") {
+            rawView.setJSON(snapshot.json);
+          }
+          if (snapshot.selection && rawView?.state?.doc && rawView?.state?.tr) {
+            const docSize = Number(rawView.state.doc.content?.size || 0);
+            const from = Math.max(0, Math.min(Number(snapshot.selection.from), docSize));
+            const to = Math.max(0, Math.min(Number(snapshot.selection.to), docSize));
+            const head = Math.max(0, Math.min(Number(snapshot.selection.head), docSize));
+            let selection: any = null;
+            try {
+              selection = TextSelection.create(rawView.state.doc, from, to);
+            } catch (_error) {
+              selection = Selection.near(rawView.state.doc.resolve(head), 1);
+            }
+            if (selection) {
+              rawView.dispatch(rawView.state.tr.setSelection(selection).scrollIntoView());
+            }
+          }
+          const scrollArea = rawView?._internals?.dom?.scrollArea;
+          if (scrollArea && Number.isFinite(snapshot.scrollTop)) {
+            scrollArea.scrollTop = Number(snapshot.scrollTop);
+          }
+          rawView?._internals?.updateLayout?.();
+          rawView?._internals?.updateCaret?.(true);
+          rawView?._internals?.scheduleRender?.();
+        } catch (error) {
+          console.error("[smoke-runner] restore snapshot failed", error);
         }
-      }
       };
       void runSmokeQueue();
     });

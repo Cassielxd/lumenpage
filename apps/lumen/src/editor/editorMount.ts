@@ -1,0 +1,232 @@
+import {
+  basicCommands,
+  createCanvasEditorKeymap,
+  createDefaultNodeRendererRegistry,
+  createDocFromText,
+  createViewCommands,
+  runCommand,
+  schema,
+  setBlockAlign,
+} from "lumenpage-kit-basic";
+import { baseKeymap } from "lumenpage-commands";
+import { keymap } from "lumenpage-keymap";
+import {
+  normalizeNavigableHref,
+  resolveLinkHrefAtPos,
+  resolveLinkHrefAtSelection,
+} from "lumenpage-link";
+import {
+  CanvasEditorView,
+  type NodeSelectionTargetArgs,
+  type CanvasEditorViewProps,
+  createBlockIdPlugin,
+  createBlockIdTransaction,
+  createCanvasState,
+} from "lumenpage-view-canvas";
+import { createDragHandlePlugin } from "lumenpage-drag-handle";
+import { createActiveBlockSelectionPlugin } from "lumenpage-plugin-active-block";
+import { history } from "lumenpage-history";
+import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
+import { gapCursor } from "lumenpage-gapcursor";
+
+import type { PlaygroundDebugFlags } from "./config";
+import { createCanvasSettings } from "./config";
+import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
+import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
+import { createPlaygroundI18n } from "./i18n";
+import { shouldOpenLinkOnClick } from "./linkPolicy";
+import {
+  configurePlaygroundSecurityPolicy,
+  normalizePastedText,
+  sanitizePastedHtml,
+} from "./pastePolicy";
+import { initialDocJson } from "../initialDoc";
+
+type MountPlaygroundEditorParams = {
+  host: HTMLElement;
+  statusElement?: HTMLElement | null;
+  flags: PlaygroundDebugFlags;
+};
+
+type MountedPlaygroundEditor = {
+  view: CanvasEditorView;
+  destroy: () => void;
+};
+
+export const mountPlaygroundEditor = ({
+  host,
+  statusElement,
+  flags,
+}: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
+  const i18n = createPlaygroundI18n(flags.locale);
+  configurePlaygroundSecurityPolicy({ enableAudit: false });
+
+  const paginationDocWorkerClient =
+    flags.enablePaginationWorker ? new PaginationDocWorkerClient() : null;
+  const settings = createCanvasSettings(
+    flags.debugPerf,
+    flags.enablePaginationWorker,
+    flags.forcePaginationWorker,
+    flags.locale,
+    flags.highContrast
+  );
+
+  if (flags.enablePaginationWorker) {
+    settings.paginationWorker = {
+      ...(settings.paginationWorker || {}),
+      enabled: true,
+      provider: paginationDocWorkerClient,
+    };
+  }
+
+  const nodeRegistry = createDefaultNodeRendererRegistry();
+  const plugins: any[] = [
+    history(),
+    createBlockIdPlugin(),
+    createActiveBlockSelectionPlugin(),
+    keymap(createCanvasEditorKeymap()),
+    keymap(baseKeymap),
+  ];
+
+  const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
+  if (permissionPlugin) {
+    plugins.push(permissionPlugin);
+  }
+
+  if (flags.enableInputRules) {
+    const rules = [ellipsis, emDash, ...smartQuotes].filter(Boolean);
+    plugins.push(inputRules({ rules }));
+  }
+
+  if (flags.enableGapCursor) {
+    plugins.push(gapCursor());
+  }
+
+  plugins.push(
+    createDragHandlePlugin({
+      schema,
+      nodeRegistry,
+      onlyTopLevel: true,
+    })
+  );
+
+  const editorState = createCanvasState({
+    schema,
+    createDocFromText,
+    json: initialDocJson,
+    plugins,
+  });
+  const initBlockIdTr = createBlockIdTransaction(editorState);
+  const readyState = initBlockIdTr ? editorState.apply(initBlockIdTr) : editorState;
+
+  const isInNodeTypeAtPos = (state: any, pos: number, typeName: string) => {
+    if (!state?.doc || !Number.isFinite(pos) || !typeName) {
+      return false;
+    }
+    try {
+      const $pos = state.doc.resolve(pos);
+      for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+        if ($pos.node(depth)?.type?.name === typeName) {
+          return true;
+        }
+      }
+    } catch (_error) {
+      return false;
+    }
+    return false;
+  };
+
+  const viewProps: CanvasEditorViewProps = {
+    state: readyState,
+    attributes: {
+      "aria-label": i18n.app.editorAriaLabel,
+      lang: flags.locale,
+      "data-contrast": flags.highContrast ? "high" : "normal",
+    },
+    formatStatusText: (_view: CanvasEditorView, args: any) => {
+      const pageCount = Math.max(0, Number(args?.pageCount) || 0);
+      const focused = args?.focused === "typing" ? i18n.toolbar.statusTyping : i18n.toolbar.statusIdle;
+      return `${pageCount} ${i18n.toolbar.statusPageUnit} | ${focused}`;
+    },
+    editable: () => flags.permissionMode !== "readonly",
+    canvasViewConfig: {
+      settings,
+      nodeRegistry,
+      legacyPolicy: { strict: true },
+      statusElement: statusElement || undefined,
+    },
+    commandConfig: {
+      basicCommands,
+      runCommand,
+      setBlockAlign,
+      viewCommands: createViewCommands(),
+    },
+    transformPastedText: (_view: CanvasEditorView, text: string) => normalizePastedText(text),
+    transformPastedHTML: (_view: CanvasEditorView, html: string) => sanitizePastedHtml(html),
+    nodeSelectionTypes: ["image", "video", "horizontal_rule"],
+    isInSpecialStructureAtPos: (_view: CanvasEditorView, state: any, pos: number) =>
+      isInNodeTypeAtPos(state, pos, "table"),
+    isNodeSelectionTarget: (_view: CanvasEditorView, args: NodeSelectionTargetArgs) => {
+      const nodeType = args?.node?.type?.name;
+      if (nodeType === "table" || nodeType === "table_row" || nodeType === "table_cell") {
+        return false;
+      }
+      return null;
+    },
+    handleKeyDown: (_view: CanvasEditorView, event: KeyboardEvent) => {
+      const isMod = !!event?.metaKey || !!event?.ctrlKey;
+      const isEnter = event?.key === "Enter";
+      if (!isMod || !isEnter) {
+        return false;
+      }
+      const rawHref = resolveLinkHrefAtSelection(_view?.state);
+      const href = normalizeNavigableHref(rawHref || "");
+      if (!href) {
+        return false;
+      }
+      if (typeof window !== "undefined") {
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+      event?.preventDefault?.();
+      return true;
+    },
+    handleClick: (_view: CanvasEditorView, pos: number, event: MouseEvent) => {
+      const rawHref = resolveLinkHrefAtPos(_view?.state, pos);
+      const href = normalizeNavigableHref(rawHref || "");
+      if (!href) {
+        return false;
+      }
+      const wantsOpen = shouldOpenLinkOnClick(flags.permissionMode, event);
+      if (!wantsOpen) {
+        return false;
+      }
+      if (typeof window !== "undefined") {
+        window.open(href, "_blank", "noopener,noreferrer");
+      }
+      event?.preventDefault?.();
+      return true;
+    },
+  };
+
+  const view = new CanvasEditorView(host, viewProps);
+  try {
+    const currentSelection = view?.state?.selection;
+    if (currentSelection && view?.state?.tr) {
+      const warmupTr = view.state.tr.setSelection(currentSelection);
+      if (warmupTr?.selectionSet) {
+        view.dispatch(warmupTr);
+      }
+    }
+  } catch (error) {
+    console.error("[lumen] selection warmup failed", error);
+  }
+
+  return {
+    view,
+    destroy: () => {
+      configurePlaygroundSecurityPolicy({ enableAudit: false });
+      paginationDocWorkerClient?.destroy?.();
+      view.destroy();
+    },
+  };
+};

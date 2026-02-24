@@ -60,7 +60,15 @@ export const createStateFlow = ({
       setPendingSteps(changeEvent.steps || null);
       view.updateState(nextState);
       if (shouldScroll) {
-        view.scrollIntoView();
+        const targetPos = Number.isFinite(nextState?.selection?.head)
+          ? Number(nextState.selection.head)
+          : undefined;
+        const requestScrollIntoView = view?._internals?.renderSync?.requestScrollIntoView;
+        if (changeEvent?.docChanged === true && typeof requestScrollIntoView === "function") {
+          requestScrollIntoView(targetPos);
+        } else {
+          view.scrollIntoView(targetPos);
+        }
       }
     } catch (error) {
       console.error("[state-flow] dispatchTransaction fatal", error);

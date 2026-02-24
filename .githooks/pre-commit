@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Keep package version/changelog changes in each commit (no publish).
+node scripts/changeset-precommit.mjs
+status=$?
+if [ $status -ne 0 ]; then
+  exit $status
+fi
+
+exit 0

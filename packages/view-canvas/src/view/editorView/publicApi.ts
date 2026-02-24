@@ -195,6 +195,14 @@ export const viewPosAtCoords = (
 
 // 滚动到目标选择：优先尊重 handleScrollToSelection，其次执行默认滚动策略。
 export const scrollViewIntoView = (view, pos, docPosToTextOffset, coordsAtPosImpl) => {
+  const renderSync = view?._internals?.renderSync ?? null;
+  if (typeof renderSync?.isLayoutPending === "function" && renderSync.isLayoutPending()) {
+    if (typeof renderSync?.requestScrollIntoView === "function") {
+      const targetPos = Number.isFinite(pos) ? Number(pos) : view?.state?.selection?.head ?? null;
+      renderSync.requestScrollIntoView(targetPos);
+      return;
+    }
+  }
   if (callBooleanPropHandlers(view, "handleScrollToSelection")) {
     return;
   }

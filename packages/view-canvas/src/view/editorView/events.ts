@@ -28,13 +28,7 @@ const now = () =>
     ? performance.now()
     : Date.now();
 
-const logEventTiming = (enabled, name, startedAt) => {
-  if (!enabled) {
-    return;
-  }
-  const ms = Math.round((now() - startedAt) * 100) / 100;
-  console.info(`[event-timing] ${name} ${ms}ms`);
-};
+const logEventTiming = (_enabled, _name, _startedAt) => {};
 
 // 视图层事件处理：只依赖外部注入，避免与 editorView 主体强耦合。
 export const createViewEventHandlers = ({

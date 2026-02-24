@@ -90,11 +90,13 @@
 当前进展（2026-02-23）：
 
 - 已新增 `a11ySmoke`（ARIA 语义、焦点进出、状态播报、只读语义一致性）。
-- 已新增 `i18nSmoke`（CJK/RTL 混排样例、行几何有效性、offset/pos 映射与坐标稳定性）。
+- 已新增 `i18nSmoke`（CJK 混排样例、行几何有效性、offset/pos 映射与坐标稳定性）。
 - 已增强读屏播报：光标支持 page/line/column/node 信息，选区支持起止 page/line/column。
 - 已在 playground 接入集中式本地化字典（`zh-CN` / `en-US`），并支持 `?locale=`/`?lang=` 参数切换。
 - 已将顶部、菜单、工具栏与交互提示文案去散落化，统一由 `editor/i18n.ts` 管理。
 - 已将换行分词器改为 locale-aware 可替换策略：主线程与 worker 分页均可按 `textLocale` 使用 `Intl.Segmenter`。
+- 已补齐菜单栏与工具栏键盘导航（ArrowLeft/ArrowRight/Home/End），并在 `a11ySmoke` 增加自动回归断言。
+- 已新增高对比模式开关：支持 `?contrast=high`，并在 `a11ySmoke` 增加对比度与状态断言。
 
 里程碑 A（无障碍基线）：
 
@@ -105,7 +107,7 @@
 里程碑 B（国际化排版）：
 
 1. CJK + 英文混排的行分割策略升级（接入可替换分词器）。
-2. RTL 基础能力（方向、光标移动、选区绘制）补齐。
+2. 本阶段不纳入 RTL，聚焦 CJK + 英文混排稳定性。
 3. 本地化字符串集中管理（playground + dev-tools）。
 
 验收标准：
@@ -154,7 +156,7 @@
 ## 建议执行顺序（“优化完继续”）
 
 1. 先做 P2.2 里程碑 A（无障碍基线），避免后续功能返工。
-2. 再做 P2.2 里程碑 B（国际化排版），补齐 CJK/RTL 与本地化字符串治理。
+2. 再做 P2.2 里程碑 B（国际化排版），补齐 CJK 与本地化字符串治理。
 3. 在 P2.2 收口后，推进 P2.4 插件生态规范冻结与模板发布。
 
 ## 回归开关与联调方式
@@ -170,3 +172,35 @@ http://localhost:5173/?devTools=1&perfBudgetSmoke=1
 - `[all-smoke-summary] total=... pass=... fail=...`
 - `[p0-smoke-summary] total=... pass=... fail=... missing=[...]`
 - `[perf-budget-smoke] PASS|FAIL {...}`
+
+### P2.5 输入与分页稳定性修复（2026-02-24，已完成）
+
+当前进展（2026-02-24）：
+
+- 已修复表格结构变更后 `table-smoke` 失败（增删行列后的 selection/导航同步）。
+- 已修复拖拽媒体（图片/视频）占位符错位与垂直探针失败问题。
+- 已修复拖拽指示线方向/位置异常（改为节点间横线并校正 Y 偏移）。
+- 已修复 list 节点拖拽时 handle 丢失与 drop 后选中态异常。
+- 已修复冷启动直接点击 handle 导致页面“消失”的点击链路冲突。
+- 已修复 `security-smoke` 中 markdown 解析失败（依赖与解析链路恢复）。
+- 已修复 dev-tools 引入导致的 `jotai/@compiled/react/lumenpage-dev-tools` 解析错误（playground 侧移除 dev-tools 依赖）。
+- 已修复分页 worker `postMessage could not be cloned`（worker 入参改为可结构化克隆的纯数据）。
+- 已修复连续 Enter 时分页/光标抖动（最新 selection 驱动 caretOffset，尾页边界场景禁用本次 progressive 截断）。
+- 已修复最后一行末尾 Enter “往前跳一格”（caret 边界命中优先级修正，支持 start/end 边界偏好）。
+- 已修复布局版本跳变时旧页缓存残留（版本跳跃强制 redraw）。
+
+性能策略（当前）：
+
+1. 默认保留增量分页与页复用。
+2. 仅在尾页边界 Enter 场景触发一次强同步路径，避免光标视觉回跳。
+3. 常规输入仍走增量路径，不扩大性能回退面。
+
+关键实现位置：
+
+- `apps/playground/src/editor/paginationDocWorkerClient.ts`
+- `packages/view-canvas/src/view/input/handlers.ts`
+- `packages/view-canvas/src/view/renderSync.ts`
+- `packages/view-canvas/src/view/caret.ts`
+- `packages/view-canvas/src/view/posIndex.ts`
+- `packages/view-canvas/src/view/renderer.ts`
+- `packages/view-canvas/src/core/editor/editorOps.ts`

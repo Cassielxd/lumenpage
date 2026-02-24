@@ -1,11 +1,27 @@
 ﻿<template>
-  <t-header class="menu-bar">
+  <t-header class="menu-bar" role="menubar" @keydown="handleMenuBarKeyDown">
     <div class="menu-left">
       <t-dropdown :options="fileMenuOptions" trigger="click" @click="handleFileMenuClick">
-        <t-button size="small" variant="text" class="menu-trigger">{{ i18n.menu.file }}</t-button>
+        <t-button
+          size="small"
+          variant="text"
+          class="menu-trigger"
+          role="menuitem"
+          aria-haspopup="menu"
+        >
+          {{ i18n.menu.file }}
+        </t-button>
       </t-dropdown>
       <t-dropdown :options="toolMenuOptions" trigger="click" @click="handleToolMenuClick">
-        <t-button size="small" variant="text" class="menu-trigger">{{ i18n.menu.tools }}</t-button>
+        <t-button
+          size="small"
+          variant="text"
+          class="menu-trigger"
+          role="menuitem"
+          aria-haspopup="menu"
+        >
+          {{ i18n.menu.tools }}
+        </t-button>
       </t-dropdown>
     </div>
   </t-header>
@@ -40,6 +56,58 @@ const toolMenuOptions = computed(() => [
 ]);
 
 const getView = () => (props.editorView ? toRaw(props.editorView) : null);
+
+const getMenuTriggers = (scope: HTMLElement | null) => {
+  if (!scope) {
+    return [] as HTMLElement[];
+  }
+  const triggers = Array.from(scope.querySelectorAll<HTMLElement>(".menu-trigger"));
+  return triggers.filter((trigger) => {
+    const htmlButton = trigger as HTMLButtonElement;
+    if (htmlButton.disabled || trigger.getAttribute("aria-disabled") === "true") {
+      return false;
+    }
+    return trigger.offsetParent !== null;
+  });
+};
+
+const handleMenuBarKeyDown = (event: KeyboardEvent) => {
+  if (
+    event.key !== "ArrowLeft" &&
+    event.key !== "ArrowRight" &&
+    event.key !== "Home" &&
+    event.key !== "End"
+  ) {
+    return;
+  }
+  const scope = event.currentTarget as HTMLElement | null;
+  const triggers = getMenuTriggers(scope);
+  if (triggers.length === 0) {
+    return;
+  }
+  const target = event.target as HTMLElement | null;
+  const activeTrigger = target?.closest?.(".menu-trigger") as HTMLElement | null;
+  const currentIndex = activeTrigger ? triggers.indexOf(activeTrigger) : -1;
+  if (currentIndex < 0) {
+    return;
+  }
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight") {
+    nextIndex = (currentIndex + 1) % triggers.length;
+  } else if (event.key === "ArrowLeft") {
+    nextIndex = (currentIndex - 1 + triggers.length) % triggers.length;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = triggers.length - 1;
+  }
+  const nextTrigger = triggers[nextIndex];
+  if (!nextTrigger || nextTrigger === activeTrigger) {
+    return;
+  }
+  event.preventDefault();
+  nextTrigger.focus();
+};
 
 const copyToClipboard = async (text: string) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {

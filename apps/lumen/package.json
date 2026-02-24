@@ -1,0 +1,38 @@
+{
+  "name": "lumenpage-lumen",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "lumenpage-kit-basic": "workspace:*",
+    "lumenpage-view-canvas": "workspace:*",
+    "lumenpage-commands": "workspace:*",
+    "lumenpage-history": "workspace:*",
+    "lumenpage-keymap": "workspace:*",
+    "lumenpage-link": "workspace:*",
+    "lumenpage-model": "workspace:*",
+    "lumenpage-state": "workspace:*",
+    "lumenpage-transform": "workspace:*",
+    "lumenpage-inputrules": "workspace:*",
+    "lumenpage-gapcursor": "workspace:*",
+    "lumenpage-markdown": "workspace:*",
+    "lumenpage-drag-handle": "workspace:*",
+    "lumenpage-plugin-active-block": "workspace:*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "vue": "^3.5.0",
+    "tdesign-vue-next": "^1.8.0",
+    "tdesign-icons-vue-next": "^0.3.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.3",
+    "@vitejs/plugin-vue": "^5.2.0"
+  }
+}

@@ -81,12 +81,13 @@ const isVisualBlockLine = (line) => {
   );
 };
 
-export function findLineForOffset(layout, offset, textLength) {
+export function findLineForOffset(layout, offset, textLength, options = null) {
   if (!layout || layout.pages.length === 0) {
     return null;
   }
 
   const clamped = Math.max(0, Math.min(offset, textLength));
+  const preferBoundary = options?.preferBoundary === "end" ? "end" : "start";
 
   let emptyHit = null;
   let lineEndHit = null;
@@ -124,20 +125,40 @@ export function findLineForOffset(layout, offset, textLength) {
       }
     }
   }
-  if (visualStartHit) {
-    return visualStartHit;
-  }
-  if (startHit) {
-    return startHit;
-  }
-  if (rangeHit) {
-    return rangeHit;
-  }
-  if (lineEndHit) {
-    return lineEndHit;
-  }
-  if (emptyHit) {
-    return emptyHit;
+  if (preferBoundary === "end") {
+    if (lineEndHit) {
+      return lineEndHit;
+    }
+    if (rangeHit) {
+      return rangeHit;
+    }
+    if (emptyHit) {
+      return emptyHit;
+    }
+    if (startHit) {
+      return startHit;
+    }
+    if (visualStartHit) {
+      return visualStartHit;
+    }
+  } else {
+    if (visualStartHit) {
+      return visualStartHit;
+    }
+    if (startHit) {
+      return startHit;
+    }
+    if (rangeHit) {
+      return rangeHit;
+    }
+    if (emptyHit) {
+      // Prefer an actual empty-line hit over the previous line end at the same offset.
+      // This keeps caret placement stable after Enter creates an empty paragraph.
+      return emptyHit;
+    }
+    if (lineEndHit) {
+      return lineEndHit;
+    }
   }
 
   const lastPage = layout.pages[layout.pages.length - 1];
@@ -222,8 +243,8 @@ export function offsetAtX(font, line, x) {
 
 /* 光标矩形：根据偏移定位到行，再按字体大小居中 */
 
-export function getCaretRect(layout, offset, scrollTop, viewportWidth, textLength) {
-  const info = findLineForOffset(layout, offset, textLength);
+export function getCaretRect(layout, offset, scrollTop, viewportWidth, textLength, options = null) {
+  const info = findLineForOffset(layout, offset, textLength, options);
 
   if (!info) {
     return null;

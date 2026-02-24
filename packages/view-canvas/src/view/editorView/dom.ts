@@ -156,6 +156,8 @@ export const applyDefaultA11y = (dom, attributes: Record<string, any> | null = {
   const label = attrs["aria-label"] || "LumenPage editor";
   const labelledBy = attrs["aria-labelledby"];
   const describedBy = attrs["aria-describedby"];
+  const lang = typeof attrs.lang === "string" ? attrs.lang.trim() : "";
+  const contrast = typeof attrs["data-contrast"] === "string" ? attrs["data-contrast"].trim() : "";
   const role = attrs.role || "textbox";
   const multiline = attrs["aria-multiline"] ?? "true";
   const tabIndex = Number.isFinite(attrs.tabIndex)
@@ -173,6 +175,16 @@ export const applyDefaultA11y = (dom, attributes: Record<string, any> | null = {
   if (describedBy) {
     dom.root.setAttribute("aria-describedby", describedBy);
   }
+  if (lang) {
+    dom.root.setAttribute("lang", lang);
+  } else {
+    dom.root.removeAttribute("lang");
+  }
+  if (contrast) {
+    dom.root.setAttribute("data-contrast", contrast);
+  } else {
+    dom.root.removeAttribute("data-contrast");
+  }
   dom.root.tabIndex = tabIndex;
 
   dom.input.setAttribute("role", role);
@@ -183,6 +195,16 @@ export const applyDefaultA11y = (dom, attributes: Record<string, any> | null = {
   }
   if (describedBy) {
     dom.input.setAttribute("aria-describedby", describedBy);
+  }
+  if (lang) {
+    dom.input.setAttribute("lang", lang);
+  } else {
+    dom.input.removeAttribute("lang");
+  }
+  if (contrast) {
+    dom.input.setAttribute("data-contrast", contrast);
+  } else {
+    dom.input.removeAttribute("data-contrast");
   }
 };
 

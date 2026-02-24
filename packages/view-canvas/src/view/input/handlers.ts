@@ -31,6 +31,7 @@ export const createInputHandlers = ({
   const isReadOnly = () => inputEl?.readOnly === true;
   let lastCompositionCommitText = "";
   let lastCompositionCommitAt = 0;
+  let lastEnterHandledAt = 0;
   const markCompositionCommit = (text) => {
     if (!text) {
       return;
@@ -57,6 +58,12 @@ export const createInputHandlers = ({
   const runRedo = () => {
     runCommand(basicCommands.redo, getEditorState(), dispatchTransaction);
   };
+  const markEnterHandled = (source) => {
+    void source;
+    lastEnterHandledAt = Date.now();
+  };
+  const wasEnterHandledRecently = () => Date.now() - lastEnterHandledAt <= 120;
+  const runEnterCommand = (state) => runCommand(basicCommands.enter, state, dispatchTransaction);
 
   const handleBeforeInput = (event) => {
     if (isReadOnly()) {
@@ -149,7 +156,11 @@ export const createInputHandlers = ({
       case "insertParagraph":
         {
           const state = getEditorState();
-          const handled = runCommand(basicCommands.enter, state, dispatchTransaction);
+          if (wasEnterHandledRecently()) {
+            event.preventDefault();
+            return;
+          }
+          const handled = runEnterCommand(state);
           event.preventDefault();
           if (!handled) {
             insertText("\n");
@@ -179,19 +190,40 @@ export const createInputHandlers = ({
   };
 
   const handleKeyDown = (event) => {
+    if (event?.key === "Enter") {
+      const stateForEnterHint = getEditorState();
+      const headPos = Number(stateForEnterHint?.selection?.head);
+      const docSize = Number(stateForEnterHint?.doc?.content?.size);
+      const nearDocTail =
+        Number.isFinite(headPos) &&
+        Number.isFinite(docSize) &&
+        headPos >= Math.max(0, Number(docSize) - 2);
+      try {
+        // Keep the expensive sync path only for tail-edge Enter where visual drift was observed.
+        (globalThis as any).__lumenImmediateLayoutHint = nearDocTail && event.repeat !== true;
+        (globalThis as any).__lumenForceSyncLayoutOnce = nearDocTail && event.repeat !== true;
+      } catch (_error) {
+        // no-op
+      }
+    }
     if (event.defaultPrevented) {
       return;
     }
     if (editorHandlers?.handleKeyDown?.(event)) {
+      if (event?.key === "Enter") {
+        markEnterHandled("editor-handlers");
+      }
       event.preventDefault();
       return;
     }
     if (event.isComposing || event.keyCode === 229) {
       return;
     }
-
     // 先走外部 keymap（PM 风格），未命中时再回退到内置按键行为。
     if (typeof runKeymap === "function" && runKeymap(event)) {
+      if (event.key === "Enter") {
+        markEnterHandled("keydown:keymap");
+      }
       event.preventDefault();
       return;
     }
@@ -218,6 +250,16 @@ export const createInputHandlers = ({
         runRedo();
         return;
       }
+    }
+    if (!metaKey && !event.altKey && event.key === "Enter") {
+      event.preventDefault();
+      markEnterHandled("keydown");
+      const state = getEditorState();
+      const handled = runEnterCommand(state);
+      if (!handled) {
+        insertText("\n");
+      }
+      return;
     }
 
     switch (event.key) {
@@ -286,15 +328,6 @@ export const createInputHandlers = ({
     }
 
     if (!supportsBeforeInput && !metaKey && !event.altKey) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const handled = runCommand(basicCommands.enter, getEditorState(), dispatchTransaction);
-        if (!handled) {
-          insertText("\n");
-        }
-        return;
-      }
-
       if (event.key === "Backspace") {
         event.preventDefault();
         deleteText("backward");
