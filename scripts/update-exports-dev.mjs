@@ -66,9 +66,31 @@ const updateExports = (pkg) => {
   return pkg;
 };
 
-const packageDirs = fs.readdirSync(packagesDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => path.join(packagesDir, entry.name));
+const collectPackageDirs = () => {
+  const dirs = [];
+  for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const level1 = path.join(packagesDir, entry.name);
+    if (fs.existsSync(path.join(level1, "package.json"))) {
+      dirs.push(level1);
+      continue;
+    }
+    for (const nested of fs.readdirSync(level1, { withFileTypes: true })) {
+      if (!nested.isDirectory()) {
+        continue;
+      }
+      const level2 = path.join(level1, nested.name);
+      if (fs.existsSync(path.join(level2, "package.json"))) {
+        dirs.push(level2);
+      }
+    }
+  }
+  return dirs;
+};
+
+const packageDirs = collectPackageDirs();
 
 for (const dir of packageDirs) {
   const pkgPath = path.join(dir, "package.json");
@@ -80,4 +102,4 @@ for (const dir of packageDirs) {
   fs.writeFileSync(pkgPath, JSON.stringify(next, null, 2) + "\n", "utf8");
 }
 
-console.log("Updated exports for packages/*");
+console.log("Updated exports for packages");

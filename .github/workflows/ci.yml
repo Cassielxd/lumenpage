@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  governance-and-typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Governance Check
+        run: pnpm governance:check
+
+      - name: Typecheck (Affected)
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            export AFFECTED_DIFF="${{ github.event.pull_request.base.sha }}...${{ github.sha }}"
+            pnpm typecheck:affected
+            exit 0
+          fi
+
+          if [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            export AFFECTED_DIFF="${{ github.event.before }}...${{ github.sha }}"
+            pnpm typecheck:affected
+            exit 0
+          fi
+
+          # First push without a valid base commit: fallback to full typecheck.
+          pnpm typecheck
+
+      - name: Build (Affected)
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            export AFFECTED_DIFF="${{ github.event.pull_request.base.sha }}...${{ github.sha }}"
+            pnpm build:affected
+            exit 0
+          fi
+
+          if [[ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]]; then
+            export AFFECTED_DIFF="${{ github.event.before }}...${{ github.sha }}"
+            pnpm build:affected
+            exit 0
+          fi
+
+          # First push without a valid base commit: fallback to full build.
+          pnpm build

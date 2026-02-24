@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "packages": {
+    "lumenpage-node-basic": {
+      "tier": "core-node",
+      "baseline": [
+        "paragraph:spec+renderer",
+        "heading:spec+renderer",
+        "blockquote:container-render",
+        "code_block:layout+split",
+        "hard_break:offset-mapping",
+        "horizontal_rule:leaf-layout"
+      ],
+      "smokeRefs": [
+        "apps/playground/src/editor/smokeTests.ts#security-smoke",
+        "apps/playground/src/editor/smokeTests.ts#drag-action-smoke"
+      ]
+    },
+    "lumenpage-node-media": {
+      "tier": "core-node",
+      "baseline": [
+        "image:spec+renderer+nodeview",
+        "video:spec+renderer+nodeview"
+      ],
+      "smokeRefs": [
+        "apps/playground/src/editor/smokeTests.ts#drag-action-smoke",
+        "apps/playground/src/editor/smokeTests.ts#security-smoke"
+      ]
+    },
+    "lumenpage-node-list": {
+      "tier": "complex-node",
+      "baseline": [
+        "list:spec+renderer+commands",
+        "list:nested-layout+marker"
+      ],
+      "smokeRefs": [
+        "apps/playground/src/editor/smokeTests.ts#list-smoke",
+        "apps/playground/src/editor/smokeTests.ts#list-behavior-smoke"
+      ]
+    },
+    "lumenpage-node-table": {
+      "tier": "complex-node",
+      "baseline": [
+        "table:spec+renderer+commands",
+        "table:cross-page-split+selection"
+      ],
+      "smokeRefs": [
+        "apps/playground/src/editor/smokeTests.ts#table-smoke",
+        "apps/playground/src/editor/smokeTests.ts#table-behavior-smoke"
+      ]
+    },
+    "lumenpage-node-paragraph": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:paragraphNodeSpec",
+        "export:paragraphRenderer"
+      ]
+    },
+    "lumenpage-node-heading": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:headingNodeSpec",
+        "export:headingRenderer"
+      ]
+    },
+    "lumenpage-node-blockquote": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:blockquoteNodeSpec",
+        "export:blockquoteRenderer"
+      ]
+    },
+    "lumenpage-node-code-block": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:codeBlockNodeSpec",
+        "export:codeBlockRenderer"
+      ]
+    },
+    "lumenpage-node-hard-break": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:hardBreakNodeSpec"
+      ]
+    },
+    "lumenpage-node-horizontal-rule": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-basic",
+      "baseline": [
+        "export:horizontalRuleNodeSpec",
+        "export:horizontalRuleRenderer"
+      ]
+    },
+    "lumenpage-node-image": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-media",
+      "baseline": [
+        "export:imageNodeSpec",
+        "export:imageRenderer"
+      ]
+    },
+    "lumenpage-node-video": {
+      "tier": "compat-wrapper",
+      "delegatesTo": "lumenpage-node-media",
+      "baseline": [
+        "export:videoNodeSpec",
+        "export:videoRenderer"
+      ]
+    }
+  }
+}

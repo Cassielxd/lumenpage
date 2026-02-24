@@ -1,4 +1,4 @@
-import { createLinebreakSegmentText } from "lumenpage-view-canvas";
+import { createLinebreakSegmentText } from "lumenpage-view-runtime";
 import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
 
 export type PlaygroundDebugFlags = {

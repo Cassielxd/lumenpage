@@ -23,11 +23,13 @@ import {
   createBlockIdTransaction,
   createCanvasState,
 } from "lumenpage-view-canvas";
-import { createDragHandlePlugin } from "lumenpage-drag-handle";
-import { createActiveBlockSelectionPlugin } from "lumenpage-plugin-active-block";
+import {
+  createActiveBlockSelectionPlugin,
+  createDragHandlePlugin,
+  gapCursor,
+} from "lumenpage-editor-plugins";
 import { history } from "lumenpage-history";
 import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
-import { gapCursor } from "lumenpage-gapcursor";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";

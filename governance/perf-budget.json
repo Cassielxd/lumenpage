@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "dependencyDepth": {
+    "maxDepth": 8
+  },
+  "publicApi": {
+    "maxSymbolsPerPackage": 300,
+    "maxSubpathExportsPerPackage": 12,
+    "includeVisibility": ["public"]
+  },
+  "buildTimeMs": {
+    "enforce": false,
+    "command": ["pnpm", "build:app"],
+    "coldMax": 180000,
+    "incrementalMax": 90000,
+    "snapshotPath": "governance/build-budget-snapshot.json"
+  }
+}

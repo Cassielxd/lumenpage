@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "measuredAt": null,
+  "command": ["pnpm", "build:app"],
+  "coldBuildMs": null,
+  "incrementalBuildMs": null,
+  "status": "pending-local-measurement"
+}

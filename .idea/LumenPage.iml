@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="WEB_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/temp" />
+      <excludeFolder url="file://$MODULE_DIR$/.tmp" />
+      <excludeFolder url="file://$MODULE_DIR$/tmp" />
+      <excludeFolder url="file://$MODULE_DIR$/apps/playground/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/collab/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/commands/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/dev-tools/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/drag-handle/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/gapcursor/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/history/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/inputrules/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/keymap/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/kit-basic/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/link/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/markdown/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/model/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-blockquote/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-code-block/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-hard-break/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-heading/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-horizontal-rule/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-image/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-list/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-paragraph/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-table/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/node-video/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/plugin-active-block/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/schema-basic/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/state/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/transform/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/view-canvas/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/packages/view-types/dist" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

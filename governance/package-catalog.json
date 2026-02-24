@@ -1,0 +1,186 @@
+{
+  "allowedDependencyLayers": {
+    "core": ["core"],
+    "engine": ["core", "engine"],
+    "extensions": ["core", "engine", "extensions"],
+    "tooling": ["core", "engine", "extensions", "tooling"],
+    "apps": ["core", "engine", "extensions", "tooling", "apps"]
+  },
+  "packages": {
+    "lumenpage-model": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-state": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-transform": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-view-types": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-commands": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-keymap": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-history": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-inputrules": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-link": {
+      "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-collab": {
+      "layer": "core",
+      "visibility": "internal",
+      "action": "keep"
+    },
+    "lumenpage-view-canvas": {
+      "layer": "engine",
+      "visibility": "public",
+      "action": "split"
+    },
+    "lumenpage-layout-engine": {
+      "layer": "engine",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-view-runtime": {
+      "layer": "engine",
+      "visibility": "internal",
+      "action": "keep"
+    },
+    "lumenpage-schema-basic": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-kit-basic": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-node-paragraph": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-basic": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-node-heading": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-blockquote": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-code-block": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-hard-break": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-horizontal-rule": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-media": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-node-image": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-video": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "merge"
+    },
+    "lumenpage-node-list": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-node-table": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-drag-handle": {
+      "layer": "extensions",
+      "visibility": "internal",
+      "action": "merge"
+    },
+    "lumenpage-gapcursor": {
+      "layer": "extensions",
+      "visibility": "internal",
+      "action": "merge"
+    },
+    "lumenpage-plugin-active-block": {
+      "layer": "extensions",
+      "visibility": "internal",
+      "action": "merge"
+    },
+    "lumenpage-editor-plugins": {
+      "layer": "extensions",
+      "visibility": "internal",
+      "action": "keep"
+    },
+    "lumenpage-markdown": {
+      "layer": "extensions",
+      "visibility": "internal",
+      "action": "keep"
+    },
+    "lumenpage-dev-tools": {
+      "layer": "tooling",
+      "visibility": "app-only",
+      "action": "keep"
+    },
+    "lumenpage-playground": {
+      "layer": "apps",
+      "visibility": "app-only",
+      "action": "keep"
+    },
+    "lumenpage-lumen": {
+      "layer": "apps",
+      "visibility": "app-only",
+      "action": "keep"
+    }
+  }
+}

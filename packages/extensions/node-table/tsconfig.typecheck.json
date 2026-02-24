@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
+      "lumenpage-state": ["../state/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}
+

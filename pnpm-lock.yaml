@@ -22,46 +22,40 @@ importers:
     dependencies:
       lumenpage-commands:
         specifier: workspace:*
-        version: link:../../packages/commands
-      lumenpage-drag-handle:
+        version: link:../../packages/core/commands
+      lumenpage-editor-plugins:
         specifier: workspace:*
-        version: link:../../packages/drag-handle
-      lumenpage-gapcursor:
-        specifier: workspace:*
-        version: link:../../packages/gapcursor
+        version: link:../../packages/extensions/editor-plugins
       lumenpage-history:
         specifier: workspace:*
-        version: link:../../packages/history
+        version: link:../../packages/core/history
       lumenpage-inputrules:
         specifier: workspace:*
-        version: link:../../packages/inputrules
+        version: link:../../packages/core/inputrules
       lumenpage-keymap:
         specifier: workspace:*
-        version: link:../../packages/keymap
+        version: link:../../packages/core/keymap
       lumenpage-kit-basic:
         specifier: workspace:*
-        version: link:../../packages/kit-basic
+        version: link:../../packages/extensions/kit-basic
       lumenpage-link:
         specifier: workspace:*
-        version: link:../../packages/link
+        version: link:../../packages/core/link
       lumenpage-markdown:
         specifier: workspace:*
-        version: link:../../packages/markdown
+        version: link:../../packages/extensions/markdown
       lumenpage-model:
         specifier: workspace:*
-        version: link:../../packages/model
-      lumenpage-plugin-active-block:
-        specifier: workspace:*
-        version: link:../../packages/plugin-active-block
+        version: link:../../packages/core/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../../packages/state
+        version: link:../../packages/core/state
       lumenpage-transform:
         specifier: workspace:*
-        version: link:../../packages/transform
+        version: link:../../packages/core/transform
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../../packages/view-canvas
+        version: link:../../packages/engine/view-canvas
       react:
         specifier: ^19.2.0
         version: 19.2.4
@@ -92,46 +86,40 @@ importers:
     dependencies:
       lumenpage-commands:
         specifier: workspace:*
-        version: link:../../packages/commands
-      lumenpage-drag-handle:
+        version: link:../../packages/core/commands
+      lumenpage-editor-plugins:
         specifier: workspace:*
-        version: link:../../packages/drag-handle
-      lumenpage-gapcursor:
-        specifier: workspace:*
-        version: link:../../packages/gapcursor
+        version: link:../../packages/extensions/editor-plugins
       lumenpage-history:
         specifier: workspace:*
-        version: link:../../packages/history
+        version: link:../../packages/core/history
       lumenpage-inputrules:
         specifier: workspace:*
-        version: link:../../packages/inputrules
+        version: link:../../packages/core/inputrules
       lumenpage-keymap:
         specifier: workspace:*
-        version: link:../../packages/keymap
+        version: link:../../packages/core/keymap
       lumenpage-kit-basic:
         specifier: workspace:*
-        version: link:../../packages/kit-basic
+        version: link:../../packages/extensions/kit-basic
       lumenpage-link:
         specifier: workspace:*
-        version: link:../../packages/link
+        version: link:../../packages/core/link
       lumenpage-markdown:
         specifier: workspace:*
-        version: link:../../packages/markdown
+        version: link:../../packages/extensions/markdown
       lumenpage-model:
         specifier: workspace:*
-        version: link:../../packages/model
-      lumenpage-plugin-active-block:
-        specifier: workspace:*
-        version: link:../../packages/plugin-active-block
+        version: link:../../packages/core/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../../packages/state
+        version: link:../../packages/core/state
       lumenpage-transform:
         specifier: workspace:*
-        version: link:../../packages/transform
+        version: link:../../packages/core/transform
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../../packages/view-canvas
+        version: link:../../packages/engine/view-canvas
       react:
         specifier: ^19.2.0
         version: 19.2.4
@@ -158,7 +146,7 @@ importers:
         specifier: ^5.4.3
         version: 5.4.21
 
-  packages/collab:
+  packages/core/collab:
     dependencies:
       lumenpage-state:
         specifier: workspace:*
@@ -167,7 +155,7 @@ importers:
         specifier: workspace:*
         version: link:../transform
 
-  packages/commands:
+  packages/core/commands:
     dependencies:
       lumenpage-model:
         specifier: workspace:*
@@ -182,7 +170,446 @@ importers:
         specifier: workspace:*
         version: link:../view-types
 
-  packages/dev-tools:
+  packages/core/history:
+    dependencies:
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../transform
+      prosemirror-view:
+        specifier: ^1.31.0
+        version: 1.41.6
+      rope-sequence:
+        specifier: ^1.3.0
+        version: 1.3.4
+
+  packages/core/inputrules:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../transform
+      lumenpage-view-types:
+        specifier: workspace:*
+        version: link:../view-types
+
+  packages/core/keymap:
+    dependencies:
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../state
+      lumenpage-view-types:
+        specifier: workspace:*
+        version: link:../view-types
+      w3c-keyname:
+        specifier: ^2.2.0
+        version: 2.2.8
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/core/link:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/core/model:
+    dependencies:
+      orderedmap:
+        specifier: ^2.0.0
+        version: 2.1.1
+    devDependencies:
+      jsdom:
+        specifier: ^20.0.0
+        version: 20.0.3
+
+  packages/core/state:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../model
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../transform
+      lumenpage-view-types:
+        specifier: workspace:*
+        version: link:../view-types
+
+  packages/core/transform:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../model
+
+  packages/core/view-types:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/engine/view-canvas:
+    dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+    devDependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../../core/transform
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/drag-handle:
+    dependencies:
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/editor-plugins:
+    dependencies:
+      lumenpage-drag-handle:
+        specifier: workspace:*
+        version: link:../drag-handle
+      lumenpage-gapcursor:
+        specifier: workspace:*
+        version: link:../gapcursor
+      lumenpage-plugin-active-block:
+        specifier: workspace:*
+        version: link:../plugin-active-block
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/gapcursor:
+    dependencies:
+      lumenpage-keymap:
+        specifier: workspace:*
+        version: link:../../core/keymap
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../../core/transform
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+      lumenpage-view-types:
+        specifier: workspace:*
+        version: link:../../core/view-types
+
+  packages/extensions/kit-basic:
+    dependencies:
+      lumenpage-commands:
+        specifier: workspace:*
+        version: link:../../core/commands
+      lumenpage-history:
+        specifier: workspace:*
+        version: link:../../core/history
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-node-blockquote:
+        specifier: workspace:*
+        version: link:../node-blockquote
+      lumenpage-node-code-block:
+        specifier: workspace:*
+        version: link:../node-code-block
+      lumenpage-node-hard-break:
+        specifier: workspace:*
+        version: link:../node-hard-break
+      lumenpage-node-heading:
+        specifier: workspace:*
+        version: link:../node-heading
+      lumenpage-node-horizontal-rule:
+        specifier: workspace:*
+        version: link:../node-horizontal-rule
+      lumenpage-node-image:
+        specifier: workspace:*
+        version: link:../node-image
+      lumenpage-node-list:
+        specifier: workspace:*
+        version: link:../node-list
+      lumenpage-node-paragraph:
+        specifier: workspace:*
+        version: link:../node-paragraph
+      lumenpage-node-table:
+        specifier: workspace:*
+        version: link:../node-table
+      lumenpage-node-video:
+        specifier: workspace:*
+        version: link:../node-video
+      lumenpage-schema-basic:
+        specifier: workspace:*
+        version: link:../schema-basic
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../../core/transform
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/markdown:
+    dependencies:
+      '@types/markdown-it':
+        specifier: ^14.0.0
+        version: 14.1.2
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-schema-basic:
+        specifier: workspace:*
+        version: link:../schema-basic
+      markdown-it:
+        specifier: ^14.0.0
+        version: 14.1.1
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-blockquote:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-code-block:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-hard-break:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-heading:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-horizontal-rule:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-image:
+    dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-list:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-paragraph:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-table:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/node-video:
+    dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/plugin-active-block:
+    dependencies:
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../core/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/schema-basic:
+    dependencies:
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../core/model
+      lumenpage-node-blockquote:
+        specifier: workspace:*
+        version: link:../node-blockquote
+      lumenpage-node-code-block:
+        specifier: workspace:*
+        version: link:../node-code-block
+      lumenpage-node-hard-break:
+        specifier: workspace:*
+        version: link:../node-hard-break
+      lumenpage-node-heading:
+        specifier: workspace:*
+        version: link:../node-heading
+      lumenpage-node-horizontal-rule:
+        specifier: workspace:*
+        version: link:../node-horizontal-rule
+      lumenpage-node-image:
+        specifier: workspace:*
+        version: link:../node-image
+      lumenpage-node-list:
+        specifier: workspace:*
+        version: link:../node-list
+      lumenpage-node-paragraph:
+        specifier: workspace:*
+        version: link:../node-paragraph
+      lumenpage-node-table:
+        specifier: workspace:*
+        version: link:../node-table
+      lumenpage-node-video:
+        specifier: workspace:*
+        version: link:../node-video
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/tooling/dev-tools:
     dependencies:
       '@babel/runtime':
         specifier: ^7.28.6
@@ -201,13 +628,13 @@ importers:
         version: 0.7.3
       lumenpage-model:
         specifier: workspace:*
-        version: link:../model
+        version: link:../../core/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../state
+        version: link:../../core/state
       lumenpage-view-types:
         specifier: workspace:*
-        version: link:../view-types
+        version: link:../../core/view-types
       nanoid:
         specifier: ^5.1.6
         version: 5.1.6
@@ -311,429 +738,6 @@ importers:
       vite:
         specifier: ^7.3.1
         version: 7.3.1(yaml@2.8.2)
-
-  packages/drag-handle:
-    dependencies:
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/gapcursor:
-    dependencies:
-      lumenpage-keymap:
-        specifier: workspace:*
-        version: link:../keymap
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-      lumenpage-view-types:
-        specifier: workspace:*
-        version: link:../view-types
-
-  packages/history:
-    dependencies:
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      prosemirror-view:
-        specifier: ^1.31.0
-        version: 1.41.6
-      rope-sequence:
-        specifier: ^1.3.0
-        version: 1.3.4
-
-  packages/inputrules:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      lumenpage-view-types:
-        specifier: workspace:*
-        version: link:../view-types
-
-  packages/keymap:
-    dependencies:
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-types:
-        specifier: workspace:*
-        version: link:../view-types
-      w3c-keyname:
-        specifier: ^2.2.0
-        version: 2.2.8
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/kit-basic:
-    dependencies:
-      lumenpage-commands:
-        specifier: workspace:*
-        version: link:../commands
-      lumenpage-history:
-        specifier: workspace:*
-        version: link:../history
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-node-blockquote:
-        specifier: workspace:*
-        version: link:../node-blockquote
-      lumenpage-node-code-block:
-        specifier: workspace:*
-        version: link:../node-code-block
-      lumenpage-node-hard-break:
-        specifier: workspace:*
-        version: link:../node-hard-break
-      lumenpage-node-heading:
-        specifier: workspace:*
-        version: link:../node-heading
-      lumenpage-node-horizontal-rule:
-        specifier: workspace:*
-        version: link:../node-horizontal-rule
-      lumenpage-node-image:
-        specifier: workspace:*
-        version: link:../node-image
-      lumenpage-node-list:
-        specifier: workspace:*
-        version: link:../node-list
-      lumenpage-node-paragraph:
-        specifier: workspace:*
-        version: link:../node-paragraph
-      lumenpage-node-table:
-        specifier: workspace:*
-        version: link:../node-table
-      lumenpage-node-video:
-        specifier: workspace:*
-        version: link:../node-video
-      lumenpage-schema-basic:
-        specifier: workspace:*
-        version: link:../schema-basic
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/link:
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/markdown:
-    dependencies:
-      '@types/markdown-it':
-        specifier: ^14.0.0
-        version: 14.1.2
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-schema-basic:
-        specifier: workspace:*
-        version: link:../schema-basic
-      markdown-it:
-        specifier: ^14.0.0
-        version: 14.1.1
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/model:
-    dependencies:
-      orderedmap:
-        specifier: ^2.0.0
-        version: 2.1.1
-    devDependencies:
-      jsdom:
-        specifier: ^20.0.0
-        version: 20.0.3
-
-  packages/node-blockquote:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-code-block:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-hard-break:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-heading:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-horizontal-rule:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-image:
-    dependencies:
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-list:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-paragraph:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-table:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/node-video:
-    dependencies:
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/plugin-active-block:
-    dependencies:
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/schema-basic:
-    dependencies:
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-node-blockquote:
-        specifier: workspace:*
-        version: link:../node-blockquote
-      lumenpage-node-code-block:
-        specifier: workspace:*
-        version: link:../node-code-block
-      lumenpage-node-hard-break:
-        specifier: workspace:*
-        version: link:../node-hard-break
-      lumenpage-node-heading:
-        specifier: workspace:*
-        version: link:../node-heading
-      lumenpage-node-horizontal-rule:
-        specifier: workspace:*
-        version: link:../node-horizontal-rule
-      lumenpage-node-image:
-        specifier: workspace:*
-        version: link:../node-image
-      lumenpage-node-list:
-        specifier: workspace:*
-        version: link:../node-list
-      lumenpage-node-paragraph:
-        specifier: workspace:*
-        version: link:../node-paragraph
-      lumenpage-node-table:
-        specifier: workspace:*
-        version: link:../node-table
-      lumenpage-node-video:
-        specifier: workspace:*
-        version: link:../node-video
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/state:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      lumenpage-view-types:
-        specifier: workspace:*
-        version: link:../view-types
-
-  packages/transform:
-    dependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-
-  packages/view-canvas:
-    dependencies:
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-    devDependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../transform
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/view-types:
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
 
 packages:
 

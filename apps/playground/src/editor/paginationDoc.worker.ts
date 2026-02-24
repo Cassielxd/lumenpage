@@ -1,5 +1,7 @@
 import { schema, createDefaultNodeRendererRegistry } from "lumenpage-kit-basic";
-import { LayoutPipeline, createLinebreakSegmentText, docPosToTextOffset } from "lumenpage-view-canvas";
+import { LayoutPipeline } from "lumenpage-layout-engine";
+import { createLinebreakSegmentText } from "lumenpage-view-runtime";
+import { docPosToTextOffset } from "lumenpage-view-canvas";
 
 type PaginationDocWorkerRequest = {
   id: number;

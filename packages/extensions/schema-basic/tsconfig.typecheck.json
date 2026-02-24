@@ -1,0 +1,18 @@
+﻿{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-model": ["../../core/model/dist/index.d.ts"],
+      "lumenpage-state": ["../../core/state/dist/index.d.ts"],
+      "lumenpage-transform": ["../../core/transform/dist/index.d.ts"],
+      "lumenpage-view-canvas": ["../../engine/view-canvas/dist/index.d.ts"],
+      "lumenpage-node-basic": ["../node-basic/src/index.ts"],
+      "lumenpage-node-table": ["../node-table/src/index.ts"],
+      "lumenpage-node-list": ["../node-list/src/index.ts"],
+      "lumenpage-node-media": ["../node-media/dist/index.d.ts"]
+    }
+  },
+  "include": ["src"]
+}

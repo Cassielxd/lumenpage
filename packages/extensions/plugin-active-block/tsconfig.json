@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-editor-plugins": ["../editor-plugins/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

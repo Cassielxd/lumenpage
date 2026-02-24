@@ -1,0 +1,29 @@
+/**
+ * view-runtime split scaffold.
+ *
+ * This package is intentionally minimal at this stage.
+ * Runtime modules from `lumenpage-view-canvas` will be migrated here incrementally.
+ */
+export type ViewRuntimeStage = "scaffold";
+
+export const VIEW_RUNTIME_STAGE: ViewRuntimeStage = "scaffold";
+
+export {
+  createSegmentText,
+  createLinebreakSegmentText,
+  type SegmenterOptions,
+} from "./segmenter";
+export { measureTextWidth, getFontSize } from "./measure";
+export { getPageX } from "./pageAlign";
+export { getVisiblePages } from "./virtualization";
+export { findLineForOffset, offsetAtX, getCaretRect, getCaretFromPoint } from "./caret";
+export { coordsAtPos, posAtCoords } from "./posIndex";
+export {
+  buildLayoutIndex,
+  findLineForOffsetIndexed,
+  getFirstLineForBlockId,
+  getLineAtOffset,
+  offsetAtXIndexed,
+  posAtCoordsIndexed,
+} from "./layoutIndex";
+export { createSelectionMovement } from "./selectionMovement";

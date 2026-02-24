@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 function runGit(args, options = {}) {
@@ -54,7 +54,7 @@ function getStagedPackageFiles(stagedFiles) {
 }
 
 function isReleaseArtifactFile(filePath) {
-  return /^packages\/[^/]+\/(?:package\.json|CHANGELOG\.md)$/.test(filePath);
+  return /^packages\/(?:[^/]+\/)?[^/]+\/(?:package\.json|CHANGELOG\.md)$/.test(filePath);
 }
 
 function hasNonReleasePackageChanges(packageFiles) {
@@ -65,8 +65,19 @@ function getChangedPackageDirs(packageFiles) {
   const dirs = new Set();
   for (const file of packageFiles) {
     const parts = file.split("/");
-    if (parts.length >= 2) {
-      dirs.add(path.join("packages", parts[1]));
+    if (parts.length < 2 || parts[0] !== "packages") {
+      continue;
+    }
+    if (parts.length >= 3) {
+      const nestedDir = path.join("packages", parts[1], parts[2]);
+      if (existsSync(path.join(nestedDir, "package.json"))) {
+        dirs.add(nestedDir);
+        continue;
+      }
+    }
+    const flatDir = path.join("packages", parts[1]);
+    if (existsSync(path.join(flatDir, "package.json"))) {
+      dirs.add(flatDir);
     }
   }
   return [...dirs];
