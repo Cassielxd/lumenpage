@@ -66,5 +66,6 @@
 ## 收口项（发布前）
 
 - 在本地非沙箱环境执行 `pnpm governance:budget:measure`，回填 `governance/build-budget-snapshot.json` 的真实时延
-- 兼容转发包在 1-2 个版本窗口后评估下线（`drag-handle/gapcursor/plugin-active-block` 与已并入的 `node-*`）
-- CI 已接入 `typecheck:affected` + `build:affected`，后续补充 smoke 回归门禁
+- 兼容转发包在 1-2 个版本窗口后评估下线（已增加 `governance:check:merge-adoption`，防止新代码回流依赖旧包）
+- CI 已接入 `typecheck:affected` + `build:affected`，并增加 smoke 门禁校验（`governance:check:smoke-gate`）
+- 后续可再补浏览器运行态 smoke gate（例如 Playwright 执行 `?allSmoke=1`）

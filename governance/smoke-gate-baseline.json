@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "summaryTags": ["all-smoke-summary", "p0-smoke-summary"],
+  "requiredP0Smokes": [
+    "table-behavior-smoke",
+    "table-smoke",
+    "list-smoke",
+    "list-behavior-smoke",
+    "block-outline-smoke",
+    "drag-smoke",
+    "drag-action-smoke",
+    "selection-ime-smoke",
+    "ime-action-smoke",
+    "selection-boundary-smoke",
+    "paste-smoke",
+    "doc-roundtrip-smoke",
+    "scroll-smoke",
+    "legacy-config-smoke"
+  ]
+}
