@@ -28,6 +28,47 @@ const parseRequiredP0Smokes = (mountText) => {
   return names;
 };
 
+const parseImportedSmokeRunners = (mountText) => {
+  const fromMarker = 'from "./smokeTests";';
+  const fromIndex = mountText.indexOf(fromMarker);
+  if (fromIndex < 0) {
+    return null;
+  }
+
+  const importStart = mountText.lastIndexOf("import {", fromIndex);
+  const importEnd = mountText.lastIndexOf("}", fromIndex);
+  if (importStart < 0 || importEnd < 0 || importEnd <= importStart) {
+    return null;
+  }
+
+  const names = [];
+  const block = mountText.slice(importStart + "import {".length, importEnd);
+  for (const item of block.split(",")) {
+    const trimmed = item.trim().replace(/\s+/g, " ");
+    if (!trimmed) continue;
+    if (!/^run[A-Za-z0-9]+Smoke$/.test(trimmed)) continue;
+    names.push(trimmed);
+  }
+  return names;
+};
+
+const parseRunnerNamesFromBlock = (mountText, startMarker, endMarker) => {
+  const startIndex = mountText.indexOf(startMarker);
+  if (startIndex < 0) {
+    return null;
+  }
+  const endIndex = mountText.indexOf(endMarker, startIndex);
+  if (endIndex < 0) {
+    return null;
+  }
+  const block = mountText.slice(startIndex, endIndex);
+  const names = [];
+  for (const match of block.matchAll(/\b(run[A-Za-z0-9]+Smoke)\b/g)) {
+    names.push(match[1]);
+  }
+  return asSorted(names);
+};
+
 const parseSmokeNamesFromTests = (smokeText) => {
   const names = new Set();
   for (const match of smokeText.matchAll(/\[([a-z0-9-]+-smoke)\]/g)) {
@@ -74,11 +115,23 @@ const main = () => {
 
   const baselineSummaryTags = Array.isArray(baseline?.summaryTags) ? baseline.summaryTags : [];
   const baselineP0 = Array.isArray(baseline?.requiredP0Smokes) ? baseline.requiredP0Smokes : [];
+  const baselineAllRunners = Array.isArray(baseline?.requiredAllSmokeRunners)
+    ? baseline.requiredAllSmokeRunners
+    : [];
+  const baselineP0Runners = Array.isArray(baseline?.requiredP0SmokeRunners)
+    ? baseline.requiredP0SmokeRunners
+    : [];
   if (baselineSummaryTags.length === 0) {
     errors.push("baseline summaryTags must be a non-empty array");
   }
   if (baselineP0.length === 0) {
     errors.push("baseline requiredP0Smokes must be a non-empty array");
+  }
+  if (baselineAllRunners.length === 0) {
+    errors.push("baseline requiredAllSmokeRunners must be a non-empty array");
+  }
+  if (baselineP0Runners.length === 0) {
+    errors.push("baseline requiredP0SmokeRunners must be a non-empty array");
   }
 
   const p0NamesFromMount = parseRequiredP0Smokes(mountText);
@@ -103,6 +156,44 @@ const main = () => {
     }
   }
 
+  const importedRunners = parseImportedSmokeRunners(mountText);
+  if (!importedRunners) {
+    errors.push("cannot parse smoke runner imports from editorMount.ts");
+  } else {
+    const expectedUnion = asSorted([...baselineAllRunners, ...baselineP0Runners]);
+    if (!sameSet(importedRunners, expectedUnion)) {
+      errors.push(
+        `smoke runner import mismatch baseline. imports=[${asSorted(importedRunners).join(", ")}] baseline=[${expectedUnion.join(", ")}]`,
+      );
+    }
+  }
+
+  const allSmokeRunners = parseRunnerNamesFromBlock(
+    mountText,
+    "if (flags.debugAllSmoke) {",
+    "} else if (flags.debugP0Smoke) {",
+  );
+  if (!allSmokeRunners) {
+    errors.push("cannot parse debugAllSmoke runner block from editorMount.ts");
+  } else if (!sameSet(allSmokeRunners, baselineAllRunners)) {
+    errors.push(
+      `debugAllSmoke runner mismatch baseline. mount=[${asSorted(allSmokeRunners).join(", ")}] baseline=[${asSorted(baselineAllRunners).join(", ")}]`,
+    );
+  }
+
+  const p0SmokeRunners = parseRunnerNamesFromBlock(
+    mountText,
+    "} else if (flags.debugP0Smoke) {",
+    "} else {",
+  );
+  if (!p0SmokeRunners) {
+    errors.push("cannot parse debugP0Smoke runner block from editorMount.ts");
+  } else if (!sameSet(p0SmokeRunners, baselineP0Runners)) {
+    errors.push(
+      `debugP0Smoke runner mismatch baseline. mount=[${asSorted(p0SmokeRunners).join(", ")}] baseline=[${asSorted(baselineP0Runners).join(", ")}]`,
+    );
+  }
+
   if (errors.length > 0) {
     console.error("[playground-smoke-gate] FAIL");
     for (const error of errors) {
@@ -112,7 +203,7 @@ const main = () => {
   }
 
   console.log(
-    `[playground-smoke-gate] PASS p0=${baselineP0.length} summaryTags=${baselineSummaryTags.length}`,
+    `[playground-smoke-gate] PASS p0Tags=${baselineP0.length} allRunners=${baselineAllRunners.length} p0Runners=${baselineP0Runners.length} summaryTags=${baselineSummaryTags.length}`,
   );
 };
 
