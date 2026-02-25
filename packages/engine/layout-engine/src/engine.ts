@@ -991,6 +991,20 @@ export class LayoutPipeline {
       const blockTypeName = block.type?.name;
       const isTopLevel = !context?.containerStack || context.containerStack.length === 0;
 
+      // Hard page break: finish current page and continue from next page top.
+      if (blockTypeName === "page_break") {
+        textOffset += 1;
+        if (page.lines.length > 0) {
+          if (finalizePage()) {
+            return true;
+          }
+        }
+        if (perf) {
+          perf.layoutLeafMs += now() - leafStart;
+        }
+        return shouldStop;
+      }
+
       let blockLines = [];
       let blockLength = 0;
       let blockHeight = 0;

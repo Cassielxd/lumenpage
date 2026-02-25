@@ -387,6 +387,7 @@ export const createViewCommands = () => {
     toggleBlockquote: toggleWrapNode("blockquote"),
     toggleCodeBlock: toggleCodeBlock(),
     insertHorizontalRule: insertNode("horizontal_rule"),
+    insertPageBreak: insertNode("page_break"),
     toggleBulletList: toggleList("bullet_list"),
     toggleOrderedList: toggleList("ordered_list"),
     indent: changeParagraphIndent(1),

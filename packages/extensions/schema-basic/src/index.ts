@@ -7,6 +7,7 @@ import {
   codeBlockNodeSpec,
   horizontalRuleNodeSpec,
   hardBreakNodeSpec,
+  pageBreakNodeSpec,
 } from "lumenpage-node-basic";
 import {
   getTableTextLength,
@@ -45,6 +46,7 @@ export const schema = new Schema({
     blockquote: withIdAttr(blockquoteNodeSpec),
     code_block: withIdAttr(codeBlockNodeSpec),
     horizontal_rule: withIdAttr(horizontalRuleNodeSpec),
+    page_break: withIdAttr(pageBreakNodeSpec),
     ...withIdAttrsForRecord(listNodeSpecs),
     ...withIdAttrsForRecord(tableNodeSpecs),
     image: withIdAttr(imageNodeSpec),

@@ -44,7 +44,7 @@ import { mountPlaygroundEditor } from "./editor/editorMount";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
-type ToolbarMenuKey = "base" | "insert" | "table" | "tools" | "page" | "export";
+type ToolbarMenuKey = "base" | "insert" | "table" | "tools" | "page";
 const docTitle = ref(i18n.app.defaultDocTitle);
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
