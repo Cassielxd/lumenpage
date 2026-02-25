@@ -170,7 +170,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-add",
       items: [
-        item("add-row-before", "table-add-row-before", "上方加行", "Add Row Before"),
+        item("add-row-before", "table-add-row-before", "上方加行", "Add Row Before", "add-row-before", true, "addTableRowBefore"),
         item(
           "add-row-after",
           "table-add-row-after",
@@ -180,7 +180,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
           true,
           "addTableRowAfter"
         ),
-        item("add-column-before", "table-add-column-before", "左侧加列", "Add Column Before"),
+        item("add-column-before", "table-add-column-before", "左侧加列", "Add Column Before", "add-column-before", true, "addTableColumnBefore"),
         item(
           "add-column-after",
           "table-add-column-after",
@@ -249,8 +249,8 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-nav",
       items: [
-        item("next-cell", "table-next-cell", "下一个单元格", "Next Cell"),
-        item("previous-cell", "table-previous-cell", "上一个单元格", "Previous Cell"),
+        item("next-cell", "table-next-cell", "下一个单元格", "Next Cell", "next-cell", true, "goToNextTableCell"),
+        item("previous-cell", "table-previous-cell", "上一个单元格", "Previous Cell", "previous-cell", true, "goToPreviousTableCell"),
       ],
     },
     {
@@ -304,7 +304,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       id: "page-mark",
       items: [
         item("page-break", "page-break", "分页符", "Page Break"),
-        item("page-break-marks", "break-marks", "分页标记", "Break Marks"),
+        item("page-break-marks", "break-marks", "分页标记", "Break Marks", "page-break-marks", true),
         item("page-line-number", "line-number", "行号", "Line Number"),
         item("page-watermark", "watermark", "水印", "Watermark"),
         item("page-background", "background", "页面背景", "Page Background"),

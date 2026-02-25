@@ -202,8 +202,14 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     case "add-row-after":
       runWithNotice("addTableRowAfter", i18n.value.toolbar.alertTableCellRequired);
       return;
+    case "add-row-before":
+      runWithNotice("addTableRowBefore", i18n.value.toolbar.alertTableCellRequired);
+      return;
     case "add-column-after":
       runWithNotice("addTableColumnAfter", i18n.value.toolbar.alertTableCellRequired);
+      return;
+    case "add-column-before":
+      runWithNotice("addTableColumnBefore", i18n.value.toolbar.alertTableCellRequired);
       return;
     case "delete-row":
       runWithNotice("deleteTableRow", i18n.value.toolbar.alertTableCellRequired);
@@ -216,6 +222,15 @@ const handleItemAction = (item: ToolbarItemConfig) => {
       return;
     case "split-cell":
       runWithNotice("splitTableCell", i18n.value.toolbar.alertSplitCellUnavailable);
+      return;
+    case "next-cell":
+      runWithNotice("goToNextTableCell", i18n.value.toolbar.alertTableCellRequired);
+      return;
+    case "previous-cell":
+      runWithNotice("goToPreviousTableCell", i18n.value.toolbar.alertTableCellRequired);
+      return;
+    case "page-break-marks":
+      togglePageBreakMarks();
       return;
     default:
       return;
@@ -271,6 +286,18 @@ const insertVideo = () => {
     return false;
   }
   return run("insertVideo", { src, embed: false });
+};
+
+const togglePageBreakMarks = () => {
+  const view = getView() as any;
+  const settings = view?._internals?.settings;
+  if (!settings) {
+    return false;
+  }
+  settings.showPageCropMarks = settings.showPageCropMarks === false;
+  view?._internals?.renderer?.pageCache?.clear?.();
+  view?._internals?.scheduleRender?.();
+  return true;
 };
 
 const syncHeadingValueFromSelection = () => {

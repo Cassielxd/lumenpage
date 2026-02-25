@@ -157,6 +157,7 @@ const drawDecorationWidgets = (ctx, widgets) => {
 
 const drawPageCornerMarks = (ctx, width, height) => {
   const cornerLen = 10;
+  const diagonalLen = 7;
   const inset = 6;
   ctx.save();
   ctx.strokeStyle = "#cbd5e1";
@@ -178,6 +179,15 @@ const drawPageCornerMarks = (ctx, width, height) => {
   ctx.moveTo(inset + cornerLen, height - inset);
   ctx.lineTo(inset, height - inset);
   ctx.lineTo(inset, height - inset - cornerLen);
+  // corner diagonals
+  ctx.moveTo(inset + 1, inset + diagonalLen);
+  ctx.lineTo(inset + diagonalLen, inset + 1);
+  ctx.moveTo(width - inset - diagonalLen, inset + 1);
+  ctx.lineTo(width - inset - 1, inset + diagonalLen);
+  ctx.moveTo(width - inset - diagonalLen, height - inset - 1);
+  ctx.lineTo(width - inset - 1, height - inset - diagonalLen);
+  ctx.moveTo(inset + 1, height - inset - diagonalLen);
+  ctx.lineTo(inset + diagonalLen, height - inset - 1);
   ctx.stroke();
   ctx.restore();
 };
@@ -664,6 +674,11 @@ export class Renderer {
     }
 
     const renderPageChrome = this.settings?.renderPageChrome;
+    const drawDefaultPageChrome = () => {
+      if (this.settings?.showPageCropMarks !== false) {
+        drawPageCornerMarks(ctx, width, height);
+      }
+    };
     let chromeHandled = false;
     if (typeof renderPageChrome === "function") {
       chromeHandled =
@@ -673,11 +688,11 @@ export class Renderer {
           height,
           pageIndex,
           layout,
-          drawDefaultCornerMarks: () => drawPageCornerMarks(ctx, width, height),
+          drawDefaultCornerMarks: drawDefaultPageChrome,
         }) === true;
     }
     if (!chromeHandled) {
-      drawPageCornerMarks(ctx, width, height);
+      drawDefaultPageChrome();
     }
 
     ctx.textBaseline = "top";
