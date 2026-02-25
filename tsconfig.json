@@ -14,9 +14,6 @@
       "path": "packages/extensions/schema-basic"
     },
     {
-      "path": "packages/extensions/drag-handle"
-    },
-    {
       "path": "packages/extensions/editor-plugins"
     },
     {
@@ -32,13 +29,7 @@
       "path": "apps/lumen"
     },
     {
-      "path": "packages/extensions/node-paragraph"
-    },
-    {
       "path": "packages/extensions/node-basic"
-    },
-    {
-      "path": "packages/extensions/node-heading"
     },
     {
       "path": "packages/extensions/node-table"
@@ -47,34 +38,13 @@
       "path": "packages/extensions/node-list"
     },
     {
-      "path": "packages/extensions/node-image"
-    },
-    {
       "path": "packages/extensions/node-media"
-    },
-    {
-      "path": "packages/extensions/node-video"
-    },
-    {
-      "path": "packages/extensions/node-blockquote"
-    },
-    {
-      "path": "packages/extensions/node-code-block"
-    },
-    {
-      "path": "packages/extensions/node-horizontal-rule"
-    },
-    {
-      "path": "packages/extensions/node-hard-break"
     },
     {
       "path": "packages/extensions/kit-basic"
     },
     {
       "path": "packages/core/inputrules"
-    },
-    {
-      "path": "packages/extensions/gapcursor"
     },
     {
       "path": "packages/core/collab"

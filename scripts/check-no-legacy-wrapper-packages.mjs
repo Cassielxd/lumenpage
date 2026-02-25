@@ -4,8 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ROOT = process.cwd();
+const LEGACY_PATH = path.join(ROOT, "governance", "legacy-wrapper-packages.json");
 const CATALOG_PATH = path.join(ROOT, "governance", "package-catalog.json");
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const NODE_BASELINE_PATH = path.join(ROOT, "governance", "node-test-baseline.json");
+
+const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue"]);
 
 const readText = (filePath) => {
   const raw = fs.readFileSync(filePath, "utf8");
@@ -13,6 +16,8 @@ const readText = (filePath) => {
 };
 
 const readJson = (filePath) => JSON.parse(readText(filePath));
+
+const toPosixPath = (value) => String(value || "").replace(/\\/g, "/");
 
 const collectWorkspacePackageJsonPaths = () => {
   const found = [];
@@ -71,7 +76,9 @@ const collectSourceFiles = () => {
       if (!appEntry.isDirectory()) continue;
       const srcDir = path.join(appsRoot, appEntry.name, "src");
       walkFiles(srcDir, (absolute) => {
-        if (SOURCE_EXTENSIONS.has(path.extname(absolute))) files.push(absolute);
+        if (SOURCE_EXTENSIONS.has(path.extname(absolute))) {
+          files.push(absolute);
+        }
       });
     }
   }
@@ -85,7 +92,9 @@ const collectSourceFiles = () => {
         if (!pkgEntry.isDirectory()) continue;
         const srcDir = path.join(layerDir, pkgEntry.name, "src");
         walkFiles(srcDir, (absolute) => {
-          if (SOURCE_EXTENSIONS.has(path.extname(absolute))) files.push(absolute);
+          if (SOURCE_EXTENSIONS.has(path.extname(absolute))) {
+            files.push(absolute);
+          }
         });
       }
     }
@@ -97,9 +106,7 @@ const collectSourceFiles = () => {
 const collectAppConfigFiles = () => {
   const files = [];
   const appsRoot = path.join(ROOT, "apps");
-  if (!fs.existsSync(appsRoot)) {
-    return files;
-  }
+  if (!fs.existsSync(appsRoot)) return files;
 
   for (const appEntry of fs.readdirSync(appsRoot, { withFileTypes: true })) {
     if (!appEntry.isDirectory()) continue;
@@ -109,18 +116,17 @@ const collectAppConfigFiles = () => {
     if (fs.existsSync(viteConfig)) files.push(viteConfig);
     if (fs.existsSync(tsconfig)) files.push(tsconfig);
   }
+
   return files;
 };
 
-const extractImports = (sourceText) => {
-  const imports = [];
-  for (const match of sourceText.matchAll(/from\s+["']([^"']+)["']/g)) {
-    imports.push(match[1]);
+const collectGlobalConfigFiles = () => {
+  const files = [];
+  const rootTsconfig = path.join(ROOT, "tsconfig.json");
+  if (fs.existsSync(rootTsconfig)) {
+    files.push(rootTsconfig);
   }
-  for (const match of sourceText.matchAll(/import\s*\(\s*["']([^"']+)["']\s*\)/g)) {
-    imports.push(match[1]);
-  }
-  return imports;
+  return files;
 };
 
 const collectInternalDependencyNames = (manifest) => {
@@ -136,57 +142,106 @@ const collectInternalDependencyNames = (manifest) => {
 };
 
 const main = () => {
+  if (!fs.existsSync(LEGACY_PATH)) {
+    console.error("[no-legacy-wrappers] missing file: governance/legacy-wrapper-packages.json");
+    process.exit(1);
+  }
   if (!fs.existsSync(CATALOG_PATH)) {
-    console.error("[merge-wrapper-adoption] missing catalog: governance/package-catalog.json");
+    console.error("[no-legacy-wrappers] missing file: governance/package-catalog.json");
+    process.exit(1);
+  }
+  if (!fs.existsSync(NODE_BASELINE_PATH)) {
+    console.error("[no-legacy-wrappers] missing file: governance/node-test-baseline.json");
     process.exit(1);
   }
 
+  const legacy = readJson(LEGACY_PATH);
   const catalog = readJson(CATALOG_PATH);
-  const packageCatalog = catalog?.packages || {};
-  const mergedPackageNames = new Set(
-    Object.entries(packageCatalog)
-      .filter(([, meta]) => meta?.action === "merge")
-      .map(([name]) => name),
-  );
-
+  const nodeBaseline = readJson(NODE_BASELINE_PATH);
   const errors = [];
+
+  if (legacy?.version !== 1) {
+    errors.push(`legacy wrapper baseline version must be 1, got ${String(legacy?.version)}`);
+  }
+
+  const list = Array.isArray(legacy?.packages) ? legacy.packages : [];
+  if (list.length === 0) {
+    errors.push("legacy wrapper package list must be non-empty");
+  }
+
+  const names = [];
+  for (const item of list) {
+    const name = String(item?.name || "");
+    const dir = String(item?.dir || "");
+    if (!name || !dir) {
+      errors.push(`invalid legacy entry: ${JSON.stringify(item)}`);
+      continue;
+    }
+    names.push(name);
+    const absoluteDir = path.join(ROOT, dir);
+    if (fs.existsSync(absoluteDir)) {
+      errors.push(`legacy wrapper directory still exists: ${toPosixPath(dir)}`);
+    }
+  }
+
+  const uniqueNames = [...new Set(names)];
+  const catalogPackages = catalog?.packages || {};
+  const baselinePackages = nodeBaseline?.packages || {};
+  for (const name of uniqueNames) {
+    if (Object.prototype.hasOwnProperty.call(catalogPackages, name)) {
+      errors.push(`legacy wrapper still exists in catalog: ${name}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(baselinePackages, name)) {
+      errors.push(`legacy wrapper still exists in node baseline: ${name}`);
+    }
+  }
+
   const sourceFiles = collectSourceFiles();
-  for (const absoluteFile of sourceFiles) {
-    const relFile = path.relative(ROOT, absoluteFile).replace(/\\/g, "/");
-    const sourceText = readText(absoluteFile);
-    const imports = extractImports(sourceText);
-    for (const specifier of imports) {
-      if (mergedPackageNames.has(specifier)) {
-        errors.push(`source import uses merged package: ${relFile} -> ${specifier}`);
+  for (const file of sourceFiles) {
+    const rel = toPosixPath(path.relative(ROOT, file));
+    const text = readText(file);
+    for (const name of uniqueNames) {
+      if (text.includes(`"${name}"`) || text.includes(`'${name}'`)) {
+        errors.push(`legacy wrapper import in source: ${rel} -> ${name}`);
+      }
+    }
+  }
+
+  const configFiles = [...collectAppConfigFiles(), ...collectGlobalConfigFiles()];
+  for (const file of configFiles) {
+    const rel = toPosixPath(path.relative(ROOT, file));
+    const text = readText(file);
+    for (const name of uniqueNames) {
+      if (text.includes(name)) {
+        errors.push(`legacy wrapper reference in app config: ${rel} -> ${name}`);
+      }
+    }
+    for (const item of list) {
+      const dir = String(item?.dir || "");
+      if (dir && text.includes(dir)) {
+        errors.push(`legacy wrapper path reference in config: ${rel} -> ${dir}`);
       }
     }
   }
 
   const manifests = collectWorkspacePackageJsonPaths();
   for (const manifestPath of manifests) {
-    const relManifest = path.relative(ROOT, manifestPath).replace(/\\/g, "/");
+    const rel = toPosixPath(path.relative(ROOT, manifestPath));
     const manifest = readJson(manifestPath);
-    const packageName = String(manifest?.name || "");
+    const pkgName = String(manifest?.name || "");
     const deps = collectInternalDependencyNames(manifest);
-    for (const depName of deps) {
-      if (!mergedPackageNames.has(depName)) continue;
-      if (packageName === depName) continue;
-      errors.push(`package dependency uses merged package: ${relManifest} -> ${depName}`);
-    }
-  }
-
-  const appConfigFiles = collectAppConfigFiles();
-  for (const configFile of appConfigFiles) {
-    const relFile = path.relative(ROOT, configFile).replace(/\\/g, "/");
-    const text = readText(configFile);
-    for (const mergedName of mergedPackageNames) {
-      if (!text.includes(mergedName)) continue;
-      errors.push(`app config references merged package: ${relFile} -> ${mergedName}`);
+    for (const name of uniqueNames) {
+      if (pkgName === name) {
+        errors.push(`legacy wrapper package manifest still exists: ${rel}`);
+      }
+      if (deps.includes(name)) {
+        errors.push(`legacy wrapper dependency in manifest: ${rel} -> ${name}`);
+      }
     }
   }
 
   if (errors.length > 0) {
-    console.error("[merge-wrapper-adoption] FAIL");
+    console.error("[no-legacy-wrappers] FAIL");
     for (const error of errors) {
       console.error(`- ${error}`);
     }
@@ -194,7 +249,7 @@ const main = () => {
   }
 
   console.log(
-    `[merge-wrapper-adoption] PASS mergedPackages=${mergedPackageNames.size} sourceFiles=${sourceFiles.length} manifests=${manifests.length} appConfigs=${appConfigFiles.length}`,
+    `[no-legacy-wrappers] PASS packages=${uniqueNames.length} sourceFiles=${sourceFiles.length} manifests=${manifests.length} configs=${configFiles.length}`,
   );
 };
 

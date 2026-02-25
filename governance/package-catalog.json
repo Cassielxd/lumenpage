@@ -1,10 +1,30 @@
 {
   "allowedDependencyLayers": {
-    "core": ["core"],
-    "engine": ["core", "engine"],
-    "extensions": ["core", "engine", "extensions"],
-    "tooling": ["core", "engine", "extensions", "tooling"],
-    "apps": ["core", "engine", "extensions", "tooling", "apps"]
+    "core": [
+      "core"
+    ],
+    "engine": [
+      "core",
+      "engine"
+    ],
+    "extensions": [
+      "core",
+      "engine",
+      "extensions"
+    ],
+    "tooling": [
+      "core",
+      "engine",
+      "extensions",
+      "tooling"
+    ],
+    "apps": [
+      "core",
+      "engine",
+      "extensions",
+      "tooling",
+      "apps"
+    ]
   },
   "packages": {
     "lumenpage-model": {
@@ -82,55 +102,15 @@
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-paragraph": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
     "lumenpage-node-basic": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-heading": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
-    "lumenpage-node-blockquote": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
-    "lumenpage-node-code-block": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
-    "lumenpage-node-hard-break": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
-    "lumenpage-node-horizontal-rule": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
     "lumenpage-node-media": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
-    },
-    "lumenpage-node-image": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
-    },
-    "lumenpage-node-video": {
-      "layer": "extensions",
-      "visibility": "public",
-      "action": "merge"
     },
     "lumenpage-node-list": {
       "layer": "extensions",
@@ -141,21 +121,6 @@
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
-    },
-    "lumenpage-drag-handle": {
-      "layer": "extensions",
-      "visibility": "internal",
-      "action": "merge"
-    },
-    "lumenpage-gapcursor": {
-      "layer": "extensions",
-      "visibility": "internal",
-      "action": "merge"
-    },
-    "lumenpage-plugin-active-block": {
-      "layer": "extensions",
-      "visibility": "internal",
-      "action": "merge"
     },
     "lumenpage-editor-plugins": {
       "layer": "extensions",

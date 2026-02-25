@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "name": "lumenpage-drag-handle",
+      "dir": "packages/extensions/drag-handle"
+    },
+    {
+      "name": "lumenpage-gapcursor",
+      "dir": "packages/extensions/gapcursor"
+    },
+    {
+      "name": "lumenpage-plugin-active-block",
+      "dir": "packages/extensions/plugin-active-block"
+    },
+    {
+      "name": "lumenpage-node-paragraph",
+      "dir": "packages/extensions/node-paragraph"
+    },
+    {
+      "name": "lumenpage-node-heading",
+      "dir": "packages/extensions/node-heading"
+    },
+    {
+      "name": "lumenpage-node-blockquote",
+      "dir": "packages/extensions/node-blockquote"
+    },
+    {
+      "name": "lumenpage-node-code-block",
+      "dir": "packages/extensions/node-code-block"
+    },
+    {
+      "name": "lumenpage-node-hard-break",
+      "dir": "packages/extensions/node-hard-break"
+    },
+    {
+      "name": "lumenpage-node-horizontal-rule",
+      "dir": "packages/extensions/node-horizontal-rule"
+    },
+    {
+      "name": "lumenpage-node-image",
+      "dir": "packages/extensions/node-image"
+    },
+    {
+      "name": "lumenpage-node-video",
+      "dir": "packages/extensions/node-video"
+    }
+  ]
+}

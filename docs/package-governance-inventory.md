@@ -51,6 +51,7 @@
 已完成（2026-02-24）：`drag-handle` / `gapcursor` / `plugin-active-block` 实现迁入 `editor-plugins`，旧包仅保留兼容转发。
 已完成（2026-02-24）：`node-paragraph` / `node-heading` / `node-blockquote` / `node-code-block` / `node-hard-break` / `node-horizontal-rule` 实现迁入 `node-basic`，旧包仅保留兼容转发。
 已完成（2026-02-24）：`node-image` / `node-video` 实现迁入 `node-media`，旧包仅保留兼容转发。
+已完成（2026-02-25）：上述兼容转发包已删除，不再保留兼容层。
 
 ## 拆分（Split）
 
