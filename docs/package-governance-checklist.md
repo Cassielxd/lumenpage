@@ -34,6 +34,7 @@
 - [x] 新增 node 测试基线清单：`governance/node-test-baseline.json`
 - [x] 新增 node 测试基线校验：`scripts/check-node-test-baseline.mjs`
 - [x] 清理 app 侧旧兼容包映射（`vite alias` / `tsconfig paths` 仅保留聚合包）
+- [x] 新增 app 配置一致性守护：`scripts/check-app-config-consistency.mjs`
 - [x] 输出保留/合并/拆分清单：`docs/package-governance-inventory.md`
 
 ## P0（先做，1 周内）
