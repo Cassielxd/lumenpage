@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
-import { TOOLBAR_MENU_TABS, type ToolbarMenuKey } from "../editor/toolbarCatalog";
+import { getVisibleToolbarMenuTabs, type ToolbarMenuKey } from "../editor/toolbarCatalog";
 
 const props = defineProps<{
   locale?: PlaygroundLocale;
@@ -45,7 +45,7 @@ const menuTabAriaLabel = computed(() =>
 );
 
 const toolbarMenuItems = computed<Array<{ value: ToolbarMenuKey; label: string }>>(() =>
-  TOOLBAR_MENU_TABS.map((item) => ({
+  getVisibleToolbarMenuTabs().map((item) => ({
     value: item.value,
     label: item.label[props.locale === "en-US" ? "en-US" : "zh-CN"],
   }))

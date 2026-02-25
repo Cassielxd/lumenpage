@@ -23,6 +23,12 @@ export type ToolbarGroupConfig = {
   items: ToolbarItemConfig[];
 };
 
+export const TOOLBAR_EXPORT_STRATEGY = {
+  showExportTab: false,
+  mergeExportIntoBase: true,
+  onlyShowImplementedInBase: true,
+} as const;
+
 const text = (zh: string, en: string): LocaleText => ({ "zh-CN": zh, "en-US": en });
 
 const item = (
@@ -41,7 +47,13 @@ export const TOOLBAR_MENU_TABS: ToolbarMenuTab[] = [
   { value: "table", label: text("表格", "Table") },
   { value: "tools", label: text("工具", "Tools") },
   { value: "page", label: text("页面", "Page") },
+  { value: "export", label: text("导出", "Export") },
 ];
+
+export const getVisibleToolbarMenuTabs = () =>
+  TOOLBAR_MENU_TABS.filter((item) =>
+    TOOLBAR_EXPORT_STRATEGY.showExportTab ? true : item.value !== "export"
+  );
 
 export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> = {
   base: [
@@ -51,7 +63,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("undo", "undo", "撤销", "Undo", "undo", true, "undo"),
         item("redo", "redo", "重做", "Redo", "redo", true, "redo"),
         item("format-painter", "format-painter", "格式刷", "Format Painter"),
-        item("clear-format", "clear-format", "清除格式", "Clear Format"),
+        item("clear-format", "clear-format", "清除格式", "Clear Format", "clear-format", true),
       ],
     },
     {
@@ -79,31 +91,45 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("task-list", "task-list", "任务列表", "Task List"),
         item("indent", "indent", "增加缩进", "Indent", "indent", true),
         item("outdent", "outdent", "减少缩进", "Outdent", "outdent", true),
-        item("line-height", "line-height", "行高", "Line Height"),
-        item("margin", "margin", "段间距", "Paragraph Spacing"),
+        item("line-height", "line-height", "行高", "Line Height", "line-height", true),
+        item("margin", "margin", "段间距", "Paragraph Spacing", "margin", true),
         item("align-left", "align-left", "左对齐", "Align Left", "align-left", true),
         item("align-center", "align-center", "居中", "Align Center", "align-center", true),
         item("align-right", "align-right", "右对齐", "Align Right", "align-right", true),
-        item("align-justify", "align-justify", "两端对齐", "Align Justify"),
-        item("align-distributed", "align-distributed", "分散对齐", "Align Distributed"),
+        item("align-justify", "align-justify", "两端对齐", "Align Justify", "align-justify", true),
+        item(
+          "align-distributed",
+          "align-distributed",
+          "分散对齐",
+          "Align Distributed",
+          "align-distributed",
+          true
+        ),
         item("quote", "quote", "引用", "Quote", "quote", true),
         item("inline-code", "code", "行内代码", "Inline Code", "inline-code", true),
-        item("select-all", "select-all", "全选", "Select All"),
+        item("select-all", "select-all", "全选", "Select All", "select-all", true),
       ],
     },
     {
       id: "document",
       items: [
         item("import-word", "word", "导入 Word", "Import Word"),
-        item("markdown", "markdown", "Markdown", "Markdown"),
-        item("search-replace", "search-replace", "查找替换", "Search & Replace"),
+        item("markdown", "markdown", "Markdown", "Markdown", "markdown", true),
+        item(
+          "search-replace",
+          "search-replace",
+          "查找替换",
+          "Search & Replace",
+          "search-replace",
+          true
+        ),
       ],
     },
     {
       id: "view",
       items: [
-        item("viewer", "viewer", "阅读模式", "Viewer"),
-        item("print", "print", "打印", "Print"),
+        item("viewer", "viewer", "阅读模式", "Viewer", "viewer", true),
+        item("print", "print", "打印", "Print", "print", true),
       ],
     },
   ],
@@ -117,9 +143,9 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("audio", "audio", "音频", "Audio"),
         item("file", "file", "文件", "File"),
         item("code-block", "code-block", "代码块", "Code Block", "code-block", true),
-        item("symbol", "symbol", "符号", "Symbol"),
-        item("chinese-date", "date", "中文日期", "Chinese Date"),
-        item("emoji", "emoji", "表情", "Emoji"),
+        item("symbol", "symbol", "符号", "Symbol", "symbol", true),
+        item("chinese-date", "date", "中文日期", "Chinese Date", "chinese-date", true),
+        item("emoji", "emoji", "表情", "Emoji", "emoji", true),
         item("math", "math", "公式", "Math"),
       ],
     },
@@ -137,7 +163,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "insert-layout",
       items: [
-        item("hard-break", "hard-break", "硬换行", "Hard Break"),
+        item("hard-break", "hard-break", "硬换行", "Hard Break", "hard-break", true),
         item("hr", "hr", "分割线", "Horizontal Rule", "hr", true),
         item("toc", "toc", "目录", "Table of Contents"),
         item("text-box", "text-box", "文本框", "Text Box"),
@@ -155,8 +181,8 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-main",
       items: [
-        item("table-insert", "table", "插入表格", "Insert Table"),
-        item("table-fix", "table-fix", "修复表格", "Fix Table"),
+        item("table-insert", "table", "插入表格", "Insert Table", "table-insert", true),
+        item("table-fix", "table-fix", "修复表格", "Fix Table", "table-fix", true),
       ],
     },
     {
@@ -169,7 +195,15 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-add",
       items: [
-        item("add-row-before", "table-add-row-before", "上方加行", "Add Row Before"),
+        item(
+          "add-row-before",
+          "table-add-row-before",
+          "上方加行",
+          "Add Row Before",
+          "add-row-before",
+          true,
+          "addTableRowBefore"
+        ),
         item(
           "add-row-after",
           "table-add-row-after",
@@ -179,7 +213,15 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
           true,
           "addTableRowAfter"
         ),
-        item("add-column-before", "table-add-column-before", "左侧加列", "Add Column Before"),
+        item(
+          "add-column-before",
+          "table-add-column-before",
+          "左侧加列",
+          "Add Column Before",
+          "add-column-before",
+          true,
+          "addTableColumnBefore"
+        ),
         item(
           "add-column-after",
           "table-add-column-after",
@@ -240,21 +282,60 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-header",
       items: [
-        item("toggle-header-row", "table-header-row", "切换标题行", "Toggle Header Row"),
-        item("toggle-header-column", "table-header-column", "切换标题列", "Toggle Header Column"),
-        item("toggle-header-cell", "table-header-cell", "切换标题单元格", "Toggle Header Cell"),
+        item(
+          "toggle-header-row",
+          "table-header-row",
+          "切换标题行",
+          "Toggle Header Row",
+          "toggle-header-row",
+          true
+        ),
+        item(
+          "toggle-header-column",
+          "table-header-column",
+          "切换标题列",
+          "Toggle Header Column",
+          "toggle-header-column",
+          true
+        ),
+        item(
+          "toggle-header-cell",
+          "table-header-cell",
+          "切换标题单元格",
+          "Toggle Header Cell",
+          "toggle-header-cell",
+          true
+        ),
       ],
     },
     {
       id: "table-nav",
       items: [
-        item("next-cell", "table-next-cell", "下一个单元格", "Next Cell"),
-        item("previous-cell", "table-previous-cell", "上一个单元格", "Previous Cell"),
+        item(
+          "next-cell",
+          "table-next-cell",
+          "下一个单元格",
+          "Next Cell",
+          "next-cell",
+          true,
+          "goToNextTableCell"
+        ),
+        item(
+          "previous-cell",
+          "table-previous-cell",
+          "上一个单元格",
+          "Previous Cell",
+          "previous-cell",
+          true,
+          "goToPreviousTableCell"
+        ),
       ],
     },
     {
       id: "table-remove",
-      items: [item("delete-table", "table-delete", "删除表格", "Delete Table")],
+      items: [
+        item("delete-table", "table-delete", "删除表格", "Delete Table", "delete-table", true),
+      ],
     },
   ],
   tools: [
@@ -294,25 +375,39 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "page-layout",
       items: [
-        item("page-margin", "margin", "页边距", "Page Margin"),
-        item("page-size", "size", "纸张大小", "Page Size"),
-        item("page-orientation", "orientation", "纸张方向", "Page Orientation"),
+        item("page-margin", "margin", "页边距", "Page Margin", "page-margin", true),
+        item("page-size", "size", "纸张大小", "Page Size", "page-size", true),
+        item(
+          "page-orientation",
+          "orientation",
+          "纸张方向",
+          "Page Orientation",
+          "page-orientation",
+          true
+        ),
       ],
     },
     {
       id: "page-mark",
       items: [
-        item("page-break", "page-break", "分页符", "Page Break"),
-        item("page-break-marks", "break-marks", "分页标记", "Break Marks"),
-        item("page-line-number", "line-number", "行号", "Line Number"),
-        item("page-watermark", "watermark", "水印", "Watermark"),
-        item("page-background", "background", "页面背景", "Page Background"),
+        item("page-break", "page-break", "分页符", "Page Break", "page-break", true),
+        item(
+          "page-break-marks",
+          "break-marks",
+          "分页标记",
+          "Break Marks",
+          "page-break-marks",
+          true
+        ),
+        item("page-line-number", "line-number", "行号", "Line Number", "page-line-number", true),
+        item("page-watermark", "watermark", "水印", "Watermark", "page-watermark", true),
+        item("page-background", "background", "页面背景", "Page Background", "page-background", true),
       ],
     },
     {
       id: "page-view",
       items: [
-        item("page-preview", "preview", "预览", "Preview"),
+        item("page-preview", "preview", "预览", "Preview", "page-preview", true),
         item("page-header", "header", "页眉", "Header"),
         item("page-footer", "footer", "页脚", "Footer"),
       ],
@@ -322,18 +417,18 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "export-file",
       items: [
-        item("export-image", "image", "导出图片", "Export Image"),
-        item("export-pdf", "pdf", "导出 PDF", "Export PDF"),
-        item("export-text", "text", "导出文本", "Export Text"),
-        item("export-html", "html5", "导出 HTML", "Export HTML"),
-        item("export-word", "word", "导出 Word", "Export Word"),
+        item("export-image", "image", "导出图片", "Export Image", "export-image", true),
+        item("export-pdf", "pdf", "导出 PDF", "Export PDF", "export-pdf", true),
+        item("export-text", "text", "导出文本", "Export Text", "export-text", true),
+        item("export-html", "html5", "导出 HTML", "Export HTML", "export-html", true),
+        item("export-word", "word", "导出 Word", "Export Word", "export-word", true),
       ],
     },
     {
       id: "export-share",
       items: [
-        item("share", "share", "分享", "Share"),
-        item("embed", "embed", "嵌入", "Embed"),
+        item("share", "share", "分享", "Share", "share", true),
+        item("embed", "embed", "嵌入", "Embed", "embed", true),
       ],
     },
   ],

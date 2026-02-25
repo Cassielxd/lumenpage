@@ -14,15 +14,14 @@
       </div>
     </t-header>
 
-    <EditorMenuBar
-      v-model:active-menu="activeToolbarMenu"
-      :locale="debugFlags.locale"
-    />
+    <EditorMenuBar v-model:active-menu="activeToolbarMenu" :locale="debugFlags.locale" />
     <EditorToolbar
       ref="toolbarRef"
       :editorView="view"
       :locale="debugFlags.locale"
       :active-menu="activeToolbarMenu"
+      :session-mode="sessionMode"
+      @update:session-mode="handleSessionModeUpdate"
     />
 
     <t-content class="doc-content">
@@ -34,25 +33,39 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+  type Ref,
+} from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { createPlaygroundI18n } from "./editor/i18n";
 import { mountPlaygroundEditor } from "./editor/editorMount";
+import type { ToolbarMenuKey } from "./editor/toolbarCatalog";
+import type { EditorSessionMode } from "./editor/sessionMode";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
-type ToolbarMenuKey = "base" | "insert" | "table" | "tools" | "page";
 const docTitle = ref(i18n.app.defaultDocTitle);
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const view = shallowRef<CanvasEditorView | null>(null);
+const sessionMode = ref<EditorSessionMode>(
+  debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
+);
+const isReadonlyPermission = computed(() => debugFlags.permissionMode === "readonly");
 const permissionLabel = computed(() => {
-  if (debugFlags.permissionMode === "readonly") {
+  if (isReadonlyPermission.value || sessionMode.value === "viewer") {
     return i18n.app.permissionReadonly;
   }
   if (debugFlags.permissionMode === "comment") {
@@ -61,6 +74,23 @@ const permissionLabel = computed(() => {
   return i18n.app.permissionEdit;
 });
 let detachEditor: null | (() => void) = null;
+
+const applySessionModeToView = () => {
+  const currentView = view.value;
+  if (!currentView) {
+    return;
+  }
+  currentView.setProps({
+    editable: () => !isReadonlyPermission.value && sessionMode.value !== "viewer",
+  });
+};
+
+const handleSessionModeUpdate = (nextMode: EditorSessionMode) => {
+  if (isReadonlyPermission.value && nextMode !== "viewer") {
+    return;
+  }
+  sessionMode.value = nextMode;
+};
 
 onMounted(async () => {
   if (!editorHost.value) {
@@ -73,8 +103,16 @@ onMounted(async () => {
     flags: debugFlags,
   });
   view.value = mounted.view;
+  applySessionModeToView();
   detachEditor = mounted.destroy;
 });
+
+watch(
+  () => sessionMode.value,
+  () => {
+    applySessionModeToView();
+  }
+);
 
 onBeforeUnmount(() => {
   detachEditor?.();
@@ -166,7 +204,13 @@ onBeforeUnmount(() => {
 
 .editor-host :deep(.lumenpage-scroll-area) {
   background:
-    radial-gradient(circle at 24px 24px, rgba(148, 163, 184, 0.06) 0, rgba(148, 163, 184, 0.06) 2px, transparent 2px) 0 0 / 36px 36px,
+    radial-gradient(
+        circle at 24px 24px,
+        rgba(148, 163, 184, 0.06) 0,
+        rgba(148, 163, 184, 0.06) 2px,
+        transparent 2px
+      )
+      0 0 / 36px 36px,
     linear-gradient(180deg, #f7f8fb 0%, #eef1f6 100%);
 }
 

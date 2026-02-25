@@ -15,7 +15,10 @@
       >
         <div
           class="toolbar-left"
-          :class="{ 'toolbar-left--with-label': showItemDescription, 'toolbar-left--base-two-line': isBaseMenu }"
+          :class="{
+            'toolbar-left--with-label': showItemDescription,
+            'toolbar-left--base-two-line': isBaseMenu,
+          }"
         >
           <template v-for="(group, groupIndex) in renderGroups" :key="group.id">
             <div
@@ -26,15 +29,22 @@
               }"
             >
               <template v-for="item in group.items" :key="item.id">
-                <div v-if="isHeadingInlineBoxItem(item)" class="heading-inline-box heading-inline-surface">
+                <div
+                  v-if="isHeadingInlineBoxItem(item)"
+                  class="heading-inline-box heading-inline-surface"
+                >
                   <button
                     v-for="option in headingInlineVisibleOptions"
                     :key="`heading-inline-${String(option.value)}`"
                     type="button"
                     class="heading-inline-option"
-                    :class="{ 'heading-inline-option--active': isHeadingInlineOptionActive(option.value) }"
+                    :disabled="isViewerSession"
+                    :aria-disabled="isViewerSession"
+                    :class="{
+                      'heading-inline-option--active': isHeadingInlineOptionActive(option.value),
+                    }"
                     @mousedown.prevent
-                    @click="applyHeadingInlineOption(option.value)"
+                    @click="handleHeadingInlineOptionClick(option.value)"
                   >
                     <span
                       class="heading-inline-option-label"
@@ -47,9 +57,11 @@
                     type="button"
                     ref="headingInlineMoreButtonRef"
                     class="heading-inline-more-btn"
+                    :disabled="isViewerSession"
+                    :aria-disabled="isViewerSession"
                     :aria-expanded="headingInlineMoreOpen"
                     @mousedown.prevent
-                    @click.stop="toggleHeadingInlineMore"
+                    @click.stop="handleToggleHeadingInlineMore"
                   >
                     v
                   </button>
@@ -77,11 +89,9 @@
                         :name="item.icon"
                         :size="resolveIconSize(group)"
                       />
-                      <span
-                        v-if="shouldShowItemDescription(group)"
-                        class="icon-btn-label"
-                        >{{ itemLabel(item) }}</span
-                      >
+                      <span v-if="shouldShowItemDescription(group)" class="icon-btn-label">{{
+                        itemLabel(item)
+                      }}</span>
                     </span>
                   </t-button>
                 </t-tooltip>
@@ -127,7 +137,6 @@
   <teleport to="body">
     <div
       v-if="headingInlineMoreOpen"
-      ref="headingInlineMoreRef"
       class="heading-inline-more-panel heading-inline-more-panel--floating heading-inline-surface"
       :style="headingInlineMorePanelStyle"
     >
@@ -137,9 +146,11 @@
           :key="`heading-inline-more-${String(option.value)}`"
           type="button"
           class="heading-inline-option heading-inline-more-option"
+          :disabled="isViewerSession"
+          :aria-disabled="isViewerSession"
           :class="{ 'heading-inline-option--active': isHeadingInlineOptionActive(option.value) }"
           @mousedown.prevent
-          @click="applyHeadingInlineOption(option.value)"
+          @click="handleHeadingInlineOptionClick(option.value)"
         >
           <span
             class="heading-inline-option-label"
@@ -159,6 +170,27 @@ import { redoDepth, undoDepth } from "lumenpage-history";
 import LumenIcon from "./LumenIcon.vue";
 import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 import {
+  normalizeEditorSessionMode,
+  toggleEditorSessionMode,
+  type EditorSessionMode,
+} from "../editor/sessionMode";
+import { canUseToolbarActionInSession } from "../editor/toolbarAccessPolicy";
+import { createExportActions } from "../editor/toolbarActions/exportActions";
+import { createInlineMediaActions } from "../editor/toolbarActions/inlineMediaActions";
+import { createLayoutActions } from "../editor/toolbarActions/layoutActions";
+import { createMarkdownActions } from "../editor/toolbarActions/markdownActions";
+import { createQuickInsertActions } from "../editor/toolbarActions/quickInsertActions";
+import { createSearchReplaceActions } from "../editor/toolbarActions/searchReplaceActions";
+import { createTableActions } from "../editor/toolbarActions/tableActions";
+import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
+import { createToolbarActionHandlers } from "../editor/toolbarActions/actionHandlers";
+import {
+  createHeadingInlineActions,
+  createHeadingInlineItems,
+  isHeadingInlineBoxItem,
+} from "../editor/toolbarActions/headingInlineActions";
+import {
+  TOOLBAR_EXPORT_STRATEGY,
   TOOLBAR_MENU_GROUPS,
   type ToolbarGroupConfig,
   type ToolbarItemConfig,
@@ -169,11 +201,20 @@ const props = defineProps<{
   editorView: CanvasEditorView | null;
   locale?: PlaygroundLocale;
   activeMenu?: ToolbarMenuKey;
+  sessionMode?: EditorSessionMode;
+}>();
+
+const emit = defineEmits<{
+  (e: "update:sessionMode", value: EditorSessionMode): void;
 }>();
 
 const i18n = computed(() => createPlaygroundI18n(props.locale));
 const localeKey = computed<PlaygroundLocale>(() => (props.locale === "en-US" ? "en-US" : "zh-CN"));
 const resolvedActiveMenu = computed<ToolbarMenuKey>(() => props.activeMenu || "base");
+const resolvedSessionMode = computed<EditorSessionMode>(() =>
+  normalizeEditorSessionMode(props.sessionMode)
+);
+const isViewerSession = computed(() => resolvedSessionMode.value === "viewer");
 const toolbarAriaLabel = computed(() => "Editor formatting toolbar");
 
 const currentGroups = computed(() => TOOLBAR_MENU_GROUPS[resolvedActiveMenu.value] || []);
@@ -182,42 +223,6 @@ const showItemDescription = computed(() => resolvedActiveMenu.value !== "base");
 type ToolbarRenderGroup = ToolbarGroupConfig & {
   layoutMode?: "default" | "base-grid" | "base-export-row";
 };
-type HeadingInlineOption = {
-  id: string;
-  value: string | number;
-};
-const HEADING_INLINE_BOX_ACTION = "heading-inline-box";
-const HEADING_INLINE_VISIBLE_COUNT = 3;
-const HEADING_INLINE_PANEL_COLUMNS = 3;
-const HEADING_INLINE_PANEL_WIDTH = 262;
-const HEADING_INLINE_PANEL_OPTION_HEIGHT = 44;
-const HEADING_INLINE_PANEL_GAP = 3;
-const HEADING_INLINE_PANEL_PADDING = 7;
-const HEADING_INLINE_OPTIONS: Array<{
-  id: string;
-  value: string | number;
-}> = [
-  { id: "paragraph", value: "paragraph" },
-  { id: "h1", value: 1 },
-  { id: "h2", value: 2 },
-  { id: "h3", value: 3 },
-  { id: "h4", value: 4 },
-  { id: "h5", value: 5 },
-  { id: "h6", value: 6 },
-];
-
-const createHeadingInlineItems = (): ToolbarItemConfig[] =>
-  [
-    {
-      id: "heading-inline-box",
-      icon: "",
-      label: { "zh-CN": "", "en-US": "" },
-      action: HEADING_INLINE_BOX_ACTION,
-      implemented: true,
-    },
-  ];
-
-const isHeadingInlineBoxItem = (item: ToolbarItemConfig) => item.action === HEADING_INLINE_BOX_ACTION;
 
 const renderGroups = computed<ToolbarRenderGroup[]>(() => {
   if (!isBaseMenu.value) {
@@ -244,7 +249,13 @@ const renderGroups = computed<ToolbarRenderGroup[]>(() => {
       };
     })
     .filter((group) => (group.items || []).length > 0);
-  const exportItems = (TOOLBAR_MENU_GROUPS.export || []).flatMap((group) => group.items || []);
+  const exportItems = TOOLBAR_EXPORT_STRATEGY.mergeExportIntoBase
+    ? (TOOLBAR_MENU_GROUPS.export || [])
+        .flatMap((group) => group.items || [])
+        .filter((item) =>
+          TOOLBAR_EXPORT_STRATEGY.onlyShowImplementedInBase ? item.implemented : true
+        )
+    : [];
   const headingItems = hasHeadingControl ? createHeadingInlineItems() : [];
   const inlineItems = [...headingItems, ...exportItems];
   if (inlineItems.length === 0) {
@@ -265,76 +276,14 @@ const isBaseGridGroup = (group: ToolbarRenderGroup) =>
   isBaseMenu.value && group?.layoutMode !== "base-export-row";
 const shouldShowItemDescription = (group: ToolbarRenderGroup) =>
   showItemDescription.value || isBaseExportGroup(group);
-const resolveIconSize = (group: ToolbarRenderGroup) =>
-  isBaseGridGroup(group) ? 14 : 22;
+const resolveIconSize = (group: ToolbarRenderGroup) => (isBaseGridGroup(group) ? 14 : 22);
 
-type MaybeElementRef = HTMLElement | HTMLElement[] | null;
-const headingValue = ref<string | number>("paragraph");
-const headingInlineMoreButtonRef = ref<MaybeElementRef>(null);
-const headingInlineMoreRef = ref<MaybeElementRef>(null);
-const headingInlineMoreOpen = ref(false);
-const headingInlineMorePanelStyle = ref<Record<string, string>>({});
 const toolbarLeftViewport = ref<HTMLElement | null>(null);
 const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
 const statusEl = ref<HTMLElement | null>(null);
 const TOOLBAR_SCROLL_STEP = 320;
 const TOOLBAR_SCROLL_EPSILON = 2;
-const headingInlineVisibleOptions = computed<HeadingInlineOption[]>(() =>
-  HEADING_INLINE_OPTIONS.slice(0, HEADING_INLINE_VISIBLE_COUNT)
-);
-const headingInlineOverflowOptions = computed<HeadingInlineOption[]>(() =>
-  HEADING_INLINE_OPTIONS.slice(HEADING_INLINE_VISIBLE_COUNT)
-);
-const headingInlinePanelOptions = computed<HeadingInlineOption[]>(() => HEADING_INLINE_OPTIONS);
-const hasHeadingInlineOverflow = computed(() => headingInlineOverflowOptions.value.length > 0);
-
-const resolveSingleElement = (value: MaybeElementRef): HTMLElement | null => {
-  if (!value) {
-    return null;
-  }
-  if (Array.isArray(value)) {
-    return value.find((element) => element instanceof HTMLElement) || null;
-  }
-  return value instanceof HTMLElement ? value : null;
-};
-
-const updateHeadingInlineMorePanelPosition = () => {
-  const trigger = resolveSingleElement(headingInlineMoreButtonRef.value);
-  if (!trigger) {
-    return;
-  }
-  const rect = trigger.getBoundingClientRect();
-  const margin = 8;
-  const panelWidth = HEADING_INLINE_PANEL_WIDTH;
-  const rowCount = Math.max(
-    1,
-    Math.ceil(headingInlinePanelOptions.value.length / HEADING_INLINE_PANEL_COLUMNS)
-  );
-  const panelHeight =
-    HEADING_INLINE_PANEL_PADDING * 2 +
-    rowCount * HEADING_INLINE_PANEL_OPTION_HEIGHT +
-    Math.max(0, rowCount - 1) * HEADING_INLINE_PANEL_GAP;
-
-  let left = rect.right - panelWidth;
-  if (left < margin) {
-    left = margin;
-  }
-  const maxLeft = window.innerWidth - panelWidth - margin;
-  if (left > maxLeft) {
-    left = maxLeft;
-  }
-
-  let top = rect.bottom + 6;
-  if (top + panelHeight > window.innerHeight - margin) {
-    top = Math.max(margin, rect.top - panelHeight - 6);
-  }
-
-  headingInlineMorePanelStyle.value = {
-    left: `${Math.round(left)}px`,
-    top: `${Math.round(top)}px`,
-  };
-};
 
 const updateToolbarOverflowState = () => {
   const el = toolbarLeftViewport.value;
@@ -397,6 +346,45 @@ const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
   return ok;
 };
 
+const layoutActions = createLayoutActions({
+  getView,
+  run,
+  getLocaleKey: () => localeKey.value,
+});
+
+const tableActions = createTableActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
+
+const exportActions = createExportActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
+const markdownActions = createMarkdownActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+  getMenuTexts: () => i18n.value.menu,
+  downloadTextAsFile: exportActions.downloadTextAsFile,
+});
+
+const inlineMediaActions = createInlineMediaActions({
+  getView,
+  run,
+  getToolbarTexts: () => i18n.value.toolbar,
+});
+const textFormatActions = createTextFormatActions({
+  getView,
+});
+const searchReplaceActions = createSearchReplaceActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
+const quickInsertActions = createQuickInsertActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
+
 const resolveHeadingOptionLabel = (value: string | number) => {
   if (value === "paragraph") {
     return i18n.value.toolbar.blockTypeParagraph;
@@ -413,85 +401,59 @@ const resolveHeadingOptionLabel = (value: string | number) => {
   return `H${value}`;
 };
 
-const headingInlineOptionLabel = (value: string | number) => resolveHeadingOptionLabel(value);
-const headingInlineOptionTypographyClass = (value: string | number) => {
-  if (value === "paragraph") {
-    return "heading-inline-label--paragraph";
-  }
-  const level = Number(value);
-  if (level === 1) {
-    return "heading-inline-label--h1";
-  }
-  if (level === 2) {
-    return "heading-inline-label--h2";
-  }
-  if (level === 3) {
-    return "heading-inline-label--h3";
-  }
-  if (level === 4) {
-    return "heading-inline-label--h4";
-  }
-  if (level === 5) {
-    return "heading-inline-label--h5";
-  }
-  return "heading-inline-label--h6";
-};
+const headingInlineActions = createHeadingInlineActions({
+  getView,
+  run,
+  canRun,
+  resolveOptionLabel: resolveHeadingOptionLabel,
+});
+const {
+  headingInlineMoreButtonRef,
+  headingInlineMoreOpen,
+  headingInlineMorePanelStyle,
+  headingInlineVisibleOptions,
+  headingInlinePanelOptions,
+  hasHeadingInlineOverflow,
+  headingInlineOptionLabel,
+  headingInlineOptionTypographyClass,
+  isHeadingInlineOptionActive,
+  applyHeadingInlineOption,
+  toggleHeadingInlineMore,
+  updateHeadingInlineMorePanelPosition,
+  syncHeadingValueFromSelection,
+  closeHeadingInlineMore,
+} = headingInlineActions;
+
 const itemLabel = (item: ToolbarItemConfig) => item.label[localeKey.value] || "";
 const shouldShowItemIcon = (item: ToolbarItemConfig) =>
   Boolean(item.icon) && !isHeadingInlineBoxItem(item);
-
-const canApplyHeadingInlineValue = (value: string | number) => {
-  if (value === "paragraph") {
-    return canRun("setBlockType", "paragraph");
-  }
-  const level = Number(value);
-  if (!Number.isFinite(level)) {
+const setSessionMode = (value: EditorSessionMode) => {
+  emit("update:sessionMode", value);
+};
+const toggleSessionMode = () => {
+  setSessionMode(toggleEditorSessionMode(resolvedSessionMode.value));
+};
+const handleHeadingInlineOptionClick = (value: string | number) => {
+  if (isViewerSession.value) {
     return false;
   }
-  return canRun("setBlockType", "heading", level);
+  return applyHeadingInlineOption(value);
 };
-
-const applyHeadingInlineValue = (value: string | number) => {
-  if (value === "paragraph") {
-    return run("setBlockType", "paragraph");
-  }
-  const level = Number(value);
-  if (!Number.isFinite(level)) {
-    return false;
-  }
-  return run("setBlockType", "heading", level);
-};
-
-const isHeadingInlineOptionActive = (value: string | number) =>
-  String(value) === String(headingValue.value);
-
-const applyHeadingInlineOption = (value: string | number) => {
-  if (!canApplyHeadingInlineValue(value)) {
-    return false;
-  }
-  const ok = applyHeadingInlineValue(value);
-  if (ok) {
-    headingInlineMoreOpen.value = false;
-  }
-  return ok;
-};
-
-const toggleHeadingInlineMore = () => {
-  if (!hasHeadingInlineOverflow.value) {
+const handleToggleHeadingInlineMore = () => {
+  if (isViewerSession.value) {
     return;
   }
-  const nextOpen = !headingInlineMoreOpen.value;
-  headingInlineMoreOpen.value = nextOpen;
-  if (nextOpen) {
-    void nextTick(updateHeadingInlineMorePanelPosition);
-  }
+  toggleHeadingInlineMore();
 };
 
 const isItemDisabled = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
-    return false;
+    return isViewerSession.value;
   }
   if (!item.implemented) {
+    return true;
+  }
+  if (!canUseToolbarActionInSession(resolvedSessionMode.value, item.action)) {
     return true;
   }
   if (item.command) {
@@ -500,6 +462,23 @@ const isItemDisabled = (item: ToolbarItemConfig) => {
   return false;
 };
 
+const toolbarActionHandlers = createToolbarActionHandlers({
+  run,
+  runWithNotice,
+  getToolbarTexts: () => i18n.value.toolbar,
+  getSessionMode: () => resolvedSessionMode.value,
+  setSessionMode,
+  toggleSessionMode,
+  layoutActions,
+  tableActions,
+  exportActions,
+  markdownActions,
+  inlineMediaActions,
+  textFormatActions,
+  searchReplaceActions,
+  quickInsertActions,
+});
+
 const handleItemAction = (item: ToolbarItemConfig) => {
   if (isItemDisabled(item)) {
     return;
@@ -507,188 +486,7 @@ const handleItemAction = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
     return;
   }
-  switch (item.action) {
-    case "undo":
-      runWithNotice("undo", i18n.value.toolbar.alertCannotUndo);
-      return;
-    case "redo":
-      runWithNotice("redo", i18n.value.toolbar.alertCannotRedo);
-      return;
-    case "bold":
-      run("toggleBold");
-      return;
-    case "italic":
-      run("toggleItalic");
-      return;
-    case "underline":
-      run("toggleUnderline");
-      return;
-    case "strike":
-      run("toggleStrike");
-      return;
-    case "inline-code":
-      run("toggleInlineCode");
-      return;
-    case "ordered-list":
-      run("toggleOrderedList");
-      return;
-    case "bullet-list":
-      run("toggleBulletList");
-      return;
-    case "indent":
-      run("indent");
-      return;
-    case "outdent":
-      run("outdent");
-      return;
-    case "align-left":
-      run("alignLeft");
-      return;
-    case "align-center":
-      run("alignCenter");
-      return;
-    case "align-right":
-      run("alignRight");
-      return;
-    case "quote":
-      run("toggleBlockquote");
-      return;
-    case "link":
-      toggleLink();
-      return;
-    case "code-block":
-      if (!run("toggleCodeBlock")) {
-        run("setBlockType", "code_block");
-      }
-      return;
-    case "image":
-      insertImage();
-      return;
-    case "video":
-      insertVideo();
-      return;
-    case "hr":
-      run("insertHorizontalRule");
-      return;
-    case "page-break":
-      run("insertPageBreak");
-      return;
-    case "add-row-after":
-      runWithNotice("addTableRowAfter", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "add-row-before":
-      runWithNotice("addTableRowBefore", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "add-column-after":
-      runWithNotice("addTableColumnAfter", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "add-column-before":
-      runWithNotice("addTableColumnBefore", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "delete-row":
-      runWithNotice("deleteTableRow", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "delete-column":
-      runWithNotice("deleteTableColumn", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "merge-cells":
-      runWithNotice("mergeTableCellRight", i18n.value.toolbar.alertMergeRightUnavailable);
-      return;
-    case "split-cell":
-      runWithNotice("splitTableCell", i18n.value.toolbar.alertSplitCellUnavailable);
-      return;
-    case "next-cell":
-      runWithNotice("goToNextTableCell", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "previous-cell":
-      runWithNotice("goToPreviousTableCell", i18n.value.toolbar.alertTableCellRequired);
-      return;
-    case "page-break-marks":
-      togglePageBreakMarks();
-      return;
-    default:
-      return;
-  }
-};
-
-const toggleLink = () => {
-  const view = getView();
-  if (!view) {
-    return false;
-  }
-  const markType = view.state.schema.marks.link;
-  if (!markType) {
-    return false;
-  }
-  const { from, to, empty, $cursor } = view.state.selection as any;
-  const hasLink = empty
-    ? !!markType.isInSet(view.state.storedMarks || $cursor?.marks() || [])
-    : view.state.doc.rangeHasMark(from, to, markType);
-  const defaultValue = hasLink ? "" : "https://";
-  const url = window.prompt(i18n.value.toolbar.promptLinkUrl, defaultValue);
-  if (url === null) {
-    return false;
-  }
-  if (!url.trim()) {
-    return run("toggleLink");
-  }
-  const href = url.trim();
-  if (empty) {
-    let tr = view.state.tr.insertText(href, from, to);
-    tr = tr.addMark(from, from + href.length, markType.create({ href, title: href }));
-    view.dispatch(tr.scrollIntoView());
-    return true;
-  }
-  const ok = run("toggleLink", { href, title: href });
-  if (!ok) {
-    window.alert(i18n.value.toolbar.alertLinkRequiresSelection);
-  }
-  return ok;
-};
-
-const insertImage = () => {
-  const src = window.prompt(i18n.value.toolbar.promptImageUrl, "");
-  if (!src) {
-    return false;
-  }
-  return run("insertImage", { src });
-};
-
-const insertVideo = () => {
-  const src = window.prompt(i18n.value.toolbar.promptVideoUrl, "");
-  if (!src) {
-    return false;
-  }
-  return run("insertVideo", { src, embed: false });
-};
-
-const togglePageBreakMarks = () => {
-  const view = getView() as any;
-  const settings = view?._internals?.settings;
-  if (!settings) {
-    return false;
-  }
-  settings.showPageCropMarks = settings.showPageCropMarks === false;
-  view?._internals?.renderer?.pageCache?.clear?.();
-  view?._internals?.scheduleRender?.();
-  return true;
-};
-
-const syncHeadingValueFromSelection = () => {
-  const view = getView();
-  if (!view?.state?.selection) {
-    return;
-  }
-  const parent = view.state.selection.$from?.parent;
-  if (!parent) {
-    return;
-  }
-  let nextValue: string | number = "paragraph";
-  if (parent.type?.name === "heading") {
-    const level = Number(parent.attrs?.level ?? 1);
-    nextValue = Number.isFinite(level) ? level : 1;
-  }
-  headingValue.value = nextValue;
+  toolbarActionHandlers.handleItemAction(item);
 };
 
 const getTargetElement = (target: EventTarget | null): Element | null => {
@@ -707,7 +505,7 @@ const handleDocumentPointerDown = (event: PointerEvent) => {
   }
   const targetElement = getTargetElement(event.target);
   if (!targetElement) {
-    headingInlineMoreOpen.value = false;
+    closeHeadingInlineMore();
     return;
   }
   if (
@@ -716,7 +514,7 @@ const handleDocumentPointerDown = (event: PointerEvent) => {
   ) {
     return;
   }
-  headingInlineMoreOpen.value = false;
+  closeHeadingInlineMore();
 };
 
 const handleWindowResize = () => {
@@ -744,8 +542,15 @@ watch(
 watch(
   () => [resolvedActiveMenu.value, localeKey.value, renderGroups.value.length],
   () => {
-    headingInlineMoreOpen.value = false;
+    closeHeadingInlineMore();
     void nextTick(updateToolbarOverflowState);
+  }
+);
+
+watch(
+  () => resolvedSessionMode.value,
+  () => {
+    closeHeadingInlineMore();
   }
 );
 
@@ -1213,4 +1018,3 @@ defineExpose({ statusEl });
   line-height: 1;
 }
 </style>
-
