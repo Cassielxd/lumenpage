@@ -94,6 +94,24 @@ const collectSourceFiles = () => {
   return files;
 };
 
+const collectAppConfigFiles = () => {
+  const files = [];
+  const appsRoot = path.join(ROOT, "apps");
+  if (!fs.existsSync(appsRoot)) {
+    return files;
+  }
+
+  for (const appEntry of fs.readdirSync(appsRoot, { withFileTypes: true })) {
+    if (!appEntry.isDirectory()) continue;
+    const appDir = path.join(appsRoot, appEntry.name);
+    const viteConfig = path.join(appDir, "vite.config.ts");
+    const tsconfig = path.join(appDir, "tsconfig.json");
+    if (fs.existsSync(viteConfig)) files.push(viteConfig);
+    if (fs.existsSync(tsconfig)) files.push(tsconfig);
+  }
+  return files;
+};
+
 const extractImports = (sourceText) => {
   const imports = [];
   for (const match of sourceText.matchAll(/from\s+["']([^"']+)["']/g)) {
@@ -157,6 +175,16 @@ const main = () => {
     }
   }
 
+  const appConfigFiles = collectAppConfigFiles();
+  for (const configFile of appConfigFiles) {
+    const relFile = path.relative(ROOT, configFile).replace(/\\/g, "/");
+    const text = readText(configFile);
+    for (const mergedName of mergedPackageNames) {
+      if (!text.includes(mergedName)) continue;
+      errors.push(`app config references merged package: ${relFile} -> ${mergedName}`);
+    }
+  }
+
   if (errors.length > 0) {
     console.error("[merge-wrapper-adoption] FAIL");
     for (const error of errors) {
@@ -166,7 +194,7 @@ const main = () => {
   }
 
   console.log(
-    `[merge-wrapper-adoption] PASS mergedPackages=${mergedPackageNames.size} sourceFiles=${sourceFiles.length} manifests=${manifests.length}`,
+    `[merge-wrapper-adoption] PASS mergedPackages=${mergedPackageNames.size} sourceFiles=${sourceFiles.length} manifests=${manifests.length} appConfigs=${appConfigFiles.length}`,
   );
 };
 
