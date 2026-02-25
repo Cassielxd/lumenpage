@@ -10,7 +10,6 @@ const now = () =>
     ? performance.now()
     : Date.now();
 
-
 // 变更摘要：用于增量布局复用。
 type LayoutChangeSummary = {
   docChanged?: boolean;
@@ -41,7 +40,6 @@ type LayoutFromDocOptions = {
   docPosToTextOffset?: (doc: any, pos: number) => number;
   progressiveMaxPages?: number | null;
 };
-
 
 // 创建新的分页容器。
 function newPage(index) {
@@ -131,7 +129,6 @@ const resolveSettingsWithIndent = (settings, indent) => {
   };
 };
 
-
 // 数值哈希，用于页签名。
 const hashNumber = (hash, value) => {
   const num = Number.isFinite(value) ? Math.round(value) : 0;
@@ -147,6 +144,48 @@ const hashString = (hash, value) => {
     hash = (hash * 31 + value.charCodeAt(i)) | 0;
   }
   return hash;
+};
+
+const objectIdentityTokens = new WeakMap<object, number>();
+let nextObjectIdentityToken = 1;
+
+const getObjectIdentityToken = (value) => {
+  const obj = value as object;
+  if (objectIdentityTokens.has(obj)) {
+    return objectIdentityTokens.get(obj) || 0;
+  }
+  const token = nextObjectIdentityToken++;
+  objectIdentityTokens.set(obj, token);
+  return token;
+};
+
+const hashCacheSignatureValue = (hash, value) => {
+  if (value == null) {
+    return hashString(hash, "null");
+  }
+  if (typeof value === "string") {
+    return hashString(hash, value);
+  }
+  if (typeof value === "number") {
+    return hashNumber(hash, value);
+  }
+  if (typeof value === "boolean") {
+    return hashNumber(hash, value ? 1 : 0);
+  }
+  if (typeof value === "bigint") {
+    return hashString(hash, value.toString());
+  }
+  if (Array.isArray(value)) {
+    let next = hashNumber(hash, value.length);
+    for (const item of value) {
+      next = hashCacheSignatureValue(next, item);
+    }
+    return next;
+  }
+  if (typeof value === "object" || typeof value === "function") {
+    return hashNumber(hash, getObjectIdentityToken(value));
+  }
+  return hashString(hash, String(value));
 };
 
 // 将任意 attrs 结构归一化后参与哈希，保证缓存签名稳定。
@@ -194,18 +233,103 @@ const hashAttrs = (hash, attrs) => {
   return hash;
 };
 
+const hashObjectLike = (hash, value, cache) => {
+  if (!value || typeof value !== "object") {
+    return hash;
+  }
+  if (cache?.has(value)) {
+    return hashNumber(hash, cache.get(value) || 0);
+  }
+  const keys = Object.keys(value).sort();
+  let objectHash = 17;
+  for (const key of keys) {
+    objectHash = hashString(objectHash, key);
+    const item = value[key];
+    if (typeof item === "string") {
+      objectHash = hashString(objectHash, item);
+      continue;
+    }
+    if (typeof item === "number") {
+      objectHash = hashNumber(objectHash, item);
+      continue;
+    }
+    if (typeof item === "boolean") {
+      objectHash = hashNumber(objectHash, item ? 1 : 0);
+      continue;
+    }
+    if (Array.isArray(item)) {
+      objectHash = hashNumber(objectHash, item.length);
+      for (const entry of item) {
+        if (typeof entry === "string") {
+          objectHash = hashString(objectHash, entry);
+        } else if (typeof entry === "number") {
+          objectHash = hashNumber(objectHash, entry);
+        } else if (typeof entry === "boolean") {
+          objectHash = hashNumber(objectHash, entry ? 1 : 0);
+        } else if (entry == null) {
+          objectHash = hashString(objectHash, "null");
+        } else {
+          objectHash = hashObjectLike(objectHash, entry, cache);
+        }
+      }
+      continue;
+    }
+    if (item == null) {
+      objectHash = hashString(objectHash, "null");
+      continue;
+    }
+    objectHash = hashObjectLike(objectHash, item, cache);
+  }
+  const signature = objectHash >>> 0;
+  cache?.set(value, signature);
+  return hashNumber(hash, signature);
+};
+
+const getObjectSignature = (value, cache) => {
+  if (!value || typeof value !== "object") {
+    return 0;
+  }
+  if (cache?.has(value)) {
+    return cache.get(value) || 0;
+  }
+  const signature = hashObjectLike(17, value, cache) >>> 0;
+  cache?.set(value, signature);
+  return signature;
+};
+
 // 计算块布局签名：用于缓存命中判断（不依赖节点对象引用）。
-const getBlockLayoutSignature = (block, settings, indent) => {
+const getBlockLayoutSignature = (block, settings, indent, renderer, registry) => {
   let hash = 17;
-  hash = hashString(hash, block?.type?.name || "");
-  hash = hashAttrs(hash, block?.attrs || null);
-  hash = hashNumber(hash, block?.nodeSize);
-  hash = hashNumber(hash, block?.childCount);
-  hash = hashString(hash, block?.textContent || "");
+  const blockHash =
+    block && typeof block.hashCode === "function" ? Number(block.hashCode()) : Number.NaN;
+  if (Number.isFinite(blockHash)) {
+    hash = hashNumber(hash, blockHash);
+  } else {
+    hash = hashString(hash, block?.type?.name || "");
+    hash = hashAttrs(hash, block?.attrs || null);
+    hash = hashNumber(hash, block?.nodeSize);
+    hash = hashNumber(hash, block?.childCount);
+    hash = hashString(hash, block?.textContent || "");
+  }
   hash = hashNumber(hash, indent || 0);
   hash = hashNumber(hash, settings?.pageWidth);
   hash = hashNumber(hash, settings?.lineHeight);
   hash = hashString(hash, settings?.font || "");
+  const getCacheSignature = renderer?.getCacheSignature;
+  if (typeof getCacheSignature === "function") {
+    try {
+      const customSignature = getCacheSignature({
+        node: block,
+        settings,
+        registry,
+        indent,
+      });
+      hash = hashString(hash, "__custom_cache_signature__");
+      hash = hashCacheSignatureValue(hash, customSignature);
+    } catch (_error) {
+      // Custom signatures are optional; ignore signature hook failures.
+    }
+  }
   return hash >>> 0;
 };
 
@@ -215,6 +339,7 @@ const getBlockLayoutSignature = (block, settings, indent) => {
 const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) => {
   const shift = (value) =>
     Number.isFinite(value) ? Number(value) + Number(offsetDelta || 0) : value;
+  const objectSignatureCache = new WeakMap();
   let hash = 0;
   if (!page?.lines) {
     return hash;
@@ -232,6 +357,8 @@ const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) 
     hash = hashString(hash, line.blockType || "");
     hash = hashString(hash, line.blockId || "");
     hash = hashString(hash, line.text || "");
+    hash = hashNumber(hash, getObjectSignature(line.blockAttrs || null, objectSignatureCache));
+    hash = hashNumber(hash, getObjectSignature(line.tableMeta || null, objectSignatureCache));
     if (line.runs) {
       for (const run of line.runs) {
         if (includeAbsoluteOffsets) {
@@ -276,34 +403,34 @@ const arePagesEquivalent = (nextPage, prevPage, debug, offsetDelta = 0) => {
     for (let i = 0; i < Math.min(3, nextLines.length); i += 1) {
       sample.push({
         index: i,
-            next: {
-              start: nextLines[i]?.start,
-              end: nextLines[i]?.end,
-              blockStart: nextLines[i]?.blockStart,
-              x: nextLines[i]?.x,
-              y: nextLines[i]?.y,
-              width: nextLines[i]?.width,
+        next: {
+          start: nextLines[i]?.start,
+          end: nextLines[i]?.end,
+          blockStart: nextLines[i]?.blockStart,
+          x: nextLines[i]?.x,
+          y: nextLines[i]?.y,
+          width: nextLines[i]?.width,
           lineHeight: nextLines[i]?.lineHeight,
           blockType: nextLines[i]?.blockType,
           blockId: nextLines[i]?.blockId,
           text: nextLines[i]?.text,
         },
-            prev: {
-              start:
-                Number.isFinite(prevLines[i]?.start) && Number.isFinite(offsetDelta)
-                  ? prevLines[i]?.start + offsetDelta
-                  : prevLines[i]?.start,
-              end:
-                Number.isFinite(prevLines[i]?.end) && Number.isFinite(offsetDelta)
-                  ? prevLines[i]?.end + offsetDelta
-                  : prevLines[i]?.end,
-              blockStart:
-                Number.isFinite(prevLines[i]?.blockStart) && Number.isFinite(offsetDelta)
-                  ? prevLines[i]?.blockStart + offsetDelta
-                  : prevLines[i]?.blockStart,
-              x: prevLines[i]?.x,
-              y: prevLines[i]?.y,
-              width: prevLines[i]?.width,
+        prev: {
+          start:
+            Number.isFinite(prevLines[i]?.start) && Number.isFinite(offsetDelta)
+              ? prevLines[i]?.start + offsetDelta
+              : prevLines[i]?.start,
+          end:
+            Number.isFinite(prevLines[i]?.end) && Number.isFinite(offsetDelta)
+              ? prevLines[i]?.end + offsetDelta
+              : prevLines[i]?.end,
+          blockStart:
+            Number.isFinite(prevLines[i]?.blockStart) && Number.isFinite(offsetDelta)
+              ? prevLines[i]?.blockStart + offsetDelta
+              : prevLines[i]?.blockStart,
+          x: prevLines[i]?.x,
+          y: prevLines[i]?.y,
+          width: prevLines[i]?.width,
           lineHeight: prevLines[i]?.lineHeight,
           blockType: prevLines[i]?.blockType,
           blockId: prevLines[i]?.blockId,
@@ -517,12 +644,9 @@ const shouldDisableReuseForSensitiveChange = (
   }
   const before = changeSummary.blocks?.before || {};
   const after = changeSummary.blocks?.after || {};
-  const candidates = [
-    before.fromIndex,
-    before.toIndex,
-    after.fromIndex,
-    after.toIndex,
-  ].filter((value) => Number.isFinite(value));
+  const candidates = [before.fromIndex, before.toIndex, after.fromIndex, after.toIndex].filter(
+    (value) => Number.isFinite(value)
+  );
 
   if (candidates.length === 0) {
     return false;
@@ -546,7 +670,6 @@ const shouldDisableReuseForSensitiveChange = (
     isSensitiveLine
   );
 };
-
 
 export class LayoutPipeline {
   settings;
@@ -652,14 +775,10 @@ export class LayoutPipeline {
         }
       : baseMeasure;
     // 布局过程中使用的设置。
-    const baseSettings = debugPerf
-      ? { ...baseSettingsRaw, measureTextWidth }
-      : baseSettingsRaw;
+    const baseSettings = debugPerf ? { ...baseSettingsRaw, measureTextWidth } : baseSettingsRaw;
     // 固定版式参数。
     const { pageHeight, pageGap, margin, lineHeight, font } = baseSettings;
-    const blockSpacing = Number.isFinite(baseSettings.blockSpacing)
-      ? baseSettings.blockSpacing
-      : 0;
+    const blockSpacing = Number.isFinite(baseSettings.blockSpacing) ? baseSettings.blockSpacing : 0;
     const paragraphSpacingBefore = Number.isFinite(baseSettings.paragraphSpacingBefore)
       ? baseSettings.paragraphSpacingBefore
       : 0;
@@ -668,8 +787,8 @@ export class LayoutPipeline {
       : 0;
     const rootMarginLeft = margin.left;
     // 增量复用所需输入。
-    let previousLayout = disablePageReuse ? null : options?.previousLayout ?? null;
-    let changeSummary = disablePageReuse ? null : options?.changeSummary ?? null;
+    let previousLayout = disablePageReuse ? null : (options?.previousLayout ?? null);
+    let changeSummary = disablePageReuse ? null : (options?.changeSummary ?? null);
     if (perf) {
       perf.disablePageReuse = !!disablePageReuse;
       perf.optionsPrevPages = options?.previousLayout?.pages?.length ?? 0;
@@ -815,7 +934,9 @@ export class LayoutPipeline {
             page = newPage(pageIndex);
             page.lines = reusedLines;
             const anchorY = Number.isFinite(anchorLine?.y) ? anchorLine.y : margin.top;
-            const anchorRelativeY = Number.isFinite(anchorLine?.relativeY) ? anchorLine.relativeY : 0;
+            const anchorRelativeY = Number.isFinite(anchorLine?.relativeY)
+              ? anchorLine.relativeY
+              : 0;
             cursorY = anchorY;
             resumeAnchorTargetY = { y: anchorY, relativeY: anchorRelativeY };
             textOffset = Number.isFinite(startOffset) ? startOffset : 0;
@@ -832,7 +953,7 @@ export class LayoutPipeline {
     }
     // 判断是否可在变更范围之后复用尾页。
     const maybeSync = () => {
-    // 必须已处理完变更范围且版式一致。
+      // 必须已处理完变更范围且版式一致。
       if (perf) {
         perf.maybeSyncCalled = true;
       }
@@ -896,7 +1017,10 @@ export class LayoutPipeline {
           if (!Number.isFinite(min) || !Number.isFinite(max)) {
             continue;
           }
-          if (targetRootIndex >= min - rootIndexProbeRadius && targetRootIndex <= max + rootIndexProbeRadius) {
+          if (
+            targetRootIndex >= min - rootIndexProbeRadius &&
+            targetRootIndex <= max + rootIndexProbeRadius
+          ) {
             addCandidate(idx);
             addCandidate(idx - 1);
             addCandidate(idx + 1);
@@ -1011,18 +1135,16 @@ export class LayoutPipeline {
       let blockAttrs = block.attrs || null;
       let blockLineHeight = null;
 
-      let spacingBefore =
-        Number.isFinite(blockAttrs?.spacingBefore)
-          ? blockAttrs.spacingBefore
-          : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
-            ? paragraphSpacingBefore
-            : blockSpacing;
-      const spacingAfter =
-        Number.isFinite(blockAttrs?.spacingAfter)
-          ? blockAttrs.spacingAfter
-          : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
-            ? paragraphSpacingAfter
-            : blockSpacing;
+      let spacingBefore = Number.isFinite(blockAttrs?.spacingBefore)
+        ? blockAttrs.spacingBefore
+        : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
+          ? paragraphSpacingBefore
+          : blockSpacing;
+      const spacingAfter = Number.isFinite(blockAttrs?.spacingAfter)
+        ? blockAttrs.spacingAfter
+        : isTopLevel && (blockTypeName === "paragraph" || blockTypeName === "heading")
+          ? paragraphSpacingAfter
+          : blockSpacing;
       if (resumeFromAnchor && !resumeAnchorApplied && context.rootIndex === startBlockIndex) {
         if (resumeAnchorTargetY && Number.isFinite(resumeAnchorTargetY.y)) {
           const relativeY = Number.isFinite(resumeAnchorTargetY.relativeY)
@@ -1038,7 +1160,7 @@ export class LayoutPipeline {
       const canUseCache = rendererCacheable && cacheKey !== null;
       const cached = canUseCache ? this.blockCache.get(cacheKey) : null;
       const blockSignature = canUseCache
-        ? getBlockLayoutSignature(block, blockSettings, context.indent)
+        ? getBlockLayoutSignature(block, blockSettings, context.indent, renderer, this.registry)
         : null;
 
       if (canUseCache) {
@@ -1082,14 +1204,7 @@ export class LayoutPipeline {
           const runsResult = renderer?.toRuns
             ? renderer.toRuns(block, blockSettings, this.registry)
             : block.isTextblock
-              ? textblockToRuns(
-                  block,
-                  blockSettings,
-                  block.type.name,
-                  blockId,
-                  block.attrs,
-                  0
-                )
+              ? textblockToRuns(block, blockSettings, block.type.name, blockId, block.attrs, 0)
               : docToRuns(block, blockSettings, this.registry);
 
           const { runs, length } = runsResult;
@@ -1101,33 +1216,33 @@ export class LayoutPipeline {
             blockLineHeight = runsResult.blockAttrs.lineHeight;
           }
 
-        if (perf) {
-          const breakStart = now();
-          blockLines = breakLines(
-            runs,
-            blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
-            blockSettings.font,
-            length,
-            blockSettings.wrapTolerance || 0,
-            blockSettings.minLineWidth || 0,
-            measureTextWidth,
-            blockSettings.segmentText
-          );
-          perf.breakLinesMs += now() - breakStart;
-        } else {
-          blockLines = breakLines(
-            runs,
-            blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
-            blockSettings.font,
-            length,
-            blockSettings.wrapTolerance || 0,
-            blockSettings.minLineWidth || 0,
-            measureTextWidth,
-            blockSettings.segmentText
-          );
+          if (perf) {
+            const breakStart = now();
+            blockLines = breakLines(
+              runs,
+              blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
+              blockSettings.font,
+              length,
+              blockSettings.wrapTolerance || 0,
+              blockSettings.minLineWidth || 0,
+              measureTextWidth,
+              blockSettings.segmentText
+            );
+            perf.breakLinesMs += now() - breakStart;
+          } else {
+            blockLines = breakLines(
+              runs,
+              blockSettings.pageWidth - blockSettings.margin.left - blockSettings.margin.right,
+              blockSettings.font,
+              length,
+              blockSettings.wrapTolerance || 0,
+              blockSettings.minLineWidth || 0,
+              measureTextWidth,
+              blockSettings.segmentText
+            );
+          }
+          blockHeight = blockLines.length * (blockLineHeight || lineHeight);
         }
-        blockHeight = blockLines.length * (blockLineHeight || lineHeight);
-      }
 
         if (canUseCache) {
           this.blockCache.set(cacheKey, {
@@ -1174,31 +1289,31 @@ export class LayoutPipeline {
         const seenListItems = new Set<string>();
         linesToPlace.forEach((line, lineIndex) => {
           const lineCopy = cloneLine(line);
-            lineCopy.blockType = lineCopy.blockType || block.type.name;
-            lineCopy.blockId = lineCopy.blockId ?? blockId;
-            lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
-            lineCopy.rootIndex = context.rootIndex;
-            adjustLineOffsets(lineCopy, blockStart);
+          lineCopy.blockType = lineCopy.blockType || block.type.name;
+          lineCopy.blockId = lineCopy.blockId ?? blockId;
+          lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
+          lineCopy.rootIndex = context.rootIndex;
+          adjustLineOffsets(lineCopy, blockStart);
           // 同一列表跨页续行时，不重复绘制 marker
           if (
             lineCopy.blockAttrs &&
             (lineCopy.blockType === "bullet_list" || lineCopy.blockType === "ordered_list")
           ) {
-              const itemIndex = lineCopy.blockAttrs.itemIndex;
-              const key = `${lineCopy.blockStart ?? "0"}:${itemIndex ?? "0"}`;
-              if (!seenListItems.has(key)) {
-                seenListItems.add(key);
-              } else {
-                // 跨页续行不显示 marker，避免看起来像新列表。
-                lineCopy.listMarker = null;
-              }
-            }
-            // table 等自带相对坐标的行，使用 relativeY 进行定位
-            if (typeof lineCopy.relativeY === "number") {
-              lineCopy.y = cursorY + lineCopy.relativeY;
+            const itemIndex = lineCopy.blockAttrs.itemIndex;
+            const key = `${lineCopy.blockStart ?? "0"}:${itemIndex ?? "0"}`;
+            if (!seenListItems.has(key)) {
+              seenListItems.add(key);
             } else {
-              lineCopy.y = cursorY + lineIndex * lineHeightValue;
+              // 跨页续行不显示 marker，避免看起来像新列表。
+              lineCopy.listMarker = null;
             }
+          }
+          // table 等自带相对坐标的行，使用 relativeY 进行定位
+          if (typeof lineCopy.relativeY === "number") {
+            lineCopy.y = cursorY + lineCopy.relativeY;
+          } else {
+            lineCopy.y = cursorY + lineIndex * lineHeightValue;
+          }
           lineCopy.lineHeight = lineHeightValue;
           if (typeof lineCopy.x !== "number") {
             lineCopy.x = computeLineX(lineCopy, blockSettings);
@@ -1221,37 +1336,123 @@ export class LayoutPipeline {
         }
       };
 
-        while (remainingLines.length > 0) {
-          if (shouldStop) {
-            return true;
-          }
-          if (remainingLines === safeLines && spacingBefore > 0) {
+      while (remainingLines.length > 0) {
+        if (shouldStop) {
+          return true;
+        }
+        if (remainingLines === safeLines && spacingBefore > 0) {
           if (cursorY + spacingBefore > pageHeight - margin.bottom) {
             if (finalizePage()) {
               return true;
             }
           }
           cursorY += spacingBefore;
+        }
+        const availableHeight = pageHeight - margin.bottom - cursorY;
+        if (remainingHeight > availableHeight) {
+          const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
+          if (availableHeight < lineHeightValue) {
+            if (finalizePage()) {
+              return true;
+            }
+            if (fullAvailableHeight >= lineHeightValue) {
+              continue;
+            }
+            // 单行高度超出整页，强制放入一行避免死循环。
+            const forcedLine = remainingLines[0];
+            if (!forcedLine) {
+              break;
+            }
+            const forcedStart = typeof forcedLine?.start === "number" ? forcedLine.start : 0;
+            const forcedEnd = typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
+            const forcedLength = Math.max(0, forcedEnd - forcedStart);
+            const forcedHeight = Number.isFinite(forcedLine?.lineHeight)
+              ? forcedLine.lineHeight
+              : lineHeightValue;
+            placeLines([forcedLine]);
+            cursorY += forcedHeight;
+            remainingLines = remainingLines.slice(1);
+            remainingLength = Math.max(0, remainingLength - forcedLength);
+            remainingHeight = Math.max(0, remainingHeight - forcedHeight);
+            if (finalizePage()) {
+              return true;
+            }
+            continue;
           }
-          const availableHeight = pageHeight - margin.bottom - cursorY;
-          if (remainingHeight > availableHeight) {
-            const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
-            if (availableHeight < lineHeightValue) {
-              if (finalizePage()) {
-                return true;
-              }
-              if (fullAvailableHeight >= lineHeightValue) {
+          if (!canSplit) {
+            if (page.lines.length === 0) {
+              // 不可拆分且本页为空时，强制放入，避免死循环。
+              placeLines(remainingLines);
+              cursorY += remainingHeight;
+              remainingLines = [];
+              break;
+            }
+            if (finalizePage()) {
+              return true;
+            }
+            continue;
+          }
+          let splitResult = null;
+          if (splitBlock) {
+            splitResult = splitBlock({
+              node: block,
+              lines: remainingLines,
+              length: remainingLength,
+              height: remainingHeight,
+              availableHeight,
+              lineHeight: lineHeightValue,
+              settings: blockSettings,
+              registry: this.registry,
+              indent: context.indent,
+              containerStack,
+              blockAttrs,
+            });
+          }
+          if (!splitResult) {
+            const maxLines = Math.max(1, Math.floor(availableHeight / lineHeightValue));
+            if (maxLines < remainingLines.length) {
+              const visibleLines = remainingLines.slice(0, maxLines);
+              const lastLine = visibleLines[visibleLines.length - 1];
+              const firstLine = visibleLines[0];
+              const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
+              const endOffset = typeof lastLine?.end === "number" ? lastLine.end : remainingLength;
+              const visibleLength = Math.max(0, endOffset - startOffset);
+              const visibleHeight = visibleLines.length * lineHeightValue;
+              const overflowLines = remainingLines.slice(maxLines);
+              const overflowLength = Math.max(0, remainingLength - visibleLength);
+              const overflowHeight = overflowLines.length * lineHeightValue;
+              splitResult = {
+                lines: visibleLines,
+                length: visibleLength,
+                height: visibleHeight,
+                overflow: {
+                  lines: overflowLines,
+                  length: overflowLength,
+                  height: overflowHeight,
+                },
+              };
+            }
+          }
+          if (
+            splitResult &&
+            splitResult.lines.length === 0 &&
+            splitResult.overflow &&
+            splitResult.overflow.lines.length > 0
+          ) {
+            if (page.lines.length === 0 && remainingLines.length > 0) {
+              const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
+              if (remainingHeight <= fullAvailableHeight) {
+                if (finalizePage()) {
+                  return true;
+                }
                 continue;
               }
-              // 单行高度超出整页，强制放入一行避免死循环。
               const forcedLine = remainingLines[0];
               if (!forcedLine) {
                 break;
               }
-              const forcedStart =
-                typeof forcedLine?.start === "number" ? forcedLine.start : 0;
-              const forcedEnd =
-                typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
+              const forcedStart = typeof forcedLine?.start === "number" ? forcedLine.start : 0;
+              const forcedEnd = typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
               const forcedLength = Math.max(0, forcedEnd - forcedStart);
               const forcedHeight = Number.isFinite(forcedLine?.lineHeight)
                 ? forcedLine.lineHeight
@@ -1266,111 +1467,20 @@ export class LayoutPipeline {
               }
               continue;
             }
-            if (!canSplit) {
-              if (page.lines.length === 0) {
-                // 不可拆分且本页为空时，强制放入，避免死循环。
-                placeLines(remainingLines);
-                cursorY += remainingHeight;
-                remainingLines = [];
-                break;
-              }
-              if (finalizePage()) {
-                return true;
-              }
-              continue;
+            if (finalizePage()) {
+              return true;
             }
-            let splitResult = null;
-            if (splitBlock) {
-              splitResult = splitBlock({
-                node: block,
-                lines: remainingLines,
-                length: remainingLength,
-                height: remainingHeight,
-                availableHeight,
-                lineHeight: lineHeightValue,
-                settings: blockSettings,
-                registry: this.registry,
-                indent: context.indent,
-                containerStack,
-                blockAttrs,
-              });
+            remainingLines = splitResult.overflow.lines;
+            remainingLength = splitResult.overflow.length;
+            remainingHeight = splitResult.overflow.height;
+            continue;
+          }
+          if (splitResult && splitResult.lines.length > 0) {
+            placeLines(splitResult.lines);
+            cursorY += splitResult.height;
+            if (finalizePage()) {
+              return true;
             }
-            if (!splitResult) {
-              const maxLines = Math.max(1, Math.floor(availableHeight / lineHeightValue));
-              if (maxLines < remainingLines.length) {
-                const visibleLines = remainingLines.slice(0, maxLines);
-                const lastLine = visibleLines[visibleLines.length - 1];
-                const firstLine = visibleLines[0];
-                const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
-                const endOffset =
-                  typeof lastLine?.end === "number" ? lastLine.end : remainingLength;
-                const visibleLength = Math.max(0, endOffset - startOffset);
-                const visibleHeight = visibleLines.length * lineHeightValue;
-                const overflowLines = remainingLines.slice(maxLines);
-                const overflowLength = Math.max(0, remainingLength - visibleLength);
-                const overflowHeight = overflowLines.length * lineHeightValue;
-                splitResult = {
-                  lines: visibleLines,
-                  length: visibleLength,
-                  height: visibleHeight,
-                  overflow: {
-                    lines: overflowLines,
-                    length: overflowLength,
-                    height: overflowHeight,
-                  },
-                };
-              }
-            }
-            if (
-              splitResult &&
-              splitResult.lines.length === 0 &&
-              splitResult.overflow &&
-              splitResult.overflow.lines.length > 0
-            ) {
-              if (page.lines.length === 0 && remainingLines.length > 0) {
-                const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
-                if (remainingHeight <= fullAvailableHeight) {
-                  if (finalizePage()) {
-                    return true;
-                  }
-                  continue;
-                }
-                const forcedLine = remainingLines[0];
-                if (!forcedLine) {
-                  break;
-                }
-                const forcedStart =
-                  typeof forcedLine?.start === "number" ? forcedLine.start : 0;
-                const forcedEnd =
-                  typeof forcedLine?.end === "number" ? forcedLine.end : forcedStart;
-                const forcedLength = Math.max(0, forcedEnd - forcedStart);
-                const forcedHeight = Number.isFinite(forcedLine?.lineHeight)
-                  ? forcedLine.lineHeight
-                  : lineHeightValue;
-                placeLines([forcedLine]);
-                cursorY += forcedHeight;
-                remainingLines = remainingLines.slice(1);
-                remainingLength = Math.max(0, remainingLength - forcedLength);
-                remainingHeight = Math.max(0, remainingHeight - forcedHeight);
-                if (finalizePage()) {
-                  return true;
-                }
-                continue;
-              }
-              if (finalizePage()) {
-                return true;
-              }
-              remainingLines = splitResult.overflow.lines;
-              remainingLength = splitResult.overflow.length;
-              remainingHeight = splitResult.overflow.height;
-              continue;
-            }
-            if (splitResult && splitResult.lines.length > 0) {
-              placeLines(splitResult.lines);
-              cursorY += splitResult.height;
-              if (finalizePage()) {
-                return true;
-              }
             // 继续处理溢出切片（跨页续排）
             if (splitResult.overflow && splitResult.overflow.lines.length > 0) {
               remainingLines = splitResult.overflow.lines;
@@ -1414,8 +1524,7 @@ export class LayoutPipeline {
         return true;
       }
       const renderer = this.registry?.get(node.type.name);
-      const isLeaf =
-        renderer?.layoutBlock || renderer?.toRuns || node.isTextblock || node.isAtom;
+      const isLeaf = renderer?.layoutBlock || renderer?.toRuns || node.isTextblock || node.isAtom;
 
       if (isLeaf) {
         return layoutLeafBlock(node, context);
@@ -1464,8 +1573,7 @@ export class LayoutPipeline {
       }
       const block = doc.child(index);
       const renderer = this.registry?.get(block.type.name);
-      const isLeaf =
-        renderer?.layoutBlock || renderer?.toRuns || block.isTextblock || block.isAtom;
+      const isLeaf = renderer?.layoutBlock || renderer?.toRuns || block.isTextblock || block.isAtom;
       if (walkBlocks(block, { indent: 0, containerStack: [], rootIndex: index })) {
         break;
       }
@@ -1678,13 +1786,3 @@ export class LayoutPipeline {
     };
   }
 }
-
-
-
-
-
-
-
-
-
-

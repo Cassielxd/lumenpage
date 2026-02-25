@@ -38,6 +38,58 @@ const hashString = (hash, value) => {
   return hash;
 };
 
+const hashObjectLike = (hash, value, cache) => {
+  if (!value || typeof value !== "object") {
+    return hash;
+  }
+  if (cache?.has(value)) {
+    return hashNumber(hash, cache.get(value) || 0);
+  }
+  const keys = Object.keys(value).sort();
+  let objectHash = 17;
+  for (const key of keys) {
+    objectHash = hashString(objectHash, key);
+    const item = value[key];
+    if (typeof item === "string") {
+      objectHash = hashString(objectHash, item);
+      continue;
+    }
+    if (typeof item === "number") {
+      objectHash = hashNumber(objectHash, item);
+      continue;
+    }
+    if (typeof item === "boolean") {
+      objectHash = hashNumber(objectHash, item ? 1 : 0);
+      continue;
+    }
+    if (Array.isArray(item)) {
+      objectHash = hashNumber(objectHash, item.length);
+      for (const entry of item) {
+        if (typeof entry === "string") {
+          objectHash = hashString(objectHash, entry);
+        } else if (typeof entry === "number") {
+          objectHash = hashNumber(objectHash, entry);
+        } else if (typeof entry === "boolean") {
+          objectHash = hashNumber(objectHash, entry ? 1 : 0);
+        } else if (entry == null) {
+          objectHash = hashString(objectHash, "null");
+        } else {
+          objectHash = hashObjectLike(objectHash, entry, cache);
+        }
+      }
+      continue;
+    }
+    if (item == null) {
+      objectHash = hashString(objectHash, "null");
+      continue;
+    }
+    objectHash = hashObjectLike(objectHash, item, cache);
+  }
+  const signature = objectHash >>> 0;
+  cache?.set(value, signature);
+  return hashNumber(hash, signature);
+};
+
 const resolveSelectionStyle = (settings) => {
   const style = settings?.selectionStyle || {};
   const resolveColor = (value, fallback) => {
@@ -199,12 +251,9 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
   }
   const lines = [];
   // 仅输出可见页范围，避免页面太多时调试面板刷屏
-  const start =
-    typeof visibleRange?.startIndex === "number" ? visibleRange.startIndex : 0;
+  const start = typeof visibleRange?.startIndex === "number" ? visibleRange.startIndex : 0;
   const end =
-    typeof visibleRange?.endIndex === "number"
-      ? visibleRange.endIndex
-      : layout.pages.length - 1;
+    typeof visibleRange?.endIndex === "number" ? visibleRange.endIndex : layout.pages.length - 1;
   for (let p = start; p <= end; p += 1) {
     if (p < 0 || p >= layout.pages.length) {
       continue;
@@ -220,11 +269,14 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
         continue;
       }
       const key =
-        line.blockId ?? (Number.isFinite(line.blockStart) ? line.blockStart : line.start ?? 0);
+        line.blockId ?? (Number.isFinite(line.blockStart) ? line.blockStart : (line.start ?? 0));
       if (!groups.has(key)) {
         groups.set(key, {
-          blockStart:
-            Number.isFinite(line.blockStart) ? line.blockStart : Number.isFinite(key) ? key : null,
+          blockStart: Number.isFinite(line.blockStart)
+            ? line.blockStart
+            : Number.isFinite(key)
+              ? key
+              : null,
           minRow: Number.POSITIVE_INFINITY,
           maxRow: -1,
           rows: null,
@@ -301,12 +353,9 @@ const buildPaginationDebugSummary = (settings, layout, visibleRange) => {
 const resolveChangedRootIndexRange = (changeSummary) => {
   const before = changeSummary?.blocks?.before || {};
   const after = changeSummary?.blocks?.after || {};
-  const candidates = [
-    before.fromIndex,
-    before.toIndex,
-    after.fromIndex,
-    after.toIndex,
-  ].filter((value) => Number.isFinite(value));
+  const candidates = [before.fromIndex, before.toIndex, after.fromIndex, after.toIndex].filter(
+    (value) => Number.isFinite(value)
+  );
 
   if (candidates.length === 0) {
     return null;
@@ -383,10 +432,9 @@ export class Renderer {
     }
 
     let hash = 0;
+    const objectSignatureCache = new WeakMap();
 
     for (const line of page.lines) {
-
-
       hash = hashNumber(hash, line.start);
 
       hash = hashNumber(hash, line.end);
@@ -404,6 +452,8 @@ export class Renderer {
       hash = hashNumber(hash, line.blockStart);
 
       hash = hashString(hash, line.text || "");
+      hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
 
       if (line.runs) {
         for (const run of line.runs) {
@@ -572,7 +622,9 @@ export class Renderer {
 
         const width = typeof run.width === "number" ? run.width : measureTextWidth(font, run.text);
 
-        const textY = pageTop + line.y + baselineOffset;
+        const shiftY = Number.isFinite(run.shiftY) ? Number(run.shiftY) : 0;
+
+        const textY = pageTop + line.y + baselineOffset + shiftY;
 
         const background = run.background;
 
@@ -732,7 +784,6 @@ export class Renderer {
         continue;
       }
 
-
       const renderer = this.registry?.get(line.blockType);
 
       if (renderer?.renderLine) {
@@ -759,7 +810,14 @@ export class Renderer {
 
   /* 锟斤拷锟斤拷染锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷 + 锟斤拷锟斤拷锟斤?锟斤拷锟接诧拷锟斤拷?*/
 
-  render(layout, viewport, caret, selectionRects = [], blockRects = [], decorations: DecorationDrawData | null = null) {
+  render(
+    layout,
+    viewport,
+    caret,
+    selectionRects = [],
+    blockRects = [],
+    decorations: DecorationDrawData | null = null
+  ) {
     if (!layout) {
       return;
     }
@@ -789,8 +847,7 @@ export class Renderer {
 
     const rawDpr = window.devicePixelRatio || 1;
     const dprStrategy = this.settings?.pixelRatioStrategy;
-    const dpr =
-      dprStrategy === "integer" ? Math.max(1, Math.ceil(rawDpr)) : rawDpr;
+    const dpr = dprStrategy === "integer" ? Math.max(1, Math.ceil(rawDpr)) : rawDpr;
 
     if (this.lastDpr !== dpr) {
       this.pageCache.clear();
@@ -1014,14 +1071,7 @@ export class Renderer {
           continue;
         }
 
-        drawSelectionRectPath(
-          this.overlayCtx,
-          x,
-          y,
-          width,
-          height,
-          selectionStyle.radius || 0
-        );
+        drawSelectionRectPath(this.overlayCtx, x, y, width, height, selectionStyle.radius || 0);
 
         if (hasFill) {
           this.overlayCtx.fill();
@@ -1092,27 +1142,3 @@ export class Renderer {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

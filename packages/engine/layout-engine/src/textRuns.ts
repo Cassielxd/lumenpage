@@ -5,6 +5,41 @@
 
 const styleCache = new Map();
 
+const parseBaseFontSpec = (fontSpec: string) => {
+  const value = String(fontSpec || "").trim();
+  const match = /(\d+(?:\.\d+)?)px\s+(.+)/.exec(value);
+  if (!match) {
+    return { size: 16, family: "Arial" };
+  }
+  const size = Number.parseFloat(match[1]);
+  const family = String(match[2] || "").trim();
+  return {
+    size: Number.isFinite(size) && size > 0 ? size : 16,
+    family: family || "Arial",
+  };
+};
+
+const normalizeCssColor = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || null;
+};
+
+const normalizeFontFamily = (value: unknown) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return null;
+  }
+  return text.replace(/[{};]/g, "").trim() || null;
+};
+
+const normalizeFontSize = (value: unknown) => {
+  const size = Number(value);
+  if (!Number.isFinite(size) || size <= 0) {
+    return null;
+  }
+  return Math.round(size);
+};
+
 // 根据 marks 生成样式并缓存。
 const buildStyle = (baseFont, marks, settings = null) => {
   let bold = false;
@@ -18,6 +53,18 @@ const buildStyle = (baseFont, marks, settings = null) => {
   let code = false;
 
   let isLink = false;
+
+  let subscript = false;
+
+  let superscript = false;
+
+  let textColor = null;
+
+  let textBackground = null;
+
+  let textFontSize = null;
+
+  let textFontFamily = null;
 
   if (marks && marks.length) {
     for (const mark of marks) {
@@ -47,9 +94,31 @@ const buildStyle = (baseFont, marks, settings = null) => {
 
           break;
 
+        case "subscript":
+          subscript = true;
+          superscript = false;
+
+          break;
+
+        case "superscript":
+          superscript = true;
+          subscript = false;
+
+          break;
+
         case "link":
           isLink = true;
           underline = true;
+
+          break;
+
+        case "text_style":
+          if (mark?.attrs) {
+            textColor = normalizeCssColor(mark.attrs.color) ?? textColor;
+            textBackground = normalizeCssColor(mark.attrs.background) ?? textBackground;
+            textFontSize = normalizeFontSize(mark.attrs.fontSize) ?? textFontSize;
+            textFontFamily = normalizeFontFamily(mark.attrs.fontFamily) ?? textFontFamily;
+          }
 
           break;
 
@@ -62,16 +131,29 @@ const buildStyle = (baseFont, marks, settings = null) => {
   const resolvedBaseFont = code
     ? settings?.codeFont || '13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
     : baseFont;
+  const parsedBaseFont = parseBaseFontSpec(resolvedBaseFont);
 
   const prefix = `${italic ? "italic " : ""}${bold ? "bold " : ""}`;
 
-  const font = `${prefix}${resolvedBaseFont}`.trim();
+  const scriptScale = subscript || superscript ? 0.72 : 1;
 
-  const color = isLink ? settings?.linkColor || "#2563eb" : "#111827";
+  const fontSize = Math.max(1, Math.round((textFontSize || parsedBaseFont.size) * scriptScale));
 
-  const background = code ? settings?.codeBackground || "#f3f4f6" : null;
+  const fontFamily = textFontFamily || parsedBaseFont.family;
 
-  const key = `${font}|${color}|${underline ? 1 : 0}|${strike ? 1 : 0}|${background ?? ""}`;
+  const font = `${prefix}${fontSize}px ${fontFamily}`.trim();
+
+  const shiftY = superscript
+    ? -Math.round(fontSize * 0.35)
+    : subscript
+    ? Math.round(fontSize * 0.2)
+    : 0;
+
+  const color = textColor || (isLink ? settings?.linkColor || "#2563eb" : "#111827");
+
+  const background = textBackground || (code ? settings?.codeBackground || "#f3f4f6" : null);
+
+  const key = `${font}|${color}|${underline ? 1 : 0}|${strike ? 1 : 0}|${background ?? ""}|${shiftY}`;
 
   if (styleCache.has(key)) {
     return styleCache.get(key);
@@ -87,6 +169,8 @@ const buildStyle = (baseFont, marks, settings = null) => {
     strike,
 
     background,
+
+    shiftY,
   };
 
   styleCache.set(key, style);
@@ -193,7 +277,7 @@ export function textblockToRuns(
 
     const style = buildStyle(settings.font, child.marks, settings);
 
-    const styleKey = `${style.font}|${style.color}|${style.underline ? 1 : 0}|${style.strike ? 1 : 0}|${style.background ?? ""}`;
+    const styleKey = `${style.font}|${style.color}|${style.underline ? 1 : 0}|${style.strike ? 1 : 0}|${style.background ?? ""}|${style.shiftY ?? 0}`;
 
     const text = child.text || "";
 
@@ -367,7 +451,7 @@ export function textToRuns(text, settings) {
 
   const style = buildStyle(settings.font, [], settings);
 
-  const styleKey = `${style.font}|${style.color}|${style.underline ? 1 : 0}|${style.strike ? 1 : 0}|${style.background ?? ""}`;
+  const styleKey = `${style.font}|${style.color}|${style.underline ? 1 : 0}|${style.strike ? 1 : 0}|${style.background ?? ""}|${style.shiftY ?? 0}`;
 
   let offset = 0;
 

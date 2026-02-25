@@ -161,6 +161,40 @@
       </div>
     </div>
   </teleport>
+
+  <t-dialog
+    :visible="colorDialogVisible"
+    :header="colorDialogTitle"
+    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '确定'"
+    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '取消'"
+    :close-on-overlay-click="false"
+    :close-on-esc-keydown="true"
+    width="440"
+    @update:visible="handleColorDialogVisibleChange"
+    @confirm="handleColorDialogConfirm"
+    @cancel="handleColorDialogCancel"
+    @close="handleColorDialogCancel"
+  >
+    <div class="toolbar-color-dialog">
+      <t-color-picker
+        :model-value="colorDialogValue"
+        format="HEX"
+        clearable
+        :enable-alpha="true"
+        :show-primary-color-preview="true"
+        :recent-colors="true"
+        :swatch-colors="TOOLBAR_COLOR_SWATCHES"
+        @change="handleColorPickerChange"
+        @clear="handleColorPickerClear"
+      />
+      <div class="toolbar-color-dialog-footer">
+        <span class="toolbar-color-dialog-value">{{ colorDialogValueText }}</span>
+        <t-button size="small" variant="outline" @click="handleColorPickerClear">
+          {{ colorDialogTexts.clear }}
+        </t-button>
+      </div>
+    </div>
+  </t-dialog>
 </template>
 
 <script setup lang="ts">
@@ -177,12 +211,21 @@ import {
 import { canUseToolbarActionInSession } from "../editor/toolbarAccessPolicy";
 import { createExportActions } from "../editor/toolbarActions/exportActions";
 import { createInlineMediaActions } from "../editor/toolbarActions/inlineMediaActions";
+import { createImportActions } from "../editor/toolbarActions/importActions";
 import { createLayoutActions } from "../editor/toolbarActions/layoutActions";
 import { createMarkdownActions } from "../editor/toolbarActions/markdownActions";
 import { createQuickInsertActions } from "../editor/toolbarActions/quickInsertActions";
 import { createSearchReplaceActions } from "../editor/toolbarActions/searchReplaceActions";
 import { createTableActions } from "../editor/toolbarActions/tableActions";
 import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
+import { createTextStyleActions } from "../editor/toolbarActions/textStyleActions";
+import {
+  applyToolbarColorAction,
+  getToolbarColorDefault,
+  getToolbarColorDialogTitle,
+  isToolbarColorAction,
+  type ToolbarColorAction,
+} from "../editor/toolbarActions/colorPickerActions";
 import { createToolbarActionHandlers } from "../editor/toolbarActions/actionHandlers";
 import {
   createHeadingInlineActions,
@@ -277,6 +320,20 @@ const isBaseGridGroup = (group: ToolbarRenderGroup) =>
 const shouldShowItemDescription = (group: ToolbarRenderGroup) =>
   showItemDescription.value || isBaseExportGroup(group);
 const resolveIconSize = (group: ToolbarRenderGroup) => (isBaseGridGroup(group) ? 14 : 22);
+const TOOLBAR_COLOR_SWATCHES = [
+  "#111827",
+  "#1d4ed8",
+  "#0f766e",
+  "#b45309",
+  "#b91c1c",
+  "#7c3aed",
+  "#fff59d",
+  "#fecaca",
+  "#bfdbfe",
+  "#bbf7d0",
+  "#ffffff",
+  "#000000",
+];
 
 const toolbarLeftViewport = ref<HTMLElement | null>(null);
 const canScrollLeft = ref(false);
@@ -373,8 +430,18 @@ const inlineMediaActions = createInlineMediaActions({
   run,
   getToolbarTexts: () => i18n.value.toolbar,
 });
+const importActions = createImportActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
 const textFormatActions = createTextFormatActions({
   getView,
+  getLocaleKey: () => localeKey.value,
+});
+const textStyleActions = createTextStyleActions({
+  run,
+  getView,
+  getLocaleKey: () => localeKey.value,
 });
 const searchReplaceActions = createSearchReplaceActions({
   getView,
@@ -384,6 +451,106 @@ const quickInsertActions = createQuickInsertActions({
   getView,
   getLocaleKey: () => localeKey.value,
 });
+
+const colorDialogVisible = ref(false);
+const colorDialogAction = ref<ToolbarColorAction | null>(null);
+const colorDialogValue = ref<string>(getToolbarColorDefault("color"));
+const colorDialogPendingValue = ref<string | null>(getToolbarColorDefault("color"));
+const colorActionLastValues: Record<ToolbarColorAction, string> = {
+  color: getToolbarColorDefault("color"),
+  "background-color": getToolbarColorDefault("background-color"),
+  highlight: getToolbarColorDefault("highlight"),
+  "page-background": getToolbarColorDefault("page-background"),
+  "cells-background": getToolbarColorDefault("cells-background"),
+};
+const colorDialogTexts = computed(() =>
+  localeKey.value === "en-US"
+    ? {
+        clear: "Clear",
+        cleared: "Cleared. Apply to restore default style.",
+      }
+    : {
+        clear: "\u6e05\u9664",
+        cleared:
+          "\u5df2\u6e05\u9664\uff0c\u70b9\u51fb\u786e\u5b9a\u540e\u6062\u590d\u9ed8\u8ba4\u6837\u5f0f\u3002",
+      }
+);
+const colorDialogTitle = computed(() => {
+  if (!colorDialogAction.value) {
+    return "";
+  }
+  return getToolbarColorDialogTitle(colorDialogAction.value, localeKey.value);
+});
+const colorDialogValueText = computed(
+  () => colorDialogPendingValue.value || colorDialogTexts.value.cleared
+);
+
+const openColorDialog = (action: ToolbarColorAction) => {
+  colorDialogAction.value = action;
+  const currentColor =
+    action === "page-background"
+      ? String(layoutActions.getPageBackgroundColor?.() || "").trim()
+      : action === "cells-background"
+        ? String(tableActions.getCurrentCellBackgroundColor?.() || "").trim()
+        : "";
+  const nextValue = currentColor || colorActionLastValues[action] || getToolbarColorDefault(action);
+  colorDialogValue.value = nextValue;
+  colorDialogPendingValue.value = nextValue;
+  colorDialogVisible.value = true;
+};
+
+const closeColorDialog = () => {
+  colorDialogVisible.value = false;
+  colorDialogAction.value = null;
+};
+
+const handleColorDialogVisibleChange = (visible: boolean) => {
+  if (!visible) {
+    closeColorDialog();
+  }
+};
+
+const handleColorPickerChange = (value: string) => {
+  const next = String(value || "").trim();
+  if (!next) {
+    return;
+  }
+  colorDialogValue.value = next;
+  colorDialogPendingValue.value = next;
+};
+
+const handleColorPickerClear = () => {
+  colorDialogPendingValue.value = null;
+};
+
+const handleColorDialogCancel = () => {
+  closeColorDialog();
+};
+
+const handleColorDialogConfirm = () => {
+  const action = colorDialogAction.value;
+  if (!action) {
+    closeColorDialog();
+    return;
+  }
+  const ok = applyToolbarColorAction({
+    action,
+    color: colorDialogPendingValue.value,
+    run,
+    setPageBackgroundColor: layoutActions.setPageBackgroundColor,
+    setTableCellBackgroundColor: tableActions.setCurrentCellBackgroundColor,
+  });
+  if (!ok) {
+    if (action === "cells-background") {
+      window.alert(i18n.value.toolbar.alertTableCellRequired);
+    }
+    return;
+  }
+  if (colorDialogPendingValue.value) {
+    colorActionLastValues[action] = colorDialogPendingValue.value;
+  }
+  closeColorDialog();
+};
 
 const resolveHeadingOptionLabel = (value: string | number) => {
   if (value === "paragraph") {
@@ -475,7 +642,9 @@ const toolbarActionHandlers = createToolbarActionHandlers({
   markdownActions,
   inlineMediaActions,
   textFormatActions,
+  textStyleActions,
   searchReplaceActions,
+  importActions,
   quickInsertActions,
 });
 
@@ -484,6 +653,10 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (isHeadingInlineBoxItem(item)) {
+    return;
+  }
+  if (isToolbarColorAction(item.action)) {
+    openColorDialog(item.action);
     return;
   }
   toolbarActionHandlers.handleItemAction(item);
@@ -543,6 +716,7 @@ watch(
   () => [resolvedActiveMenu.value, localeKey.value, renderGroups.value.length],
   () => {
     closeHeadingInlineMore();
+    closeColorDialog();
     void nextTick(updateToolbarOverflowState);
   }
 );
@@ -551,6 +725,7 @@ watch(
   () => resolvedSessionMode.value,
   () => {
     closeHeadingInlineMore();
+    closeColorDialog();
   }
 );
 
@@ -1016,5 +1191,24 @@ defineExpose({ statusEl });
 .toolbar-scroll-arrow-icon {
   font-size: 16px;
   line-height: 1;
+}
+
+.toolbar-color-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolbar-color-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar-color-dialog-value {
+  font-size: 12px;
+  color: #5f6368;
+  word-break: break-all;
 }
 </style>

@@ -7,6 +7,46 @@ import {compareDeep} from "./comparedeep"
 
 const emptyAttrs: Attrs = Object.create(null)
 
+const hashNumber = (hash: number, value: number) => {
+  const normalized = Number.isFinite(value) ? Math.round(value) : 0
+  return (Math.imul(hash, 31) + normalized) | 0
+}
+
+const hashString = (hash: number, value: string) => {
+  if (!value) return hash
+  for (let i = 0; i < value.length; i++) {
+    hash = (Math.imul(hash, 31) + value.charCodeAt(i)) | 0
+  }
+  return hash
+}
+
+const hashValue = (hash: number, value: any, seen: WeakSet<object>): number => {
+  if (value == null) return hashString(hash, "null")
+  if (typeof value == "string") return hashString(hash, value)
+  if (typeof value == "number") return hashNumber(hash, value)
+  if (typeof value == "boolean") return hashNumber(hash, value ? 1 : 0)
+  if (typeof value == "bigint") return hashString(hash, String(value))
+  if (Array.isArray(value)) {
+    hash = hashNumber(hash, value.length)
+    for (let i = 0; i < value.length; i++) hash = hashValue(hash, value[i], seen)
+    return hash
+  }
+  if (typeof value == "object") {
+    if (seen.has(value as object)) return hashString(hash, "[Circular]")
+    seen.add(value as object)
+    const keys = Object.keys(value).sort()
+    hash = hashNumber(hash, keys.length)
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      hash = hashString(hash, key)
+      hash = hashValue(hash, value[key], seen)
+    }
+    seen.delete(value as object)
+    return hash
+  }
+  return hashString(hash, String(value))
+}
+
 /// This class represents a node in the tree that makes up a
 /// ProseMirror document. So a document is an instance of `Node`, with
 /// children that are also instances of `Node`.
@@ -45,6 +85,7 @@ export class Node {
 
   /// For text nodes, this contains the node's text content.
   readonly text: string | undefined
+  private _hash: number | null = null
 
   /// The size of this node, as defined by the integer-based [indexing
   /// scheme](/docs/guide/#doc.indexing). For text nodes, this is the
@@ -117,6 +158,31 @@ export class Node {
   /// Test whether two nodes represent the same piece of document.
   eq(other: Node) {
     return this == other || (this.sameMarkup(other) && this.content.eq(other.content))
+  }
+
+  /// Return a stable structural hash for this node. The value is memoized
+  /// per immutable node instance, and recursively includes child hashes.
+  hashCode() {
+    if (this._hash != null) return this._hash
+
+    let hash = 17
+    const seen = new WeakSet<object>()
+    hash = hashString(hash, this.type.name)
+    hash = hashValue(hash, this.attrs, seen)
+    hash = hashNumber(hash, this.marks.length)
+    for (let i = 0; i < this.marks.length; i++) {
+      const mark = this.marks[i]
+      hash = hashString(hash, mark.type.name)
+      hash = hashValue(hash, mark.attrs, seen)
+    }
+    if (this.isText) {
+      hash = hashString(hash, this.text || "")
+    } else {
+      hash = hashNumber(hash, this.content.hashCode())
+    }
+    hash = hashNumber(hash, this.nodeSize)
+    this._hash = hash >>> 0
+    return this._hash
   }
 
   /// Compare the markup (type, attributes, and marks) of this node to
@@ -351,7 +417,7 @@ export class Node {
 ;(Node.prototype as any).text = undefined
 
 export class TextNode extends Node {
-  readonly text: string
+  declare readonly text: string
 
   /// @internal
   constructor(type: NodeType, attrs: Attrs, content: string, marks?: readonly Mark[]) {

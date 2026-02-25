@@ -155,6 +155,141 @@ const resolveBlockAttrs = (state, nodeName, attrs) => {
   return base;
 };
 
+type TextStyleAttrs = {
+  color?: string;
+  background?: string;
+  fontSize?: number;
+  fontFamily?: string;
+};
+
+const normalizeTextStyleAttrs = (attrs: TextStyleAttrs = {}) => {
+  const color = typeof attrs.color === "string" ? attrs.color.trim() : "";
+  const background = typeof attrs.background === "string" ? attrs.background.trim() : "";
+  const fontFamily = typeof attrs.fontFamily === "string" ? attrs.fontFamily.trim() : "";
+  const fontSizeRaw = attrs.fontSize;
+  const fontSize = Number(fontSizeRaw);
+  const next: Record<string, string | number> = {};
+  if (color) {
+    next.color = color;
+  }
+  if (background) {
+    next.background = background;
+  }
+  if (fontFamily) {
+    next.fontFamily = fontFamily.replace(/[{};]/g, "").trim();
+  }
+  if (Number.isFinite(fontSize) && fontSize > 0) {
+    next.fontSize = Math.round(fontSize);
+  }
+  if (Object.keys(next).length === 0) {
+    return null;
+  }
+  return next;
+};
+
+const getTextStyleAttrsFromMarks = (marks, type): TextStyleAttrs | null => {
+  if (!Array.isArray(marks) || !type) {
+    return null;
+  }
+  const target = marks.find((mark) => mark?.type === type);
+  return target?.attrs || null;
+};
+
+const clearTextStyle = () => (state, dispatch) => {
+  const type = state.schema.marks.text_style;
+  if (!type) {
+    return false;
+  }
+  const { from, to, empty } = state.selection;
+  if (!dispatch) {
+    return true;
+  }
+  let tr = state.tr;
+  if (empty) {
+    tr = tr.removeStoredMark(type);
+    dispatch(tr);
+    return true;
+  }
+  tr = tr.removeMark(from, to, type);
+  dispatch(tr.scrollIntoView());
+  return true;
+};
+
+const setTextStyleAttrs =
+  (attrs: TextStyleAttrs) =>
+  (state, dispatch) => {
+    const type = state.schema.marks.text_style;
+    if (!type) {
+      return false;
+    }
+    const normalized = normalizeTextStyleAttrs(attrs || {});
+    if (!normalized) {
+      return clearTextStyle()(state, dispatch);
+    }
+    const { from, to, empty, $from } = state.selection;
+    if (!dispatch) {
+      return true;
+    }
+
+    if (empty) {
+      const marks = state.storedMarks || $from.marks();
+      const existing = getTextStyleAttrsFromMarks(marks, type) || {};
+      const merged = normalizeTextStyleAttrs({ ...existing, ...normalized });
+      let tr = state.tr.removeStoredMark(type);
+      if (merged) {
+        tr = tr.addStoredMark(type.create(merged));
+      }
+      dispatch(tr);
+      return true;
+    }
+
+    const marksAtFrom = state.doc.resolve(from).marks();
+    const existing = getTextStyleAttrsFromMarks(marksAtFrom, type) || {};
+    const merged = normalizeTextStyleAttrs({ ...existing, ...normalized });
+    let tr = state.tr.removeMark(from, to, type);
+    if (merged) {
+      tr = tr.addMark(from, to, type.create(merged));
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  };
+
+const clearTextStyleAttr =
+  (key: "color" | "background" | "fontSize" | "fontFamily") => (state, dispatch) => {
+    const type = state.schema.marks.text_style;
+    if (!type) {
+      return false;
+    }
+    const { from, to, empty, $from } = state.selection;
+    if (!dispatch) {
+      return true;
+    }
+
+    if (empty) {
+      const marks = state.storedMarks || $from.marks();
+      const existing = { ...(getTextStyleAttrsFromMarks(marks, type) || {}) };
+      delete existing[key];
+      const merged = normalizeTextStyleAttrs(existing);
+      let tr = state.tr.removeStoredMark(type);
+      if (merged) {
+        tr = tr.addStoredMark(type.create(merged));
+      }
+      dispatch(tr);
+      return true;
+    }
+
+    const marksAtFrom = state.doc.resolve(from).marks();
+    const existing = { ...(getTextStyleAttrsFromMarks(marksAtFrom, type) || {}) };
+    delete existing[key];
+    const merged = normalizeTextStyleAttrs(existing);
+    let tr = state.tr.removeMark(from, to, type);
+    if (merged) {
+      tr = tr.addMark(from, to, type.create(merged));
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  };
+
 export const setBlockTypeByName = (nodeName, attrs = null) => (state, dispatch) => {
   const type = state.schema.nodes[nodeName];
 
@@ -328,6 +463,44 @@ export const createViewCommands = () => {
     return toggleMark(type, attrs)(state, dispatch, view);
   };
 
+  const toggleExclusiveScriptMark = (markName, oppositeMarkName) => (state, dispatch) => {
+    const type = state.schema.marks[markName];
+    if (!type) {
+      return false;
+    }
+    const oppositeType = state.schema.marks[oppositeMarkName];
+    const { from, to, empty, $from } = state.selection;
+    if (!dispatch) {
+      return true;
+    }
+    let tr = state.tr;
+
+    if (empty) {
+      const marks = state.storedMarks || $from.marks();
+      const hasCurrent = marks.some((mark) => mark.type === type);
+      if (oppositeType) {
+        tr = tr.removeStoredMark(oppositeType);
+      }
+      tr = tr.removeStoredMark(type);
+      if (!hasCurrent) {
+        tr = tr.addStoredMark(type.create());
+      }
+      dispatch(tr);
+      return true;
+    }
+
+    const hasCurrent = state.doc.rangeHasMark(from, to, type);
+    if (oppositeType) {
+      tr = tr.removeMark(from, to, oppositeType);
+    }
+    tr = tr.removeMark(from, to, type);
+    if (!hasCurrent) {
+      tr = tr.addMark(from, to, type.create());
+    }
+    dispatch(tr.scrollIntoView());
+    return true;
+  };
+
   const insertNode = (nodeName, attrs = null) => (state, dispatch) => {
     const type = state.schema.nodes[nodeName];
     if (!type) {
@@ -384,8 +557,18 @@ export const createViewCommands = () => {
     toggleItalic: toggleMarkByName("em"),
     toggleUnderline: toggleMarkByName("underline"),
     toggleStrike: toggleMarkByName("strike"),
+    toggleSubscript: toggleExclusiveScriptMark("subscript", "superscript"),
+    toggleSuperscript: toggleExclusiveScriptMark("superscript", "subscript"),
     toggleInlineCode: toggleMarkByName("code"),
     toggleLink: (attrs) => toggleMarkByName("link", attrs),
+    setTextColor: (color) => setTextStyleAttrs({ color }),
+    setTextBackground: (background) => setTextStyleAttrs({ background }),
+    setTextFontSize: (fontSize) => setTextStyleAttrs({ fontSize }),
+    setTextFontFamily: (fontFamily) => setTextStyleAttrs({ fontFamily }),
+    clearTextColor: () => clearTextStyleAttr("color"),
+    clearTextBackground: () => clearTextStyleAttr("background"),
+    clearTextFontSize: () => clearTextStyleAttr("fontSize"),
+    clearTextFontFamily: () => clearTextStyleAttr("fontFamily"),
     toggleBlockquote: toggleWrapNode("blockquote"),
     toggleCodeBlock: toggleCodeBlock(),
     insertHorizontalRule: insertNode("horizontal_rule"),

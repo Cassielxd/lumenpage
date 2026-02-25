@@ -32,10 +32,14 @@
 2. 菜单能力新增（已可执行）
 
 - 会话模式：`viewer`（编辑/阅读切换 + 模式感知禁用策略）。
-- 文本动作：`clear-format`、`search-replace`。
+- 文本动作：`format-painter`、`clear-format`、`search-replace`。
 - 段落动作：`align-justify`、`align-distributed`。
+- 样式动作：`font-family`、`font-size`、`color`、`background-color`、`highlight`。
+- 字形动作：`subscript`、`superscript`（互斥切换）。
+- 导入动作：`import-word`（支持 `.html/.htm/.txt/.doc` 文本型导入，`.docx` 给出转换提示）。
 - 导出动作：`export-word`（生成 Word 可打开的 HTML 文档壳并下载 `.doc`）。
 - 页面外观：`page-line-number`、`page-watermark`、`page-background`。
+- 页面补充：`page-header`、`page-footer`（支持 `{page}` 占位符）。
 - 插入能力：`hard-break`（硬换行）。
 - 轻量插入：`symbol`、`emoji`、`chinese-date`。
 

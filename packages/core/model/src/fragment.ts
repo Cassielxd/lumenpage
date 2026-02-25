@@ -11,6 +11,7 @@ export class Fragment {
   /// The size of the fragment, which is the total of the size of
   /// its content nodes.
   readonly size: number
+  private _hash: number | null = null
 
   /// @internal
   constructor(
@@ -139,6 +140,19 @@ export class Fragment {
     for (let i = 0; i < this.content.length; i++)
       if (!this.content[i].eq(other.content[i])) return false
     return true
+  }
+
+  /// Return a stable structural hash for this fragment.
+  hashCode(): number {
+    if (this._hash != null) return this._hash
+    let hash = 17
+    hash = (Math.imul(hash, 31) + this.content.length) | 0
+    for (let i = 0; i < this.content.length; i++) {
+      hash = (Math.imul(hash, 31) + this.content[i].hashCode()) | 0
+    }
+    hash = (Math.imul(hash, 31) + this.size) | 0
+    this._hash = hash >>> 0
+    return this._hash
   }
 
   /// The first child of the fragment, or `null` if it is empty.

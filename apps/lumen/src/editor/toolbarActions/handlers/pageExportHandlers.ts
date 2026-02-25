@@ -31,6 +31,12 @@ export const createPageExportActionHandlers = ({
   "page-background": () => {
     layoutActions.applyPageBackgroundSetting();
   },
+  "page-header": () => {
+    layoutActions.applyPageHeaderSetting();
+  },
+  "page-footer": () => {
+    layoutActions.applyPageFooterSetting();
+  },
   "export-image": () => {
     exportActions.exportImageDocument();
   },

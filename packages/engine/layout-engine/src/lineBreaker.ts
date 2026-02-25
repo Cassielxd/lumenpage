@@ -55,6 +55,8 @@ const appendRunSegment = (
 
     background: style.background,
 
+    shiftY: style.shiftY || 0,
+
     start: offset,
 
     end: offset + 1,
@@ -224,7 +226,14 @@ export function breakLines(
       continue;
     }
 
-    const style = run.style || { font: baseFont, color: "#111827", underline: false, strike: false, background: null };
+    const style = run.style || {
+      font: baseFont,
+      color: "#111827",
+      underline: false,
+      strike: false,
+      background: null,
+      shiftY: 0,
+    };
 
     let offsetCursor = run.start;
 

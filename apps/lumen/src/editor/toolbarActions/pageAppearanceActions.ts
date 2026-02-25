@@ -6,6 +6,8 @@ type PageAppearanceState = {
   showLineNumbers: boolean;
   backgroundColor: string | null;
   watermarkText: string;
+  headerText: string;
+  footerText: string;
 };
 
 type PageAppearanceRuntime = {
@@ -16,6 +18,8 @@ type PageAppearanceRuntime = {
 type PageAppearanceTexts = {
   promptBackground: string;
   promptWatermark: string;
+  promptHeader: string;
+  promptFooter: string;
   alertInvalidColor: string;
   alertWatermarkTooLong: (maxLength: number) => string;
 };
@@ -28,6 +32,8 @@ const createDefaultState = (): PageAppearanceState => ({
   showLineNumbers: false,
   backgroundColor: null,
   watermarkText: "",
+  headerText: "",
+  footerText: "",
 });
 
 const resolveTexts = (locale: PlaygroundLocale): PageAppearanceTexts =>
@@ -35,14 +41,17 @@ const resolveTexts = (locale: PlaygroundLocale): PageAppearanceTexts =>
     ? {
         promptBackground:
           "Page background color (CSS color, empty means restore default background)",
-        promptWatermark:
-          "Watermark text (empty means remove watermark, max 48 chars)",
+        promptWatermark: "Watermark text (empty means remove watermark, max 48 chars)",
+        promptHeader: "Header text (empty means remove; supports {page} placeholder)",
+        promptFooter: "Footer text (empty means remove; supports {page} placeholder)",
         alertInvalidColor: "Invalid color value",
         alertWatermarkTooLong: (maxLength) => `Watermark text cannot exceed ${maxLength} chars`,
       }
     : {
         promptBackground: "请输入页面背景色（CSS 颜色值，留空恢复默认背景）",
         promptWatermark: "请输入水印文本（留空移除水印，最多 48 个字符）",
+        promptHeader: "请输入页眉文本（留空移除，可使用 {page} 占位符）",
+        promptFooter: "请输入页脚文本（留空移除，可使用 {page} 占位符）",
         alertInvalidColor: "颜色值无效",
         alertWatermarkTooLong: (maxLength) => `水印文本不能超过 ${maxLength} 个字符`,
       };
@@ -67,7 +76,11 @@ const ensureAppearanceRuntime = (settings: any): PageAppearanceRuntime => {
 };
 
 const hasCustomAppearance = (state: PageAppearanceState) =>
-  state.showLineNumbers || Boolean(state.backgroundColor) || Boolean(state.watermarkText.trim());
+  state.showLineNumbers ||
+  Boolean(state.backgroundColor) ||
+  Boolean(state.watermarkText.trim()) ||
+  Boolean(state.headerText.trim()) ||
+  Boolean(state.footerText.trim());
 
 const isValidCssColor = (color: string) => {
   const value = color.trim();
@@ -135,6 +148,51 @@ const drawPageWatermark = ({ ctx, width, height }: any, text: string) => {
   ctx.restore();
 };
 
+const resolvePageLabel = (text: string, pageIndex: number) =>
+  String(text || "").replace(/\{page\}/g, String(pageIndex + 1));
+
+const drawPageHeader = ({ ctx, width, pageIndex, layout }: any, text: string) => {
+  const value = resolvePageLabel(text, pageIndex).trim();
+  if (!value) {
+    return;
+  }
+  const marginLeft = Number(layout?.margin?.left) || 72;
+  const marginTop = Number(layout?.margin?.top) || 72;
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = '12px "Times New Roman", "Noto Serif", serif';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    value,
+    Math.max(16, marginLeft),
+    Math.max(12, marginTop * 0.45),
+    width - marginLeft * 2
+  );
+  ctx.restore();
+};
+
+const drawPageFooter = ({ ctx, width, height, pageIndex, layout }: any, text: string) => {
+  const value = resolvePageLabel(text, pageIndex).trim();
+  if (!value) {
+    return;
+  }
+  const marginLeft = Number(layout?.margin?.left) || 72;
+  const marginBottom = Number(layout?.margin?.bottom) || 72;
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = '12px "Times New Roman", "Noto Serif", serif';
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    value,
+    Math.max(16, marginLeft),
+    Math.max(12, height - marginBottom * 0.45),
+    width - marginLeft * 2
+  );
+  ctx.restore();
+};
+
 const applyAppearanceRenderers = (settings: any) => {
   const state = ensureAppearanceState(settings);
   const runtime = ensureAppearanceRuntime(settings);
@@ -177,13 +235,25 @@ const applyAppearanceRenderers = (settings: any) => {
     if (state.watermarkText.trim()) {
       drawPageWatermark(args, state.watermarkText);
     }
+    if (state.headerText.trim()) {
+      drawPageHeader(args, state.headerText);
+    }
+    if (state.footerText.trim()) {
+      drawPageFooter(args, state.footerText);
+    }
     return true;
   };
 };
 
 const refreshPageAppearance = (view: any) => {
-  view?._internals?.renderer?.pageCache?.clear?.();
-  view?._internals?.scheduleRender?.();
+  const internals = view?._internals;
+  const layout = internals?.getLayout?.();
+  if (layout && typeof layout === "object") {
+    layout.__forceRedraw = true;
+  }
+  internals?.renderer?.pageCache?.clear?.();
+  internals?.updateLayout?.();
+  internals?.scheduleRender?.();
   return true;
 };
 
@@ -218,16 +288,21 @@ export const createPageAppearanceActions = ({
     return refreshPageAppearance(payload.view);
   };
 
-  const applyPageBackgroundSetting = () => {
+  const getPageBackgroundColor = () => {
+    const payload = getSettingsAndState();
+    if (!payload) {
+      return null;
+    }
+    const value = String(payload.state.backgroundColor || "").trim();
+    return value || null;
+  };
+
+  const setPageBackgroundColor = (color: string | null) => {
     const payload = getSettingsAndState();
     if (!payload) {
       return false;
     }
-    const raw = window.prompt(payload.texts.promptBackground, payload.state.backgroundColor || "");
-    if (raw === null) {
-      return false;
-    }
-    const next = String(raw || "").trim();
+    const next = String(color || "").trim();
     if (!next) {
       payload.state.backgroundColor = null;
       applyAppearanceRenderers(payload.settings);
@@ -240,6 +315,18 @@ export const createPageAppearanceActions = ({
     payload.state.backgroundColor = next;
     applyAppearanceRenderers(payload.settings);
     return refreshPageAppearance(payload.view);
+  };
+
+  const applyPageBackgroundSetting = () => {
+    const payload = getSettingsAndState();
+    if (!payload) {
+      return false;
+    }
+    const raw = window.prompt(payload.texts.promptBackground, payload.state.backgroundColor || "");
+    if (raw === null) {
+      return false;
+    }
+    return setPageBackgroundColor(raw);
   };
 
   const applyPageWatermarkSetting = () => {
@@ -261,9 +348,41 @@ export const createPageAppearanceActions = ({
     return refreshPageAppearance(payload.view);
   };
 
+  const applyPageHeaderSetting = () => {
+    const payload = getSettingsAndState();
+    if (!payload) {
+      return false;
+    }
+    const raw = window.prompt(payload.texts.promptHeader, payload.state.headerText || "");
+    if (raw === null) {
+      return false;
+    }
+    payload.state.headerText = String(raw || "").trim();
+    applyAppearanceRenderers(payload.settings);
+    return refreshPageAppearance(payload.view);
+  };
+
+  const applyPageFooterSetting = () => {
+    const payload = getSettingsAndState();
+    if (!payload) {
+      return false;
+    }
+    const raw = window.prompt(payload.texts.promptFooter, payload.state.footerText || "");
+    if (raw === null) {
+      return false;
+    }
+    payload.state.footerText = String(raw || "").trim();
+    applyAppearanceRenderers(payload.settings);
+    return refreshPageAppearance(payload.view);
+  };
+
   return {
     togglePageLineNumbers,
+    getPageBackgroundColor,
+    setPageBackgroundColor,
     applyPageBackgroundSetting,
     applyPageWatermarkSetting,
+    applyPageHeaderSetting,
+    applyPageFooterSetting,
   };
 };

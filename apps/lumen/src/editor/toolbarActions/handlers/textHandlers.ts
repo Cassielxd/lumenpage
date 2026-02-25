@@ -9,7 +9,9 @@ export const createTextActionHandlers = ({
   markdownActions,
   inlineMediaActions,
   textFormatActions,
+  textStyleActions,
   searchReplaceActions,
+  importActions,
   quickInsertActions,
 }: ToolbarActionContext): ToolbarHandlerRecord => ({
   undo: () => {
@@ -17,6 +19,9 @@ export const createTextActionHandlers = ({
   },
   redo: () => {
     runWithNotice("redo", getToolbarTexts().alertCannotRedo);
+  },
+  "format-painter": () => {
+    textFormatActions.toggleFormatPainter();
   },
   bold: () => {
     run("toggleBold");
@@ -30,11 +35,32 @@ export const createTextActionHandlers = ({
   strike: () => {
     run("toggleStrike");
   },
+  subscript: () => {
+    run("toggleSubscript");
+  },
+  superscript: () => {
+    run("toggleSuperscript");
+  },
   "inline-code": () => {
     run("toggleInlineCode");
   },
   "clear-format": () => {
     textFormatActions.clearFormat();
+  },
+  "font-family": () => {
+    textStyleActions.applyFontFamilySetting();
+  },
+  "font-size": () => {
+    textStyleActions.applyFontSizeSetting();
+  },
+  color: () => {
+    textStyleActions.applyTextColorSetting();
+  },
+  "background-color": () => {
+    textStyleActions.applyTextBackgroundSetting();
+  },
+  highlight: () => {
+    textStyleActions.highlightSelection();
   },
   "ordered-list": () => {
     run("toggleOrderedList");
@@ -77,6 +103,9 @@ export const createTextActionHandlers = ({
   },
   "search-replace": () => {
     searchReplaceActions.searchAndReplace();
+  },
+  "import-word": async () => {
+    await importActions.importWordDocument();
   },
   link: () => {
     inlineMediaActions.toggleLink();

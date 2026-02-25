@@ -186,7 +186,11 @@ export const createLayoutActions = ({
     togglePageOrientation,
     togglePageBreakMarks,
     togglePageLineNumbers: pageAppearanceActions.togglePageLineNumbers,
+    getPageBackgroundColor: pageAppearanceActions.getPageBackgroundColor,
+    setPageBackgroundColor: pageAppearanceActions.setPageBackgroundColor,
     applyPageBackgroundSetting: pageAppearanceActions.applyPageBackgroundSetting,
     applyPageWatermarkSetting: pageAppearanceActions.applyPageWatermarkSetting,
+    applyPageHeaderSetting: pageAppearanceActions.applyPageHeaderSetting,
+    applyPageFooterSetting: pageAppearanceActions.applyPageFooterSetting,
   };
 };

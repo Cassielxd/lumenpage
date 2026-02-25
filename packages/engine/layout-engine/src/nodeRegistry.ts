@@ -24,6 +24,13 @@ export type NodeRenderer = {
   layoutBlock?: (ctx: any) => NodeLayoutResult;
   splitBlock?: (ctx: any) => NodeLayoutResult;
   allowSplit?: boolean;
+  cacheLayout?: boolean;
+  getCacheSignature?: (ctx: {
+    node: any;
+    settings: any;
+    registry?: any;
+    indent?: number;
+  }) => unknown;
   renderLine?: (ctx: any) => void;
   getContainerStyle?: (ctx: any) => ContainerStyle | null;
   renderContainer?: (ctx: any) => void;

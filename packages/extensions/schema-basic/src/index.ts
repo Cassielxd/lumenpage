@@ -20,6 +20,50 @@ import { sanitizeLinkHref } from "lumenpage-link";
 
 export { serializeTableToText, getTableTextLength };
 
+const normalizeStyleColor = (value: string | null | undefined) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || null;
+};
+
+const normalizeStyleFontFamily = (value: string | null | undefined) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return null;
+  }
+  // Drop style-breaking separators; keep a plain font-family list string.
+  return text.replace(/[{};]/g, "").trim() || null;
+};
+
+const normalizeStyleFontSize = (value: string | null | undefined) => {
+  const raw = typeof value === "string" ? value.trim() : "";
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.round(parsed);
+};
+
+const normalizeTextStyleAttrs = (attrs: {
+  color?: string | null;
+  background?: string | null;
+  fontSize?: number | null;
+  fontFamily?: string | null;
+}) => {
+  const color = normalizeStyleColor(attrs.color);
+  const background = normalizeStyleColor(attrs.background);
+  const fontFamily = normalizeStyleFontFamily(attrs.fontFamily);
+  const fontSize = Number.isFinite(attrs.fontSize as number) ? Math.round(Number(attrs.fontSize)) : null;
+  if (!color && !background && !fontFamily && !fontSize) {
+    return null;
+  }
+  return {
+    color,
+    background,
+    fontSize: fontSize && fontSize > 0 ? fontSize : null,
+    fontFamily,
+  };
+};
+
 const withIdAttr = (spec) => ({
   ...spec,
   attrs: {
@@ -146,6 +190,78 @@ export const schema = new Schema({
       ],
       toDOM() {
         return ["s", 0];
+      },
+    },
+
+    subscript: {
+      parseDOM: [
+        { tag: "sub" },
+        {
+          style: "vertical-align",
+          getAttrs: (value) => (String(value || "").toLowerCase() === "sub" ? {} : false),
+        },
+      ],
+      toDOM() {
+        return ["sub", 0];
+      },
+    },
+
+    superscript: {
+      parseDOM: [
+        { tag: "sup" },
+        {
+          style: "vertical-align",
+          getAttrs: (value) => (String(value || "").toLowerCase() === "super" ? {} : false),
+        },
+      ],
+      toDOM() {
+        return ["sup", 0];
+      },
+    },
+
+    text_style: {
+      attrs: {
+        color: { default: null },
+        background: { default: null },
+        fontSize: { default: null },
+        fontFamily: { default: null },
+      },
+      parseDOM: [
+        {
+          tag: "span",
+          getAttrs: (dom) => {
+            const color = normalizeStyleColor(dom.style.color);
+            const background = normalizeStyleColor(dom.style.backgroundColor);
+            const fontSize = normalizeStyleFontSize(dom.style.fontSize);
+            const fontFamily = normalizeStyleFontFamily(dom.style.fontFamily);
+            return normalizeTextStyleAttrs({ color, background, fontSize, fontFamily }) || false;
+          },
+        },
+      ],
+      toDOM(node) {
+        const attrs = normalizeTextStyleAttrs({
+          color: node.attrs?.color,
+          background: node.attrs?.background,
+          fontSize: node.attrs?.fontSize,
+          fontFamily: node.attrs?.fontFamily,
+        });
+        if (!attrs) {
+          return ["span", 0];
+        }
+        const styles: string[] = [];
+        if (attrs.color) {
+          styles.push(`color:${attrs.color}`);
+        }
+        if (attrs.background) {
+          styles.push(`background-color:${attrs.background}`);
+        }
+        if (attrs.fontFamily) {
+          styles.push(`font-family:${attrs.fontFamily}`);
+        }
+        if (attrs.fontSize) {
+          styles.push(`font-size:${attrs.fontSize}px`);
+        }
+        return ["span", { style: styles.join(";") }, 0];
       },
     },
   },

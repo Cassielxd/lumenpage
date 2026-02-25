@@ -45,6 +45,15 @@
   - `markdown`
   - `export-text`
   - `clear-format`
+  - `format-painter`
+  - `import-word`
+  - `font-family`
+  - `font-size`
+  - `subscript`
+  - `superscript`
+  - `color`
+  - `background-color`
+  - `highlight`
   - `align-justify`
   - `align-distributed`
   - `search-replace`
@@ -62,6 +71,8 @@
   - `page-line-number`
   - `page-watermark`
   - `page-background`
+  - `page-header`
+  - `page-footer`
 - 本文“总览统计”尚未按上述增量重算，后续可改为脚本自动生成，避免手工统计漂移。
 - 下方“已实现/未实现明细”尚未回写上述增量项，请以本节为准。
 

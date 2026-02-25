@@ -62,7 +62,14 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       items: [
         item("undo", "undo", "撤销", "Undo", "undo", true, "undo"),
         item("redo", "redo", "重做", "Redo", "redo", true, "redo"),
-        item("format-painter", "format-painter", "格式刷", "Format Painter"),
+        item(
+          "format-painter",
+          "format-painter",
+          "格式刷",
+          "Format Painter",
+          "format-painter",
+          true
+        ),
         item("clear-format", "clear-format", "清除格式", "Clear Format", "clear-format", true),
       ],
     },
@@ -70,17 +77,24 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       id: "font",
       items: [
         item("heading", "heading", "标题", "Heading", "heading", true),
-        item("font-family", "font-family", "字体", "Font Family"),
-        item("font-size", "font-size", "字号", "Font Size"),
+        item("font-family", "font-family", "字体", "Font Family", "font-family", true),
+        item("font-size", "font-size", "字号", "Font Size", "font-size", true),
         item("bold", "bold", "加粗", "Bold", "bold", true),
         item("italic", "italic", "斜体", "Italic", "italic", true),
         item("underline", "underline", "下划线", "Underline", "underline", true),
         item("strike", "strike", "删除线", "Strikethrough", "strike", true),
-        item("subscript", "subscript", "下标", "Subscript"),
-        item("superscript", "superscript", "上标", "Superscript"),
-        item("color", "color", "文字颜色", "Text Color"),
-        item("background-color", "background-color", "背景色", "Background Color"),
-        item("highlight", "highlight", "高亮", "Highlight"),
+        item("subscript", "subscript", "下标", "Subscript", "subscript", true),
+        item("superscript", "superscript", "上标", "Superscript", "superscript", true),
+        item("color", "color", "文字颜色", "Text Color", "color", true),
+        item(
+          "background-color",
+          "background-color",
+          "背景色",
+          "Background Color",
+          "background-color",
+          true
+        ),
+        item("highlight", "highlight", "高亮", "Highlight", "highlight", true),
       ],
     },
     {
@@ -113,7 +127,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "document",
       items: [
-        item("import-word", "word", "导入 Word", "Import Word"),
+        item("import-word", "word", "导入 Word", "Import Word", "import-word", true),
         item("markdown", "markdown", "Markdown", "Markdown", "markdown", true),
         item(
           "search-replace",
@@ -189,7 +203,14 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       id: "table-style",
       items: [
         item("cells-align", "table-cells-align", "单元格对齐", "Cell Alignment"),
-        item("cells-background", "table-cells-background", "单元格背景", "Cell Background"),
+        item(
+          "cells-background",
+          "table-cells-background",
+          "单元格背景",
+          "Cell Background",
+          "cells-background",
+          true
+        ),
       ],
     },
     {
@@ -401,15 +422,22 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         ),
         item("page-line-number", "line-number", "行号", "Line Number", "page-line-number", true),
         item("page-watermark", "watermark", "水印", "Watermark", "page-watermark", true),
-        item("page-background", "background", "页面背景", "Page Background", "page-background", true),
+        item(
+          "page-background",
+          "background",
+          "页面背景",
+          "Page Background",
+          "page-background",
+          true
+        ),
       ],
     },
     {
       id: "page-view",
       items: [
         item("page-preview", "preview", "预览", "Preview", "page-preview", true),
-        item("page-header", "header", "页眉", "Header"),
-        item("page-footer", "footer", "页脚", "Footer"),
+        item("page-header", "header", "页眉", "Header", "page-header", true),
+        item("page-footer", "footer", "页脚", "Footer", "page-footer", true),
       ],
     },
   ],

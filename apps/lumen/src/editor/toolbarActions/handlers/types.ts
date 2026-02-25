@@ -24,6 +24,8 @@ export type LayoutActions = {
   togglePageLineNumbers: () => boolean;
   applyPageBackgroundSetting: () => boolean;
   applyPageWatermarkSetting: () => boolean;
+  applyPageHeaderSetting: () => boolean;
+  applyPageFooterSetting: () => boolean;
 };
 
 export type TableActions = {
@@ -57,10 +59,23 @@ export type InlineMediaActions = {
 
 export type TextFormatActions = {
   clearFormat: () => boolean;
+  toggleFormatPainter: () => boolean;
+};
+
+export type TextStyleActions = {
+  applyFontFamilySetting: () => boolean;
+  applyFontSizeSetting: () => boolean;
+  applyTextColorSetting: () => boolean;
+  applyTextBackgroundSetting: () => boolean;
+  highlightSelection: () => boolean;
 };
 
 export type SearchReplaceActions = {
   searchAndReplace: () => boolean;
+};
+
+export type ImportActions = {
+  importWordDocument: () => Promise<boolean>;
 };
 
 export type QuickInsertActions = {
@@ -84,7 +99,9 @@ export type ToolbarActionContext = {
   markdownActions: MarkdownActions;
   inlineMediaActions: InlineMediaActions;
   textFormatActions: TextFormatActions;
+  textStyleActions: TextStyleActions;
   searchReplaceActions: SearchReplaceActions;
+  importActions: ImportActions;
   quickInsertActions: QuickInsertActions;
 };
 
