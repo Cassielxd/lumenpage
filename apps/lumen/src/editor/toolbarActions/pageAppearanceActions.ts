@@ -1,4 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 
@@ -120,13 +121,17 @@ const drawPageLineNumbers = ({ ctx, pageIndex, layout }: any) => {
 
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "11px Arial";
+  ctx.font = "13px Arial";
   ctx.textAlign = "right";
-  ctx.textBaseline = "top";
+  ctx.textBaseline = "middle";
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const y = Number(line?.y) || 0;
-    ctx.fillText(String(lineNumberStart + index + 1), x, y);
+    const lineHeight =
+      Number.isFinite(line?.lineHeight) && Number(line.lineHeight) > 0
+        ? Number(line.lineHeight)
+        : Number(layout?.lineHeight) || 22;
+    ctx.fillText(String(lineNumberStart + index + 1), x, y + lineHeight / 2);
   }
   ctx.restore();
 };
@@ -246,6 +251,16 @@ const applyAppearanceRenderers = (settings: any) => {
 };
 
 const refreshPageAppearance = (view: any) => {
+  if (!view) {
+    return false;
+  }
+  if (typeof view.forceRender === "function") {
+    return view.forceRender({
+      clearPageCache: true,
+      markLayoutForceRedraw: true,
+      syncNodeViews: true,
+    });
+  }
   const internals = view?._internals;
   const layout = internals?.getLayout?.();
   if (layout && typeof layout === "object") {
@@ -260,9 +275,11 @@ const refreshPageAppearance = (view: any) => {
 export const createPageAppearanceActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
   const getSettingsAndState = () => {
     const view = getView();
@@ -317,28 +334,46 @@ export const createPageAppearanceActions = ({
     return refreshPageAppearance(payload.view);
   };
 
-  const applyPageBackgroundSetting = () => {
+  const applyPageBackgroundSetting = async () => {
     const payload = getSettingsAndState();
     if (!payload) {
       return false;
     }
-    const raw = window.prompt(payload.texts.promptBackground, payload.state.backgroundColor || "");
-    if (raw === null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Page Background" : "\u9875\u9762\u80cc\u666f",
+      fields: [
+        {
+          key: "value",
+          label: payload.texts.promptBackground,
+          defaultValue: payload.state.backgroundColor || "",
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    return setPageBackgroundColor(raw);
+    return setPageBackgroundColor(result.value ?? "");
   };
 
-  const applyPageWatermarkSetting = () => {
+  const applyPageWatermarkSetting = async () => {
     const payload = getSettingsAndState();
     if (!payload) {
       return false;
     }
-    const raw = window.prompt(payload.texts.promptWatermark, payload.state.watermarkText || "");
-    if (raw === null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Page Watermark" : "\u6c34\u5370",
+      fields: [
+        {
+          key: "value",
+          label: payload.texts.promptWatermark,
+          defaultValue: payload.state.watermarkText || "",
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    const next = String(raw || "").trim();
+    const next = String(result.value || "").trim();
     if (next.length > WATERMARK_MAX_LENGTH) {
       window.alert(payload.texts.alertWatermarkTooLong(WATERMARK_MAX_LENGTH));
       return false;
@@ -348,30 +383,48 @@ export const createPageAppearanceActions = ({
     return refreshPageAppearance(payload.view);
   };
 
-  const applyPageHeaderSetting = () => {
+  const applyPageHeaderSetting = async () => {
     const payload = getSettingsAndState();
     if (!payload) {
       return false;
     }
-    const raw = window.prompt(payload.texts.promptHeader, payload.state.headerText || "");
-    if (raw === null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Page Header" : "\u9875\u7709",
+      fields: [
+        {
+          key: "value",
+          label: payload.texts.promptHeader,
+          defaultValue: payload.state.headerText || "",
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    payload.state.headerText = String(raw || "").trim();
+    payload.state.headerText = String(result.value || "").trim();
     applyAppearanceRenderers(payload.settings);
     return refreshPageAppearance(payload.view);
   };
 
-  const applyPageFooterSetting = () => {
+  const applyPageFooterSetting = async () => {
     const payload = getSettingsAndState();
     if (!payload) {
       return false;
     }
-    const raw = window.prompt(payload.texts.promptFooter, payload.state.footerText || "");
-    if (raw === null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Page Footer" : "\u9875\u811a",
+      fields: [
+        {
+          key: "value",
+          label: payload.texts.promptFooter,
+          defaultValue: payload.state.footerText || "",
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    payload.state.footerText = String(raw || "").trim();
+    payload.state.footerText = String(result.value || "").trim();
     applyAppearanceRenderers(payload.settings);
     return refreshPageAppearance(payload.view);
   };

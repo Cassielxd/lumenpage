@@ -66,6 +66,26 @@
                     v
                   </button>
                 </div>
+                <div v-else-if="isFontFamilyItem(item)" class="toolbar-inline-control">
+                  <t-select
+                    v-model="fontFamilyValue"
+                    size="small"
+                    class="toolbar-inline-select toolbar-inline-select--font"
+                    :disabled="isItemDisabled(item)"
+                    :options="fontFamilyOptions"
+                    @change="handleInlineFontFamilyChange"
+                  />
+                </div>
+                <div v-else-if="isFontSizeItem(item)" class="toolbar-inline-control">
+                  <t-select
+                    v-model="fontSizeValue"
+                    size="small"
+                    class="toolbar-inline-select toolbar-inline-select--size"
+                    :disabled="isItemDisabled(item)"
+                    :options="fontSizeOptions"
+                    @change="handleInlineFontSizeChange"
+                  />
+                </div>
                 <t-tooltip v-else :content="itemLabel(item)">
                   <t-button
                     size="small"
@@ -183,7 +203,7 @@
         clearable
         :enable-alpha="true"
         :show-primary-color-preview="true"
-        :recentColors="toolbarRecentColors"
+        :recent-colors="toolbarRecentColors"
         :swatch-colors="TOOLBAR_COLOR_SWATCHES"
         @change="handleColorPickerChange"
         @clear="handleColorPickerClear"
@@ -196,12 +216,64 @@
       </div>
     </div>
   </t-dialog>
+
+  <t-dialog
+    :visible="inputDialogVisible"
+    :header="inputDialogTitle"
+    :confirm-btn="inputDialogConfirmText || inputDialogTexts.confirm"
+    :cancel-btn="inputDialogCancelText || inputDialogTexts.cancel"
+    :close-on-overlay-click="false"
+    :close-on-esc-keydown="true"
+    :width="inputDialogWidth"
+    @update:visible="handleInputDialogVisibleChange"
+    @confirm="handleInputDialogConfirm"
+    @cancel="handleInputDialogCancel"
+    @close="handleInputDialogCancel"
+  >
+    <div class="toolbar-input-dialog">
+      <p v-if="inputDialogDescription" class="toolbar-input-dialog-description">
+        {{ inputDialogDescription }}
+      </p>
+      <div class="toolbar-input-dialog-fields">
+        <div v-for="field in inputDialogFields" :key="field.key" class="toolbar-input-dialog-field">
+          <div class="toolbar-input-dialog-label">
+            <span>{{ field.label }}</span>
+            <span v-if="field.required" class="toolbar-input-dialog-required">*</span>
+          </div>
+          <t-textarea
+            v-if="field.type === 'textarea'"
+            :model-value="inputDialogValues[field.key] || ''"
+            :placeholder="field.placeholder || ''"
+            :autosize="{ minRows: 3, maxRows: 8 }"
+            @update:model-value="(value) => setInputDialogFieldValue(field.key, value)"
+          />
+          <t-select
+            v-else-if="field.type === 'select'"
+            :model-value="inputDialogValues[field.key] || ''"
+            :options="resolveInputDialogFieldOptions(field)"
+            @update:model-value="(value) => setInputDialogFieldValue(field.key, value)"
+          />
+          <t-input
+            v-else
+            :type="field.type === 'number' ? 'number' : 'text'"
+            :model-value="inputDialogValues[field.key] || ''"
+            :placeholder="field.placeholder || ''"
+            @update:model-value="(value) => setInputDialogFieldValue(field.key, value)"
+          />
+        </div>
+      </div>
+      <p v-if="inputDialogError" class="toolbar-input-dialog-error">
+        {{ inputDialogError }}
+      </p>
+    </div>
+  </t-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { redoDepth, undoDepth } from "lumenpage-history";
+import { TextSelection } from "lumenpage-state";
 import LumenIcon from "./LumenIcon.vue";
 import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 import {
@@ -218,10 +290,16 @@ import { createLayoutActions } from "../editor/toolbarActions/layoutActions";
 import { createMarkdownActions } from "../editor/toolbarActions/markdownActions";
 import { createQuickInsertActions } from "../editor/toolbarActions/quickInsertActions";
 import { createSearchReplaceActions } from "../editor/toolbarActions/searchReplaceActions";
-import { createTableActions } from "../editor/toolbarActions/tableActions";
+import createTableActions from "../editor/toolbarActions/tableActions";
 import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
 import { createTextStyleActions } from "../editor/toolbarActions/textStyleActions";
 import { createToolsActions } from "../editor/toolbarActions/toolsActions";
+import type {
+  RequestToolbarInputDialog,
+  ToolbarInputDialogField,
+  ToolbarInputDialogOption,
+  ToolbarInputDialogResult,
+} from "../editor/toolbarActions/ui/inputDialog";
 import {
   applyToolbarColorAction,
   getToolbarColorDefault,
@@ -418,32 +496,371 @@ const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
   return ok;
 };
 
+const TOOLBAR_FONT_FAMILY_PRESETS = [
+  "Arial",
+  "Helvetica",
+  "Times New Roman",
+  "Georgia",
+  "Verdana",
+  "Tahoma",
+  "Trebuchet MS",
+  "Courier New",
+  "Segoe UI",
+  "PingFang SC",
+  "Hiragino Sans GB",
+  "Microsoft YaHei",
+  "SimSun",
+  "Noto Sans SC",
+  "Noto Serif SC",
+];
+const TOOLBAR_FONT_SIZE_PRESETS = [10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
+const fontFamilyValue = ref("Arial");
+const fontSizeValue = ref("16");
+const pendingInlineStyleSelection = ref<{ from: number; to: number } | null>(null);
+
+const parseBaseFontFamily = (fontSpec: string | null | undefined) => {
+  const source = String(fontSpec || "").trim();
+  const match = /(?:\d+(?:\.\d+)?)px\s+(.+)/.exec(source);
+  if (!match) {
+    return "Arial";
+  }
+  const family = String(match[1] || "").trim();
+  return family || "Arial";
+};
+
+const parseBaseFontSize = (fontSpec: string | null | undefined) => {
+  const source = String(fontSpec || "").trim();
+  const match = /(\d+(?:\.\d+)?)px/.exec(source);
+  if (!match) {
+    return 16;
+  }
+  const size = Number.parseFloat(match[1]);
+  if (!Number.isFinite(size) || size <= 0) {
+    return 16;
+  }
+  return Math.round(size);
+};
+
+const normalizeFontName = (value: string) =>
+  String(value || "")
+    .replace(/^["']+|["']+$/g, "")
+    .trim()
+    .toLowerCase();
+
+const collectRuntimeFontFamilies = () => {
+  if (typeof document === "undefined" || !("fonts" in document)) {
+    return [] as string[];
+  }
+  try {
+    const set = new Set<string>();
+    const fontSet = (document as Document & { fonts: Iterable<{ family?: string }> }).fonts;
+    for (const fontFace of fontSet) {
+      const family = String(fontFace?.family || "")
+        .replace(/^["']+|["']+$/g, "")
+        .trim();
+      if (family) {
+        set.add(family);
+      }
+    }
+    return Array.from(set);
+  } catch (_error) {
+    return [] as string[];
+  }
+};
+
+const getCurrentTextStyleAttrs = () => {
+  const view = getView();
+  const state = view?.state;
+  if (!state?.selection?.$from || !state?.schema?.marks?.text_style) {
+    return null;
+  }
+  const textStyleType = state.schema.marks.text_style;
+  const marks = state.selection.empty
+    ? state.storedMarks || state.selection.$from.marks()
+    : state.doc.resolve(state.selection.from).marks();
+  const mark = (marks || []).find((item: any) => item?.type === textStyleType);
+  return mark?.attrs || null;
+};
+
+const capturePendingInlineStyleSelection = () => {
+  const view = getView();
+  const selection = view?.state?.selection;
+  if (!selection || selection.empty) {
+    pendingInlineStyleSelection.value = null;
+    return;
+  }
+  pendingInlineStyleSelection.value = {
+    from: Number(selection.from),
+    to: Number(selection.to),
+  };
+};
+
+const restorePendingInlineStyleSelection = () => {
+  const snapshot = pendingInlineStyleSelection.value;
+  const view = getView();
+  const state = view?.state;
+  if (!snapshot || !state?.doc || !state?.selection) {
+    return false;
+  }
+  if (!state.selection.empty) {
+    return true;
+  }
+  const maxPos = Number(state.doc.content?.size) || 0;
+  const from = Math.max(0, Math.min(Math.round(snapshot.from), maxPos));
+  const to = Math.max(0, Math.min(Math.round(snapshot.to), maxPos));
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) {
+    return false;
+  }
+  try {
+    const selection = TextSelection.create(state.doc, from, to);
+    view.dispatch(state.tr.setSelection(selection));
+    return true;
+  } catch (_error) {
+    return false;
+  }
+};
+
+const syncInlineFontControls = () => {
+  const view = getView();
+  const settingsFont = view?._internals?.settings?.font;
+  const styleAttrs = getCurrentTextStyleAttrs();
+  const family =
+    String(styleAttrs?.fontFamily || "").trim() || parseBaseFontFamily(String(settingsFont || ""));
+  const size = Number(styleAttrs?.fontSize);
+  const resolvedSize = Number.isFinite(size) && size > 0 ? Math.round(size) : parseBaseFontSize(settingsFont);
+  fontFamilyValue.value = family;
+  fontSizeValue.value = String(resolvedSize);
+};
+
+const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
+  const clearLabel = localeKey.value === "en-US" ? "Clear font family" : "清除字体";
+  const values = new Map<string, string>();
+  const append = (family: string) => {
+    const value = String(family || "").trim();
+    if (!value) {
+      return;
+    }
+    const key = normalizeFontName(value);
+    if (!key || values.has(key)) {
+      return;
+    }
+    values.set(key, value);
+  };
+  append(fontFamilyValue.value);
+  for (const family of TOOLBAR_FONT_FAMILY_PRESETS) {
+    append(family);
+  }
+  for (const family of collectRuntimeFontFamilies()) {
+    append(family);
+  }
+  return [
+    { label: clearLabel, value: "" },
+    ...Array.from(values.values()).map((family) => ({ label: family, value: family })),
+  ];
+});
+
+const fontSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
+  const clearLabel = localeKey.value === "en-US" ? "Clear font size" : "清除字号";
+  const current = Number(fontSizeValue.value);
+  const set = new Set<number>([
+    ...TOOLBAR_FONT_SIZE_PRESETS,
+    Number.isFinite(current) && current > 0 ? Math.round(current) : 16,
+  ]);
+  return [
+    { label: clearLabel, value: "" },
+    ...Array.from(set)
+      .sort((a, b) => a - b)
+      .map((size) => ({ label: `${size}px`, value: String(size) })),
+  ];
+});
+
+const handleInlineFontFamilyChange = (value: unknown) => {
+  const next = String(value ?? "").trim();
+  fontFamilyValue.value = next;
+  if (isViewerSession.value) {
+    pendingInlineStyleSelection.value = null;
+    return;
+  }
+  restorePendingInlineStyleSelection();
+  const ok = !next ? run("clearTextFontFamily") : run("setTextFontFamily", next);
+  pendingInlineStyleSelection.value = null;
+  if (!ok) {
+    window.alert(localeKey.value === "en-US" ? "Unable to apply font family" : "当前无法应用字体");
+  }
+  syncInlineFontControls();
+};
+
+const handleInlineFontSizeChange = (value: unknown) => {
+  const next = String(value ?? "").trim();
+  fontSizeValue.value = next;
+  if (isViewerSession.value) {
+    pendingInlineStyleSelection.value = null;
+    return;
+  }
+  restorePendingInlineStyleSelection();
+  if (!next) {
+    const ok = run("clearTextFontSize");
+    pendingInlineStyleSelection.value = null;
+    if (!ok) {
+      window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "当前无法应用字号");
+    }
+    syncInlineFontControls();
+    return;
+  }
+  const size = Number(next);
+  if (!Number.isFinite(size) || size <= 0) {
+    window.alert(localeKey.value === "en-US" ? "Invalid font size" : "字号无效");
+    syncInlineFontControls();
+    return;
+  }
+  const ok = run("setTextFontSize", Math.round(size));
+  pendingInlineStyleSelection.value = null;
+  if (!ok) {
+    window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "当前无法应用字号");
+  }
+  syncInlineFontControls();
+};
+
+const inputDialogTexts = computed(() =>
+  localeKey.value === "en-US"
+    ? {
+        confirm: "Apply",
+        cancel: "Cancel",
+        required: "Please complete required fields",
+      }
+    : {
+        confirm: "\u786e\u5b9a",
+        cancel: "\u53d6\u6d88",
+        required: "\u8bf7\u5b8c\u6210\u5fc5\u586b\u9879",
+      }
+);
+const inputDialogVisible = ref(false);
+const inputDialogTitle = ref("");
+const inputDialogDescription = ref("");
+const inputDialogFields = ref<ToolbarInputDialogField[]>([]);
+const inputDialogValues = ref<Record<string, string>>({});
+const inputDialogError = ref("");
+const inputDialogConfirmText = ref("");
+const inputDialogCancelText = ref("");
+const inputDialogWidth = ref<number | string>(480);
+let inputDialogResolver: ((result: ToolbarInputDialogResult | null) => void) | null = null;
+
+const closeInputDialog = (result: ToolbarInputDialogResult | null) => {
+  if (inputDialogResolver) {
+    inputDialogResolver(result);
+    inputDialogResolver = null;
+  }
+  inputDialogVisible.value = false;
+  inputDialogTitle.value = "";
+  inputDialogDescription.value = "";
+  inputDialogFields.value = [];
+  inputDialogValues.value = {};
+  inputDialogError.value = "";
+  inputDialogConfirmText.value = "";
+  inputDialogCancelText.value = "";
+  inputDialogWidth.value = 480;
+};
+
+const requestInputDialog: RequestToolbarInputDialog = (request) => {
+  if (inputDialogResolver) {
+    inputDialogResolver(null);
+    inputDialogResolver = null;
+  }
+  inputDialogTitle.value = String(request.title || "").trim();
+  inputDialogDescription.value = String(request.description || "").trim();
+  inputDialogFields.value = (request.fields || []).map((field) => ({
+    key: field.key,
+    label: field.label,
+    type: field.type || "text",
+    defaultValue: field.defaultValue || "",
+    placeholder: field.placeholder || "",
+    required: field.required === true,
+    options: Array.isArray(field.options)
+      ? field.options.map((option) => ({
+          label: String(option.label || ""),
+          value: String(option.value || ""),
+        }))
+      : undefined,
+  }));
+  inputDialogValues.value = inputDialogFields.value.reduce<Record<string, string>>((acc, field) => {
+    acc[field.key] = String(field.defaultValue || "");
+    return acc;
+  }, {});
+  inputDialogError.value = "";
+  inputDialogConfirmText.value = String(request.confirmText || "");
+  inputDialogCancelText.value = String(request.cancelText || "");
+  inputDialogWidth.value = request.width || 480;
+  inputDialogVisible.value = true;
+  return new Promise<ToolbarInputDialogResult | null>((resolve) => {
+    inputDialogResolver = resolve;
+  });
+};
+
+const setInputDialogFieldValue = (key: string, value: unknown) => {
+  const normalized = String(value ?? "");
+  inputDialogValues.value = {
+    ...inputDialogValues.value,
+    [key]: normalized,
+  };
+  if (inputDialogError.value) {
+    inputDialogError.value = "";
+  }
+};
+
+const resolveInputDialogFieldOptions = (field: ToolbarInputDialogField): ToolbarInputDialogOption[] =>
+  Array.isArray(field.options) ? field.options : [];
+
+const handleInputDialogConfirm = () => {
+  for (const field of inputDialogFields.value) {
+    if (field.required && !String(inputDialogValues.value[field.key] || "").trim()) {
+      inputDialogError.value = inputDialogTexts.value.required;
+      return;
+    }
+  }
+  closeInputDialog({ ...inputDialogValues.value });
+};
+
+const handleInputDialogCancel = () => {
+  closeInputDialog(null);
+};
+
+const handleInputDialogVisibleChange = (visible: boolean) => {
+  if (!visible) {
+    handleInputDialogCancel();
+  }
+};
+
 const layoutActions = createLayoutActions({
   getView,
   run,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 
 const tableActions = createTableActions({
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 
 const exportActions = createExportActions({
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 const markdownActions = createMarkdownActions({
   getView,
   getLocaleKey: () => localeKey.value,
   getMenuTexts: () => i18n.value.menu,
   downloadTextAsFile: exportActions.downloadTextAsFile,
+  requestInputDialog,
 });
 
 const inlineMediaActions = createInlineMediaActions({
   getView,
   run,
   getToolbarTexts: () => i18n.value.toolbar,
+  requestInputDialog,
 });
 const importActions = createImportActions({
   getView,
@@ -457,23 +874,28 @@ const textStyleActions = createTextStyleActions({
   run,
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 const searchReplaceActions = createSearchReplaceActions({
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 const quickInsertActions = createQuickInsertActions({
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 const insertAdvancedActions = createInsertAdvancedActions({
   getView,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 const toolsActions = createToolsActions({
   getView,
   run,
   getLocaleKey: () => localeKey.value,
+  requestInputDialog,
 });
 
 const colorDialogVisible = ref(false);
@@ -616,6 +1038,8 @@ const {
   closeHeadingInlineMore,
 } = headingInlineActions;
 
+const isFontFamilyItem = (item: ToolbarItemConfig) => item.action === "font-family";
+const isFontSizeItem = (item: ToolbarItemConfig) => item.action === "font-size";
 const itemLabel = (item: ToolbarItemConfig) => item.label[localeKey.value] || "";
 const shouldShowItemIcon = (item: ToolbarItemConfig) =>
   Boolean(item.icon) && !isHeadingInlineBoxItem(item);
@@ -682,6 +1106,9 @@ const handleItemAction = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
     return;
   }
+  if (isFontFamilyItem(item) || isFontSizeItem(item)) {
+    return;
+  }
   if (isToolbarColorAction(item.action)) {
     openColorDialog(item.action);
     return;
@@ -728,6 +1155,7 @@ watch(
   () => props.editorView,
   () => {
     syncHeadingValueFromSelection();
+    syncInlineFontControls();
   },
   { immediate: true }
 );
@@ -736,6 +1164,7 @@ watch(
   () => props.editorView?.state?.selection?.head,
   () => {
     syncHeadingValueFromSelection();
+    syncInlineFontControls();
   }
 );
 
@@ -744,6 +1173,7 @@ watch(
   () => {
     closeHeadingInlineMore();
     closeColorDialog();
+    handleInputDialogCancel();
     void nextTick(updateToolbarOverflowState);
   }
 );
@@ -753,18 +1183,24 @@ watch(
   () => {
     closeHeadingInlineMore();
     closeColorDialog();
+    handleInputDialogCancel();
+    syncInlineFontControls();
   }
 );
 
 onMounted(() => {
   window.addEventListener("resize", handleWindowResize, { passive: true });
   document.addEventListener("pointerdown", handleDocumentPointerDown, { passive: true });
-  void nextTick(updateToolbarOverflowState);
+  void nextTick(() => {
+    updateToolbarOverflowState();
+    syncInlineFontControls();
+  });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleWindowResize);
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  handleInputDialogCancel();
 });
 
 const undoDepthCount = computed(() => {
@@ -789,6 +1225,7 @@ const handleToolbarMouseDown = (event: MouseEvent) => {
     return;
   }
   if (target.closest(".t-select") || target.closest(".t-input")) {
+    capturePendingInlineStyleSelection();
     return;
   }
   if (
@@ -920,6 +1357,33 @@ defineExpose({ statusEl });
   display: flex;
   align-items: flex-start;
   gap: 1px;
+}
+
+.toolbar-inline-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.toolbar-inline-select {
+  flex: 0 0 auto;
+}
+
+.toolbar-inline-select--font {
+  width: 154px;
+}
+
+.toolbar-inline-select--size {
+  width: 92px;
+}
+
+.toolbar-inline-select :deep(.t-input__wrap) {
+  min-height: 28px;
+  border-radius: 4px;
+}
+
+.toolbar-inline-select :deep(.t-input__inner) {
+  font-size: 12px;
 }
 
 .toolbar-left--with-label {
@@ -1237,5 +1701,47 @@ defineExpose({ statusEl });
   font-size: 12px;
   color: #5f6368;
   word-break: break-all;
+}
+
+.toolbar-input-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toolbar-input-dialog-description {
+  margin: 0;
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.toolbar-input-dialog-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolbar-input-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.toolbar-input-dialog-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.toolbar-input-dialog-required {
+  color: #dc2626;
+}
+
+.toolbar-input-dialog-error {
+  margin: 0;
+  font-size: 12px;
+  color: #dc2626;
 }
 </style>

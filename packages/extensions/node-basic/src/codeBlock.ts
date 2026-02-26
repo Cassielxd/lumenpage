@@ -35,6 +35,27 @@ const resolveMetrics = (settings: any) => ({
   borderColor: settings.codeBlockBorderColor ?? "#e5e7eb",
 });
 
+const measureLinesHeight = (lines: any[], fallbackLineHeight: number) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 0;
+  }
+  let usedRelativeY = false;
+  let maxBottom = 0;
+  let cursor = 0;
+  for (const line of lines) {
+    const lineHeight = Number.isFinite(line?.lineHeight)
+      ? line.lineHeight
+      : Math.max(1, Number(fallbackLineHeight) || 1);
+    if (Number.isFinite(line?.relativeY)) {
+      usedRelativeY = true;
+      maxBottom = Math.max(maxBottom, line.relativeY + lineHeight);
+      continue;
+    }
+    cursor += lineHeight;
+  }
+  return usedRelativeY ? maxBottom : cursor;
+};
+
 export const codeBlockRenderer = {
   allowSplit: true,
 
@@ -94,7 +115,7 @@ export const codeBlockRenderer = {
     return {
       lines,
       length: runsResult.length || 0,
-      height: lines.length * lineHeight,
+      height: measureLinesHeight(lines, lineHeight),
       blockAttrs,
     };
   },

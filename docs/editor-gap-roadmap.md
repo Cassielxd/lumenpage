@@ -157,6 +157,13 @@
 
 ### P2.4 插件生态规范（P2.3 后）
 
+当前进展（2026-02-26）：
+
+- 已抽取统一弹层生命周期运行时：`popup/popupLifecycle.ts`。
+- `mention` 与 `selectionBubble` 已统一为 tiptap 风格渲染生命周期（`render + popupOptions`）。
+- 已补齐规范文档：`docs/plugin-popup-lifecycle-guide.md`。
+- 已补齐兼容矩阵草案：`docs/plugin-compat-matrix.md`。
+
 1. 固化插件生命周期与优先级规则（props / plugin props / legacy fallback）。
 2. 发布插件开发模板（node、command、selectionGeometry、decorations）。
 3. 兼容矩阵与版本策略文档化（核心版本 vs 插件版本）。

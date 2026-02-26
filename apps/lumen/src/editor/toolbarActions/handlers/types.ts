@@ -3,6 +3,7 @@ import type { EditorSessionMode } from "../../sessionMode";
 
 export type RunCommand = (name: string, ...args: unknown[]) => boolean;
 export type RunWithNotice = (name: string, message: string, ...args: unknown[]) => boolean;
+export type ToolbarActionResult = boolean | Promise<boolean>;
 
 export type ToolbarTexts = {
   alertCannotUndo: string;
@@ -13,104 +14,106 @@ export type ToolbarTexts = {
 };
 
 export type LayoutActions = {
-  refreshLayoutAndRender: () => boolean;
-  applyLineHeightSetting: () => boolean;
-  applyParagraphSpacingSetting: () => boolean;
-  selectAllContent: () => boolean;
-  applyPageMarginSetting: () => boolean;
-  applyPageSizeSetting: () => boolean;
-  togglePageOrientation: () => boolean;
-  togglePageBreakMarks: () => boolean;
-  togglePageLineNumbers: () => boolean;
-  toggleTocPlaceholder: () => boolean;
-  applyPageBackgroundSetting: () => boolean;
-  applyPageWatermarkSetting: () => boolean;
-  applyPageHeaderSetting: () => boolean;
-  applyPageFooterSetting: () => boolean;
+  refreshLayoutAndRender: () => ToolbarActionResult;
+  applyLineHeightSetting: () => ToolbarActionResult;
+  applyParagraphSpacingSetting: () => ToolbarActionResult;
+  selectAllContent: () => ToolbarActionResult;
+  applyPageMarginSetting: () => ToolbarActionResult;
+  applyPageSizeSetting: () => ToolbarActionResult;
+  togglePageOrientation: () => ToolbarActionResult;
+  togglePageBreakMarks: () => ToolbarActionResult;
+  togglePageLineNumbers: () => ToolbarActionResult;
+  toggleTocPlaceholder: () => ToolbarActionResult;
+  applyPageBackgroundSetting: () => ToolbarActionResult;
+  applyPageWatermarkSetting: () => ToolbarActionResult;
+  applyPageHeaderSetting: () => ToolbarActionResult;
+  applyPageFooterSetting: () => ToolbarActionResult;
 };
 
 export type TableActions = {
-  insertTable: () => boolean;
+  insertTable: () => ToolbarActionResult;
   deleteCurrentTable: () => boolean;
   toggleHeaderRow: () => boolean;
   toggleHeaderColumn: () => boolean;
   toggleHeaderCell: () => boolean;
-  applyCellAlignmentSetting: () => boolean;
+  applyCellAlignmentSetting: () => ToolbarActionResult;
+  getCurrentCellBackgroundColor?: () => string | null;
+  setCurrentCellBackgroundColor?: (color: string | null) => ToolbarActionResult;
 };
 
 export type ExportActions = {
-  printDocument: () => boolean;
-  exportImageDocument: () => boolean;
-  exportPdfDocument: () => boolean;
-  exportPlainText: () => boolean;
-  exportHtmlDocument: () => boolean;
-  exportWordDocument: () => boolean;
+  printDocument: () => ToolbarActionResult;
+  exportImageDocument: () => ToolbarActionResult;
+  exportPdfDocument: () => ToolbarActionResult;
+  exportPlainText: () => ToolbarActionResult;
+  exportHtmlDocument: () => ToolbarActionResult;
+  exportWordDocument: () => ToolbarActionResult;
   copyShareLink: () => Promise<boolean>;
   copyEmbedCode: () => Promise<boolean>;
 };
 
 export type MarkdownActions = {
-  handleMarkdownAction: () => Promise<boolean>;
+  handleMarkdownAction: () => ToolbarActionResult;
 };
 
 export type InlineMediaActions = {
-  toggleLink: () => boolean;
-  insertImage: () => boolean;
-  insertVideo: () => boolean;
+  toggleLink: () => ToolbarActionResult;
+  insertImage: () => ToolbarActionResult;
+  insertVideo: () => ToolbarActionResult;
 };
 
 export type TextFormatActions = {
-  clearFormat: () => boolean;
-  toggleFormatPainter: () => boolean;
+  clearFormat: () => ToolbarActionResult;
+  toggleFormatPainter: () => ToolbarActionResult;
 };
 
 export type TextStyleActions = {
-  applyFontFamilySetting: () => boolean;
-  applyFontSizeSetting: () => boolean;
-  applyTextColorSetting: () => boolean;
-  applyTextBackgroundSetting: () => boolean;
-  highlightSelection: () => boolean;
+  applyFontFamilySetting: () => ToolbarActionResult;
+  applyFontSizeSetting: () => ToolbarActionResult;
+  applyTextColorSetting: () => ToolbarActionResult;
+  applyTextBackgroundSetting: () => ToolbarActionResult;
+  highlightSelection: () => ToolbarActionResult;
 };
 
 export type SearchReplaceActions = {
-  searchAndReplace: () => boolean;
+  searchAndReplace: () => ToolbarActionResult;
 };
 
 export type ImportActions = {
-  importWordDocument: () => Promise<boolean>;
+  importWordDocument: () => ToolbarActionResult;
 };
 
 export type QuickInsertActions = {
-  insertSymbol: () => boolean;
-  insertEmoji: () => boolean;
-  insertChineseDate: () => boolean;
+  insertSymbol: () => ToolbarActionResult;
+  insertEmoji: () => ToolbarActionResult;
+  insertChineseDate: () => ToolbarActionResult;
 };
 
 export type InsertAdvancedActions = {
-  insertAudio: () => boolean;
-  insertFile: () => boolean;
-  insertMath: () => boolean;
-  insertColumns: () => boolean;
-  insertTag: () => boolean;
-  insertCallout: () => boolean;
-  insertMention: () => boolean;
-  insertBookmark: () => boolean;
-  insertOptionBox: () => boolean;
-  insertTemplate: () => boolean;
-  insertTextBox: () => boolean;
-  insertWebPage: () => boolean;
+  insertAudio: () => ToolbarActionResult;
+  insertFile: () => ToolbarActionResult;
+  insertMath: () => ToolbarActionResult;
+  insertColumns: () => ToolbarActionResult;
+  insertTag: () => ToolbarActionResult;
+  insertCallout: () => ToolbarActionResult;
+  insertMention: () => ToolbarActionResult;
+  insertBookmark: () => ToolbarActionResult;
+  insertOptionBox: () => ToolbarActionResult;
+  insertTemplate: () => ToolbarActionResult;
+  insertTextBox: () => ToolbarActionResult;
+  insertWebPage: () => ToolbarActionResult;
 };
 
 export type ToolsActions = {
-  insertQrCode: () => boolean;
-  insertBarcode: () => boolean;
-  insertSignature: () => boolean;
-  insertSeal: () => boolean;
-  insertDiagrams: () => boolean;
-  insertEcharts: () => boolean;
-  insertMermaid: () => boolean;
-  insertMindMap: () => boolean;
-  convertChineseCase: () => boolean;
+  insertQrCode: () => ToolbarActionResult;
+  insertBarcode: () => ToolbarActionResult;
+  insertSignature: () => ToolbarActionResult;
+  insertSeal: () => ToolbarActionResult;
+  insertDiagrams: () => ToolbarActionResult;
+  insertEcharts: () => ToolbarActionResult;
+  insertMermaid: () => ToolbarActionResult;
+  insertMindMap: () => ToolbarActionResult;
+  convertChineseCase: () => ToolbarActionResult;
 };
 
 export type ToolbarActionHandler = () => void | Promise<void>;

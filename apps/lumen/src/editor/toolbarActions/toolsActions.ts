@@ -1,4 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -53,14 +54,6 @@ const resolveTexts = (_locale: PlaygroundLocale): ToolsTexts => ({
   defaultMermaidCode: "graph TD\nA[Start] --> B[End]",
   defaultMindMapCode: "mindmap\n  root((Root))\n    Branch A\n    Branch B",
 });
-
-const readPrompt = (message: string, defaultValue = "") => {
-  const raw = window.prompt(message, defaultValue);
-  if (raw === null) {
-    return null;
-  }
-  return String(raw).trim();
-};
 
 const getViewState = (getView: GetView) => {
   const view = getView();
@@ -134,7 +127,7 @@ const insertCodeBlock = (getView: GetView, source: string) => {
   }
   const node = createCodeBlockNode(payload.state.schema, source);
   if (!node) {
-    return insertText(getView, source);
+    return false;
   }
   return replaceSelectionWithNode(getView, node);
 };
@@ -273,14 +266,54 @@ export const createToolsActions = ({
   getView,
   run,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   run: RunCommand;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const insertQrCode = () => {
+  const dialogTitle = (en: string, zh: string) => (getLocaleKey() === "en-US" ? en : zh);
+
+  const readInput = async ({
+    title,
+    label,
+    defaultValue = "",
+    required = false,
+    type = "text",
+  }: {
+    title: string;
+    label: string;
+    defaultValue?: string;
+    required?: boolean;
+    type?: "text" | "textarea" | "number";
+  }) => {
+    const result = await requestInputDialog({
+      title,
+      fields: [
+        {
+          key: "value",
+          label,
+          type,
+          defaultValue,
+          required,
+        },
+      ],
+    });
+    if (!result) {
+      return null;
+    }
+    return String(result.value || "").trim();
+  };
+
+  const insertQrCode = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const content = readPrompt(texts.promptQrCodeContent, texts.defaultQrCodeContent);
+    const content = await readInput({
+      title: dialogTitle("Insert QR Code", "插入二维码"),
+      label: texts.promptQrCodeContent,
+      defaultValue: texts.defaultQrCodeContent,
+      required: true,
+    });
     if (!content) {
       return false;
     }
@@ -291,12 +324,17 @@ export const createToolsActions = ({
     if (inserted) {
       return true;
     }
-    return insertText(getView, `[QR] ${content}`);
+    return false;
   };
 
-  const insertBarcode = () => {
+  const insertBarcode = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const content = readPrompt(texts.promptBarcodeContent, texts.defaultBarcodeContent);
+    const content = await readInput({
+      title: dialogTitle("Insert Barcode", "插入条形码"),
+      label: texts.promptBarcodeContent,
+      defaultValue: texts.defaultBarcodeContent,
+      required: true,
+    });
     if (!content) {
       return false;
     }
@@ -305,12 +343,17 @@ export const createToolsActions = ({
     if (inserted) {
       return true;
     }
-    return insertText(getView, `[BARCODE] ${content}`);
+    return false;
   };
 
-  const insertSignature = () => {
+  const insertSignature = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const name = readPrompt(texts.promptSignatureName, texts.defaultSignatureName);
+    const name = await readInput({
+      title: dialogTitle("Insert Signature", "插入签名"),
+      label: texts.promptSignatureName,
+      defaultValue: texts.defaultSignatureName,
+      required: true,
+    });
     if (!name) {
       return false;
     }
@@ -318,63 +361,120 @@ export const createToolsActions = ({
     return insertText(getView, `[${texts.labelSignature}] ${name} (${signedAt})`);
   };
 
-  const insertSeal = () => {
+  const insertSeal = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptSealText, texts.defaultSealText);
+    const raw = await readInput({
+      title: dialogTitle("Insert Seal", "插入印章"),
+      label: texts.promptSealText,
+      defaultValue: texts.defaultSealText,
+      required: true,
+    });
     if (!raw) {
       return false;
     }
     return insertText(getView, `\u3010${texts.labelSeal}\u3011 ${raw}`);
   };
 
-  const insertDiagrams = () => {
+  const insertDiagrams = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const source = readPrompt(texts.promptDiagramsCode, texts.defaultDiagramCode);
+    const source = await readInput({
+      title: dialogTitle("Insert Diagram", "插入流程图"),
+      label: texts.promptDiagramsCode,
+      defaultValue: texts.defaultDiagramCode,
+      type: "textarea",
+      required: true,
+    });
     if (!source) {
       return false;
     }
     return insertCodeBlock(getView, source);
   };
 
-  const insertEcharts = () => {
+  const insertEcharts = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const source = readPrompt(texts.promptEchartsCode, texts.defaultEchartsCode);
+    const source = await readInput({
+      title: dialogTitle("Insert ECharts", "插入图表"),
+      label: texts.promptEchartsCode,
+      defaultValue: texts.defaultEchartsCode,
+      type: "textarea",
+      required: true,
+    });
     if (!source) {
       return false;
     }
     return insertCodeBlock(getView, source);
   };
 
-  const insertMermaid = () => {
+  const insertMermaid = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const source = readPrompt(texts.promptMermaidCode, texts.defaultMermaidCode);
+    const source = await readInput({
+      title: dialogTitle("Insert Mermaid", "插入 Mermaid"),
+      label: texts.promptMermaidCode,
+      defaultValue: texts.defaultMermaidCode,
+      type: "textarea",
+      required: true,
+    });
     if (!source) {
       return false;
     }
     return insertCodeBlock(getView, source);
   };
 
-  const insertMindMap = () => {
+  const insertMindMap = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const source = readPrompt(texts.promptMindMapCode, texts.defaultMindMapCode);
+    const source = await readInput({
+      title: dialogTitle("Insert Mind Map", "插入思维导图"),
+      label: texts.promptMindMapCode,
+      defaultValue: texts.defaultMindMapCode,
+      type: "textarea",
+      required: true,
+    });
     if (!source) {
       return false;
     }
     return insertCodeBlock(getView, source);
   };
 
-  const convertChineseCase = () => {
+  const convertChineseCase = async () => {
     const texts = resolveTexts(getLocaleKey());
     const selected = getSelectionText(getView).trim();
-    const source = selected || readPrompt(texts.promptChineseCaseInput, "");
+    const result = await requestInputDialog({
+      title: dialogTitle("Chinese Case", "中文大小写转换"),
+      width: 560,
+      fields: [
+        {
+          key: "source",
+          label: texts.promptChineseCaseInput,
+          defaultValue: selected,
+          required: true,
+        },
+        {
+          key: "mode",
+          label: texts.promptChineseCaseMode,
+          type: "select",
+          options:
+            getLocaleKey() === "en-US"
+              ? [
+                  { label: "Upper", value: "upper" },
+                  { label: "Lower", value: "lower" },
+                ]
+              : [
+                  { label: "大写", value: "upper" },
+                  { label: "小写", value: "lower" },
+                ],
+          defaultValue: "upper",
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const source = String(result.source || "").trim();
     if (!source) {
       return false;
     }
-    const modeInput = readPrompt(texts.promptChineseCaseMode, "upper");
-    if (modeInput === null) {
-      return false;
-    }
-    const mode = normalizeChineseCaseMode(modeInput);
+    const mode = normalizeChineseCaseMode(String(result.mode || "upper"));
     const converted = convertNumberToChineseCase(source, mode);
     if (!converted) {
       window.alert(texts.alertChineseCaseInvalidNumber);

@@ -446,6 +446,7 @@ export class Renderer {
       hash = hashNumber(hash, line.width);
 
       hash = hashNumber(hash, line.lineHeight);
+      hash = hashNumber(hash, line.blockSignature);
 
       hash = hashString(hash, line.blockType || "");
       hash = hashString(hash, line.blockId || "");
@@ -916,6 +917,7 @@ export class Renderer {
       const pageIndex = pageIndices[i];
 
       const entry = this.getPageCache(pageIndex, layout, dpr);
+      let pageRedrawn = false;
 
       let signature = entry.signature;
       const page = layout.pages[pageIndex];
@@ -949,6 +951,7 @@ export class Renderer {
 
       if (entry.dirty) {
         redrawCount += 1;
+        pageRedrawn = true;
         const renderStart = this.settings?.debugPerf ? now() : 0;
         this.renderPage(pageIndex, layout, entry);
         if (this.settings?.debugPerf) {
@@ -998,7 +1001,9 @@ export class Renderer {
       ctx.setTransform(canvasDprX, 0, 0, canvasDprY, 0, 0);
 
       const needsComposite =
-        entry.dirty ||
+        // Visual-only force redraw can repaint offscreen page while signature remains unchanged.
+        // In that case we still must composite to onscreen canvas.
+        pageRedrawn ||
         resized ||
         canvasEntry.pageIndex !== pageIndex ||
         canvasEntry.signature !== entry.signature ||

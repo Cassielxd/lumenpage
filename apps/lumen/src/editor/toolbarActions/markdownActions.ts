@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import { loadMarkdownModule } from "../markdownBridge";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 type DownloadTextAsFile = (filename: string, content: string, mimeType?: string) => boolean;
@@ -16,11 +17,13 @@ export const createMarkdownActions = ({
   getLocaleKey,
   getMenuTexts,
   downloadTextAsFile,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
   getMenuTexts: () => MenuTexts;
   downloadTextAsFile: DownloadTextAsFile;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
   const handleMarkdownAction = async () => {
     const view = getView();
@@ -28,18 +31,50 @@ export const createMarkdownActions = ({
       return false;
     }
 
-    const promptText =
-      getLocaleKey() === "en-US"
-        ? "Markdown action: export / import"
-        : "Markdown 操作：输入 export 或 import";
-    const mode = String(window.prompt(promptText, "export") || "")
+    const menuTexts = getMenuTexts();
+    const dialogResult = await requestInputDialog({
+      title: "Markdown",
+      width: 560,
+      fields: [
+        {
+          key: "mode",
+          label:
+            getLocaleKey() === "en-US"
+              ? "Action: export / import"
+              : "操作：输入 export 或 import",
+          type: "select",
+          options:
+            getLocaleKey() === "en-US"
+              ? [
+                  { label: "Export", value: "export" },
+                  { label: "Import", value: "import" },
+                ]
+              : [
+                  { label: "导出", value: "export" },
+                  { label: "导入", value: "import" },
+                ],
+          defaultValue: "export",
+          required: true,
+        },
+        {
+          key: "source",
+          label: menuTexts.promptPasteMarkdown,
+          type: "textarea",
+          defaultValue: "",
+        },
+      ],
+    });
+    if (!dialogResult) {
+      return false;
+    }
+
+    const mode = String(dialogResult.mode || "")
       .trim()
       .toLowerCase();
     if (!mode) {
       return false;
     }
 
-    const menuTexts = getMenuTexts();
     let markdownModule: Awaited<ReturnType<typeof loadMarkdownModule>> | null = null;
     try {
       markdownModule = await loadMarkdownModule();
@@ -62,8 +97,8 @@ export const createMarkdownActions = ({
     }
 
     if (mode === "import") {
-      const source = window.prompt(menuTexts.promptPasteMarkdown, "");
-      if (source == null) {
+      const source = String(dialogResult.source || "");
+      if (!source.trim()) {
         return false;
       }
       try {

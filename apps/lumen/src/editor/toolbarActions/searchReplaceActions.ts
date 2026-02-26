@@ -1,4 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 
@@ -20,11 +21,11 @@ const resolveTexts = (locale: PlaygroundLocale): Texts =>
         alertReplaced: (count) => `Replaced ${count} matches`,
       }
     : {
-        promptSearch: "请输入要查找的文本",
-        promptReplace: "请输入替换文本（可为空）",
-        alertEmptySearch: "查找内容不能为空",
-        alertNoMatch: "未找到匹配内容",
-        alertReplaced: (count) => `已替换 ${count} 处`,
+        promptSearch: "\u67e5\u627e\u5185\u5bb9",
+        promptReplace: "\u66ff\u6362\u4e3a\uff08\u53ef\u4e3a\u7a7a\uff09",
+        alertEmptySearch: "\u67e5\u627e\u5185\u5bb9\u4e0d\u80fd\u4e3a\u7a7a",
+        alertNoMatch: "\u672a\u627e\u5230\u5339\u914d\u9879",
+        alertReplaced: (count) => `\u5df2\u66ff\u6362 ${count} \u5904`,
       };
 
 type ReplaceRange = {
@@ -61,11 +62,13 @@ const collectReplaceRanges = (doc: any, keyword: string): ReplaceRange[] => {
 export const createSearchReplaceActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const searchAndReplace = () => {
+  const searchAndReplace = async () => {
     const view = getView();
     const state = view?.state;
     if (!view || !state?.doc || !state?.tr) {
@@ -73,20 +76,31 @@ export const createSearchReplaceActions = ({
     }
 
     const texts = resolveTexts(getLocaleKey());
-    const rawSearch = window.prompt(texts.promptSearch, "");
-    if (rawSearch == null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Search & Replace" : "\u67e5\u627e\u66ff\u6362",
+      width: 520,
+      fields: [
+        {
+          key: "search",
+          label: texts.promptSearch,
+          required: true,
+        },
+        {
+          key: "replace",
+          label: texts.promptReplace,
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    const searchKeyword = rawSearch;
+
+    const searchKeyword = String(result.search || "");
     if (!searchKeyword) {
       window.alert(texts.alertEmptySearch);
       return false;
     }
-
-    const replacement = window.prompt(texts.promptReplace, "");
-    if (replacement == null) {
-      return false;
-    }
+    const replacement = String(result.replace || "");
 
     const ranges = collectReplaceRanges(state.doc, searchKeyword);
     if (ranges.length === 0) {

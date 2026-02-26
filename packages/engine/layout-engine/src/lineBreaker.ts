@@ -73,6 +73,18 @@ const appendRunSegment = (
   });
 };
 
+const parseFontSize = (font) => {
+  const match = /(\d+(?:\.\d+)?)px/.exec(String(font || ""));
+  if (!match) {
+    return 16;
+  }
+  const size = Number.parseFloat(match[1]);
+  if (!Number.isFinite(size) || size <= 0) {
+    return 16;
+  }
+  return size;
+};
+
 /* ���й������ַ�������������ÿ������� */
 
 // 将 runs 按宽度拆分为行。
@@ -91,7 +103,9 @@ export function breakLines(
 
   measureTextWidth,
 
-  segmentText
+  segmentText,
+
+  baseLineHeight = null
 ) {
   if (!measureTextWidth) {
     throw new Error("measureTextWidth is required to break lines.");
@@ -143,8 +157,33 @@ export function breakLines(
 
   let lineBlockStart = null;
 
+  const baseFontSize = parseFontSize(baseFont);
+  const normalizedBaseLineHeight =
+    Number.isFinite(baseLineHeight) && Number(baseLineHeight) > 0
+      ? Number(baseLineHeight)
+      : Math.max(1, Math.round(baseFontSize * 1.6));
+  const lineHeightScale =
+    baseFontSize > 0 ? Math.max(1, normalizedBaseLineHeight / baseFontSize) : 1;
+  const fontSizeCache = new Map();
+  const getRunFontSize = (fontSpec) => {
+    const key = String(fontSpec || baseFont || "");
+    const cached = fontSizeCache.get(key);
+    if (typeof cached === "number") {
+      return cached;
+    }
+    const size = parseFontSize(key);
+    fontSizeCache.set(key, size);
+    return size;
+  };
+  let lineMaxFontSize = baseFontSize;
+  let nextLineRelativeY = 0;
+
   // 固化当前行并重置行状态。
   const pushLine = (endOffset) => {
+    const resolvedLineHeight = Math.max(
+      normalizedBaseLineHeight,
+      Math.round(lineMaxFontSize * lineHeightScale)
+    );
     lines.push({
       text: lineText,
 
@@ -163,7 +202,13 @@ export function breakLines(
       blockAttrs: lineBlockAttrs || currentBlockAttrs,
 
       blockStart: lineBlockStart ?? currentBlockStart,
+
+      lineHeight: resolvedLineHeight,
+
+      relativeY: nextLineRelativeY,
     });
+
+    nextLineRelativeY += resolvedLineHeight;
 
     lineText = "";
 
@@ -180,6 +225,8 @@ export function breakLines(
     lineBlockAttrs = null;
 
     lineBlockStart = null;
+
+    lineMaxFontSize = baseFontSize;
   };
 
   // 补齐行级 block 元信息。
@@ -234,6 +281,7 @@ export function breakLines(
       background: null,
       shiftY: 0,
     };
+    const runFontSize = getRunFontSize(style.font || baseFont);
 
     let offsetCursor = run.start;
 
@@ -251,6 +299,7 @@ export function breakLines(
           lineStart = offsetCursor;
         }
         ensureLineMeta(run);
+        lineMaxFontSize = Math.max(lineMaxFontSize, runFontSize);
         appendRunSegment(
           lineRuns,
           ch,

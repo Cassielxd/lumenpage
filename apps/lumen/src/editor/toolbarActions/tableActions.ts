@@ -1,4 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 type TableCellAlign = "left" | "center" | "right" | "justify";
@@ -290,18 +291,32 @@ const normalizeCellAlign = (value: unknown): TableCellAlign | null => {
 export const createTableActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const insertTable = () => {
+  const insertTable = async () => {
     const view = getView();
     if (!view?.state?.tr) {
       return false;
     }
-    const promptText =
-      getLocaleKey() === "en-US" ? "Table size (rows x columns)" : "请输入表格尺寸（行x列）";
-    const tableSize = parseTableSize(window.prompt(promptText, "3x3"));
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Insert Table" : "\u63d2\u5165\u8868\u683c",
+      fields: [
+        {
+          key: "size",
+          label: getLocaleKey() === "en-US" ? "Table size (rows x columns)" : "\u8868\u683c\u5c3a\u5bf8\uff08\u884cx\u5217\uff09",
+          defaultValue: "3x3",
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const tableSize = parseTableSize(result.size || "");
     if (!tableSize) {
       return false;
     }
@@ -565,7 +580,7 @@ export const createTableActions = ({
     return true;
   };
 
-  const applyCellAlignmentSetting = () => {
+  const applyCellAlignmentSetting = async () => {
     const context = resolveTableContext();
     const texts = resolveTexts(getLocaleKey());
     if (!context || resolveCellTargets(context).length === 0) {
@@ -573,11 +588,36 @@ export const createTableActions = ({
       return false;
     }
     const current = getCurrentCellsAlign(context) || "left";
-    const raw = window.prompt(texts.promptCellAlign, current);
-    if (raw === null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Cell Alignment" : "\u5355\u5143\u683c\u5bf9\u9f50",
+      fields: [
+        {
+          key: "align",
+          label: texts.promptCellAlign,
+          type: "select",
+          options:
+            getLocaleKey() === "en-US"
+              ? [
+                  { label: "Left", value: "left" },
+                  { label: "Center", value: "center" },
+                  { label: "Right", value: "right" },
+                  { label: "Justify", value: "justify" },
+                ]
+              : [
+                  { label: "左对齐", value: "left" },
+                  { label: "居中", value: "center" },
+                  { label: "右对齐", value: "right" },
+                  { label: "两端对齐", value: "justify" },
+                ],
+          defaultValue: current,
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    const align = normalizeCellAlign(raw);
+    const align = normalizeCellAlign(result.align);
     if (!align) {
       window.alert(texts.alertInvalidCellAlign);
       return false;
@@ -596,3 +636,9 @@ export const createTableActions = ({
     setCurrentCellBackgroundColor,
   };
 };
+
+export default createTableActions;
+
+
+
+

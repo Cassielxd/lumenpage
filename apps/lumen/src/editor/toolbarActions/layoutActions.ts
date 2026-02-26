@@ -1,6 +1,7 @@
 import { TextSelection } from "lumenpage-state";
 import type { PlaygroundLocale } from "../i18n";
 import { createPageAppearanceActions } from "./pageAppearanceActions";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -40,18 +41,33 @@ export const createLayoutActions = ({
   getView,
   run,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   run: RunCommand;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
   const pageAppearanceActions = createPageAppearanceActions({
     getView,
     getLocaleKey,
+    requestInputDialog,
   });
 
   const refreshLayoutAndRender = () => {
     const view = getView();
+    if (!view) {
+      return false;
+    }
+    if (typeof view.forceLayout === "function") {
+      const refreshed = view.forceLayout({
+        clearLayoutCache: true,
+        clearPageCache: true,
+        immediate: true,
+      });
+      view?._internals?.updateCaret?.(true);
+      return refreshed;
+    }
     if (!view?._internals) {
       return false;
     }
@@ -63,19 +79,45 @@ export const createLayoutActions = ({
     return true;
   };
 
-  const applyLineHeightSetting = () => {
+  const requestNumber = async ({
+    title,
+    label,
+    defaultValue,
+  }: {
+    title: string;
+    label: string;
+    defaultValue: string;
+  }) => {
+    const result = await requestInputDialog({
+      title,
+      fields: [
+        {
+          key: "value",
+          label,
+          type: "number",
+          defaultValue,
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
+      return null;
+    }
+    return Number(result.value);
+  };
+
+  const applyLineHeightSetting = async () => {
     const view = getView();
     const settings = view?._internals?.settings;
     if (!settings) {
       return false;
     }
     const current = Number(settings.lineHeight) || 26;
-    const promptText = getLocaleKey() === "en-US" ? "Line height (px)" : "请输入行高（像素）";
-    const raw = window.prompt(promptText, String(current));
-    if (raw === null) {
-      return false;
-    }
-    const next = Number(raw);
+    const next = await requestNumber({
+      title: getLocaleKey() === "en-US" ? "Line Height" : "\u884c\u9ad8",
+      label: getLocaleKey() === "en-US" ? "Line height (px)" : "\u884c\u9ad8\uff08px\uff09",
+      defaultValue: String(current),
+    });
     if (!Number.isFinite(next) || next <= 0) {
       return false;
     }
@@ -83,14 +125,12 @@ export const createLayoutActions = ({
     return refreshLayoutAndRender();
   };
 
-  const applyParagraphSpacingSetting = () => {
-    const promptText =
-      getLocaleKey() === "en-US" ? "Paragraph spacing (px)" : "请输入段间距（像素）";
-    const raw = window.prompt(promptText, "8");
-    if (raw === null) {
-      return false;
-    }
-    const next = Number(raw);
+  const applyParagraphSpacingSetting = async () => {
+    const next = await requestNumber({
+      title: getLocaleKey() === "en-US" ? "Paragraph Spacing" : "\u6bb5\u95f4\u8ddd",
+      label: getLocaleKey() === "en-US" ? "Paragraph spacing (px)" : "\u6bb5\u95f4\u8ddd\uff08px\uff09",
+      defaultValue: "8",
+    });
     if (!Number.isFinite(next) || next < 0) {
       return false;
     }
@@ -113,19 +153,18 @@ export const createLayoutActions = ({
     }
   };
 
-  const applyPageMarginSetting = () => {
+  const applyPageMarginSetting = async () => {
     const view = getView();
     const settings = view?._internals?.settings;
     if (!settings?.margin) {
       return false;
     }
     const current = Number(settings.margin.left) || 72;
-    const promptText = getLocaleKey() === "en-US" ? "Page margin (px)" : "请输入页边距（像素）";
-    const raw = window.prompt(promptText, String(current));
-    if (raw === null) {
-      return false;
-    }
-    const next = Number(raw);
+    const next = await requestNumber({
+      title: getLocaleKey() === "en-US" ? "Page Margin" : "\u9875\u8fb9\u8ddd",
+      label: getLocaleKey() === "en-US" ? "Page margin (px)" : "\u9875\u8fb9\u8ddd\uff08px\uff09",
+      defaultValue: String(current),
+    });
     if (!Number.isFinite(next) || next < 0) {
       return false;
     }
@@ -134,18 +173,31 @@ export const createLayoutActions = ({
     return refreshLayoutAndRender();
   };
 
-  const applyPageSizeSetting = () => {
+  const applyPageSizeSetting = async () => {
     const view = getView();
     const settings = view?._internals?.settings;
     if (!settings) {
       return false;
     }
     const current = `${Number(settings.pageWidth) || 794}x${Number(settings.pageHeight) || 1123}`;
-    const promptText =
-      getLocaleKey() === "en-US"
-        ? "Paper size: A4 / Letter / Legal / widthxheight"
-        : "纸张大小：A4 / Letter / Legal / 宽x高";
-    const nextSize = parsePaperSize(window.prompt(promptText, current));
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Page Size" : "\u7eb8\u5f20\u5927\u5c0f",
+      fields: [
+        {
+          key: "value",
+          label:
+            getLocaleKey() === "en-US"
+              ? "Paper size: A4 / Letter / Legal / widthxheight"
+              : "\u7eb8\u5f20\u5927\u5c0f\uff1aA4 / Letter / Legal / \u5bbdx\u9ad8",
+          defaultValue: current,
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const nextSize = parsePaperSize(result.value);
     if (!nextSize) {
       return false;
     }
@@ -174,6 +226,12 @@ export const createLayoutActions = ({
       return false;
     }
     settings.showPageCropMarks = settings.showPageCropMarks === false;
+    if (typeof view.forceRender === "function") {
+      return view.forceRender({
+        clearPageCache: true,
+        markLayoutForceRedraw: true,
+      });
+    }
     view?._internals?.renderer?.pageCache?.clear?.();
     view?._internals?.scheduleRender?.();
     return true;

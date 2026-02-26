@@ -2,6 +2,7 @@ import type { PlaygroundLocale } from "../i18n";
 import { openMentionPicker } from "lumenpage-editor-plugins";
 import { sanitizeLinkHref } from "lumenpage-link";
 import { TextSelection } from "lumenpage-state";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 
@@ -236,14 +237,6 @@ const createBulletListNode = (schema: any, items: string[]) => {
   );
 };
 
-const readPrompt = (message: string, defaultValue = "") => {
-  const raw = window.prompt(message, defaultValue);
-  if (raw === null) {
-    return null;
-  }
-  return String(raw).trim();
-};
-
 const insertReference = (getView: GetView, prefix: string, title: string, href: string) => {
   const payload = getViewState(getView);
   if (!payload) {
@@ -257,7 +250,7 @@ const insertReference = (getView: GetView, prefix: string, title: string, href: 
   const schema = payload.state.schema;
   const linkType = schema?.marks?.link;
   if (!linkType) {
-    return insertText(getView, `[${label}](${safeHref})`);
+    return false;
   }
   const linkMark = linkType.create({ href: safeHref, title });
   const textNode = schema.text(label, [linkMark]);
@@ -302,52 +295,132 @@ const parseListItemsInput = (raw: string) =>
 export const createInsertAdvancedActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const insertAudio = () => {
+  const dialogTitle = (en: string, zh: string) => (getLocaleKey() === "en-US" ? en : zh);
+
+  const readInput = async ({
+    title,
+    label,
+    defaultValue = "",
+    required = false,
+    type = "text",
+  }: {
+    title: string;
+    label: string;
+    defaultValue?: string;
+    required?: boolean;
+    type?: "text" | "textarea" | "number";
+  }) => {
+    const result = await requestInputDialog({
+      title,
+      fields: [
+        {
+          key: "value",
+          label,
+          type,
+          defaultValue,
+          required,
+        },
+      ],
+    });
+    if (!result) {
+      return null;
+    }
+    return String(result.value || "").trim();
+  };
+
+  const insertAudio = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const href = readPrompt(texts.promptAudioUrl, "https://");
+    const result = await requestInputDialog({
+      title: dialogTitle("Insert Audio", "插入音频"),
+      width: 560,
+      fields: [
+        {
+          key: "href",
+          label: texts.promptAudioUrl,
+          defaultValue: "https://",
+          required: true,
+        },
+        {
+          key: "title",
+          label: texts.promptAudioTitle,
+          defaultValue: texts.defaultAudioTitle,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const href = String(result.href || "").trim();
     if (!href) {
       return false;
     }
-    const title = readPrompt(texts.promptAudioTitle, texts.defaultAudioTitle);
-    if (title === null) {
-      return false;
-    }
-    return insertReference(getView, texts.insertAudioPrefix, title || texts.defaultAudioTitle, href);
+    const title = String(result.title || "").trim() || texts.defaultAudioTitle;
+    return insertReference(getView, texts.insertAudioPrefix, title, href);
   };
 
-  const insertFile = () => {
+  const insertFile = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const href = readPrompt(texts.promptFileUrl, "https://");
+    const result = await requestInputDialog({
+      title: dialogTitle("Insert File", "插入附件"),
+      width: 560,
+      fields: [
+        {
+          key: "href",
+          label: texts.promptFileUrl,
+          defaultValue: "https://",
+          required: true,
+        },
+        {
+          key: "name",
+          label: texts.promptFileName,
+          defaultValue: texts.defaultFileName,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const href = String(result.href || "").trim();
     if (!href) {
       return false;
     }
-    const name = readPrompt(texts.promptFileName, texts.defaultFileName);
-    if (name === null) {
-      return false;
-    }
-    return insertReference(getView, texts.insertFilePrefix, name || texts.defaultFileName, href);
+    const name = String(result.name || "").trim() || texts.defaultFileName;
+    return insertReference(getView, texts.insertFilePrefix, name, href);
   };
 
-  const insertMath = () => {
+  const insertMath = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const expr = readPrompt(texts.promptMathExpr, texts.defaultMathExpr);
+    const expr = await readInput({
+      title: dialogTitle("Insert Formula", "插入公式"),
+      label: texts.promptMathExpr,
+      defaultValue: texts.defaultMathExpr,
+      required: true,
+    });
     if (!expr) {
       return false;
     }
     return insertText(getView, `$$ ${expr} $$`);
   };
 
-  const insertColumns = () => {
+  const insertColumns = async () => {
     const payload = getViewState(getView);
     if (!payload) {
       return false;
     }
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptColumnsCount, texts.defaultColumnsCount);
+    const raw = await readInput({
+      title: dialogTitle("Insert Columns", "插入分栏"),
+      label: texts.promptColumnsCount,
+      defaultValue: texts.defaultColumnsCount,
+      type: "number",
+      required: true,
+    });
     if (!raw) {
       return false;
     }
@@ -365,9 +438,14 @@ export const createInsertAdvancedActions = ({
     return replaceSelectionWithNode(getView, tableNode);
   };
 
-  const insertTag = () => {
+  const insertTag = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptTagText, texts.defaultTag);
+    const raw = await readInput({
+      title: dialogTitle("Insert Tag", "插入标签"),
+      label: texts.promptTagText,
+      defaultValue: texts.defaultTag,
+      required: true,
+    });
     if (!raw) {
       return false;
     }
@@ -378,13 +456,18 @@ export const createInsertAdvancedActions = ({
     return insertText(getView, `#${tag}`);
   };
 
-  const insertCallout = () => {
+  const insertCallout = async () => {
     const payload = getViewState(getView);
     if (!payload) {
       return false;
     }
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptCalloutText, texts.defaultCallout);
+    const raw = await readInput({
+      title: dialogTitle("Insert Callout", "插入提示块"),
+      label: texts.promptCalloutText,
+      defaultValue: texts.defaultCallout,
+      type: "textarea",
+    });
     if (raw === null) {
       return false;
     }
@@ -392,7 +475,7 @@ export const createInsertAdvancedActions = ({
     const schema = payload.state.schema;
     const blockquoteType = schema?.nodes?.blockquote;
     if (!blockquoteType) {
-      return insertText(getView, `[${texts.insertCalloutPrefix}] ${content}`);
+      return false;
     }
     const paragraph = createParagraphNode(schema, content);
     const node =
@@ -405,79 +488,111 @@ export const createInsertAdvancedActions = ({
     return replaceSelectionWithNode(getView, node);
   };
 
-  const insertBookmark = () => {
+  const insertBookmark = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const href = readPrompt(texts.promptBookmarkUrl, "https://");
+    const result = await requestInputDialog({
+      title: dialogTitle("Insert Bookmark", "插入书签"),
+      width: 560,
+      fields: [
+        {
+          key: "href",
+          label: texts.promptBookmarkUrl,
+          defaultValue: "https://",
+          required: true,
+        },
+        {
+          key: "title",
+          label: texts.promptBookmarkTitle,
+          defaultValue: texts.defaultBookmarkTitle,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const href = String(result.href || "").trim();
     if (!href) {
       return false;
     }
-    const title = readPrompt(texts.promptBookmarkTitle, texts.defaultBookmarkTitle);
-    if (title === null) {
-      return false;
-    }
-    return insertReference(
-      getView,
-      texts.insertBookmarkPrefix,
-      title || texts.defaultBookmarkTitle,
-      href
-    );
+    const title = String(result.title || "").trim() || texts.defaultBookmarkTitle;
+    return insertReference(getView, texts.insertBookmarkPrefix, title, href);
   };
 
-  const insertOptionBox = () => {
+  const insertOptionBox = async () => {
     const payload = getViewState(getView);
     if (!payload) {
       return false;
     }
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptOptionText, texts.defaultOptionText);
+    const raw = await readInput({
+      title: dialogTitle("Insert Option Box", "插入多选框"),
+      label: texts.promptOptionText,
+      defaultValue: texts.defaultOptionText,
+      type: "textarea",
+      required: true,
+    });
     if (!raw) {
       return false;
     }
     const items = parseListItemsInput(raw);
     const taskListNode = createTaskListNode(payload.state.schema, items);
     if (!taskListNode) {
-      return insertText(
-        getView,
-        items.length > 0 ? items.map((item) => `[ ] ${item}`).join("\n") : `[ ] ${raw}`
-      );
+      return false;
     }
     return replaceSelectionWithNode(getView, taskListNode);
   };
 
-  const insertTextBox = () => {
+  const insertTextBox = async () => {
     const payload = getViewState(getView);
     if (!payload) {
       return false;
     }
     const texts = resolveTexts(getLocaleKey());
-    const raw = readPrompt(texts.promptTextBoxText, texts.defaultTextBox);
+    const raw = await readInput({
+      title: dialogTitle("Insert Text Box", "插入文本框"),
+      label: texts.promptTextBoxText,
+      defaultValue: texts.defaultTextBox,
+      type: "textarea",
+    });
     if (raw === null) {
       return false;
     }
     const content = raw || texts.defaultTextBox;
     const tableNode = createTableNode(payload.state.schema, 1, 1, () => content);
     if (!tableNode) {
-      return insertText(getView, `[${texts.insertTextBoxPrefix}] ${content}`);
+      return false;
     }
     return replaceSelectionWithNode(getView, tableNode);
   };
 
-  const insertWebPage = () => {
+  const insertWebPage = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const href = readPrompt(texts.promptWebPageUrl, "https://");
+    const result = await requestInputDialog({
+      title: dialogTitle("Insert Web Page", "插入网页"),
+      width: 560,
+      fields: [
+        {
+          key: "href",
+          label: texts.promptWebPageUrl,
+          defaultValue: "https://",
+          required: true,
+        },
+        {
+          key: "title",
+          label: texts.promptWebPageTitle,
+          defaultValue: texts.defaultWebPageTitle,
+        },
+      ],
+    });
+    if (!result) {
+      return false;
+    }
+    const href = String(result.href || "").trim();
     if (!href) {
       return false;
     }
-    const title = readPrompt(texts.promptWebPageTitle, texts.defaultWebPageTitle);
-    if (title === null) {
-      return false;
-    }
-    return insertReference(
-      getView,
-      texts.insertWebPagePrefix,
-      title || texts.defaultWebPageTitle,
-      href
-    );
+    const title = String(result.title || "").trim() || texts.defaultWebPageTitle;
+    return insertReference(getView, texts.insertWebPagePrefix, title, href);
   };
 
   const insertMention = () => {
@@ -488,43 +603,52 @@ export const createInsertAdvancedActions = ({
     return openMentionPicker(view);
   };
 
-  const insertTemplate = () => {
+  const insertTemplate = async () => {
     const payload = getViewState(getView);
     if (!payload) {
       return false;
     }
     const texts = resolveTexts(getLocaleKey());
-    const titleInput = readPrompt(texts.promptTemplateTitle, texts.defaultTemplateTitle);
-    if (titleInput === null) {
+    const result = await requestInputDialog({
+      title: dialogTitle("Insert Template", "插入模板"),
+      width: 560,
+      fields: [
+        {
+          key: "title",
+          label: texts.promptTemplateTitle,
+          defaultValue: texts.defaultTemplateTitle,
+          required: true,
+        },
+        {
+          key: "summary",
+          label: texts.promptTemplateSummary,
+          defaultValue: texts.defaultTemplateSummary,
+          type: "textarea",
+          required: true,
+        },
+        {
+          key: "items",
+          label: texts.promptTemplateItems,
+          defaultValue: texts.defaultTemplateItems,
+          type: "textarea",
+          required: true,
+        },
+      ],
+    });
+    if (!result) {
       return false;
     }
-    const summaryInput = readPrompt(texts.promptTemplateSummary, texts.defaultTemplateSummary);
-    if (summaryInput === null) {
-      return false;
-    }
-    const itemsInput = readPrompt(texts.promptTemplateItems, texts.defaultTemplateItems);
-    if (itemsInput === null) {
-      return false;
-    }
-    const title = titleInput || texts.defaultTemplateTitle;
-    const summary = summaryInput || texts.defaultTemplateSummary;
-    const items = parseListItemsInput(itemsInput);
+    const title = String(result.title || "").trim() || texts.defaultTemplateTitle;
+    const summary = String(result.summary || "").trim() || texts.defaultTemplateSummary;
+    const items = parseListItemsInput(String(result.items || ""));
     const headingNode = createHeadingNode(payload.state.schema, title, 2);
     const summaryNode = createParagraphNode(payload.state.schema, summary);
     const bulletNode = createBulletListNode(payload.state.schema, items);
     const structuredNodes = [headingNode, summaryNode, bulletNode].filter(Boolean);
-    if (structuredNodes.length > 0 && insertNodesAtSelection(getView, structuredNodes)) {
-      return true;
+    if (structuredNodes.length === 0) {
+      return false;
     }
-    const bulletText = (items.length > 0 ? items : ["Item 1", "Item 2"]).map((item) => `- ${item}`);
-    const fallbackText = [
-      `[${texts.insertTemplatePrefix}] ${title}`,
-      summary,
-      "",
-      bulletText.join("\n"),
-      "",
-    ].join("\n");
-    return insertText(getView, fallbackText);
+    return insertNodesAtSelection(getView, structuredNodes);
   };
 
   return {

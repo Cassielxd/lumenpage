@@ -6,6 +6,7 @@ import {
   type PopupRect,
 } from "./popup/tippyPopup";
 import { toPopupRect, toViewportPopupRect } from "./popup/coords";
+import { createPopupRenderRuntime, type PopupRenderLifecycle } from "./popup/popupLifecycle";
 
 export type SelectionBubbleAction = {
   id: string;
@@ -26,13 +27,7 @@ export type SelectionBubbleRenderProps = {
   isActionActive: (action: SelectionBubbleAction) => boolean;
 };
 
-export type SelectionBubbleRenderLifecycle = {
-  onStart?: (props: SelectionBubbleRenderProps) => void;
-  onUpdate?: (props: SelectionBubbleRenderProps) => void;
-  onExit?: (props: SelectionBubbleRenderProps) => void;
-  onKeyDown?: (props: SelectionBubbleRenderProps & { event: KeyboardEvent }) => boolean;
-  isEventInside?: (event: Event) => boolean;
-};
+export type SelectionBubbleRenderLifecycle = PopupRenderLifecycle<SelectionBubbleRenderProps>;
 
 export type SelectionBubblePluginOptions = {
   actions?: SelectionBubbleAction[];
@@ -356,25 +351,14 @@ export const createSelectionBubblePlugin = (options: SelectionBubblePluginOption
           popup,
           className: options.className,
         });
-
-      let started = false;
-      let currentRenderProps: SelectionBubbleRenderProps | null = null;
+      const renderRuntime = createPopupRenderRuntime(renderer, () => {
+        popup.hide();
+      });
 
       let syncPopup = () => {};
 
       const hidePopup = () => {
-        if (!started) {
-          popup.hide();
-          currentRenderProps = null;
-          return;
-        }
-        if (currentRenderProps) {
-          renderer.onExit?.(currentRenderProps);
-        } else {
-          popup.hide();
-        }
-        started = false;
-        currentRenderProps = null;
+        renderRuntime.clear();
       };
 
       const createRenderProps = (rect: PopupRect): SelectionBubbleRenderProps => ({
@@ -420,31 +404,18 @@ export const createSelectionBubblePlugin = (options: SelectionBubblePluginOption
         }
 
         const nextProps = createRenderProps(rect);
-        if (!started) {
-          if (typeof renderer.onStart === "function") {
-            renderer.onStart(nextProps);
-          } else if (typeof renderer.onUpdate === "function") {
-            renderer.onUpdate(nextProps);
-          }
-          started = true;
-        } else {
-          renderer.onUpdate?.(nextProps);
-        }
-        currentRenderProps = nextProps;
+        renderRuntime.update(nextProps);
       };
 
       const onDocumentPointerDown = (event: Event) => {
-        if (renderer.isEventInside?.(event)) {
+        if (renderRuntime.isEventInside(event)) {
           return;
         }
         hidePopup();
       };
 
       const onDocumentKeyDown = (event: KeyboardEvent) => {
-        if (!started || !currentRenderProps) {
-          return;
-        }
-        if (renderer.onKeyDown?.({ ...currentRenderProps, event })) {
+        if (renderRuntime.handleKeyDown(event)) {
           event.preventDefault();
         }
       };
@@ -474,7 +445,7 @@ export const createSelectionBubblePlugin = (options: SelectionBubblePluginOption
           ownerDocument.removeEventListener("keydown", onDocumentKeyDown, true);
           ownerDocument.removeEventListener("scroll", onDocumentScroll, true);
           ownerDocument.defaultView?.removeEventListener("resize", onWindowResize);
-          hidePopup();
+          renderRuntime.destroy();
           popup.destroy();
         },
       };

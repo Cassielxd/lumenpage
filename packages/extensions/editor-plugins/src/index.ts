@@ -17,6 +17,11 @@ export {
   type PopupRect,
 } from "./popup/tippyPopup";
 export {
+  createPopupRenderRuntime,
+  type PopupRenderLifecycle,
+  type PopupRenderRuntime,
+} from "./popup/popupLifecycle";
+export {
   createSelectionBubblePlugin,
   type SelectionBubbleAction,
   type SelectionBubbleRenderProps,

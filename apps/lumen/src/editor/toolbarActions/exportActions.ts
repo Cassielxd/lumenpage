@@ -13,6 +13,7 @@ import {
 } from "./export/renderedPagesHelpers";
 import { createShareClipboardActions } from "./export/shareClipboardActions";
 import { buildWordHtmlDocument } from "./export/wordExportHelpers";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 const EXPORT_PREVIEW_HTML_FILENAME = "lumen-print-preview.html";
@@ -21,13 +22,18 @@ const EXPORT_WORD_FILENAME = "lumen-document.doc";
 export const createExportActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
   // Raw semantic HTML (without preview shell); kept for integration reuse.
   const serializeCurrentDocToHtml = () => serializeViewDocToHtml(getView());
-  const { copyShareLink, copyEmbedCode } = createShareClipboardActions({ getLocaleKey });
+  const { copyShareLink, copyEmbedCode } = createShareClipboardActions({
+    getLocaleKey,
+    requestInputDialog,
+  });
 
   const buildPrintPreviewHtml = () => {
     const renderedPages = collectRenderedPageCanvases(getView());

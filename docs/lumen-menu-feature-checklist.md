@@ -3,6 +3,7 @@
 - Source: `apps/lumen/src/editor/toolbarCatalog.ts`
 - Rule: `implemented=true` means checked.
 - Stats: total `104`, done `104`, pending `0`.
+- Product completeness baseline: done `65`, pending `39` (see `docs/lumen-product-completion-plan.md`).
 - Updated: 2026-02-26
 
 ## base (36/36)

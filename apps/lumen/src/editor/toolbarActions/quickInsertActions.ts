@@ -1,4 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 
@@ -14,8 +15,8 @@ const resolveTexts = (locale: PlaygroundLocale): QuickInsertTexts =>
         promptEmoji: "Input emoji",
       }
     : {
-        promptSymbol: "请输入要插入的符号",
-        promptEmoji: "请输入要插入的表情",
+        promptSymbol: "\u8f93\u5165\u7b26\u53f7",
+        promptEmoji: "\u8f93\u5165\u8868\u60c5",
       };
 
 const formatChineseDate = () => {
@@ -23,7 +24,7 @@ const formatChineseDate = () => {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   const day = now.getDate();
-  return `${year}年${month}月${day}日`;
+  return `${year}\u5e74${month}\u6708${day}\u65e5`;
 };
 
 const formatIsoDate = () => {
@@ -37,9 +38,11 @@ const formatIsoDate = () => {
 export const createQuickInsertActions = ({
   getView,
   getLocaleKey,
+  requestInputDialog,
 }: {
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
+  requestInputDialog: RequestToolbarInputDialog;
 }) => {
   const insertText = (value: string) => {
     const view = getView();
@@ -56,22 +59,28 @@ export const createQuickInsertActions = ({
     return true;
   };
 
-  const insertSymbol = () => {
+  const insertSymbol = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const raw = window.prompt(texts.promptSymbol, "§");
-    if (raw == null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Insert Symbol" : "\u63d2\u5165\u7b26\u53f7",
+      fields: [{ key: "value", label: texts.promptSymbol, defaultValue: "\u00a7", required: true }],
+    });
+    if (!result) {
       return false;
     }
-    return insertText(String(raw));
+    return insertText(String(result.value || ""));
   };
 
-  const insertEmoji = () => {
+  const insertEmoji = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const raw = window.prompt(texts.promptEmoji, "😊");
-    if (raw == null) {
+    const result = await requestInputDialog({
+      title: getLocaleKey() === "en-US" ? "Insert Emoji" : "\u63d2\u5165\u8868\u60c5",
+      fields: [{ key: "value", label: texts.promptEmoji, defaultValue: "\ud83d\ude0a", required: true }],
+    });
+    if (!result) {
       return false;
     }
-    return insertText(String(raw));
+    return insertText(String(result.value || ""));
   };
 
   const insertChineseDate = () => {

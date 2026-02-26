@@ -129,6 +129,80 @@ const resolveSettingsWithIndent = (settings, indent) => {
   };
 };
 
+const resolveLineHeight = (line, fallback) =>
+  Number.isFinite(line?.lineHeight) && Number(line.lineHeight) > 0
+    ? Number(line.lineHeight)
+    : Math.max(1, Number(fallback) || 1);
+
+const measureLinesHeight = (lines, fallbackLineHeight) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 0;
+  }
+  let usedRelativeY = false;
+  let maxBottom = 0;
+  let cursor = 0;
+  for (const line of lines) {
+    const lineHeight = resolveLineHeight(line, fallbackLineHeight);
+    if (Number.isFinite(line?.relativeY)) {
+      usedRelativeY = true;
+      maxBottom = Math.max(maxBottom, Number(line.relativeY) + lineHeight);
+      continue;
+    }
+    cursor += lineHeight;
+  }
+  return usedRelativeY ? maxBottom : cursor;
+};
+
+const getFittableLineCount = (lines, availableHeight, fallbackLineHeight) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 0;
+  }
+  const limit = Number(availableHeight);
+  if (!Number.isFinite(limit) || limit <= 0) {
+    return 0;
+  }
+  let consumed = 0;
+  let count = 0;
+  for (const line of lines) {
+    const lineHeight = resolveLineHeight(line, fallbackLineHeight);
+    if (count > 0 && consumed + lineHeight > limit) {
+      break;
+    }
+    if (count === 0 && lineHeight > limit) {
+      return 0;
+    }
+    consumed += lineHeight;
+    count += 1;
+  }
+  return count;
+};
+
+// Normalize line.relativeY within a split chunk so follow-up pages start from chunk top.
+const normalizeChunkRelativeY = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return lines;
+  }
+  let base = null;
+  for (const line of lines) {
+    if (Number.isFinite(line?.relativeY)) {
+      base = Number(line.relativeY);
+      break;
+    }
+  }
+  if (!Number.isFinite(base) || Number(base) === 0) {
+    return lines;
+  }
+  return lines.map((line) => {
+    if (!line || !Number.isFinite(line.relativeY)) {
+      return line;
+    }
+    return {
+      ...line,
+      relativeY: Number(line.relativeY) - Number(base),
+    };
+  });
+};
+
 // 数值哈希，用于页签名。
 const hashNumber = (hash, value) => {
   const num = Number.isFinite(value) ? Math.round(value) : 0;
@@ -354,6 +428,7 @@ const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) 
     hash = hashNumber(hash, line.y);
     hash = hashNumber(hash, line.width);
     hash = hashNumber(hash, line.lineHeight);
+    hash = hashNumber(hash, line.blockSignature);
     hash = hashString(hash, line.blockType || "");
     hash = hashString(hash, line.blockId || "");
     hash = hashString(hash, line.text || "");
@@ -1159,9 +1234,15 @@ export class LayoutPipeline {
       const rendererCacheable = renderer?.cacheLayout !== false;
       const canUseCache = rendererCacheable && cacheKey !== null;
       const cached = canUseCache ? this.blockCache.get(cacheKey) : null;
-      const blockSignature = canUseCache
-        ? getBlockLayoutSignature(block, blockSettings, context.indent, renderer, this.registry)
-        : null;
+      // Always compute block signature so downstream page signatures can detect
+      // style-only node changes even when line geometry/text stays the same.
+      const blockSignature = getBlockLayoutSignature(
+        block,
+        blockSettings,
+        context.indent,
+        renderer,
+        this.registry
+      );
 
       if (canUseCache) {
         if (cached && cached.signature === blockSignature) {
@@ -1215,6 +1296,9 @@ export class LayoutPipeline {
           if (runsResult?.blockAttrs?.lineHeight) {
             blockLineHeight = runsResult.blockAttrs.lineHeight;
           }
+          const breakBaseLineHeight = Number.isFinite(blockLineHeight)
+            ? blockLineHeight
+            : lineHeight;
 
           if (perf) {
             const breakStart = now();
@@ -1226,7 +1310,8 @@ export class LayoutPipeline {
               blockSettings.wrapTolerance || 0,
               blockSettings.minLineWidth || 0,
               measureTextWidth,
-              blockSettings.segmentText
+              blockSettings.segmentText,
+              breakBaseLineHeight
             );
             perf.breakLinesMs += now() - breakStart;
           } else {
@@ -1238,10 +1323,11 @@ export class LayoutPipeline {
               blockSettings.wrapTolerance || 0,
               blockSettings.minLineWidth || 0,
               measureTextWidth,
-              blockSettings.segmentText
+              blockSettings.segmentText,
+              breakBaseLineHeight
             );
           }
-          blockHeight = blockLines.length * (blockLineHeight || lineHeight);
+          blockHeight = measureLinesHeight(blockLines, breakBaseLineHeight);
         }
 
         if (canUseCache) {
@@ -1279,7 +1365,7 @@ export class LayoutPipeline {
       let remainingHeight =
         Number.isFinite(blockHeight) && blockHeight > 0
           ? blockHeight
-          : safeLines.length * lineHeightValue;
+          : measureLinesHeight(safeLines, lineHeightValue);
 
       const blockStart = textOffset;
       const containerStack = context.containerStack;
@@ -1287,10 +1373,16 @@ export class LayoutPipeline {
       // 将当前切片写入页面，同时补齐坐标、blockStart、容器等元信息
       const placeLines = (linesToPlace) => {
         const seenListItems = new Set<string>();
-        linesToPlace.forEach((line, lineIndex) => {
+        let relativeCursor = 0;
+        linesToPlace.forEach((line) => {
           const lineCopy = cloneLine(line);
+          const resolvedLineHeight = resolveLineHeight(lineCopy, lineHeightValue);
           lineCopy.blockType = lineCopy.blockType || block.type.name;
           lineCopy.blockId = lineCopy.blockId ?? blockId;
+          lineCopy.blockSignature =
+            Number.isFinite(blockSignature) && Number(blockSignature) > 0
+              ? Number(blockSignature)
+              : null;
           lineCopy.blockAttrs = lineCopy.blockAttrs || blockAttrs;
           lineCopy.rootIndex = context.rootIndex;
           adjustLineOffsets(lineCopy, blockStart);
@@ -1311,10 +1403,13 @@ export class LayoutPipeline {
           // table 等自带相对坐标的行，使用 relativeY 进行定位
           if (typeof lineCopy.relativeY === "number") {
             lineCopy.y = cursorY + lineCopy.relativeY;
+            relativeCursor = Math.max(relativeCursor, lineCopy.relativeY + resolvedLineHeight);
           } else {
-            lineCopy.y = cursorY + lineIndex * lineHeightValue;
+            lineCopy.relativeY = relativeCursor;
+            lineCopy.y = cursorY + relativeCursor;
+            relativeCursor += resolvedLineHeight;
           }
-          lineCopy.lineHeight = lineHeightValue;
+          lineCopy.lineHeight = resolvedLineHeight;
           if (typeof lineCopy.x !== "number") {
             lineCopy.x = computeLineX(lineCopy, blockSettings);
           }
@@ -1351,11 +1446,12 @@ export class LayoutPipeline {
         const availableHeight = pageHeight - margin.bottom - cursorY;
         if (remainingHeight > availableHeight) {
           const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
-          if (availableHeight < lineHeightValue) {
+          const firstLineHeight = resolveLineHeight(remainingLines[0], lineHeightValue);
+          if (availableHeight < firstLineHeight) {
             if (finalizePage()) {
               return true;
             }
-            if (fullAvailableHeight >= lineHeightValue) {
+            if (fullAvailableHeight >= firstLineHeight) {
               continue;
             }
             // 单行高度超出整页，强制放入一行避免死循环。
@@ -1409,18 +1505,22 @@ export class LayoutPipeline {
             });
           }
           if (!splitResult) {
-            const maxLines = Math.max(1, Math.floor(availableHeight / lineHeightValue));
+            const maxLines = Math.max(
+              1,
+              getFittableLineCount(remainingLines, availableHeight, lineHeightValue)
+            );
             if (maxLines < remainingLines.length) {
-              const visibleLines = remainingLines.slice(0, maxLines);
-              const lastLine = visibleLines[visibleLines.length - 1];
-              const firstLine = visibleLines[0];
+              const visibleLinesRaw = remainingLines.slice(0, maxLines);
+              const lastLine = visibleLinesRaw[visibleLinesRaw.length - 1];
+              const firstLine = visibleLinesRaw[0];
               const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
               const endOffset = typeof lastLine?.end === "number" ? lastLine.end : remainingLength;
               const visibleLength = Math.max(0, endOffset - startOffset);
-              const visibleHeight = visibleLines.length * lineHeightValue;
-              const overflowLines = remainingLines.slice(maxLines);
+              const visibleLines = normalizeChunkRelativeY(visibleLinesRaw);
+              const visibleHeight = measureLinesHeight(visibleLines, lineHeightValue);
+              const overflowLines = normalizeChunkRelativeY(remainingLines.slice(maxLines));
               const overflowLength = Math.max(0, remainingLength - visibleLength);
-              const overflowHeight = overflowLines.length * lineHeightValue;
+              const overflowHeight = measureLinesHeight(overflowLines, lineHeightValue);
               splitResult = {
                 lines: visibleLines,
                 length: visibleLength,
@@ -1472,12 +1572,17 @@ export class LayoutPipeline {
             }
             remainingLines = splitResult.overflow.lines;
             remainingLength = splitResult.overflow.length;
-            remainingHeight = splitResult.overflow.height;
+            remainingHeight = Number.isFinite(splitResult.overflow.height)
+              ? splitResult.overflow.height
+              : measureLinesHeight(splitResult.overflow.lines, lineHeightValue);
             continue;
           }
           if (splitResult && splitResult.lines.length > 0) {
             placeLines(splitResult.lines);
-            cursorY += splitResult.height;
+            const placedHeight = Number.isFinite(splitResult.height)
+              ? splitResult.height
+              : measureLinesHeight(splitResult.lines, lineHeightValue);
+            cursorY += placedHeight;
             if (finalizePage()) {
               return true;
             }
@@ -1485,7 +1590,9 @@ export class LayoutPipeline {
             if (splitResult.overflow && splitResult.overflow.lines.length > 0) {
               remainingLines = splitResult.overflow.lines;
               remainingLength = splitResult.overflow.length;
-              remainingHeight = splitResult.overflow.height;
+              remainingHeight = Number.isFinite(splitResult.overflow.height)
+                ? splitResult.overflow.height
+                : measureLinesHeight(splitResult.overflow.lines, lineHeightValue);
               continue;
             }
             remainingLines = [];
@@ -1742,7 +1849,8 @@ export class LayoutPipeline {
       this.settings.wrapTolerance || 0,
       this.settings.minLineWidth || 0,
       this.settings.measureTextWidth,
-      this.settings.segmentText
+      this.settings.segmentText,
+      lineHeight
     );
 
     const pages = [];
@@ -1752,20 +1860,21 @@ export class LayoutPipeline {
     let y = margin.top;
 
     for (const line of lines) {
-      page.lines.push({
-        ...line,
-        x: computeLineX(line, this.settings),
-        y,
-      });
-
-      y += lineHeight;
-
-      if (y + lineHeight > pageHeight - margin.bottom) {
+      const lineHeightValue = resolveLineHeight(line, lineHeight);
+      if (page.lines.length > 0 && y + lineHeightValue > pageHeight - margin.bottom) {
         pages.push(page);
         pageIndex += 1;
         page = newPage(pageIndex);
         y = margin.top;
       }
+      page.lines.push({
+        ...line,
+        lineHeight: lineHeightValue,
+        x: computeLineX(line, this.settings),
+        y,
+      });
+
+      y += lineHeightValue;
     }
 
     if (page.lines.length > 0) {

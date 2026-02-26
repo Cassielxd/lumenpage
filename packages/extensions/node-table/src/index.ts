@@ -47,6 +47,27 @@ const normalizeTableCellBackground = (value) => {
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
+const measureLinesHeight = (lines, fallbackLineHeight) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 0;
+  }
+  let usedRelativeY = false;
+  let maxBottom = 0;
+  let cursor = 0;
+  for (const line of lines) {
+    const lineHeight = Number.isFinite(line?.lineHeight)
+      ? line.lineHeight
+      : Math.max(1, Number(fallbackLineHeight) || 1);
+    if (Number.isFinite(line?.relativeY)) {
+      usedRelativeY = true;
+      maxBottom = Math.max(maxBottom, line.relativeY + lineHeight);
+      continue;
+    }
+    cursor += lineHeight;
+  }
+  return usedRelativeY ? maxBottom : cursor;
+};
+
 const getFontSize = (font) => {
   const match = /(\d+(?:\.\d+)?)px/.exec(font || "");
   if (!match) {
@@ -537,7 +558,11 @@ const layoutLeafInCell = ({
       blockSettings.measureTextWidth,
       blockSettings.segmentText
     );
-    result = { lines, length, height: lines.length * (blockLineHeight || settings.lineHeight) };
+    result = {
+      lines,
+      length,
+      height: measureLinesHeight(lines, blockLineHeight || settings.lineHeight),
+    };
   }
 
   const lines = result?.lines?.length
@@ -549,6 +574,9 @@ const layoutLeafInCell = ({
     : settings.lineHeight;
 
   let height = Number.isFinite(result?.height) ? result.height : lines.length * lineHeightValue;
+  if (!Number.isFinite(height) || height <= 0) {
+    height = measureLinesHeight(lines, lineHeightValue);
+  }
 
   const adjustedLines = lines.map((line, lineIndex) => {
     const lineCopy = {

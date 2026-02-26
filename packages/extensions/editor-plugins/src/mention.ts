@@ -6,6 +6,7 @@ import {
   type PopupRect,
 } from "./popup/tippyPopup";
 import { toPopupRect, toViewportPopupRect } from "./popup/coords";
+import { createPopupRenderRuntime, type PopupRenderLifecycle } from "./popup/popupLifecycle";
 
 export type MentionItem = {
   id: string;
@@ -53,13 +54,8 @@ export type MentionRenderProps = {
   close: () => boolean;
 };
 
-export type MentionRenderLifecycle = {
-  onStart?: (props: MentionRenderProps) => void;
-  onUpdate?: (props: MentionRenderProps) => void;
-  onExit?: (props: MentionRenderProps) => void;
-  onKeyDown?: (props: MentionRenderProps & { event: KeyboardEvent }) => boolean;
-  isEventInside?: (event: Event) => boolean;
-};
+export type MentionRenderLifecycle = PopupRenderLifecycle<MentionRenderProps>;
+type MentionRenderRuntime = ReturnType<typeof createPopupRenderRuntime<MentionRenderProps>>;
 
 type MentionMetaAction =
   | { type: "open"; from: number; to: number; query: string }
@@ -348,8 +344,7 @@ export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
 
 export const createMentionPlugin = (options: MentionPluginOptions) => {
   const trigger = options.trigger || DEFAULT_TRIGGER;
-  let activeRenderer: MentionRenderLifecycle | null = null;
-  let activeRenderProps: MentionRenderProps | null = null;
+  const renderRuntimeByView = new WeakMap<any, MentionRenderRuntime>();
 
   return new Plugin<MentionPluginState>({
     key: mentionPluginKey,
@@ -425,14 +420,9 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
           return false;
         }
 
-        if (activeRenderer && activeRenderProps) {
-          const handled = activeRenderer.onKeyDown?.({
-            ...activeRenderProps,
-            event,
-          });
-          if (handled) {
-            return true;
-          }
+        const runtime = renderRuntimeByView.get(view);
+        if (runtime?.handleKeyDown(event)) {
+          return true;
         }
 
         if (event.key === "ArrowDown") {
@@ -492,24 +482,13 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
           popup,
           select,
         });
-
-      activeRenderer = renderer;
-      activeRenderProps = null;
-      let started = false;
+      const renderRuntime = createPopupRenderRuntime(renderer, () => {
+        popup.hide();
+      });
+      renderRuntimeByView.set(currentView, renderRuntime);
 
       const exitRenderer = () => {
-        if (!started) {
-          popup.hide();
-          activeRenderProps = null;
-          return;
-        }
-        if (activeRenderProps) {
-          renderer.onExit?.(activeRenderProps);
-        } else {
-          popup.hide();
-        }
-        started = false;
-        activeRenderProps = null;
+        renderRuntime.clear();
       };
 
       const syncPopup = () => {
@@ -533,17 +512,7 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
           select,
           close,
         };
-        if (!started) {
-          if (typeof renderer.onStart === "function") {
-            renderer.onStart(nextRenderProps);
-          } else if (typeof renderer.onUpdate === "function") {
-            renderer.onUpdate(nextRenderProps);
-          }
-          started = true;
-        } else {
-          renderer.onUpdate?.(nextRenderProps);
-        }
-        activeRenderProps = nextRenderProps;
+        renderRuntime.update(nextRenderProps);
       };
 
       const onDocumentPointerDown = (event: Event) => {
@@ -551,7 +520,7 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
         if (!mentionState.active) {
           return;
         }
-        if (renderer.isEventInside?.(event)) {
+        if (renderRuntime.isEventInside(event)) {
           return;
         }
         const target = event.target as Node | null;
@@ -571,6 +540,10 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
 
       return {
         update(nextView: any) {
+          if (nextView !== currentView) {
+            renderRuntimeByView.delete(currentView);
+            renderRuntimeByView.set(nextView, renderRuntime);
+          }
           currentView = nextView;
           syncPopup();
         },
@@ -578,10 +551,7 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
           ownerDocument.removeEventListener("pointerdown", onDocumentPointerDown, true);
           exitRenderer();
           popup.destroy();
-          if (activeRenderer === renderer) {
-            activeRenderer = null;
-            activeRenderProps = null;
-          }
+          renderRuntimeByView.delete(currentView);
         },
       };
     },

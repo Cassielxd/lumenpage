@@ -49,6 +49,8 @@ import {
   readSomeProp,
   scrollViewIntoView,
   setViewProps,
+  forceViewLayout,
+  forceViewRender,
   getViewPaginationInfo,
   viewCoordsAtPos,
   viewHasFocus,
@@ -641,6 +643,22 @@ export class CanvasEditorView {
 
   setProps(props: Partial<CanvasEditorViewProps> = {}) {
     setViewProps(this, props);
+  }
+
+  forceRender(options?: {
+    clearPageCache?: boolean;
+    markLayoutForceRedraw?: boolean;
+    syncNodeViews?: boolean;
+  }) {
+    return forceViewRender(this, options);
+  }
+
+  forceLayout(options?: {
+    clearLayoutCache?: boolean;
+    clearPageCache?: boolean;
+    immediate?: boolean;
+  }) {
+    return forceViewLayout(this, options);
   }
 
   // 鐩存帴娲惧彂 Transaction銆?
