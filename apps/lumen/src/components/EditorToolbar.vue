@@ -826,7 +826,18 @@ const handleInputDialogCancel = () => {
 
 const handleInputDialogVisibleChange = (visible: boolean) => {
   if (!visible) {
-    handleInputDialogCancel();
+    const defer =
+      typeof queueMicrotask === "function"
+        ? queueMicrotask
+        : (callback: () => void) => Promise.resolve().then(callback);
+    defer(() => {
+      if (!inputDialogVisible.value) {
+        return;
+      }
+      if (inputDialogResolver) {
+        handleInputDialogCancel();
+      }
+    });
   }
 };
 

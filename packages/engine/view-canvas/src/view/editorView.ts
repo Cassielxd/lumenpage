@@ -171,6 +171,7 @@ export class CanvasEditorView {
     } = createRuntimeHelpers({
       dom,
       basePageWidth,
+      settings,
       resolveCanvasConfig,
       queryEditorProp: (name, ...args) => queryEditorProp(name, ...args),
       getState: () => this.state,

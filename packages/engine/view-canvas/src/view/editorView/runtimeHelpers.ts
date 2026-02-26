@@ -5,6 +5,7 @@ import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
 export const createRuntimeHelpers = ({
   dom,
   basePageWidth,
+  settings,
   resolveCanvasConfig,
   queryEditorProp,
   getState,
@@ -12,11 +13,15 @@ export const createRuntimeHelpers = ({
 }) => {
   const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
   const resolvePageWidth = () => {
+    const configuredPageWidth =
+      Number.isFinite(settings?.pageWidth) && Number(settings.pageWidth) > 0
+        ? Number(settings.pageWidth)
+        : basePageWidth;
     const width = dom.scrollArea?.clientWidth ?? 0;
     if (!Number.isFinite(width) || width <= 0) {
-      return basePageWidth;
+      return configuredPageWidth;
     }
-    return Math.min(basePageWidth, width);
+    return Math.min(configuredPageWidth, width);
   };
 
   const getText = () => {

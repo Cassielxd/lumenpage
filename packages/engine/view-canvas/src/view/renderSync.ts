@@ -76,6 +76,7 @@ export const createRenderSync = ({
   let hasPendingScrollIntoView = false;
   let fullSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let forceFullPass = false;
+  let lastLayoutSettingsSignature: string | null = null;
   const workerConfig = layoutPipeline?.settings?.paginationWorker ?? null;
   const paginationWorkerProvider =
     workerConfig?.enabled === true && typeof workerConfig?.provider?.requestLayout === "function"
@@ -92,6 +93,47 @@ export const createRenderSync = ({
     return ownerDocument?.activeElement ?? null;
   };
   const hasPendingLayoutWork = () => layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
+  const toFiniteNumber = (value: unknown, fallback = 0) =>
+    Number.isFinite(value) ? Number(value) : fallback;
+  const resolveLayoutSettingsForPass = (settings: any, resolvedPageWidth: unknown) => {
+    const fallbackWidth = toFiniteNumber(settings?.pageWidth, 794);
+    const pageWidth =
+      Number.isFinite(resolvedPageWidth) && Number(resolvedPageWidth) > 0
+        ? Number(resolvedPageWidth)
+        : fallbackWidth > 0
+          ? fallbackWidth
+          : 794;
+    return {
+      ...settings,
+      pageWidth,
+    };
+  };
+  const getLayoutSettingsSignature = (settings: any) => {
+    const margin = settings?.margin || {};
+    return [
+      toFiniteNumber(settings?.pageWidth, 0),
+      toFiniteNumber(settings?.pageHeight, 0),
+      toFiniteNumber(settings?.pageGap, 0),
+      toFiniteNumber(margin?.left, 0),
+      toFiniteNumber(margin?.right, 0),
+      toFiniteNumber(margin?.top, 0),
+      toFiniteNumber(margin?.bottom, 0),
+      toFiniteNumber(settings?.lineHeight, 0),
+      String(settings?.font || ""),
+      String(settings?.codeFont || ""),
+      toFiniteNumber(settings?.wrapTolerance, 0),
+      toFiniteNumber(settings?.minLineWidth, 0),
+      toFiniteNumber(settings?.blockSpacing, 0),
+      toFiniteNumber(settings?.paragraphSpacingBefore, 0),
+      toFiniteNumber(settings?.paragraphSpacingAfter, 0),
+      toFiniteNumber(settings?.listIndent, 0),
+      toFiniteNumber(settings?.listMarkerGap, 0),
+      String(settings?.listMarkerFont || ""),
+      toFiniteNumber(settings?.codeBlockPadding, 0),
+      String(settings?.textLocale || ""),
+      settings?.segmentText ? "segment:on" : "segment:off",
+    ].join("|");
+  };
   const flushPendingScrollIntoView = () => {
     if (!hasPendingScrollIntoView) {
       return;
@@ -166,7 +208,7 @@ export const createRenderSync = ({
         : `${pageCount} pages | ${focused}`;
   };
 
-  // 閫夊尯鍑犱綍鎵╁睍鐐癸細鍏佽澶栭儴鏇挎崲琛ㄦ牸閫夊尯鐭╁舰璁＄畻锛屾牳蹇冧粎璐熻矗鍒嗗彂涓庡厹搴曘€?
+  // Resolve optional selection-geometry overrides from editor props.
   const resolveSelectionGeometry = () => {
     const fromProps =
       typeof queryEditorProp === "function" ? queryEditorProp("selectionGeometry") : null;
@@ -176,7 +218,7 @@ export const createRenderSync = ({
     return null;
   };
 
-  // 缁熶竴瑙ｆ瀽鈥滆〃鏍肩浉鍏抽€夊尯鐭╁舰鈥濓紝浼樺厛澶栭儴 provider锛岀己澶辨椂鍥為€€鍐呯疆榛樿瀹炵幇銆?
+  // Compute table-related selection rects with optional plugin overrides.
   const resolveTableSelectionRects = ({
     layout,
     editorState,
@@ -457,18 +499,11 @@ export const createRenderSync = ({
   const updateLayout = () => {
     const changeSummary = getPendingChangeSummary?.() ?? null;
     const nextPageWidth = resolvePageWidth?.();
+    const layoutSettingsForPass = resolveLayoutSettingsForPass(layoutPipeline?.settings, nextPageWidth);
+    const layoutSettingsSignature = getLayoutSettingsSignature(layoutSettingsForPass);
+    const settingsChanged = layoutSettingsSignature !== lastLayoutSettingsSignature;
     const prevLayout = getLayout?.() ?? null;
-    const currentPageWidth = Number(layoutPipeline.settings.pageWidth);
-    const widthDiff =
-      Number.isFinite(nextPageWidth) && nextPageWidth > 0
-        ? Math.abs(currentPageWidth - Number(nextPageWidth))
-        : 0;
-    // 蹇界暐娴偣鎶栧姩锛岄伩鍏嶆瘡娆￠兘璇垽涓洪〉瀹藉彉鍖栧鑷存竻绌虹紦瀛樸€?
-    const widthChanged =
-      Number.isFinite(nextPageWidth) && nextPageWidth > 0 && Number(widthDiff) > 0.5;
-
-    // 鎬ц兘蹇矾寰勶細鏂囨。鏈彉鍖栦笖椤靛鏈彉鍖栨椂锛岀洿鎺ュ鐢ㄥ綋鍓嶅竷灞€锛岄伩鍏嶉噸澶嶅叏閲忓垎椤点€?
-    if (prevLayout && !widthChanged && changeSummary?.docChanged !== true) {
+    if (prevLayout && !settingsChanged && changeSummary?.docChanged !== true) {
       clearPendingChangeSummary?.();
       clearPendingSteps?.();
       updateStatus();
@@ -477,11 +512,8 @@ export const createRenderSync = ({
       return;
     }
 
-    if (Number.isFinite(nextPageWidth) && nextPageWidth > 0) {
-      if (widthChanged) {
-        layoutPipeline.settings.pageWidth = nextPageWidth;
-        layoutPipeline.clearCache?.();
-      }
+    if (settingsChanged) {
+      layoutPipeline.clearCache?.();
     }
     const doc = getEditorState().doc;
     const workerForce = workerConfig?.force === true;
@@ -543,7 +575,7 @@ export const createRenderSync = ({
     const workerAllowedForPass = docChanged
       ? allowWorkerForDocChanged
       : !isInitialLayoutPass || allowWorkerForInitial;
-    // force 浠呯敤浜庤皟璇曞紑鍏筹紝涓嶅厑璁哥粫杩囧鏉傚潡瀹夊叏闂ㄧ锛屽惁鍒欎細鍑虹幇甯冨眬閿欎贡銆?
+    // Keep force/debug switch gated by the same safety checks.
     const canUseWorkerProvider =
       !forceSyncLayoutOnce &&
       !!paginationWorkerProvider &&
@@ -560,6 +592,7 @@ export const createRenderSync = ({
       void paginationTiming;
       void workerForce;
       void workerIneligibleReason;
+      lastLayoutSettingsSignature = layoutSettingsSignature;
       applyLayout(layout, version, changeSummary);
       if (layout?.__progressiveApplied === true && incrementalEnabled) {
         const settleDelayMs = Math.max(0, Number(incrementalConfig?.settleDelayMs) || 120);
@@ -581,7 +614,7 @@ export const createRenderSync = ({
         doc,
         previousLayout: getLayout?.() ?? null,
         changeSummary,
-        settings: layoutPipeline?.settings,
+        settings: layoutSettingsForPass,
         registry: layoutPipeline?.registry,
         progressiveMaxPages,
       };
@@ -598,6 +631,7 @@ export const createRenderSync = ({
             changeSummary,
             docPosToTextOffset,
             progressiveMaxPages,
+            layoutSettingsOverride: layoutSettingsForPass,
           });
           applyAndLogLayout(fallbackLayout);
         })
@@ -616,7 +650,7 @@ export const createRenderSync = ({
       asyncLayoutInFlight = true;
       const payload = createWorkerPaginationRunsPayload(
         doc,
-        layoutPipeline.settings,
+        layoutSettingsForPass,
         layoutPipeline?.registry
       );
       paginationWorker
@@ -629,6 +663,7 @@ export const createRenderSync = ({
             previousLayout: getLayout?.() ?? null,
             changeSummary,
             docPosToTextOffset,
+            layoutSettingsOverride: layoutSettingsForPass,
           });
           applyAndLogLayout(fallbackLayout);
         })
@@ -648,6 +683,7 @@ export const createRenderSync = ({
       changeSummary,
       docPosToTextOffset,
       progressiveMaxPages,
+      layoutSettingsOverride: layoutSettingsForPass,
     });
     applyAndLogLayout(layout);
   };
@@ -723,7 +759,7 @@ export const createRenderSync = ({
         docPosToTextOffset(nextState.doc, nextState.selection.head)
       );
       setCaretOffsetValue(nextCaretOffset);
-      // 文档变更后先等待新布局，再更新 caret/selection，避免旧布局上的瞬时跳动。
+      // Wait for the next layout after doc changes before syncing caret/selection.
       setPendingPreferredUpdate(true);
       updateStatus();
       scheduleLayout();
@@ -763,17 +799,3 @@ export const createRenderSync = ({
     },
   };
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-

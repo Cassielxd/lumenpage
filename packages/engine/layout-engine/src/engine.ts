@@ -39,6 +39,7 @@ type LayoutFromDocOptions = {
   changeSummary?: LayoutChangeSummary | null;
   docPosToTextOffset?: (doc: any, pos: number) => number;
   progressiveMaxPages?: number | null;
+  layoutSettingsOverride?: Record<string, any> | null;
 };
 
 // 创建新的分页容器。
@@ -781,7 +782,7 @@ export class LayoutPipeline {
   // 分页布局主入口：生成布局并尝试增量复用。
   layoutFromDoc(doc, options: LayoutFromDocOptions = {}) {
     // 基础设置（保留原引用用于性能汇报）。
-    const baseSettingsRaw = this.settings;
+    const baseSettingsRaw = options?.layoutSettingsOverride ?? this.settings;
     let disablePageReuse = !!baseSettingsRaw.disablePageReuse;
     if (!disablePageReuse) {
       const changeSummary = options?.changeSummary ?? null;
