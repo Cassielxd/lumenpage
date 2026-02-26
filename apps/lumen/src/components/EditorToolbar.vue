@@ -183,7 +183,7 @@
         clearable
         :enable-alpha="true"
         :show-primary-color-preview="true"
-        :recent-colors="toolbarRecentColors"
+        :recentColors="toolbarRecentColors"
         :swatch-colors="TOOLBAR_COLOR_SWATCHES"
         @change="handleColorPickerChange"
         @clear="handleColorPickerClear"

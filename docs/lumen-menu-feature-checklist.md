@@ -1,212 +1,128 @@
-# Lumen 菜单功能清单（对齐状态）
+# Lumen Menu Feature Checklist (Auto Synced)
 
-来源：
+- Source: `apps/lumen/src/editor/toolbarCatalog.ts`
+- Rule: `implemented=true` means checked.
+- Stats: total `104`, done `104`, pending `0`.
+- Updated: 2026-02-26
 
-- `apps/lumen/src/editor/toolbarCatalog.ts`
-- `apps/lumen/src/components/EditorToolbar.vue`
+## base (36/36)
 
-判定规则：
+- [x] `undo` (Undo), action: `undo`, command: `undo`
+- [x] `redo` (Redo), action: `redo`, command: `redo`
+- [x] `format-painter` (Format Painter), action: `format-painter`
+- [x] `clear-format` (Clear Format), action: `clear-format`
+- [x] `heading` (Heading), action: `heading`
+- [x] `font-family` (Font Family), action: `font-family`
+- [x] `font-size` (Font Size), action: `font-size`
+- [x] `bold` (Bold), action: `bold`
+- [x] `italic` (Italic), action: `italic`
+- [x] `underline` (Underline), action: `underline`
+- [x] `strike` (Strikethrough), action: `strike`
+- [x] `subscript` (Subscript), action: `subscript`
+- [x] `superscript` (Superscript), action: `superscript`
+- [x] `color` (Text Color), action: `color`
+- [x] `background-color` (Background Color), action: `background-color`
+- [x] `highlight` (Highlight), action: `highlight`
+- [x] `ordered-list` (Ordered List), action: `ordered-list`
+- [x] `bullet-list` (Bullet List), action: `bullet-list`
+- [x] `task-list` (Task List), action: `task-list`
+- [x] `indent` (Indent), action: `indent`
+- [x] `outdent` (Outdent), action: `outdent`
+- [x] `line-height` (Line Height), action: `line-height`
+- [x] `margin` (Paragraph Spacing), action: `margin`
+- [x] `align-left` (Align Left), action: `align-left`
+- [x] `align-center` (Align Center), action: `align-center`
+- [x] `align-right` (Align Right), action: `align-right`
+- [x] `align-justify` (Align Justify), action: `align-justify`
+- [x] `align-distributed` (Align Distributed), action: `align-distributed`
+- [x] `quote` (Quote), action: `quote`
+- [x] `inline-code` (Inline Code), action: `inline-code`
+- [x] `select-all` (Select All), action: `select-all`
+- [x] `import-word` (Import Word), action: `import-word`
+- [x] `markdown` (Markdown), action: `markdown`
+- [x] `search-replace` (Search & Replace), action: `search-replace`
+- [x] `viewer` (Viewer), action: `viewer`
+- [x] `print` (Print), action: `print`
 
-- `已实现`：`toolbarCatalog` 中 `implemented=true`，且 `EditorToolbar` 有实际执行逻辑。
-- `未实现`：仅有菜单项/图标，占位未接业务动作。
+## insert (22/22)
 
-## 总览
+- [x] `link` (Link), action: `link`
+- [x] `image` (Image), action: `image`
+- [x] `video` (Video), action: `video`
+- [x] `audio` (Audio), action: `audio`
+- [x] `file` (File), action: `file`
+- [x] `code-block` (Code Block), action: `code-block`
+- [x] `symbol` (Symbol), action: `symbol`
+- [x] `chinese-date` (Chinese Date), action: `chinese-date`
+- [x] `emoji` (Emoji), action: `emoji`
+- [x] `math` (Math), action: `math`
+- [x] `columns` (Columns), action: `columns`
+- [x] `tag` (Tag), action: `tag`
+- [x] `callout` (Callout), action: `callout`
+- [x] `mention` (Mention), action: `mention`
+- [x] `bookmark` (Bookmark), action: `bookmark`
+- [x] `option-box` (Option Box), action: `option-box`
+- [x] `hard-break` (Hard Break), action: `hard-break`
+- [x] `hr` (Horizontal Rule), action: `hr`
+- [x] `toc` (Table of Contents), action: `toc`
+- [x] `text-box` (Text Box), action: `text-box`
+- [x] `template` (Template), action: `template`
+- [x] `web-page` (Web Page), action: `web-page`
 
-- 菜单页签：`base / insert / table / tools / page / export`
-- 菜单项总数：`104`
-- 已实现：`27`
-- 未实现：`77`
+## table (18/18)
 
-## 状态差异（2026-02-25）
+- [x] `table-insert` (Insert Table), action: `table-insert`
+- [x] `table-fix` (Fix Table), action: `table-fix`
+- [x] `cells-align` (Cell Alignment), action: `cells-align`
+- [x] `cells-background` (Cell Background), action: `cells-background`
+- [x] `add-row-before` (Add Row Before), action: `add-row-before`, command: `addTableRowBefore`
+- [x] `add-row-after` (Add Row After), action: `add-row-after`, command: `addTableRowAfter`
+- [x] `add-column-before` (Add Column Before), action: `add-column-before`, command: `addTableColumnBefore`
+- [x] `add-column-after` (Add Column After), action: `add-column-after`, command: `addTableColumnAfter`
+- [x] `delete-row` (Delete Row), action: `delete-row`, command: `deleteTableRow`
+- [x] `delete-column` (Delete Column), action: `delete-column`, command: `deleteTableColumn`
+- [x] `merge-cells` (Merge Cells), action: `merge-cells`, command: `mergeTableCellRight`
+- [x] `split-cell` (Split Cell), action: `split-cell`, command: `splitTableCell`
+- [x] `toggle-header-row` (Toggle Header Row), action: `toggle-header-row`
+- [x] `toggle-header-column` (Toggle Header Column), action: `toggle-header-column`
+- [x] `toggle-header-cell` (Toggle Header Cell), action: `toggle-header-cell`
+- [x] `next-cell` (Next Cell), action: `next-cell`, command: `goToNextTableCell`
+- [x] `previous-cell` (Previous Cell), action: `previous-cell`, command: `goToPreviousTableCell`
+- [x] `delete-table` (Delete Table), action: `delete-table`
 
-- Lumen 顶部菜单当前已隐藏 `export` Tab（`EditorMenuBar` 过滤），但 `export` 分组定义仍保留在 `toolbarCatalog`。
-- 开始区会复用导出相关动作项（即“导出能力保留，但不单独占用顶栏 Tab”）。
-- 新增接线项（已从占位转为可执行）：
-  - `add-row-before`
-  - `add-column-before`
-  - `next-cell`
-  - `previous-cell`
-  - `page-break-marks`
-  - `line-height`
-  - `margin`
-  - `select-all`
-  - `print`
-  - `table-insert`
-  - `table-fix`
-  - `toggle-header-row`
-  - `toggle-header-column`
-  - `toggle-header-cell`
-  - `delete-table`
-  - `page-break`
-  - `page-margin`
-  - `page-size`
-  - `page-orientation`
-  - `page-preview`
-  - `markdown`
-  - `export-text`
-  - `clear-format`
-  - `format-painter`
-  - `import-word`
-  - `font-family`
-  - `font-size`
-  - `subscript`
-  - `superscript`
-  - `color`
-  - `background-color`
-  - `highlight`
-  - `align-justify`
-  - `align-distributed`
-  - `search-replace`
-  - `viewer`
-  - `hard-break`
-  - `symbol`
-  - `emoji`
-  - `chinese-date`
-  - `export-image`
-  - `export-pdf`
-  - `export-html`
-  - `export-word`
-  - `share`
-  - `embed`
-  - `page-line-number`
-  - `page-watermark`
-  - `page-background`
-  - `page-header`
-  - `page-footer`
-- 本文“总览统计”尚未按上述增量重算，后续可改为脚本自动生成，避免手工统计漂移。
-- 下方“已实现/未实现明细”尚未回写上述增量项，请以本节为准。
+## tools (9/9)
 
-## 已实现功能（27）
+- [x] `qrcode` (QR Code), action: `qrcode`
+- [x] `barcode` (Barcode), action: `barcode`
+- [x] `signature` (Signature), action: `signature`
+- [x] `seal` (Seal), action: `seal`
+- [x] `diagrams` (Diagrams), action: `diagrams`
+- [x] `echarts` (ECharts), action: `echarts`
+- [x] `mermaid` (Mermaid), action: `mermaid`
+- [x] `mind-map` (Mind Map), action: `mind-map`
+- [x] `chinese-case` (Chinese Case), action: `chinese-case`
 
-### 开始（base）
+## page (12/12)
 
-- [x] `undo` 撤销
-- [x] `redo` 重做
-- [x] `heading` 标题/段落切换（含 H1-H6）
-- [x] `bold` 加粗
-- [x] `italic` 斜体
-- [x] `underline` 下划线
-- [x] `strike` 删除线
-- [x] `ordered-list` 有序列表
-- [x] `bullet-list` 无序列表
-- [x] `indent` 增加缩进
-- [x] `outdent` 减少缩进
-- [x] `align-left` 左对齐
-- [x] `align-center` 居中
-- [x] `align-right` 右对齐
-- [x] `quote` 引用
-- [x] `inline-code` 行内代码
+- [x] `toggle-toc` (TOC), action: `toggle-toc`
+- [x] `page-margin` (Page Margin), action: `page-margin`
+- [x] `page-size` (Page Size), action: `page-size`
+- [x] `page-orientation` (Page Orientation), action: `page-orientation`
+- [x] `page-break` (Page Break), action: `page-break`
+- [x] `page-break-marks` (Break Marks), action: `page-break-marks`
+- [x] `page-line-number` (Line Number), action: `page-line-number`
+- [x] `page-watermark` (Watermark), action: `page-watermark`
+- [x] `page-background` (Page Background), action: `page-background`
+- [x] `page-preview` (Preview), action: `page-preview`
+- [x] `page-header` (Header), action: `page-header`
+- [x] `page-footer` (Footer), action: `page-footer`
 
-### 插入（insert）
+## export (7/7)
 
-- [x] `link` 插入/切换链接
-- [x] `image` 插入图片
-- [x] `video` 插入视频
-- [x] `code-block` 代码块
-- [x] `hr` 分割线
-
-### 表格（table）
-
-- [x] `add-row-after` 下方加行
-- [x] `add-column-after` 右侧加列
-- [x] `delete-row` 删除行
-- [x] `delete-column` 删除列
-- [x] `merge-cells` 合并单元格（向右）
-- [x] `split-cell` 拆分单元格
-
-## 未实现（占位）清单（77）
-
-### 开始（base）
-
-- [ ] `format-painter` 格式刷
-- [ ] `clear-format` 清除格式
-- [ ] `font-family` 字体
-- [ ] `font-size` 字号
-- [ ] `subscript` 下标
-- [ ] `superscript` 上标
-- [ ] `color` 文字颜色
-- [ ] `background-color` 背景色
-- [ ] `highlight` 高亮
-- [ ] `task-list` 任务列表
-- [ ] `line-height` 行高
-- [ ] `margin` 段间距
-- [ ] `align-justify` 两端对齐
-- [ ] `align-distributed` 分散对齐
-- [ ] `select-all` 全选
-- [ ] `import-word` 导入 Word
-- [ ] `markdown` Markdown
-- [ ] `search-replace` 查找替换
-- [ ] `viewer` 阅读模式
-- [ ] `print` 打印
-
-### 插入（insert）
-
-- [ ] `audio` 音频
-- [ ] `file` 文件
-- [ ] `symbol` 符号
-- [ ] `chinese-date` 中文日期
-- [ ] `emoji` 表情
-- [ ] `math` 公式
-- [ ] `columns` 分栏
-- [ ] `tag` 标签
-- [ ] `callout` 提示块
-- [ ] `mention` 提及
-- [ ] `bookmark` 书签
-- [ ] `option-box` 选项框
-- [ ] `hard-break` 硬换行
-- [ ] `toc` 目录
-- [ ] `text-box` 文本框
-- [ ] `template` 模板
-- [ ] `web-page` 网页嵌入
-
-### 表格（table）
-
-- [ ] `table-insert` 插入表格
-- [ ] `table-fix` 修复表格
-- [ ] `cells-align` 单元格对齐
-- [ ] `cells-background` 单元格背景
-- [ ] `add-row-before` 上方加行
-- [ ] `add-column-before` 左侧加列
-- [ ] `toggle-header-row` 切换标题行
-- [ ] `toggle-header-column` 切换标题列
-- [ ] `toggle-header-cell` 切换标题单元格
-- [ ] `next-cell` 下一个单元格
-- [ ] `previous-cell` 上一个单元格
-- [ ] `delete-table` 删除表格
-
-### 工具（tools）
-
-- [ ] `qrcode` 二维码
-- [ ] `barcode` 条形码
-- [ ] `signature` 签名
-- [ ] `seal` 印章
-- [ ] `diagrams` 流程图
-- [ ] `echarts` 图表
-- [ ] `mermaid` Mermaid
-- [ ] `mind-map` 思维导图
-- [ ] `chinese-case` 中文大小写
-
-### 页面（page）
-
-- [ ] `toggle-toc` 目录
-- [ ] `page-margin` 页边距
-- [ ] `page-size` 纸张大小
-- [ ] `page-orientation` 纸张方向
-- [ ] `page-break` 分页符
-- [ ] `page-break-marks` 分页标记
-- [ ] `page-line-number` 行号
-- [ ] `page-watermark` 水印
-- [ ] `page-background` 页面背景
-- [ ] `page-preview` 预览
-- [ ] `page-header` 页眉
-- [ ] `page-footer` 页脚
-
-### 导出（export）
-
-- [ ] `export-image` 导出图片
-- [ ] `export-pdf` 导出 PDF
-- [ ] `export-text` 导出文本
-- [ ] `export-html` 导出 HTML
-- [ ] `export-word` 导出 Word
-- [ ] `share` 分享
-- [ ] `embed` 嵌入
+- [x] `export-image` (Export Image), action: `export-image`
+- [x] `export-pdf` (Export PDF), action: `export-pdf`
+- [x] `export-text` (Export Text), action: `export-text`
+- [x] `export-html` (Export HTML), action: `export-html`
+- [x] `export-word` (Export Word), action: `export-word`
+- [x] `share` (Share), action: `share`
+- [x] `embed` (Embed), action: `embed`

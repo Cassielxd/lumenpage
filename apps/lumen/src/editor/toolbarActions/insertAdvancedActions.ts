@@ -1,5 +1,7 @@
 import type { PlaygroundLocale } from "../i18n";
 import { openMentionPicker } from "lumenpage-editor-plugins";
+import { sanitizeLinkHref } from "lumenpage-link";
+import { TextSelection } from "lumenpage-state";
 
 type GetView = () => any;
 
@@ -55,7 +57,7 @@ const resolveTexts = (_locale: PlaygroundLocale): InsertAdvancedTexts => ({
   promptCalloutText: "Callout text",
   promptBookmarkUrl: "Bookmark URL",
   promptBookmarkTitle: "Bookmark title",
-  promptOptionText: "Option text",
+  promptOptionText: "Option items (comma/new line separated)",
   promptTextBoxText: "Text box content",
   promptWebPageUrl: "Web page URL",
   promptWebPageTitle: "Web page title",
@@ -77,7 +79,7 @@ const resolveTexts = (_locale: PlaygroundLocale): InsertAdvancedTexts => ({
   defaultFileName: "Attachment",
   defaultMathExpr: "E = mc^2",
   defaultTag: "tag",
-  defaultOptionText: "Option",
+  defaultOptionText: "Option A,Option B",
   defaultColumnsCount: "2",
   defaultTemplateTitle: "Project Plan",
   defaultTemplateSummary: "Scope, milestones, and owners.",
@@ -159,6 +161,81 @@ const createTableNode = (
   return tableType.createAndFill?.(null, tableRows) ?? tableType.create?.(null, tableRows) ?? null;
 };
 
+const createTaskListNode = (schema: any, items: string[]) => {
+  const taskListType = schema?.nodes?.task_list;
+  const listItemType = schema?.nodes?.list_item;
+  if (!taskListType || !listItemType) {
+    return null;
+  }
+  const safeItems = (items || []).map((item) => String(item || "").trim()).filter(Boolean);
+  if (safeItems.length === 0) {
+    return null;
+  }
+  const listItems = [];
+  for (const item of safeItems) {
+    const paragraph = createParagraphNode(schema, item);
+    if (!paragraph) {
+      return null;
+    }
+    const listItem =
+      listItemType.createAndFill?.({ checked: false }, [paragraph]) ??
+      listItemType.create?.({ checked: false }, [paragraph]) ??
+      null;
+    if (!listItem) {
+      return null;
+    }
+    listItems.push(listItem);
+  }
+  return (
+    taskListType.createAndFill?.(null, listItems) ??
+    taskListType.create?.(null, listItems) ??
+    null
+  );
+};
+
+const createHeadingNode = (schema: any, text: string, level = 2) => {
+  const headingType = schema?.nodes?.heading;
+  if (!headingType) {
+    return null;
+  }
+  const content = text ? [schema.text(text)] : undefined;
+  return (
+    headingType.createAndFill?.({ level }, content) ??
+    headingType.create?.({ level }, content) ??
+    null
+  );
+};
+
+const createBulletListNode = (schema: any, items: string[]) => {
+  const bulletListType = schema?.nodes?.bullet_list;
+  const listItemType = schema?.nodes?.list_item;
+  if (!bulletListType || !listItemType) {
+    return null;
+  }
+  const safeItems = (items || []).map((item) => String(item || "").trim()).filter(Boolean);
+  if (safeItems.length === 0) {
+    return null;
+  }
+  const listItems = [];
+  for (const item of safeItems) {
+    const paragraph = createParagraphNode(schema, item);
+    if (!paragraph) {
+      return null;
+    }
+    const listItem =
+      listItemType.createAndFill?.(null, [paragraph]) ?? listItemType.create?.(null, [paragraph]) ?? null;
+    if (!listItem) {
+      return null;
+    }
+    listItems.push(listItem);
+  }
+  return (
+    bulletListType.createAndFill?.(null, listItems) ??
+    bulletListType.create?.(null, listItems) ??
+    null
+  );
+};
+
 const readPrompt = (message: string, defaultValue = "") => {
   const raw = window.prompt(message, defaultValue);
   if (raw === null) {
@@ -167,8 +244,60 @@ const readPrompt = (message: string, defaultValue = "") => {
   return String(raw).trim();
 };
 
-const insertReference = (getView: GetView, prefix: string, title: string, href: string) =>
-  insertText(getView, `[${prefix}: ${title}](${href})`);
+const insertReference = (getView: GetView, prefix: string, title: string, href: string) => {
+  const payload = getViewState(getView);
+  if (!payload) {
+    return false;
+  }
+  const safeHref = sanitizeLinkHref(href);
+  if (!safeHref) {
+    return false;
+  }
+  const label = `${prefix}: ${title}`;
+  const schema = payload.state.schema;
+  const linkType = schema?.marks?.link;
+  if (!linkType) {
+    return insertText(getView, `[${label}](${safeHref})`);
+  }
+  const linkMark = linkType.create({ href: safeHref, title });
+  const textNode = schema.text(label, [linkMark]);
+  if (!textNode) {
+    return false;
+  }
+  const tr = payload.state.tr.replaceSelectionWith(textNode, false);
+  payload.view.dispatch(tr.scrollIntoView());
+  return true;
+};
+
+const insertNodesAtSelection = (getView: GetView, nodes: any[]) => {
+  const payload = getViewState(getView);
+  const safeNodes = (nodes || []).filter(Boolean);
+  if (!payload || safeNodes.length === 0) {
+    return false;
+  }
+  const { view, state } = payload;
+  const from = state.selection.from;
+  const to = state.selection.to;
+  let tr = state.tr.delete(from, to);
+  let insertPos = from;
+  for (const node of safeNodes) {
+    tr = tr.insert(insertPos, node);
+    insertPos += node.nodeSize;
+  }
+  try {
+    tr = tr.setSelection(TextSelection.create(tr.doc, insertPos));
+  } catch (_error) {
+    // Keep current selection when cursor relocation fails at edge positions.
+  }
+  view.dispatch(tr.scrollIntoView());
+  return true;
+};
+
+const parseListItemsInput = (raw: string) =>
+  String(raw || "")
+    .split(/[\n,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 export const createInsertAdvancedActions = ({
   getView,
@@ -295,12 +424,24 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertOptionBox = () => {
+    const payload = getViewState(getView);
+    if (!payload) {
+      return false;
+    }
     const texts = resolveTexts(getLocaleKey());
     const raw = readPrompt(texts.promptOptionText, texts.defaultOptionText);
     if (!raw) {
       return false;
     }
-    return insertText(getView, `[ ] ${raw}`);
+    const items = parseListItemsInput(raw);
+    const taskListNode = createTaskListNode(payload.state.schema, items);
+    if (!taskListNode) {
+      return insertText(
+        getView,
+        items.length > 0 ? items.map((item) => `[ ] ${item}`).join("\n") : `[ ] ${raw}`
+      );
+    }
+    return replaceSelectionWithNode(getView, taskListNode);
   };
 
   const insertTextBox = () => {
@@ -348,6 +489,10 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertTemplate = () => {
+    const payload = getViewState(getView);
+    if (!payload) {
+      return false;
+    }
     const texts = resolveTexts(getLocaleKey());
     const titleInput = readPrompt(texts.promptTemplateTitle, texts.defaultTemplateTitle);
     if (titleInput === null) {
@@ -363,20 +508,23 @@ export const createInsertAdvancedActions = ({
     }
     const title = titleInput || texts.defaultTemplateTitle;
     const summary = summaryInput || texts.defaultTemplateSummary;
-    const items = itemsInput
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .map((item) => `- ${item}`);
-    const bulletText = items.length > 0 ? items.join("\n") : "- Item 1\n- Item 2";
-    const templateText = [
+    const items = parseListItemsInput(itemsInput);
+    const headingNode = createHeadingNode(payload.state.schema, title, 2);
+    const summaryNode = createParagraphNode(payload.state.schema, summary);
+    const bulletNode = createBulletListNode(payload.state.schema, items);
+    const structuredNodes = [headingNode, summaryNode, bulletNode].filter(Boolean);
+    if (structuredNodes.length > 0 && insertNodesAtSelection(getView, structuredNodes)) {
+      return true;
+    }
+    const bulletText = (items.length > 0 ? items : ["Item 1", "Item 2"]).map((item) => `- ${item}`);
+    const fallbackText = [
       `[${texts.insertTemplatePrefix}] ${title}`,
       summary,
       "",
-      bulletText,
+      bulletText.join("\n"),
       "",
     ].join("\n");
-    return insertText(getView, templateText);
+    return insertText(getView, fallbackText);
   };
 
   return {
