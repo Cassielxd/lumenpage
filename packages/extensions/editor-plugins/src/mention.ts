@@ -1,5 +1,11 @@
 import { Plugin, PluginKey, TextSelection } from "lumenpage-state";
-import { createTippyPopupController, type PopupController } from "./popup/tippyPopup";
+import {
+  createTippyPopupController,
+  type PopupController,
+  type PopupControllerOptions,
+  type PopupRect,
+} from "./popup/tippyPopup";
+import { toPopupRect, toViewportPopupRect } from "./popup/coords";
 
 export type MentionItem = {
   id: string;
@@ -17,6 +23,8 @@ export type MentionPluginOptions = {
   maxItems?: number;
   appendSpace?: boolean;
   emptyLabel?: string;
+  popupOptions?: PopupControllerOptions;
+  render?: () => MentionRenderLifecycle;
   onSelect?: (args: {
     view: any;
     item: MentionItem;
@@ -34,6 +42,25 @@ type MentionPluginState = {
   selectedIndex: number;
 };
 
+export type MentionRenderProps = {
+  view: any;
+  state: MentionPluginState;
+  trigger: string;
+  rect: PopupRect;
+  ownerDocument: Document;
+  popup: PopupController;
+  select: (index?: number) => boolean;
+  close: () => boolean;
+};
+
+export type MentionRenderLifecycle = {
+  onStart?: (props: MentionRenderProps) => void;
+  onUpdate?: (props: MentionRenderProps) => void;
+  onExit?: (props: MentionRenderProps) => void;
+  onKeyDown?: (props: MentionRenderProps & { event: KeyboardEvent }) => boolean;
+  isEventInside?: (event: Event) => boolean;
+};
+
 type MentionMetaAction =
   | { type: "open"; from: number; to: number; query: string }
   | { type: "sync"; from: number; to: number; query: string }
@@ -42,6 +69,12 @@ type MentionMetaAction =
 
 const DEFAULT_TRIGGER = "@";
 const DEFAULT_MAX_ITEMS = 8;
+const DEFAULT_POPUP_OPTIONS: PopupControllerOptions = {
+  placement: "bottom-start",
+  offset: [0, 4],
+  maxWidth: 320,
+  interactive: true,
+};
 
 const EMPTY_STATE: MentionPluginState = {
   active: false,
@@ -203,6 +236,96 @@ const applyMentionSelection = (view: any, options: MentionPluginOptions, explici
   return true;
 };
 
+const createDefaultMentionRenderer = ({
+  ownerDocument,
+  trigger,
+  emptyLabel,
+  popup,
+  select,
+}: {
+  ownerDocument: Document;
+  trigger: string;
+  emptyLabel?: string;
+  popup: PopupController;
+  select: (index?: number) => boolean;
+}): MentionRenderLifecycle => {
+  const menuEl = ownerDocument.createElement("div");
+  menuEl.className = "lumen-mention-menu";
+  menuEl.style.minWidth = "220px";
+  menuEl.style.maxWidth = "320px";
+  menuEl.style.maxHeight = "240px";
+  menuEl.style.overflowY = "auto";
+  menuEl.style.padding = "6px";
+  menuEl.style.borderRadius = "8px";
+  menuEl.style.background = "#ffffff";
+  menuEl.style.border = "1px solid rgba(148, 163, 184, 0.38)";
+  menuEl.style.boxShadow = "0 10px 32px rgba(15, 23, 42, 0.16)";
+  menuEl.style.fontSize = "13px";
+  menuEl.style.lineHeight = "1.4";
+  menuEl.style.color = "#0f172a";
+
+  const renderMenu = (mentionState: MentionPluginState) => {
+    menuEl.innerHTML = "";
+    if (mentionState.items.length === 0) {
+      const emptyText = String(emptyLabel || "").trim();
+      if (emptyText) {
+        const emptyEl = ownerDocument.createElement("div");
+        emptyEl.textContent = emptyText;
+        emptyEl.style.padding = "8px 10px";
+        emptyEl.style.color = "#64748b";
+        menuEl.appendChild(emptyEl);
+      }
+      return;
+    }
+
+    mentionState.items.forEach((item, index) => {
+      const row = ownerDocument.createElement("button");
+      row.type = "button";
+      row.textContent = `${trigger}${item.label}`;
+      row.style.display = "block";
+      row.style.width = "100%";
+      row.style.border = "none";
+      row.style.textAlign = "left";
+      row.style.padding = "8px 10px";
+      row.style.borderRadius = "6px";
+      row.style.background = index === mentionState.selectedIndex ? "#e0f2fe" : "transparent";
+      row.style.color = "#0f172a";
+      row.style.cursor = "pointer";
+      row.style.font = "inherit";
+      row.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+      });
+      row.addEventListener("click", (event) => {
+        event.preventDefault();
+        select(index);
+      });
+      menuEl.appendChild(row);
+    });
+  };
+
+  const render = (props: MentionRenderProps) => {
+    renderMenu(props.state);
+    popup.show(props.rect, menuEl);
+  };
+
+  return {
+    onStart: render,
+    onUpdate: render,
+    onExit: () => {
+      popup.hide();
+    },
+    isEventInside: (event: Event) => {
+      const target = event.target as Node | null;
+      return !!(target && menuEl.contains(target));
+    },
+  };
+};
+
+const resolvePopupRect = (view: any, mentionState: MentionPluginState) => {
+  const localRect = toPopupRect(view?.coordsAtPos?.(mentionState.to) || view?.coordsAtPos?.(mentionState.from));
+  return toViewportPopupRect(view, localRect);
+};
+
 export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
   if (!view?.state?.tr || typeof view?.dispatch !== "function") {
     return false;
@@ -225,6 +348,9 @@ export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
 
 export const createMentionPlugin = (options: MentionPluginOptions) => {
   const trigger = options.trigger || DEFAULT_TRIGGER;
+  let activeRenderer: MentionRenderLifecycle | null = null;
+  let activeRenderProps: MentionRenderProps | null = null;
+
   return new Plugin<MentionPluginState>({
     key: mentionPluginKey,
     state: {
@@ -299,6 +425,16 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
           return false;
         }
 
+        if (activeRenderer && activeRenderProps) {
+          const handled = activeRenderer.onKeyDown?.({
+            ...activeRenderProps,
+            event,
+          });
+          if (handled) {
+            return true;
+          }
+        }
+
         if (event.key === "ArrowDown") {
           event.preventDefault();
           const nextIndex = mentionState.selectedIndex + 1;
@@ -339,84 +475,75 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
     view: (view) => {
       let currentView = view;
       const ownerDocument = currentView?.dom?.ownerDocument || document;
-      const menuEl = ownerDocument.createElement("div");
-      menuEl.className = "lumen-mention-menu";
-      menuEl.style.minWidth = "220px";
-      menuEl.style.maxWidth = "320px";
-      menuEl.style.maxHeight = "240px";
-      menuEl.style.overflowY = "auto";
-      menuEl.style.padding = "6px";
-      menuEl.style.borderRadius = "8px";
-      menuEl.style.background = "#ffffff";
-      menuEl.style.border = "1px solid rgba(148, 163, 184, 0.38)";
-      menuEl.style.boxShadow = "0 10px 32px rgba(15, 23, 42, 0.16)";
-      menuEl.style.fontSize = "13px";
-      menuEl.style.lineHeight = "1.4";
-      menuEl.style.color = "#0f172a";
+      const popup = createTippyPopupController(ownerDocument, {
+        ...DEFAULT_POPUP_OPTIONS,
+        ...(options.popupOptions || {}),
+      });
 
-      const popup: PopupController = createTippyPopupController(ownerDocument);
+      const select = (index?: number) => applyMentionSelection(currentView, options, index);
+      const close = () => closeMentionPopup(currentView);
 
-      const renderMenu = (mentionState: MentionPluginState) => {
-        menuEl.innerHTML = "";
-        if (mentionState.items.length === 0) {
-          const emptyText = String(options.emptyLabel || "").trim();
-          if (emptyText) {
-            const emptyEl = ownerDocument.createElement("div");
-            emptyEl.textContent = emptyText;
-            emptyEl.style.padding = "8px 10px";
-            emptyEl.style.color = "#64748b";
-            menuEl.appendChild(emptyEl);
-          }
+      const renderer =
+        options.render?.() ||
+        createDefaultMentionRenderer({
+          ownerDocument,
+          trigger,
+          emptyLabel: options.emptyLabel,
+          popup,
+          select,
+        });
+
+      activeRenderer = renderer;
+      activeRenderProps = null;
+      let started = false;
+
+      const exitRenderer = () => {
+        if (!started) {
+          popup.hide();
+          activeRenderProps = null;
           return;
         }
-
-        mentionState.items.forEach((item, index) => {
-          const row = ownerDocument.createElement("button");
-          row.type = "button";
-          row.textContent = `${trigger}${item.label}`;
-          row.style.display = "block";
-          row.style.width = "100%";
-          row.style.border = "none";
-          row.style.textAlign = "left";
-          row.style.padding = "8px 10px";
-          row.style.borderRadius = "6px";
-          row.style.background = index === mentionState.selectedIndex ? "#e0f2fe" : "transparent";
-          row.style.color = "#0f172a";
-          row.style.cursor = "pointer";
-          row.style.font = "inherit";
-          row.addEventListener("mousedown", (event) => {
-            event.preventDefault();
-          });
-          row.addEventListener("click", (event) => {
-            event.preventDefault();
-            applyMentionSelection(currentView, options, index);
-          });
-          menuEl.appendChild(row);
-        });
+        if (activeRenderProps) {
+          renderer.onExit?.(activeRenderProps);
+        } else {
+          popup.hide();
+        }
+        started = false;
+        activeRenderProps = null;
       };
 
       const syncPopup = () => {
         const mentionState = mentionPluginKey.getState(currentView.state as any) || EMPTY_STATE;
         if (!mentionState.active) {
-          popup.hide();
+          exitRenderer();
           return;
         }
-        renderMenu(mentionState);
-        const rect =
-          currentView.coordsAtPos?.(mentionState.to) || currentView.coordsAtPos?.(mentionState.from);
+        const rect = resolvePopupRect(currentView, mentionState);
         if (!rect) {
-          popup.hide();
+          exitRenderer();
           return;
         }
-        popup.show(
-          {
-            left: Number(rect.left) || 0,
-            top: Number(rect.top) || 0,
-            right: Number(rect.right) || 0,
-            bottom: Number(rect.bottom) || 0,
-          },
-          menuEl
-        );
+        const nextRenderProps: MentionRenderProps = {
+          view: currentView,
+          state: mentionState,
+          trigger,
+          rect,
+          ownerDocument,
+          popup,
+          select,
+          close,
+        };
+        if (!started) {
+          if (typeof renderer.onStart === "function") {
+            renderer.onStart(nextRenderProps);
+          } else if (typeof renderer.onUpdate === "function") {
+            renderer.onUpdate(nextRenderProps);
+          }
+          started = true;
+        } else {
+          renderer.onUpdate?.(nextRenderProps);
+        }
+        activeRenderProps = nextRenderProps;
       };
 
       const onDocumentPointerDown = (event: Event) => {
@@ -424,15 +551,22 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
         if (!mentionState.active) {
           return;
         }
-        const target = event.target as Node | null;
-        if (target && menuEl.contains(target)) {
+        if (renderer.isEventInside?.(event)) {
           return;
         }
-        closeMentionPopup(currentView);
+        const target = event.target as Node | null;
+        if (!target) {
+          close();
+          return;
+        }
+        const path = (event as any).composedPath?.() as EventTarget[] | undefined;
+        if (Array.isArray(path) && path.includes(currentView.dom)) {
+          return;
+        }
+        close();
       };
 
       ownerDocument.addEventListener("pointerdown", onDocumentPointerDown, true);
-
       syncPopup();
 
       return {
@@ -442,7 +576,12 @@ export const createMentionPlugin = (options: MentionPluginOptions) => {
         },
         destroy() {
           ownerDocument.removeEventListener("pointerdown", onDocumentPointerDown, true);
+          exitRenderer();
           popup.destroy();
+          if (activeRenderer === renderer) {
+            activeRenderer = null;
+            activeRenderProps = null;
+          }
         },
       };
     },

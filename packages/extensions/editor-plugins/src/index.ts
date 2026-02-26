@@ -6,10 +6,20 @@ export {
   openMentionPicker,
   mentionPluginKey,
   type MentionItem,
+  type MentionRenderProps,
+  type MentionRenderLifecycle,
   type MentionPluginOptions,
 } from "./mention";
 export {
   createTippyPopupController,
+  type PopupControllerOptions,
   type PopupController,
   type PopupRect,
 } from "./popup/tippyPopup";
+export {
+  createSelectionBubblePlugin,
+  type SelectionBubbleAction,
+  type SelectionBubbleRenderProps,
+  type SelectionBubbleRenderLifecycle,
+  type SelectionBubblePluginOptions,
+} from "./selectionBubble";

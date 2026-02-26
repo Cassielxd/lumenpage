@@ -27,6 +27,7 @@ import {
   createActiveBlockSelectionPlugin,
   createDragHandlePlugin,
   createMentionPlugin,
+  createSelectionBubblePlugin,
   gapCursor,
 } from "lumenpage-editor-plugins";
 import { history } from "lumenpage-history";
@@ -89,6 +90,7 @@ export const mountPlaygroundEditor = ({
     createBlockIdPlugin(),
     createActiveBlockSelectionPlugin(),
     createMentionPlugin(createLumenMentionPluginOptions()),
+    createSelectionBubblePlugin(),
     keymap(createCanvasEditorKeymap()),
     keymap(baseKeymap),
   ];
@@ -141,7 +143,11 @@ export const mountPlaygroundEditor = ({
     return false;
   };
 
-  const toggleTaskCheckboxAtPos = (view: CanvasEditorView, pos: number, event: MouseEvent) => {
+  const toggleTaskCheckboxAtPos = (
+    view: CanvasEditorView,
+    pos: number,
+    event: MouseEvent | KeyboardEvent
+  ) => {
     if (flags.permissionMode !== "full") {
       return false;
     }
@@ -197,6 +203,19 @@ export const mountPlaygroundEditor = ({
       return null;
     },
     handleKeyDown: (_view: CanvasEditorView, event: KeyboardEvent) => {
+      const isSpaceToggleKey =
+        (event?.key === " " || event?.key === "Spacebar") &&
+        !event?.metaKey &&
+        !event?.ctrlKey &&
+        !event?.altKey &&
+        !event?.shiftKey;
+      if (isSpaceToggleKey && _view?.state?.selection?.empty) {
+        const pos = Number(_view.state.selection.from);
+        if (toggleTaskCheckboxAtPos(_view, pos, event)) {
+          return true;
+        }
+      }
+
       const isMod = !!event?.metaKey || !!event?.ctrlKey;
       const isEnter = event?.key === "Enter";
       if (!isMod || !isEnter) {
