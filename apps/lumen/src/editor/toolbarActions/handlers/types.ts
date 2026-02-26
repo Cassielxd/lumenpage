@@ -22,6 +22,7 @@ export type LayoutActions = {
   togglePageOrientation: () => boolean;
   togglePageBreakMarks: () => boolean;
   togglePageLineNumbers: () => boolean;
+  toggleTocPlaceholder: () => boolean;
   applyPageBackgroundSetting: () => boolean;
   applyPageWatermarkSetting: () => boolean;
   applyPageHeaderSetting: () => boolean;
@@ -34,6 +35,7 @@ export type TableActions = {
   toggleHeaderRow: () => boolean;
   toggleHeaderColumn: () => boolean;
   toggleHeaderCell: () => boolean;
+  applyCellAlignmentSetting: () => boolean;
 };
 
 export type ExportActions = {
@@ -84,6 +86,33 @@ export type QuickInsertActions = {
   insertChineseDate: () => boolean;
 };
 
+export type InsertAdvancedActions = {
+  insertAudio: () => boolean;
+  insertFile: () => boolean;
+  insertMath: () => boolean;
+  insertColumns: () => boolean;
+  insertTag: () => boolean;
+  insertCallout: () => boolean;
+  insertMention: () => boolean;
+  insertBookmark: () => boolean;
+  insertOptionBox: () => boolean;
+  insertTemplate: () => boolean;
+  insertTextBox: () => boolean;
+  insertWebPage: () => boolean;
+};
+
+export type ToolsActions = {
+  insertQrCode: () => boolean;
+  insertBarcode: () => boolean;
+  insertSignature: () => boolean;
+  insertSeal: () => boolean;
+  insertDiagrams: () => boolean;
+  insertEcharts: () => boolean;
+  insertMermaid: () => boolean;
+  insertMindMap: () => boolean;
+  convertChineseCase: () => boolean;
+};
+
 export type ToolbarActionHandler = () => void | Promise<void>;
 
 export type ToolbarActionContext = {
@@ -103,6 +132,8 @@ export type ToolbarActionContext = {
   searchReplaceActions: SearchReplaceActions;
   importActions: ImportActions;
   quickInsertActions: QuickInsertActions;
+  insertAdvancedActions: InsertAdvancedActions;
+  toolsActions: ToolsActions;
 };
 
 export type ToolbarHandlerRecord = Record<string, ToolbarActionHandler>;

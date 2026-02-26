@@ -27,7 +27,8 @@
     "lumenpage-state": "workspace:*",
     "lumenpage-transform": "workspace:*",
     "lumenpage-view-canvas": "workspace:*",
-    "lumenpage-view-types": "workspace:*"
+    "lumenpage-view-types": "workspace:*",
+    "tippy.js": "^6.3.7"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

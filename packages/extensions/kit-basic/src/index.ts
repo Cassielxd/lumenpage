@@ -15,7 +15,7 @@ import {
   horizontalRuleRenderer,
 } from "lumenpage-node-basic";
 import { tableRenderer } from "lumenpage-node-table";
-import { bulletListRenderer, orderedListRenderer } from "lumenpage-node-list";
+import { bulletListRenderer, orderedListRenderer, taskListRenderer } from "lumenpage-node-list";
 import { imageRenderer, videoRenderer } from "lumenpage-node-media";
 
 export const registerNodeRenderers = (registry: NodeRendererRegistry) => {
@@ -27,6 +27,7 @@ export const registerNodeRenderers = (registry: NodeRendererRegistry) => {
   registry.register("table", tableRenderer);
   registry.register("bullet_list", bulletListRenderer);
   registry.register("ordered_list", orderedListRenderer);
+  registry.register("task_list", taskListRenderer);
   registry.register("image", imageRenderer);
   registry.register("video", videoRenderer);
   return registry;
@@ -44,6 +45,7 @@ export {
   tableRenderer,
   bulletListRenderer,
   orderedListRenderer,
+  taskListRenderer,
   imageRenderer,
   videoRenderer,
 };

@@ -1,6 +1,19 @@
 import type { PlaygroundLocale } from "../i18n";
 
 type GetView = () => any;
+type TableCellAlign = "left" | "center" | "right" | "justify";
+
+type TableTexts = {
+  promptCellAlign: string;
+  alertCellRequired: string;
+  alertInvalidCellAlign: string;
+};
+
+const resolveTexts = (_locale: PlaygroundLocale): TableTexts => ({
+  promptCellAlign: "Cell alignment: left / center / right / justify",
+  alertCellRequired: "Place the caret inside a table cell first",
+  alertInvalidCellAlign: "Invalid cell alignment value",
+});
 
 const parseTableSize = (raw: string | null) => {
   if (!raw || !raw.trim()) {
@@ -245,6 +258,35 @@ const collectSelectionAnchors = (
   return Array.from(entries.values());
 };
 
+const resolveCellTargets = (context: {
+  currentAnchor: TableGridAnchor | null;
+  selectedAnchors: TableGridAnchor[];
+}) =>
+  context.selectedAnchors.length > 0
+    ? context.selectedAnchors
+    : context.currentAnchor
+      ? [context.currentAnchor]
+      : [];
+
+const normalizeCellAlign = (value: unknown): TableCellAlign | null => {
+  const text = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (text === "left" || text === "l" || text === "1") {
+    return "left";
+  }
+  if (text === "center" || text === "middle" || text === "c" || text === "2") {
+    return "center";
+  }
+  if (text === "right" || text === "r" || text === "3") {
+    return "right";
+  }
+  if (text === "justify" || text === "distributed" || text === "j" || text === "4") {
+    return "justify";
+  }
+  return null;
+};
+
 export const createTableActions = ({
   getView,
   getLocaleKey,
@@ -395,12 +437,7 @@ export const createTableActions = ({
     if (!context) {
       return null;
     }
-    const targets =
-      context.selectedAnchors.length > 0
-        ? context.selectedAnchors
-        : context.currentAnchor
-          ? [context.currentAnchor]
-          : [];
+    const targets = resolveCellTargets(context);
     if (targets.length === 0) {
       return null;
     }
@@ -427,12 +464,7 @@ export const createTableActions = ({
     if (!context) {
       return false;
     }
-    const targets =
-      context.selectedAnchors.length > 0
-        ? context.selectedAnchors
-        : context.currentAnchor
-          ? [context.currentAnchor]
-          : [];
+    const targets = resolveCellTargets(context);
     if (targets.length === 0) {
       return false;
     }
@@ -463,12 +495,103 @@ export const createTableActions = ({
     return true;
   };
 
+  const forEachAlignableBlockInCell = (
+    context: NonNullable<ReturnType<typeof resolveTableContext>>,
+    cellPos: number,
+    callback: (node: any, pos: number) => void
+  ) => {
+    const cellNode = context.state.doc.nodeAt(cellPos);
+    if (!cellNode || cellNode.type?.name !== "table_cell") {
+      return;
+    }
+    cellNode.descendants((node: any, relativePos: number) => {
+      if (node.type?.name === "paragraph" || node.type?.name === "heading") {
+        callback(node, cellPos + 1 + relativePos);
+      }
+      return true;
+    });
+  };
+
+  const getCurrentCellsAlign = (context: NonNullable<ReturnType<typeof resolveTableContext>>) => {
+    const targets = resolveCellTargets(context);
+    if (targets.length === 0) {
+      return null;
+    }
+    let uniform: TableCellAlign | null | undefined = undefined;
+    for (const target of targets) {
+      forEachAlignableBlockInCell(context, target.pos, (node) => {
+        const align = normalizeCellAlign(node?.attrs?.align) || "left";
+        if (uniform === undefined) {
+          uniform = align;
+          return;
+        }
+        if (uniform !== align) {
+          uniform = null;
+        }
+      });
+      if (uniform === null) {
+        return null;
+      }
+    }
+    return uniform ?? null;
+  };
+
+  const setCurrentCellsAlign = (align: TableCellAlign) => {
+    const context = resolveTableContext();
+    if (!context) {
+      return false;
+    }
+    const targets = resolveCellTargets(context);
+    if (targets.length === 0) {
+      return false;
+    }
+    let tr = context.state.tr;
+    let changed = false;
+    for (const target of targets) {
+      forEachAlignableBlockInCell(context, target.pos, (node, pos) => {
+        const currentAlign = normalizeCellAlign(node?.attrs?.align) || "left";
+        if (currentAlign === align) {
+          return;
+        }
+        const attrs = { ...(node.attrs || {}), align };
+        tr = tr.setNodeMarkup(pos, undefined, attrs, node.marks);
+        changed = true;
+      });
+    }
+    if (!changed) {
+      return true;
+    }
+    context.view.dispatch(tr.scrollIntoView());
+    return true;
+  };
+
+  const applyCellAlignmentSetting = () => {
+    const context = resolveTableContext();
+    const texts = resolveTexts(getLocaleKey());
+    if (!context || resolveCellTargets(context).length === 0) {
+      window.alert(texts.alertCellRequired);
+      return false;
+    }
+    const current = getCurrentCellsAlign(context) || "left";
+    const raw = window.prompt(texts.promptCellAlign, current);
+    if (raw === null) {
+      return false;
+    }
+    const align = normalizeCellAlign(raw);
+    if (!align) {
+      window.alert(texts.alertInvalidCellAlign);
+      return false;
+    }
+    return setCurrentCellsAlign(align);
+  };
+
   return {
     insertTable,
     deleteCurrentTable,
     toggleHeaderRow,
     toggleHeaderColumn,
     toggleHeaderCell,
+    applyCellAlignmentSetting,
     getCurrentCellBackgroundColor,
     setCurrentCellBackgroundColor,
   };

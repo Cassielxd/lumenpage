@@ -68,6 +68,9 @@ export const createTextActionHandlers = ({
   "bullet-list": () => {
     run("toggleBulletList");
   },
+  "task-list": () => {
+    run("toggleTaskList");
+  },
   indent: () => {
     run("indent");
   },

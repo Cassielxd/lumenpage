@@ -26,6 +26,7 @@ import {
 import {
   createActiveBlockSelectionPlugin,
   createDragHandlePlugin,
+  createMentionPlugin,
   gapCursor,
 } from "lumenpage-editor-plugins";
 import { history } from "lumenpage-history";
@@ -37,6 +38,7 @@ import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
+import { createLumenMentionPluginOptions } from "./mentionCase";
 import {
   configurePlaygroundSecurityPolicy,
   normalizePastedText,
@@ -86,6 +88,7 @@ export const mountPlaygroundEditor = ({
     history(),
     createBlockIdPlugin(),
     createActiveBlockSelectionPlugin(),
+    createMentionPlugin(createLumenMentionPluginOptions()),
     keymap(createCanvasEditorKeymap()),
     keymap(baseKeymap),
   ];
@@ -136,6 +139,24 @@ export const mountPlaygroundEditor = ({
       return false;
     }
     return false;
+  };
+
+  const toggleTaskCheckboxAtPos = (view: CanvasEditorView, pos: number, event: MouseEvent) => {
+    if (flags.permissionMode !== "full") {
+      return false;
+    }
+    if (!Number.isFinite(pos)) {
+      return false;
+    }
+    const command = view?.commands?.toggleTaskItemChecked;
+    if (typeof command !== "function") {
+      return false;
+    }
+    const handled = command(pos, { onlyWhenNearStart: true }) === true;
+    if (handled) {
+      event?.preventDefault?.();
+    }
+    return handled;
   };
 
   const viewProps: CanvasEditorViewProps = {
@@ -193,6 +214,9 @@ export const mountPlaygroundEditor = ({
       return true;
     },
     handleClick: (_view: CanvasEditorView, pos: number, event: MouseEvent) => {
+      if (toggleTaskCheckboxAtPos(_view, pos, event)) {
+        return true;
+      }
       const rawHref = resolveLinkHrefAtPos(_view?.state, pos);
       const href = normalizeNavigableHref(rawHref || "");
       if (!href) {

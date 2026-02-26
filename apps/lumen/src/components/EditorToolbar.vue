@@ -177,12 +177,13 @@
   >
     <div class="toolbar-color-dialog">
       <t-color-picker
+        v-if="colorDialogVisible"
         :model-value="colorDialogValue"
         format="HEX"
         clearable
         :enable-alpha="true"
         :show-primary-color-preview="true"
-        :recent-colors="true"
+        :recent-colors="toolbarRecentColors"
         :swatch-colors="TOOLBAR_COLOR_SWATCHES"
         @change="handleColorPickerChange"
         @clear="handleColorPickerClear"
@@ -212,6 +213,7 @@ import { canUseToolbarActionInSession } from "../editor/toolbarAccessPolicy";
 import { createExportActions } from "../editor/toolbarActions/exportActions";
 import { createInlineMediaActions } from "../editor/toolbarActions/inlineMediaActions";
 import { createImportActions } from "../editor/toolbarActions/importActions";
+import { createInsertAdvancedActions } from "../editor/toolbarActions/insertAdvancedActions";
 import { createLayoutActions } from "../editor/toolbarActions/layoutActions";
 import { createMarkdownActions } from "../editor/toolbarActions/markdownActions";
 import { createQuickInsertActions } from "../editor/toolbarActions/quickInsertActions";
@@ -219,6 +221,7 @@ import { createSearchReplaceActions } from "../editor/toolbarActions/searchRepla
 import { createTableActions } from "../editor/toolbarActions/tableActions";
 import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
 import { createTextStyleActions } from "../editor/toolbarActions/textStyleActions";
+import { createToolsActions } from "../editor/toolbarActions/toolsActions";
 import {
   applyToolbarColorAction,
   getToolbarColorDefault,
@@ -334,13 +337,25 @@ const TOOLBAR_COLOR_SWATCHES = [
   "#ffffff",
   "#000000",
 ];
+const TOOLBAR_RECENT_COLOR_LIMIT = 8;
 
 const toolbarLeftViewport = ref<HTMLElement | null>(null);
 const canScrollLeft = ref(false);
 const canScrollRight = ref(false);
 const statusEl = ref<HTMLElement | null>(null);
+const toolbarRecentColors = ref<string[]>([]);
 const TOOLBAR_SCROLL_STEP = 320;
 const TOOLBAR_SCROLL_EPSILON = 2;
+
+const pushToolbarRecentColor = (value: string) => {
+  const next = String(value || "").trim();
+  if (!next) {
+    return;
+  }
+  const normalized = next.toLowerCase();
+  const deduped = toolbarRecentColors.value.filter((item) => item.toLowerCase() !== normalized);
+  toolbarRecentColors.value = [next, ...deduped].slice(0, TOOLBAR_RECENT_COLOR_LIMIT);
+};
 
 const updateToolbarOverflowState = () => {
   const el = toolbarLeftViewport.value;
@@ -451,6 +466,15 @@ const quickInsertActions = createQuickInsertActions({
   getView,
   getLocaleKey: () => localeKey.value,
 });
+const insertAdvancedActions = createInsertAdvancedActions({
+  getView,
+  getLocaleKey: () => localeKey.value,
+});
+const toolsActions = createToolsActions({
+  getView,
+  run,
+  getLocaleKey: () => localeKey.value,
+});
 
 const colorDialogVisible = ref(false);
 const colorDialogAction = ref<ToolbarColorAction | null>(null);
@@ -548,6 +572,7 @@ const handleColorDialogConfirm = () => {
   }
   if (colorDialogPendingValue.value) {
     colorActionLastValues[action] = colorDialogPendingValue.value;
+    pushToolbarRecentColor(colorDialogPendingValue.value);
   }
   closeColorDialog();
 };
@@ -646,6 +671,8 @@ const toolbarActionHandlers = createToolbarActionHandlers({
   searchReplaceActions,
   importActions,
   quickInsertActions,
+  insertAdvancedActions,
+  toolsActions,
 });
 
 const handleItemAction = (item: ToolbarItemConfig) => {

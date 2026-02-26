@@ -4,6 +4,9 @@ import { createPageAppearanceActions } from "./pageAppearanceActions";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
+const TOC_PLACEHOLDER = "[[TOC]]";
+
+const TOC_MARKERS = new Set([TOC_PLACEHOLDER, "[TOC]"]);
 
 const parsePaperSize = (raw: string | null) => {
   const text = String(raw || "")
@@ -176,6 +179,47 @@ export const createLayoutActions = ({
     return true;
   };
 
+  const toggleTocPlaceholder = () => {
+    const view = getView();
+    const state = view?.state;
+    if (!view || !state?.doc || !state?.tr || !state?.schema) {
+      return false;
+    }
+    let found: { pos: number; size: number } | null = null;
+    state.doc.descendants((node: any, pos: number) => {
+      if (node.type?.name !== "paragraph") {
+        return true;
+      }
+      const text = String(node.textContent || "").trim();
+      if (!TOC_MARKERS.has(text)) {
+        return true;
+      }
+      found = { pos, size: node.nodeSize };
+      return false;
+    });
+
+    if (found) {
+      const tr = state.tr.delete(found.pos, found.pos + found.size);
+      view.dispatch(tr.scrollIntoView());
+      return true;
+    }
+
+    const paragraphType = state.schema.nodes.paragraph;
+    if (!paragraphType) {
+      return false;
+    }
+    const paragraph =
+      paragraphType.createAndFill?.(null, [state.schema.text(TOC_PLACEHOLDER)]) ??
+      paragraphType.create?.(null, [state.schema.text(TOC_PLACEHOLDER)]) ??
+      null;
+    if (!paragraph) {
+      return false;
+    }
+    const tr = state.tr.insert(0, paragraph);
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  };
+
   return {
     refreshLayoutAndRender,
     applyLineHeightSetting,
@@ -185,6 +229,7 @@ export const createLayoutActions = ({
     applyPageSizeSetting,
     togglePageOrientation,
     togglePageBreakMarks,
+    toggleTocPlaceholder,
     togglePageLineNumbers: pageAppearanceActions.togglePageLineNumbers,
     getPageBackgroundColor: pageAppearanceActions.getPageBackgroundColor,
     setPageBackgroundColor: pageAppearanceActions.setPageBackgroundColor,

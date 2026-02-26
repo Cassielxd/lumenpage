@@ -10,6 +10,9 @@ export const createPageExportActionHandlers = ({
   "page-preview": () => {
     exportActions.printDocument();
   },
+  "toggle-toc": () => {
+    layoutActions.toggleTocPlaceholder();
+  },
   "page-margin": () => {
     layoutActions.applyPageMarginSetting();
   },

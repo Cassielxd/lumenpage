@@ -102,7 +102,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       items: [
         item("ordered-list", "ordered-list", "有序列表", "Ordered List", "ordered-list", true),
         item("bullet-list", "bullet-list", "无序列表", "Bullet List", "bullet-list", true),
-        item("task-list", "task-list", "任务列表", "Task List"),
+        item("task-list", "task-list", "任务列表", "Task List", "task-list", true),
         item("indent", "indent", "增加缩进", "Indent", "indent", true),
         item("outdent", "outdent", "减少缩进", "Outdent", "outdent", true),
         item("line-height", "line-height", "行高", "Line Height", "line-height", true),
@@ -154,24 +154,24 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("link", "link", "链接", "Link", "link", true),
         item("image", "image", "图片", "Image", "image", true),
         item("video", "video", "视频", "Video", "video", true),
-        item("audio", "audio", "音频", "Audio"),
-        item("file", "file", "文件", "File"),
+        item("audio", "audio", "音频", "Audio", "audio", true),
+        item("file", "file", "文件", "File", "file", true),
         item("code-block", "code-block", "代码块", "Code Block", "code-block", true),
         item("symbol", "symbol", "符号", "Symbol", "symbol", true),
         item("chinese-date", "date", "中文日期", "Chinese Date", "chinese-date", true),
         item("emoji", "emoji", "表情", "Emoji", "emoji", true),
-        item("math", "math", "公式", "Math"),
+        item("math", "math", "公式", "Math", "math", true),
       ],
     },
     {
       id: "insert-advanced",
       items: [
-        item("columns", "columns", "分栏", "Columns"),
-        item("tag", "tag", "标签", "Tag"),
-        item("callout", "callout", "提示块", "Callout"),
-        item("mention", "mention", "提及", "Mention"),
-        item("bookmark", "bookmark", "书签", "Bookmark"),
-        item("option-box", "option-box", "选项框", "Option Box"),
+        item("columns", "columns", "分栏", "Columns", "columns", true),
+        item("tag", "tag", "标签", "Tag", "tag", true),
+        item("callout", "callout", "提示块", "Callout", "callout", true),
+        item("mention", "mention", "提及", "Mention", "mention", true),
+        item("bookmark", "bookmark", "书签", "Bookmark", "bookmark", true),
+        item("option-box", "option-box", "选项框", "Option Box", "option-box", true),
       ],
     },
     {
@@ -179,15 +179,15 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       items: [
         item("hard-break", "hard-break", "硬换行", "Hard Break", "hard-break", true),
         item("hr", "hr", "分割线", "Horizontal Rule", "hr", true),
-        item("toc", "toc", "目录", "Table of Contents"),
-        item("text-box", "text-box", "文本框", "Text Box"),
+        item("toc", "toc", "目录", "Table of Contents", "toc", true),
+        item("text-box", "text-box", "文本框", "Text Box", "text-box", true),
       ],
     },
     {
       id: "insert-template",
       items: [
-        item("template", "template", "模板", "Template"),
-        item("web-page", "web-page", "网页嵌入", "Web Page"),
+        item("template", "template", "模板", "Template", "template", true),
+        item("web-page", "web-page", "网页嵌入", "Web Page", "web-page", true),
       ],
     },
   ],
@@ -202,7 +202,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "table-style",
       items: [
-        item("cells-align", "table-cells-align", "单元格对齐", "Cell Alignment"),
+        item("cells-align", "table-cells-align", "单元格对齐", "Cell Alignment", "cells-align", true),
         item(
           "cells-background",
           "table-cells-background",
@@ -363,35 +363,35 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "tools-code",
       items: [
-        item("qrcode", "qrcode", "二维码", "QR Code"),
-        item("barcode", "barcode", "条形码", "Barcode"),
+        item("qrcode", "qrcode", "二维码", "QR Code", "qrcode", true),
+        item("barcode", "barcode", "条形码", "Barcode", "barcode", true),
       ],
     },
     {
       id: "tools-sign",
       items: [
-        item("signature", "signature", "签名", "Signature"),
-        item("seal", "seal", "印章", "Seal"),
+        item("signature", "signature", "签名", "Signature", "signature", true),
+        item("seal", "seal", "印章", "Seal", "seal", true),
       ],
     },
     {
       id: "tools-chart",
       items: [
-        item("diagrams", "diagrams", "流程图", "Diagrams"),
-        item("echarts", "echarts", "图表", "ECharts"),
-        item("mermaid", "mermaid", "Mermaid", "Mermaid"),
-        item("mind-map", "mind-map", "思维导图", "Mind Map"),
+        item("diagrams", "diagrams", "流程图", "Diagrams", "diagrams", true),
+        item("echarts", "echarts", "图表", "ECharts", "echarts", true),
+        item("mermaid", "mermaid", "Mermaid", "Mermaid", "mermaid", true),
+        item("mind-map", "mind-map", "思维导图", "Mind Map", "mind-map", true),
       ],
     },
     {
       id: "tools-text",
-      items: [item("chinese-case", "chinese-case", "中文大小写", "Chinese Case")],
+      items: [item("chinese-case", "chinese-case", "中文大小写", "Chinese Case", "chinese-case", true)],
     },
   ],
   page: [
     {
       id: "page-toc",
-      items: [item("toggle-toc", "toc", "目录", "TOC")],
+      items: [item("toggle-toc", "toc", "目录", "TOC", "toggle-toc", true)],
     },
     {
       id: "page-layout",

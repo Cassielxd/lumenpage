@@ -1,1 +1,1 @@
-{"root":["./src/activeblock.ts","./src/draghandle.ts","./src/gapcursorplugin.ts","./src/gapcursor.ts","./src/index.ts"],"version":"5.9.3"}
+{"root":["./src/activeblock.ts","./src/draghandle.ts","./src/gapcursorplugin.ts","./src/gapcursor.ts","./src/index.ts","./src/mention.ts","./src/popup/tippypopup.ts","./src/types/tippy.d.ts"],"version":"5.9.3"}

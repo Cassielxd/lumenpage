@@ -1,8 +1,10 @@
 import type { ToolbarItemConfig } from "../toolbarCatalog";
+import { createInsertActionHandlers } from "./handlers/insertHandlers";
 import { createPageExportActionHandlers } from "./handlers/pageExportHandlers";
 import { createSessionActionHandlers } from "./handlers/sessionHandlers";
 import { createTableActionHandlers } from "./handlers/tableHandlers";
 import { createTextActionHandlers } from "./handlers/textHandlers";
+import { createToolsActionHandlers } from "./handlers/toolsHandlers";
 import type {
   ToolbarActionContext,
   ToolbarHandlerRecord,
@@ -12,7 +14,9 @@ import type {
 export const createToolbarActionHandlers = (context: ToolbarActionContext) => {
   const handlers: ToolbarHandlerRecord = {
     ...createTextActionHandlers(context),
+    ...createInsertActionHandlers(context),
     ...createTableActionHandlers(context),
+    ...createToolsActionHandlers(context),
     ...createPageExportActionHandlers(context),
     ...createSessionActionHandlers(context),
   };

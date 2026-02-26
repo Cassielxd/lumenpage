@@ -16,7 +16,7 @@ import type { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
 import { liftTarget } from "lumenpage-transform";
-import { backspaceEmptyListItem, splitListItem } from "lumenpage-node-list";
+import { backspaceEmptyListItem, splitListItem, toggleTaskItemChecked } from "lumenpage-node-list";
 import {
   addTableRowAfter,
   addTableRowBefore,
@@ -386,7 +386,9 @@ export const createViewCommands = () => {
       if (
         parent &&
         parent.type?.name !== nodeName &&
-        (parent.type?.name === "bullet_list" || parent.type?.name === "ordered_list")
+        (parent.type?.name === "bullet_list" ||
+          parent.type?.name === "ordered_list" ||
+          parent.type?.name === "task_list")
       ) {
         if (!dispatch) {
           return true;
@@ -576,6 +578,8 @@ export const createViewCommands = () => {
     insertPageBreak: insertNode("page_break"),
     toggleBulletList: toggleList("bullet_list"),
     toggleOrderedList: toggleList("ordered_list"),
+    toggleTaskList: toggleList("task_list"),
+    toggleTaskItemChecked: (pos, options) => toggleTaskItemChecked(pos, options),
     indent: changeParagraphIndent(1),
     outdent: changeParagraphIndent(-1),
     insertImage: (attrs) => insertNode("image", attrs),

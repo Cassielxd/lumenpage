@@ -3,7 +3,12 @@
     <t-header class="topbar">
       <div class="topbar-left">
         <div class="logo">L</div>
-        <t-input v-model="docTitle" class="title-input" size="small" />
+        <input
+          v-model="docTitle"
+          class="title-input title-input-native"
+          type="text"
+          :placeholder="i18n.app.defaultDocTitle"
+        />
         <t-tag size="small" theme="success" variant="light">{{ i18n.app.saved }}</t-tag>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
       </div>
@@ -163,6 +168,26 @@ onBeforeUnmount(() => {
   width: 260px;
 }
 
+.title-input-native {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2329;
+  font-size: 13px;
+  line-height: 28px;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.title-input-native:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.16);
+}
+
 .doc-content {
   display: flex;
   min-height: 0;
@@ -255,6 +280,13 @@ onBeforeUnmount(() => {
 .doc-shell.is-high-contrast .logo {
   background: #fff;
   color: #000;
+}
+
+.doc-shell.is-high-contrast .title-input-native {
+  background: #000;
+  color: #fff;
+  border-color: #fff;
+  box-shadow: none;
 }
 
 .doc-shell.is-high-contrast .editor-host :deep(.lumenpage-scroll-area) {

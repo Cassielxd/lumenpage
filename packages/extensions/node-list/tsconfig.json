@@ -3,7 +3,12 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-state": ["../../core/state/dist/index.d.ts"],
+      "lumenpage-transform": ["../../core/transform/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

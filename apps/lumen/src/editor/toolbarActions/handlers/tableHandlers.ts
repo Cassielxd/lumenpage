@@ -13,6 +13,9 @@ export const createTableActionHandlers = ({
     "table-fix": () => {
       layoutActions.refreshLayoutAndRender();
     },
+    "cells-align": () => {
+      tableActions.applyCellAlignmentSetting();
+    },
     "add-row-after": () => {
       withTableCellNotice("addTableRowAfter");
     },
