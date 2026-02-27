@@ -104,6 +104,7 @@ export const mountPlaygroundEditor = ({
     createMentionPlugin(createLumenMentionPluginOptions()),
     tocOutlineController.plugin,
     createSelectionBubblePlugin(),
+    gapCursor(),
     keymap(createCanvasEditorKeymap()),
     keymap(baseKeymap),
   ];
@@ -116,10 +117,6 @@ export const mountPlaygroundEditor = ({
   if (flags.enableInputRules) {
     const rules = [ellipsis, emDash, ...smartQuotes].filter(Boolean);
     plugins.push(inputRules({ rules }));
-  }
-
-  if (flags.enableGapCursor) {
-    plugins.push(gapCursor());
   }
 
   plugins.push(
