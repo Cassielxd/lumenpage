@@ -28,7 +28,6 @@ import {
   createDragHandlePlugin,
   createMentionPlugin,
   createSelectionBubblePlugin,
-  gapCursor,
 } from "lumenpage-editor-plugins";
 import { history } from "lumenpage-history";
 import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
@@ -62,6 +61,42 @@ type MountedPlaygroundEditor = {
   isTocOutlineEnabled: () => boolean;
   destroy: () => void;
 };
+
+const isInTableAtResolvedPos = ($pos: any) => {
+  if (!$pos || !Number.isFinite($pos.depth)) {
+    return false;
+  }
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    const typeName = $pos.node(depth)?.type?.name;
+    if (typeName === "table" || typeName === "table_row" || typeName === "table_cell") {
+      return true;
+    }
+  }
+  return false;
+};
+
+const createTableSelectionGeometry = () => ({
+  shouldComputeSelectionRects: ({ editorState, selection }: { editorState: any; selection: any }) => {
+    const pmSel = editorState?.selection;
+    if (!pmSel) {
+      return false;
+    }
+    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
+      return true;
+    }
+    if (pmSel?.constructor?.name === "NodeSelection") {
+      return pmSel?.node?.type?.name === "table";
+    }
+    if (!selection || selection.from === selection.to) {
+      return false;
+    }
+    return isInTableAtResolvedPos(pmSel?.$from) || isInTableAtResolvedPos(pmSel?.$to);
+  },
+  shouldRenderBorderOnly: ({ editorState }: { editorState: any }) => {
+    const pmSel = editorState?.selection;
+    return pmSel?.constructor?.name === "NodeSelection" && pmSel?.node?.type?.name === "table";
+  },
+});
 
 export const mountPlaygroundEditor = ({
   host,
@@ -104,7 +139,6 @@ export const mountPlaygroundEditor = ({
     createMentionPlugin(createLumenMentionPluginOptions()),
     tocOutlineController.plugin,
     createSelectionBubblePlugin(),
-    gapCursor(),
     keymap(createCanvasEditorKeymap()),
     keymap(baseKeymap),
   ];
@@ -175,6 +209,8 @@ export const mountPlaygroundEditor = ({
     return handled;
   };
 
+  const tableSelectionGeometry = createTableSelectionGeometry();
+
   const viewProps: CanvasEditorViewProps = {
     state: readyState,
     attributes: {
@@ -202,6 +238,7 @@ export const mountPlaygroundEditor = ({
     },
     transformPastedText: (_view: CanvasEditorView, text: string) => normalizePastedText(text),
     transformPastedHTML: (_view: CanvasEditorView, html: string) => sanitizePastedHtml(html),
+    selectionGeometry: () => tableSelectionGeometry,
     nodeSelectionTypes: ["image", "video", "horizontal_rule"],
     isInSpecialStructureAtPos: (_view: CanvasEditorView, state: any, pos: number) =>
       isInNodeTypeAtPos(state, pos, "table"),

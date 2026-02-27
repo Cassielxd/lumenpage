@@ -96,6 +96,72 @@ export const createEditorOps = ({
     return false;
   };
 
+  const findCutBefore = ($pos) => {
+    if (!$pos?.parent || $pos.parent.type?.spec?.isolating) {
+      return null;
+    }
+    for (let depth = $pos.depth - 1; depth >= 0; depth -= 1) {
+      if ($pos.index(depth) > 0) {
+        return $pos.doc.resolve($pos.before(depth + 1));
+      }
+      if ($pos.node(depth)?.type?.spec?.isolating) {
+        break;
+      }
+    }
+    return null;
+  };
+
+  const findCutAfter = ($pos) => {
+    if (!$pos?.parent || $pos.parent.type?.spec?.isolating) {
+      return null;
+    }
+    for (let depth = $pos.depth - 1; depth >= 0; depth -= 1) {
+      const parent = $pos.node(depth);
+      if ($pos.index(depth) + 1 < parent.childCount) {
+        return $pos.doc.resolve($pos.after(depth + 1));
+      }
+      if (parent.type?.spec?.isolating) {
+        break;
+      }
+    }
+    return null;
+  };
+
+  const isSpecialNodeImmediatelyBefore = (selectionState) => {
+    const $cursor = selectionState?.selection?.$cursor || selectionState?.selection?.$from;
+    if (!$cursor || !$cursor.parent?.isTextblock || $cursor.parentOffset !== 0) {
+      return false;
+    }
+    const $cut = findCutBefore($cursor);
+    const nodeBefore = $cut?.nodeBefore;
+    if (!$cut || !nodeBefore || !Number.isFinite(nodeBefore?.nodeSize) || nodeBefore.nodeSize <= 0) {
+      return false;
+    }
+    const docSize = Number(selectionState?.doc?.content?.size ?? 0);
+    const nodeStart = $cut.pos - nodeBefore.nodeSize;
+    const probePos = Math.max(0, Math.min(docSize, nodeStart + 1));
+    return isInSpecialStructureAtPos(selectionState, probePos);
+  };
+
+  const isSpecialNodeImmediatelyAfter = (selectionState) => {
+    const $cursor = selectionState?.selection?.$cursor || selectionState?.selection?.$from;
+    if (
+      !$cursor ||
+      !$cursor.parent?.isTextblock ||
+      $cursor.parentOffset !== $cursor.parent.content.size
+    ) {
+      return false;
+    }
+    const $cut = findCutAfter($cursor);
+    const nodeAfter = $cut?.nodeAfter;
+    if (!$cut || !nodeAfter || !Number.isFinite(nodeAfter?.nodeSize) || nodeAfter.nodeSize <= 0) {
+      return false;
+    }
+    const docSize = Number(selectionState?.doc?.content?.size ?? 0);
+    const probePos = Math.max(0, Math.min(docSize, $cut.pos + 1));
+    return isInSpecialStructureAtPos(selectionState, probePos);
+  };
+
   const deleteText = (direction) => {
     const textValue = getText();
     const caretOffset = getCaretOffset();
@@ -113,6 +179,34 @@ export const createEditorOps = ({
         to: getEditorState().selection.to,
       });
       return;
+    }
+
+    // Special-structure boundary guard: when caret is at textblock edge next to a structure
+    // prefer PM-style node selection instead of character-level deletion by text offset.
+    if (direction === "backward") {
+      const stateAtDelete = getEditorState();
+      if (isSpecialNodeImmediatelyBefore(stateAtDelete)) {
+        const handled = runCommand(
+          basicCommands.selectNodeBackward,
+          stateAtDelete,
+          dispatchTransaction
+        );
+        if (handled) {
+          return;
+        }
+      }
+    } else {
+      const stateAtDelete = getEditorState();
+      if (isSpecialNodeImmediatelyAfter(stateAtDelete)) {
+        const handled = runCommand(
+          basicCommands.selectNodeForward,
+          stateAtDelete,
+          dispatchTransaction
+        );
+        if (handled) {
+          return;
+        }
+      }
     }
 
     if (direction === "backward") {
@@ -145,12 +239,25 @@ export const createEditorOps = ({
           textOffsetToDocPos,
           caretOffset
         );
+        let handled = false;
+        if (isSpecialNodeImmediatelyBefore(selectionState)) {
+          handled = runCommand(
+            basicCommands.selectNodeBackward,
+            selectionState,
+            dispatchTransaction
+          );
+        }
         logDelete("joinBackward", {
           caretOffset,
           from: getEditorState().selection.from,
           to: getEditorState().selection.to,
         });
-        runCommand(basicCommands.joinBackward, selectionState, dispatchTransaction);
+        if (!handled) {
+          handled = runCommand(basicCommands.joinBackward, selectionState, dispatchTransaction);
+        }
+        if (!handled) {
+          runCommand(basicCommands.selectNodeBackward, selectionState, dispatchTransaction);
+        }
         return;
       }
       const fromPos = textOffsetToDocPos(getEditorState().doc, caretOffset - 1);
@@ -204,7 +311,16 @@ export const createEditorOps = ({
         textOffsetToDocPos,
         caretOffset
       );
-      runCommand(basicCommands.joinForward, selectionState, dispatchTransaction);
+      let handled = false;
+      if (isSpecialNodeImmediatelyAfter(selectionState)) {
+        handled = runCommand(basicCommands.selectNodeForward, selectionState, dispatchTransaction);
+      }
+      if (!handled) {
+        handled = runCommand(basicCommands.joinForward, selectionState, dispatchTransaction);
+      }
+      if (!handled) {
+        runCommand(basicCommands.selectNodeForward, selectionState, dispatchTransaction);
+      }
       return;
     }
     const fromPos = textOffsetToDocPos(getEditorState().doc, caretOffset);

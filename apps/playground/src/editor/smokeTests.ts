@@ -1530,36 +1530,7 @@ export const runImeActionSmoke = (editorView: any, debugPanelEl: HTMLElement | n
 
 export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const internals = editorView?._internals;
-  const resolveGapSelectionAtPos = internals?.resolveGapSelectionAtPos;
   const setNodeSelectionAtPos = internals?.setNodeSelectionAtPos;
-  if (typeof resolveGapSelectionAtPos !== "function") {
-    const text = "[selection-boundary-smoke] skipped: no gap resolver.";
-    console.warn(text);
-    appendDebugLine(debugPanelEl, text);
-    return;
-  }
-
-  const doc = editorView.state?.doc;
-  const docSize = Number(doc?.content?.size ?? 0);
-  let gapResolvedPos: number | null = null;
-  let gapResolvedType: string | null = null;
-
-  for (let pos = 0; pos <= docSize; pos += 1) {
-    const resolved = resolveGapSelectionAtPos(pos);
-    if (!resolved?.selection) {
-      continue;
-    }
-    const type = resolved.selection?.toJSON?.()?.type ?? null;
-    if (type && type !== "text") {
-      gapResolvedPos = Number.isFinite(resolved.pos) ? resolved.pos : pos;
-      gapResolvedType = type;
-      editorView.dispatch(editorView.state.tr.setSelection(resolved.selection).scrollIntoView());
-      break;
-    }
-  }
-
-  const gapSelectionApplied =
-    !!gapResolvedType && (editorView.state.selection?.toJSON?.()?.type ?? null) === gapResolvedType;
 
   const mediaPos = findFirstNodePosByType(editorView.state.doc, ["image", "video"]);
   let nodeSelectionApplied = false;
@@ -1595,20 +1566,15 @@ export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLEle
   }
 
   const summary = {
-    gapResolvedPos,
-    gapResolvedType,
-    gapSelectionApplied,
     hasMediaNode: Number.isFinite(mediaPos),
     nodeSelectionApplied,
     hasTableNode: Number.isFinite(tablePos),
     tableNodeSelectionBlocked,
     backToTextSelection,
   };
-  // gapcursor plugin 闁稿繑濞婂Λ鎾籍鐠哄搫甯掗悹?gap 濡炪倝鈧稖绀?false闁挎稑濂旂划搴ㄥ冀閿熺姷宕?node/text/table 閺夊牆婀遍弲顐﹀礆閸ャ劌搴婇柕鍡曠箹r
-  const gapPartOk = !gapResolvedType || gapSelectionApplied;
   const nodePartOk = !Number.isFinite(mediaPos) || nodeSelectionApplied;
   const tablePartOk = !Number.isFinite(tablePos) || tableNodeSelectionBlocked;
-  const ok = gapPartOk && nodePartOk && tablePartOk && backToTextSelection;
+  const ok = nodePartOk && tablePartOk && backToTextSelection;
   const text = `[selection-boundary-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
   if (ok) {
     console.info(text);

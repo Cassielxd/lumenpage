@@ -4,6 +4,8 @@ import {
   deleteSelection,
   joinBackward,
   joinForward,
+  selectNodeBackward,
+  selectNodeForward,
   liftEmptyBlock,
   newlineInCode,
   splitBlock,
@@ -12,6 +14,7 @@ import {
   wrapIn,
 } from "lumenpage-commands";
 
+import { NodeSelection } from "lumenpage-state";
 import type { Command } from "lumenpage-state";
 
 import { undo, redo } from "lumenpage-history";
@@ -322,8 +325,10 @@ export const basicCommands: Record<string, Command> = {
   deleteSelection,
 
   joinBackward,
+  selectNodeBackward,
 
   joinForward,
+  selectNodeForward,
 
   splitBlock,
 
@@ -332,6 +337,79 @@ export const basicCommands: Record<string, Command> = {
   undo,
 
   redo,
+};
+
+const findCutBefore = ($pos: any) => {
+  if (!$pos?.parent?.type?.spec?.isolating) {
+    for (let depth = $pos.depth - 1; depth >= 0; depth -= 1) {
+      if ($pos.index(depth) > 0) {
+        return $pos.doc.resolve($pos.before(depth + 1));
+      }
+      if ($pos.node(depth)?.type?.spec?.isolating) {
+        break;
+      }
+    }
+  }
+  return null;
+};
+
+const findCutAfter = ($pos: any) => {
+  if (!$pos?.parent?.type?.spec?.isolating) {
+    for (let depth = $pos.depth - 1; depth >= 0; depth -= 1) {
+      const parent = $pos.node(depth);
+      if ($pos.index(depth) + 1 < parent.childCount) {
+        return $pos.doc.resolve($pos.after(depth + 1));
+      }
+      if (parent?.type?.spec?.isolating) {
+        break;
+      }
+    }
+  }
+  return null;
+};
+
+const selectAdjacentTableBackward: Command = (state, dispatch, view) => {
+  const selection: any = state.selection;
+  const $head = selection?.$head;
+  if (!selection?.empty || !$head || !$head.parent?.isTextblock) {
+    return false;
+  }
+  const atStart = view ? view.endOfTextblock("backward", state) : $head.parentOffset === 0;
+  if (!atStart) {
+    return false;
+  }
+  const $cut = findCutBefore($head);
+  const node = $cut?.nodeBefore;
+  if (!node || node.type?.name !== "table" || !NodeSelection.isSelectable(node)) {
+    return false;
+  }
+  if (dispatch) {
+    dispatch(state.tr.setSelection(NodeSelection.create(state.doc, $cut.pos - node.nodeSize)).scrollIntoView());
+  }
+  return true;
+};
+
+const selectAdjacentTableForward: Command = (state, dispatch, view) => {
+  const selection: any = state.selection;
+  const $head = selection?.$head;
+  if (!selection?.empty || !$head || !$head.parent?.isTextblock) {
+    return false;
+  }
+  const atEnd = view
+    ? view.endOfTextblock("forward", state)
+    : $head.parentOffset === $head.parent.content.size;
+  if (!atEnd) {
+    return false;
+  }
+  const $cut = findCutAfter($head);
+  const node = $cut?.nodeAfter;
+  if (!node || node.type?.name !== "table" || !NodeSelection.isSelectable(node)) {
+    return false;
+  }
+  if (dispatch) {
+    dispatch(state.tr.setSelection(NodeSelection.create(state.doc, $cut.pos)).scrollIntoView());
+  }
+  return true;
 };
 
 const insertTextCommand =
@@ -357,14 +435,30 @@ export const createCanvasEditorKeymap = () => ({
   Backspace: chainCommands(
     deleteTableCellSelection,
     preventDeleteBackwardAtTableCellBoundary,
-    backspaceEmptyListItem
+    backspaceEmptyListItem,
+    selectAdjacentTableBackward
   ),
-  Delete: chainCommands(deleteTableCellSelection, preventDeleteForwardAtTableCellBoundary),
+  "Shift-Backspace": chainCommands(
+    deleteTableCellSelection,
+    preventDeleteBackwardAtTableCellBoundary,
+    backspaceEmptyListItem,
+    selectAdjacentTableBackward
+  ),
+  Delete: chainCommands(
+    deleteTableCellSelection,
+    preventDeleteForwardAtTableCellBoundary,
+    selectAdjacentTableForward
+  ),
   "Mod-Backspace": chainCommands(
     deleteTableCellSelection,
-    preventDeleteBackwardAtTableCellBoundary
+    preventDeleteBackwardAtTableCellBoundary,
+    selectAdjacentTableBackward
   ),
-  "Mod-Delete": chainCommands(deleteTableCellSelection, preventDeleteForwardAtTableCellBoundary),
+  "Mod-Delete": chainCommands(
+    deleteTableCellSelection,
+    preventDeleteForwardAtTableCellBoundary,
+    selectAdjacentTableForward
+  ),
   Tab: chainCommands(goToNextTableCell, insertTextCommand("  ")),
   "Shift-Tab": goToPreviousTableCell,
 });

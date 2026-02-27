@@ -33,7 +33,9 @@ export const createCommandRuntime = ({
   const basicCommands = {
     deleteSelection: commandConfig.basicCommands?.deleteSelection ?? noopCommand,
     joinBackward: commandConfig.basicCommands?.joinBackward ?? noopCommand,
+    selectNodeBackward: commandConfig.basicCommands?.selectNodeBackward ?? noopCommand,
     joinForward: commandConfig.basicCommands?.joinForward ?? noopCommand,
+    selectNodeForward: commandConfig.basicCommands?.selectNodeForward ?? noopCommand,
     splitBlock: commandConfig.basicCommands?.splitBlock ?? noopCommand,
     enter: commandConfig.basicCommands?.enter ?? noopCommand,
     undo: commandConfig.basicCommands?.undo ?? noopCommand,

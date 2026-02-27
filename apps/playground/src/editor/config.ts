@@ -38,7 +38,6 @@ export type PlaygroundDebugFlags = {
   debugLegacyConfigSmoke: boolean;
   debugDuplicateDecorations: boolean;
   enableInputRules: boolean;
-  enableGapCursor: boolean;
   debugPerf: boolean;
   enablePaginationWorker: boolean;
   forcePaginationWorker: boolean;
@@ -145,7 +144,6 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugLegacyConfigSmoke: resolveDebugFlag("legacyConfigSmoke"),
   debugDuplicateDecorations: resolveDebugFlag("dupDecor"),
   enableInputRules: resolveDebugFlag("inputRules"),
-  enableGapCursor: resolveDebugFlag("gapCursor"),
   debugPerf: resolveDebugFlag("debugPerf"),
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveDebugFlag("paginationWorkerForce"),

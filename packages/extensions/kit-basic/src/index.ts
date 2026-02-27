@@ -50,6 +50,8 @@ export {
   videoRenderer,
 };
 
+export { createTableSelectionGeometry } from "lumenpage-node-table";
+
 
 export {
   basicCommands,

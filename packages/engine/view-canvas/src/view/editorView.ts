@@ -341,9 +341,6 @@ export class CanvasEditorView {
 
     const selectionInteractions = createSelectionInteractions({
       getState: () => this.state,
-      getLayout: () => layout,
-      scrollArea: dom.scrollArea,
-      isEditable: () => this.editable,
       textOffsetToDocPos,
       dispatchTransaction: dispatchViaView,
       queryEditorProp,
@@ -355,9 +352,6 @@ export class CanvasEditorView {
     const {
       setSelectionFromHit,
       setNodeSelectionAtPos,
-      resolveGapSelectionAtPos,
-      resolveNodeSelectionTarget,
-      setGapCursorAtCoords,
     } = selectionInteractions;
 
     const parseHtmlToSlice = createParseHtmlToSlice({
@@ -455,9 +449,6 @@ export class CanvasEditorView {
       setSelectionOffsets,
       setSelectionFromHit,
       setNodeSelectionAtPos,
-      setGapCursorAtCoords,
-      resolveNodeSelectionTarget,
-      resolveGapSelectionAtPos,
       getSelectionAnchorOffset: () =>
         getSelectionAnchorOffset(this.state, docPosToTextOffset, clampOffset),
       getSelectionRangeOffsets: () =>
@@ -467,7 +458,6 @@ export class CanvasEditorView {
       setPreferredX: (value) => {
         preferredX = value;
       },
-      textOffsetToDocPos,
       getEventCoords,
       getDocPosFromCoords,
       serializeSliceToHtmlForClipboard,
@@ -608,8 +598,6 @@ export class CanvasEditorView {
       applyViewAttributes,
       inputDebugHandlers: debugInputHandlers,
       setNodeSelectionAtPos,
-      resolveGapSelectionAtPos,
-      setGapCursorAtCoords,
     });
   }
 

@@ -1047,10 +1047,10 @@ export class Renderer {
       const selectionStyle = resolveSelectionStyle(this.settings);
       // 块级高亮（段落/标题激活态）仅保留边框，不做背景填充。
       const isBlockHighlightOnly = !hasSelectionRects && hasBlockRects;
-      const hasFill = !isBlockHighlightOnly && !!selectionStyle.fill;
+      const hasFillBase = !isBlockHighlightOnly && !!selectionStyle.fill;
       const hasStroke = !!selectionStyle.stroke && selectionStyle.strokeWidth > 0;
 
-      if (hasFill) {
+      if (hasFillBase) {
         this.overlayCtx.fillStyle = selectionStyle.fill;
       }
       if (hasStroke) {
@@ -1071,7 +1071,8 @@ export class Renderer {
 
         drawSelectionRectPath(this.overlayCtx, x, y, width, height, selectionStyle.radius || 0);
 
-        if (hasFill) {
+        const borderOnly = rect?.borderOnly === true;
+        if (hasFillBase && !borderOnly) {
           this.overlayCtx.fill();
         }
         if (hasStroke) {

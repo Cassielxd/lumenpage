@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { TextSelection } from "lumenpage-state";
 
 type GetView = () => any;
 type TableCellAlign = "left" | "center" | "right" | "justify";
@@ -85,6 +86,97 @@ const createDefaultTableNode = (view: any, rows: number, cols: number) => {
     tableRows.push(rowType.create(null, cells));
   }
   return tableType.createAndFill?.(null, tableRows) ?? tableType.create?.(null, tableRows) ?? null;
+};
+
+const createEmptyParagraphNode = (schema: any) => {
+  const paragraphType = schema?.nodes?.paragraph;
+  if (!paragraphType) {
+    return null;
+  }
+  return paragraphType.createAndFill?.() ?? paragraphType.create?.() ?? null;
+};
+
+const isParagraphNode = (node: any) => node?.type?.name === "paragraph";
+
+const findTablePosAround = (doc: any, pos: number) => {
+  if (!doc || !Number.isFinite(pos)) {
+    return null;
+  }
+  const maxPos = Number(doc.content?.size ?? 0);
+  const seeds = [pos, pos - 1, pos + 1, pos - 2, pos + 2];
+  for (const seed of seeds) {
+    const candidate = Math.max(0, Math.min(maxPos, seed));
+    const direct = doc.nodeAt(candidate);
+    if (direct?.type?.name === "table") {
+      return candidate;
+    }
+    const $pos = doc.resolve(candidate);
+    const before = $pos.nodeBefore;
+    if (before?.type?.name === "table") {
+      return candidate - before.nodeSize;
+    }
+    const after = $pos.nodeAfter;
+    if (after?.type?.name === "table") {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+const replaceSelectionWithTableAndParagraphs = (view: any, tableNode: any) => {
+  const state = view?.state;
+  if (!state?.tr || !tableNode) {
+    return false;
+  }
+  const from = Number(state.selection?.from);
+  if (!Number.isFinite(from)) {
+    return false;
+  }
+  const paragraphType = state.schema?.nodes?.paragraph;
+  let tr = state.tr.replaceSelectionWith(tableNode, false);
+  let tablePos = findTablePosAround(tr.doc, tr.mapping.map(from, -1));
+  if (!Number.isFinite(tablePos)) {
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  }
+
+  const ensureParagraph = () =>
+    paragraphType?.createAndFill?.() ?? paragraphType?.create?.() ?? null;
+
+  const $before = tr.doc.resolve(tablePos);
+  if (!isParagraphNode($before.nodeBefore)) {
+    const paragraphBefore = ensureParagraph();
+    if (paragraphBefore) {
+      tr = tr.insert(tablePos, paragraphBefore);
+      tablePos += paragraphBefore.nodeSize;
+    }
+  }
+
+  const insertedTable = tr.doc.nodeAt(tablePos);
+  if (!insertedTable || insertedTable.type?.name !== "table") {
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  }
+  const afterPos = tablePos + insertedTable.nodeSize;
+  const $after = tr.doc.resolve(afterPos);
+  let trailingParagraphPos = afterPos;
+  if (!isParagraphNode($after.nodeAfter)) {
+    const paragraphAfter = ensureParagraph();
+    if (paragraphAfter) {
+      tr = tr.insert(afterPos, paragraphAfter);
+    } else {
+      trailingParagraphPos = null;
+    }
+  }
+  if (Number.isFinite(trailingParagraphPos)) {
+    try {
+      tr = tr.setSelection(TextSelection.create(tr.doc, trailingParagraphPos + 1));
+    } catch (_error) {
+      // Keep transaction selection when mapping near document boundary fails.
+    }
+  }
+  view.dispatch(tr.scrollIntoView());
+  return true;
 };
 
 const forEachTableCell = (
@@ -324,9 +416,7 @@ export const createTableActions = ({
     if (!tableNode) {
       return false;
     }
-    const tr = view.state.tr.replaceSelectionWith(tableNode);
-    view.dispatch(tr.scrollIntoView());
-    return true;
+    return replaceSelectionWithTableAndParagraphs(view, tableNode);
   };
 
   const deleteCurrentTable = () => {

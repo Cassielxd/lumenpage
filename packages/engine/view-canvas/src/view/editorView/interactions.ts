@@ -16,15 +16,11 @@ export const createInteractionPipeline = ({
   setSelectionOffsets,
   setSelectionFromHit,
   setNodeSelectionAtPos,
-  setGapCursorAtCoords,
-  resolveNodeSelectionTarget,
-  resolveGapSelectionAtPos,
   getSelectionAnchorOffset,
   getSelectionRangeOffsets,
   setSkipNextClickSelection,
   getState,
   setPreferredX,
-  textOffsetToDocPos,
   getEventCoords,
   getDocPosFromCoords,
   serializeSliceToHtmlForClipboard,
@@ -85,20 +81,6 @@ export const createInteractionPipeline = ({
       setSelectionOffsets(anchor, head, updatePreferred, true),
     setSelectionFromHit,
     setNodeSelectionAtPos,
-    setGapCursorAtCoords,
-    shouldDeferSelection: (hit, hitOffset) => {
-      if (!getLayout() || !Number.isFinite(hitOffset) || view.editable === false) {
-        return false;
-      }
-      if (resolveNodeSelectionTarget(hit)) {
-        return false;
-      }
-      const pos = textOffsetToDocPos(view.state.doc, hitOffset);
-      if (!Number.isFinite(pos)) {
-        return false;
-      }
-      return !!resolveGapSelectionAtPos(pos);
-    },
     getSelectionAnchorOffset,
     getSelectionRangeOffsets,
     isNodeSelectionActive: () => view.state?.selection instanceof NodeSelection,

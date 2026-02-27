@@ -218,8 +218,8 @@ export const createRenderSync = ({
     return null;
   };
 
-  // Compute table-related selection rects with optional plugin overrides.
-  const resolveTableSelectionRects = ({
+  // Compute special-structure selection rects with plugin-provided geometry.
+  const resolveSpecialSelectionRects = ({
     layout,
     editorState,
     selection,
@@ -231,6 +231,21 @@ export const createRenderSync = ({
     layoutIndex: any;
   }) => {
     const geometry = resolveSelectionGeometry();
+    if (typeof geometry?.resolveSelectionRects === "function") {
+      const resolved = geometry.resolveSelectionRects({
+        layout,
+        editorState,
+        selection,
+        scrollTop: scrollArea.scrollTop,
+        viewportWidth: scrollArea.clientWidth,
+        layoutIndex,
+        docPosToTextOffset,
+      });
+      if (Array.isArray(resolved) && resolved.length > 0) {
+        return resolved;
+      }
+    }
+
     const tableCellRectsResolver =
       typeof geometry?.tableCellSelectionToRects === "function"
         ? geometry.tableCellSelectionToRects
@@ -269,30 +284,21 @@ export const createRenderSync = ({
     return null;
   };
 
-  const isInTableAtResolvedPos = ($pos: any) => {
-    if (!$pos || !Number.isFinite($pos.depth)) {
-      return false;
-    }
-    for (let depth = $pos.depth; depth >= 0; depth -= 1) {
-      if ($pos.node(depth)?.type?.name?.startsWith("table")) {
-        return true;
-      }
+  const shouldComputeSpecialSelectionRects = (
+    editorState: any,
+    selection: { from: number; to: number }
+  ) => {
+    const geometry = resolveSelectionGeometry();
+    const fromProps = geometry?.shouldComputeSelectionRects;
+    if (typeof fromProps === "function") {
+      return (
+        fromProps({
+          editorState,
+          selection,
+        }) === true
+      );
     }
     return false;
-  };
-
-  const shouldComputeTableSelectionRects = (editorState: any, selection: { from: number; to: number }) => {
-    const pmSel = editorState?.selection;
-    if (!pmSel) {
-      return false;
-    }
-    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
-      return true;
-    }
-    if (selection.from === selection.to) {
-      return false;
-    }
-    return isInTableAtResolvedPos(pmSel?.$from) || isInTableAtResolvedPos(pmSel?.$to);
   };
 
   const scheduleRender = () => {
@@ -343,7 +349,16 @@ export const createRenderSync = ({
 
           const tableSelectionStart = renderTiming ? now() : 0;
           let tableSelectionRects = null;
-          if (shouldComputeTableSelectionRects(editorState, selection)) {
+          if (shouldComputeSpecialSelectionRects(editorState, selection)) {
+            const geometry = resolveSelectionGeometry();
+            const useBorderOnly = !!(
+              geometry &&
+              typeof geometry.shouldRenderBorderOnly === "function" &&
+              geometry.shouldRenderBorderOnly({
+                editorState,
+                selection,
+              }) === true
+            );
             const tableSelectionKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|table`;
             const canShiftTableSelectionRects =
               tableSelectionKey === lastTableSelectionRectsKey &&
@@ -354,12 +369,18 @@ export const createRenderSync = ({
                   ...rect,
                   y: rect.y - (scrollTop - lastTableSelectionScrollTop),
                 }))
-              : resolveTableSelectionRects({
+              : resolveSpecialSelectionRects({
                   layout,
                   editorState,
                   selection,
                   layoutIndex,
                 });
+            if (useBorderOnly && Array.isArray(tableSelectionRects)) {
+              tableSelectionRects = tableSelectionRects.map((rect) => ({
+                ...rect,
+                borderOnly: true,
+              }));
+            }
             lastTableSelectionRectsKey = tableSelectionKey;
             lastTableSelectionRects = tableSelectionRects;
             lastTableSelectionScrollTop = scrollTop;

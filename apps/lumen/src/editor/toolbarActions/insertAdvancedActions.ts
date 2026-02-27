@@ -109,12 +109,89 @@ const insertText = (getView: GetView, value: string) => {
   return true;
 };
 
+const isParagraphNode = (node: any) => node?.type?.name === "paragraph";
+
+const findTablePosAround = (doc: any, pos: number) => {
+  if (!doc || !Number.isFinite(pos)) {
+    return null;
+  }
+  const maxPos = Number(doc.content?.size ?? 0);
+  const seeds = [pos, pos - 1, pos + 1, pos - 2, pos + 2];
+  for (const seed of seeds) {
+    const candidate = Math.max(0, Math.min(maxPos, seed));
+    const direct = doc.nodeAt(candidate);
+    if (direct?.type?.name === "table") {
+      return candidate;
+    }
+    const $pos = doc.resolve(candidate);
+    const before = $pos.nodeBefore;
+    if (before?.type?.name === "table") {
+      return candidate - before.nodeSize;
+    }
+    const after = $pos.nodeAfter;
+    if (after?.type?.name === "table") {
+      return candidate;
+    }
+  }
+  return null;
+};
+
 const replaceSelectionWithNode = (getView: GetView, node: any) => {
   const payload = getViewState(getView);
   if (!payload || !node) {
     return false;
   }
   const { view, state } = payload;
+  if (node?.type?.name === "table") {
+    const paragraphType = state.schema?.nodes?.paragraph;
+    const from = Number(state.selection?.from);
+    if (!Number.isFinite(from)) {
+      return false;
+    }
+    let tr = state.tr.replaceSelectionWith(node, false);
+    let tablePos = findTablePosAround(tr.doc, tr.mapping.map(from, -1));
+    if (!Number.isFinite(tablePos)) {
+      view.dispatch(tr.scrollIntoView());
+      return true;
+    }
+    const ensureParagraph = () =>
+      paragraphType?.createAndFill?.() ?? paragraphType?.create?.() ?? null;
+
+    const $before = tr.doc.resolve(tablePos);
+    if (!isParagraphNode($before.nodeBefore)) {
+      const paragraphBefore = ensureParagraph();
+      if (paragraphBefore) {
+        tr = tr.insert(tablePos, paragraphBefore);
+        tablePos += paragraphBefore.nodeSize;
+      }
+    }
+
+    const insertedTable = tr.doc.nodeAt(tablePos);
+    if (!insertedTable || insertedTable.type?.name !== "table") {
+      view.dispatch(tr.scrollIntoView());
+      return true;
+    }
+    const afterPos = tablePos + insertedTable.nodeSize;
+    const $after = tr.doc.resolve(afterPos);
+    let trailingParagraphPos = afterPos;
+    if (!isParagraphNode($after.nodeAfter)) {
+      const paragraphAfter = ensureParagraph();
+      if (paragraphAfter) {
+        tr = tr.insert(afterPos, paragraphAfter);
+      } else {
+        trailingParagraphPos = null;
+      }
+    }
+    if (Number.isFinite(trailingParagraphPos)) {
+      try {
+        tr = tr.setSelection(TextSelection.create(tr.doc, trailingParagraphPos + 1));
+      } catch (_error) {
+        // Keep transaction selection when mapping near document boundary fails.
+      }
+    }
+    view.dispatch(tr.scrollIntoView());
+    return true;
+  }
   const tr = state.tr.replaceSelectionWith(node);
   view.dispatch(tr.scrollIntoView());
   return true;

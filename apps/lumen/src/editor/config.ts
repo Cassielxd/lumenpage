@@ -6,7 +6,6 @@ export type PlaygroundDebugFlags = {
   highContrast: boolean;
   permissionMode: "full" | "comment" | "readonly";
   enableInputRules: boolean;
-  enableGapCursor: boolean;
   debugPerf: boolean;
   enablePaginationWorker: boolean;
   forcePaginationWorker: boolean;
@@ -43,22 +42,6 @@ const resolveBooleanParam = (key: string) => {
   const normalized = value.toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
-
-const resolveBooleanParamWithDefault = (key: string, fallback: boolean) => {
-  const value = resolveQueryParam(key);
-  if (!value) {
-    return fallback;
-  }
-  const normalized = value.toLowerCase();
-  if (normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on") {
-    return true;
-  }
-  if (normalized === "0" || normalized === "false" || normalized === "no" || normalized === "off") {
-    return false;
-  }
-  return fallback;
-};
-
 const resolveHighContrast = () => {
   const contrast = (resolveQueryParam("contrast") || "").toLowerCase();
   if (contrast === "high") {
@@ -93,8 +76,6 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   highContrast: resolveHighContrast(),
   permissionMode: resolvePermissionMode(),
   enableInputRules: resolveBooleanParam("inputRules"),
-  // GapCursor 默认开启，支持 table/image/video 前后插入。
-  enableGapCursor: resolveBooleanParamWithDefault("gapCursor", true),
   debugPerf: resolveBooleanParam("debugPerf"),
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveBooleanParam("paginationWorkerForce"),

@@ -458,7 +458,12 @@ export const tableRangeSelectionToCellRects = ({
     if (lineStart == null || lineEnd == null) {
       continue;
     }
-    if (maxOffset <= lineStart || minOffset >= lineEnd) {
+    const isEmptyLine = lineStart === lineEnd;
+    if (isEmptyLine) {
+      if (minOffset > lineStart || maxOffset < lineEnd) {
+        continue;
+      }
+    } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
       continue;
     }
     const attrs = line.blockAttrs || {};

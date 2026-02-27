@@ -54,8 +54,6 @@ export const createEditorInternals = ({
   applyViewAttributes,
   inputDebugHandlers,
   setNodeSelectionAtPos,
-  resolveGapSelectionAtPos,
-  setGapCursorAtCoords,
 }) => {
   return {
     dom,
@@ -112,7 +110,5 @@ export const createEditorInternals = ({
     applyViewAttributes,
     inputDebugHandlers,
     setNodeSelectionAtPos,
-    resolveGapSelectionAtPos,
-    setGapCursorAtCoords,
   };
 };

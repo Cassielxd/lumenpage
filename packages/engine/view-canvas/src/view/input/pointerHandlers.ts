@@ -9,8 +9,6 @@ export const createPointerHandlers = ({
   setSelectionOffsets,
   setSelectionFromHit,
   setNodeSelectionAtPos,
-  setGapCursorAtCoords,
-  shouldDeferSelection,
   getSelectionAnchorOffset,
   getSelectionRangeOffsets,
   isNodeSelectionActive,
@@ -115,14 +113,6 @@ export const createPointerHandlers = ({
       const y = event.clientY - rect.top;
       const hit = typeof getHitAtCoords === "function" ? getHitAtCoords(x, y) : null;
 
-      if (typeof setGapCursorAtCoords === "function") {
-        const handled = setGapCursorAtCoords(x, y, hit, event);
-        if (handled) {
-          focusInputNoScroll();
-          return;
-        }
-      }
-
       const hitOffset = posAtCoords(
         layout,
         x,
@@ -160,11 +150,6 @@ export const createPointerHandlers = ({
           focusInputNoScroll();
           return;
         }
-      }
-
-      if (typeof shouldDeferSelection === "function" && shouldDeferSelection(hit, hitOffset, event)) {
-        focusInputNoScroll();
-        return;
       }
 
       if (hit && typeof setSelectionFromHit === "function") {

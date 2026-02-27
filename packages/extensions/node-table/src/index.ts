@@ -2,7 +2,12 @@
  * 鏂囦欢璇存槑锛氳〃鏍艰妭鐐规覆鏌撻厤缃€? * 涓昏鑱岃矗锛氳绠楀崟鍏冩牸甯冨眬銆佽楂樹笌鍗曞厓鏍兼枃鏈?runs銆? */
 
 import { type NodeSpec } from "lumenpage-model";
-import { docToRuns, textblockToRuns, breakLines } from "lumenpage-view-canvas";
+import { NodeSelection } from "lumenpage-state";
+import {
+  docToRuns,
+  textblockToRuns,
+  breakLines,
+} from "lumenpage-view-canvas";
 import { splitTableBlock } from "./pagination/split";
 export {
   addTableRowAfter,
@@ -24,6 +29,42 @@ export {
   mergeSelectedTableCells,
 } from "./commands";
 export { CellSelection } from "./cellSelection";
+
+const isInTableAtResolvedPos = ($pos) => {
+  if (!$pos || !Number.isFinite($pos.depth)) {
+    return false;
+  }
+  for (let depth = $pos.depth; depth >= 0; depth -= 1) {
+    const typeName = $pos.node(depth)?.type?.name;
+    if (typeName === "table" || typeName === "table_row" || typeName === "table_cell") {
+      return true;
+    }
+  }
+  return false;
+};
+
+export const createTableSelectionGeometry = () => ({
+  shouldComputeSelectionRects: ({ editorState, selection }) => {
+    const pmSel = editorState?.selection;
+    if (!pmSel) {
+      return false;
+    }
+    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
+      return true;
+    }
+    if (pmSel instanceof NodeSelection) {
+      return pmSel.node?.type?.name === "table";
+    }
+    if (!selection || selection.from === selection.to) {
+      return false;
+    }
+    return isInTableAtResolvedPos(pmSel?.$from) || isInTableAtResolvedPos(pmSel?.$to);
+  },
+  shouldRenderBorderOnly: ({ editorState }) => {
+    const selection = editorState?.selection;
+    return selection instanceof NodeSelection && selection.node?.type?.name === "table";
+  },
+});
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
 
