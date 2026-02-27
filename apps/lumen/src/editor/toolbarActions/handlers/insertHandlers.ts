@@ -2,7 +2,7 @@ import type { ToolbarActionContext, ToolbarHandlerRecord } from "./types";
 
 export const createInsertActionHandlers = ({
   insertAdvancedActions,
-  layoutActions,
+  toggleTocPanel,
 }: ToolbarActionContext): ToolbarHandlerRecord => ({
   audio: () => {
     insertAdvancedActions.insertAudio();
@@ -32,7 +32,7 @@ export const createInsertActionHandlers = ({
     insertAdvancedActions.insertOptionBox();
   },
   toc: () => {
-    layoutActions.toggleTocPlaceholder();
+    toggleTocPanel();
   },
   template: () => {
     insertAdvancedActions.insertTemplate();

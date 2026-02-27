@@ -219,24 +219,6 @@ export const createLayoutActions = ({
     return refreshLayoutAndRender();
   };
 
-  const togglePageBreakMarks = () => {
-    const view = getView();
-    const settings = view?._internals?.settings;
-    if (!settings) {
-      return false;
-    }
-    settings.showPageCropMarks = settings.showPageCropMarks === false;
-    if (typeof view.forceRender === "function") {
-      return view.forceRender({
-        clearPageCache: true,
-        markLayoutForceRedraw: true,
-      });
-    }
-    view?._internals?.renderer?.pageCache?.clear?.();
-    view?._internals?.scheduleRender?.();
-    return true;
-  };
-
   const toggleTocPlaceholder = () => {
     const view = getView();
     const state = view?.state;
@@ -286,7 +268,6 @@ export const createLayoutActions = ({
     applyPageMarginSetting,
     applyPageSizeSetting,
     togglePageOrientation,
-    togglePageBreakMarks,
     toggleTocPlaceholder,
     togglePageLineNumbers: pageAppearanceActions.togglePageLineNumbers,
     getPageBackgroundColor: pageAppearanceActions.getPageBackgroundColor,

@@ -3,6 +3,7 @@ import type { ToolbarActionContext, ToolbarHandlerRecord } from "./types";
 export const createPageExportActionHandlers = ({
   layoutActions,
   exportActions,
+  toggleTocPanel,
 }: ToolbarActionContext): ToolbarHandlerRecord => ({
   print: () => {
     exportActions.printDocument();
@@ -11,7 +12,7 @@ export const createPageExportActionHandlers = ({
     exportActions.printDocument();
   },
   "toggle-toc": () => {
-    layoutActions.toggleTocPlaceholder();
+    toggleTocPanel();
   },
   "page-margin": () => {
     layoutActions.applyPageMarginSetting();
@@ -21,9 +22,6 @@ export const createPageExportActionHandlers = ({
   },
   "page-orientation": () => {
     layoutActions.togglePageOrientation();
-  },
-  "page-break-marks": () => {
-    layoutActions.togglePageBreakMarks();
   },
   "page-line-number": () => {
     layoutActions.togglePageLineNumbers();

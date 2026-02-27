@@ -271,6 +271,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
+import { MessagePlugin } from "tdesign-vue-next";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { redoDepth, undoDepth } from "lumenpage-history";
 import { TextSelection } from "lumenpage-state";
@@ -330,6 +331,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:sessionMode", value: EditorSessionMode): void;
+  (e: "toggle-toc"): void;
 }>();
 
 const i18n = computed(() => createPlaygroundI18n(props.locale));
@@ -1077,9 +1079,6 @@ const isItemDisabled = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
     return isViewerSession.value;
   }
-  if (!item.implemented) {
-    return true;
-  }
   if (!canUseToolbarActionInSession(resolvedSessionMode.value, item.action)) {
     return true;
   }
@@ -1093,6 +1092,7 @@ const toolbarActionHandlers = createToolbarActionHandlers({
   run,
   runWithNotice,
   getToolbarTexts: () => i18n.value.toolbar,
+  toggleTocPanel: () => emit("toggle-toc"),
   getSessionMode: () => resolvedSessionMode.value,
   setSessionMode,
   toggleSessionMode,
@@ -1118,6 +1118,10 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (isFontFamilyItem(item) || isFontSizeItem(item)) {
+    return;
+  }
+  if (!item.implemented) {
+    MessagePlugin.warning(localeKey.value === "en-US" ? "In development" : "开发中");
     return;
   }
   if (isToolbarColorAction(item.action)) {

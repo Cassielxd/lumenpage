@@ -40,6 +40,7 @@ import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { createLumenMentionPluginOptions } from "./mentionCase";
+import { createTocOutlinePlugin, type TocOutlineSnapshot } from "./tocOutlinePlugin";
 import {
   configurePlaygroundSecurityPolicy,
   normalizePastedText,
@@ -51,10 +52,14 @@ type MountPlaygroundEditorParams = {
   host: HTMLElement;
   statusElement?: HTMLElement | null;
   flags: PlaygroundDebugFlags;
+  onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
+  tocOutlineEnabled?: boolean;
 };
 
 type MountedPlaygroundEditor = {
   view: CanvasEditorView;
+  setTocOutlineEnabled: (enabled: boolean) => void;
+  isTocOutlineEnabled: () => boolean;
   destroy: () => void;
 };
 
@@ -62,6 +67,8 @@ export const mountPlaygroundEditor = ({
   host,
   statusElement,
   flags,
+  onTocOutlineChange,
+  tocOutlineEnabled,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   const i18n = createPlaygroundI18n(flags.locale);
   configurePlaygroundSecurityPolicy({ enableAudit: false });
@@ -85,11 +92,17 @@ export const mountPlaygroundEditor = ({
   }
 
   const nodeRegistry = createDefaultNodeRendererRegistry();
+  const tocOutlineController = createTocOutlinePlugin({
+    onChange: onTocOutlineChange ?? undefined,
+    emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "无标题",
+    initialEnabled: tocOutlineEnabled !== false,
+  });
   const plugins: any[] = [
     history(),
     createBlockIdPlugin(),
     createActiveBlockSelectionPlugin(),
     createMentionPlugin(createLumenMentionPluginOptions()),
+    tocOutlineController.plugin,
     createSelectionBubblePlugin(),
     keymap(createCanvasEditorKeymap()),
     keymap(baseKeymap),
@@ -268,6 +281,10 @@ export const mountPlaygroundEditor = ({
 
   return {
     view,
+    setTocOutlineEnabled: (enabled: boolean) => {
+      tocOutlineController.setEnabled(enabled);
+    },
+    isTocOutlineEnabled: () => tocOutlineController.isEnabled(),
     destroy: () => {
       configurePlaygroundSecurityPolicy({ enableAudit: false });
       paginationDocWorkerClient?.destroy?.();

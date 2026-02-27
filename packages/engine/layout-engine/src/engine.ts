@@ -4,6 +4,9 @@
 
 import { docToRuns, textblockToRuns, textToRuns } from "./textRuns";
 import { breakLines } from "./lineBreaker";
+import { cleanupUnslicedDuplicateSlices } from "./fragments/cleanup";
+import { validateNormalizedSplitFragments } from "./fragments/invariants";
+import { createAutoSplitResult, normalizeSplitFragments } from "./fragments/normalize";
 
 const now = () =>
   typeof performance !== "undefined" && typeof performance.now === "function"
@@ -624,9 +627,12 @@ const getDocChildStartPos = (doc, targetIndex) => {
   return pos;
 };
 
-const defaultIsReuseSensitiveNode = (node) => node?.type?.name === "table";
+const defaultIsReuseSensitiveNode = (_node) => false;
 
-const defaultIsReuseSensitiveLine = (line) => line?.blockType === "table";
+const defaultIsReuseSensitiveLine = (line) => {
+  const attrs = line?.blockAttrs || {};
+  return !!attrs.sliceFromPrev || !!attrs.sliceHasNext || !!attrs.sliceRowSplit;
+};
 
 const hasTopLevelSensitiveNodeInRange = (doc, fromIndex, toIndex, isSensitiveNode) => {
   if (!doc || !Number.isFinite(fromIndex) || !Number.isFinite(toIndex)) {
@@ -787,10 +793,32 @@ export class LayoutPipeline {
     if (!disablePageReuse) {
       const changeSummary = options?.changeSummary ?? null;
       const previousLayout = options?.previousLayout ?? null;
+      const isSensitiveNodeByRenderer = (node) => {
+        const typeName = node?.type?.name;
+        if (!typeName || !this.registry?.get) {
+          return false;
+        }
+        const renderer = this.registry.get(typeName);
+        return !!renderer?.splitBlock;
+      };
+      const isSensitiveLineByRenderer = (line) => {
+        const blockType = line?.blockType;
+        if (!blockType || !this.registry?.get) {
+          return false;
+        }
+        const renderer = this.registry.get(blockType);
+        return !!renderer?.splitBlock;
+      };
       const defaultDecision = shouldDisableReuseForSensitiveChange(
         doc,
         changeSummary,
-        previousLayout
+        previousLayout,
+        this.registry
+          ? {
+              isSensitiveNode: isSensitiveNodeByRenderer,
+              isSensitiveLine: isSensitiveLineByRenderer,
+            }
+          : undefined
       );
       const customGuard = baseSettingsRaw?.shouldDisablePageReuseForChange;
       if (typeof customGuard === "function") {
@@ -1116,7 +1144,6 @@ export class LayoutPipeline {
       }
       const candidateIndexes = Array.from(candidateSet.values());
       let matchedOldPageIndex = null;
-      let lastDiff = null;
       for (const candidateIndex of candidateIndexes) {
         const candidatePage = previousLayout.pages?.[candidateIndex];
         if (!candidatePage) {
@@ -1125,10 +1152,8 @@ export class LayoutPipeline {
         const diff = perf ? {} : null;
         if (arePagesEquivalent(page, candidatePage, diff, offsetDelta)) {
           matchedOldPageIndex = candidateIndex;
-          lastDiff = null;
           break;
         }
-        lastDiff = diff;
       }
       if (!Number.isFinite(matchedOldPageIndex)) {
         if (perf) {
@@ -1505,40 +1530,50 @@ export class LayoutPipeline {
               blockAttrs,
             });
           }
+          const autoSplitResult = createAutoSplitResult(remainingLines, {
+            remainingLength,
+            availableHeight,
+            lineHeightValue,
+            getFittableLineCount,
+            measureLinesHeight,
+            normalizeChunkRelativeY,
+          });
           if (!splitResult) {
-            const maxLines = Math.max(
-              1,
-              getFittableLineCount(remainingLines, availableHeight, lineHeightValue)
-            );
-            if (maxLines < remainingLines.length) {
-              const visibleLinesRaw = remainingLines.slice(0, maxLines);
-              const lastLine = visibleLinesRaw[visibleLinesRaw.length - 1];
-              const firstLine = visibleLinesRaw[0];
-              const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
-              const endOffset = typeof lastLine?.end === "number" ? lastLine.end : remainingLength;
-              const visibleLength = Math.max(0, endOffset - startOffset);
-              const visibleLines = normalizeChunkRelativeY(visibleLinesRaw);
-              const visibleHeight = measureLinesHeight(visibleLines, lineHeightValue);
-              const overflowLines = normalizeChunkRelativeY(remainingLines.slice(maxLines));
-              const overflowLength = Math.max(0, remainingLength - visibleLength);
-              const overflowHeight = measureLinesHeight(overflowLines, lineHeightValue);
-              splitResult = {
-                lines: visibleLines,
-                length: visibleLength,
-                height: visibleHeight,
-                overflow: {
-                  lines: overflowLines,
-                  length: overflowLength,
-                  height: overflowHeight,
-                },
-              };
+            splitResult = autoSplitResult;
+          }
+          let splitFragments = normalizeSplitFragments(splitResult, {
+            fallbackLineHeight: lineHeightValue,
+            expectedLength: remainingLength,
+            measureLinesHeight,
+          });
+          let splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+          if (!splitFragments && splitResult) {
+            splitFragments = normalizeSplitFragments(autoSplitResult, {
+              fallbackLineHeight: lineHeightValue,
+              expectedLength: remainingLength,
+              measureLinesHeight,
+            });
+            splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+          }
+          if (splitFragments && !splitValidation.ok) {
+            splitFragments = normalizeSplitFragments(autoSplitResult, {
+              fallbackLineHeight: lineHeightValue,
+              expectedLength: remainingLength,
+              measureLinesHeight,
+            });
+            splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+          }
+          if (!splitFragments || !splitValidation.ok) {
+            if (finalizePage()) {
+              return true;
             }
+            continue;
           }
           if (
-            splitResult &&
-            splitResult.lines.length === 0 &&
-            splitResult.overflow &&
-            splitResult.overflow.lines.length > 0
+            splitFragments &&
+            splitFragments.visible.lines.length === 0 &&
+            splitFragments.overflow &&
+            splitFragments.overflow.lines.length > 0
           ) {
             if (page.lines.length === 0 && remainingLines.length > 0) {
               const fullAvailableHeight = pageHeight - margin.top - margin.bottom;
@@ -1571,29 +1606,30 @@ export class LayoutPipeline {
             if (finalizePage()) {
               return true;
             }
-            remainingLines = splitResult.overflow.lines;
-            remainingLength = splitResult.overflow.length;
-            remainingHeight = Number.isFinite(splitResult.overflow.height)
-              ? splitResult.overflow.height
-              : measureLinesHeight(splitResult.overflow.lines, lineHeightValue);
+            remainingLines = splitFragments.overflow.lines;
+            remainingLength = splitFragments.overflow.length;
+            remainingHeight = Number.isFinite(splitFragments.overflow.height)
+              ? splitFragments.overflow.height
+              : measureLinesHeight(splitFragments.overflow.lines, lineHeightValue);
             continue;
           }
-          if (splitResult && splitResult.lines.length > 0) {
-            placeLines(splitResult.lines);
-            const placedHeight = Number.isFinite(splitResult.height)
-              ? splitResult.height
-              : measureLinesHeight(splitResult.lines, lineHeightValue);
+          if (splitFragments && splitFragments.visible.lines.length > 0) {
+            placeLines(splitFragments.visible.lines);
+            const placedHeight = Number.isFinite(splitFragments.visible.height)
+              ? splitFragments.visible.height
+              : measureLinesHeight(splitFragments.visible.lines, lineHeightValue);
             cursorY += placedHeight;
+            const hasOverflow = !!splitFragments.overflow && splitFragments.overflow.lines.length > 0;
             if (finalizePage()) {
               return true;
             }
             // 继续处理溢出切片（跨页续排）
-            if (splitResult.overflow && splitResult.overflow.lines.length > 0) {
-              remainingLines = splitResult.overflow.lines;
-              remainingLength = splitResult.overflow.length;
-              remainingHeight = Number.isFinite(splitResult.overflow.height)
-                ? splitResult.overflow.height
-                : measureLinesHeight(splitResult.overflow.lines, lineHeightValue);
+            if (hasOverflow && splitFragments.overflow) {
+              remainingLines = splitFragments.overflow.lines;
+              remainingLength = splitFragments.overflow.length;
+              remainingHeight = Number.isFinite(splitFragments.overflow.height)
+                ? splitFragments.overflow.height
+                : measureLinesHeight(splitFragments.overflow.lines, lineHeightValue);
               continue;
             }
             remainingLines = [];
@@ -1722,51 +1758,7 @@ export class LayoutPipeline {
       );
       pages.push(...markReusedPages(reusedTail));
     }
-    // 清理重复的表格块：若同一表格已出现分片，则移除无分片标记的完整表格行。
-    const tableSliceStarts = new Set<number>();
-    for (const pg of pages) {
-      for (const line of pg.lines || []) {
-        if (line?.blockType !== "table") {
-          continue;
-        }
-        const attrs = line.blockAttrs || {};
-        const hasSlice =
-          !!attrs.tableSliceFromPrev ||
-          !!attrs.tableSliceHasNext ||
-          !!line.tableMeta?.continuedFromPrev ||
-          !!line.tableMeta?.continuesAfter ||
-          !!line.tableMeta?.rowSplit;
-        if (hasSlice && Number.isFinite(line.blockStart)) {
-          tableSliceStarts.add(line.blockStart);
-        }
-      }
-    }
-    if (tableSliceStarts.size > 0) {
-      for (const pg of pages) {
-        if (!pg?.lines?.length) {
-          continue;
-        }
-        pg.lines = pg.lines.filter((line) => {
-          if (line?.blockType !== "table") {
-            return true;
-          }
-          if (!Number.isFinite(line.blockStart)) {
-            return true;
-          }
-          if (!tableSliceStarts.has(line.blockStart)) {
-            return true;
-          }
-          const attrs = line.blockAttrs || {};
-          const hasSlice =
-            !!attrs.tableSliceFromPrev ||
-            !!attrs.tableSliceHasNext ||
-            !!line.tableMeta?.continuedFromPrev ||
-            !!line.tableMeta?.continuesAfter ||
-            !!line.tableMeta?.rowSplit;
-          return hasSlice;
-        });
-      }
-    }
+    pages = cleanupUnslicedDuplicateSlices(pages);
     // 移除空页（可能由分页切换或块移动引入）
     pages = pages.filter((pg) => pg?.lines?.length > 0);
     // 计算总高度用于滚动。

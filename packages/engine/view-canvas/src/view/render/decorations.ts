@@ -249,8 +249,19 @@ export const buildDecorationDrawData = ({
     }
 
     if (decoration.type === "node" && decoration.spec?.blockOutline) {
-      const minOffset = Math.max(0, Math.min(fromOffset, toOffset));
-      const maxOffset = Math.max(minOffset, Math.min(Math.max(fromOffset, toOffset), textLength));
+      // Node decorations use [from, to) positions. For block-outline hit-testing, resolve the
+      // end bound inside the node (`to - 1`) so adjacent block separators don't leak into
+      // neighbor empty paragraphs after Enter split.
+      const startPos = Math.min(decoration.from, decoration.to);
+      const endPos = Math.max(decoration.from, decoration.to);
+      const contentEndPos = endPos > startPos ? endPos - 1 : endPos;
+      const outlineFromOffset = docPosToTextOffset(doc, startPos);
+      const outlineToOffset = docPosToTextOffset(doc, contentEndPos);
+      if (!Number.isFinite(outlineFromOffset) || !Number.isFinite(outlineToOffset)) {
+        continue;
+      }
+      const minOffset = Math.max(0, Math.min(outlineFromOffset, outlineToOffset));
+      const maxOffset = Math.max(minOffset, Math.min(Math.max(outlineFromOffset, outlineToOffset), textLength));
       for (const item of lineItems) {
         const line = item?.line;
         if (!line) {

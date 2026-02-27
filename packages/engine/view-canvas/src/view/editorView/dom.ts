@@ -49,8 +49,6 @@ export const DEFAULT_SETTINGS = {
   renderPageBackground: null,
   // 可选：自定义每页纸张外观绘制（返回 true 表示已完全接管）。
   renderPageChrome: null,
-  // 是否绘制分页裁切线（页角标记），默认开启。
-  showPageCropMarks: true,
   // 可选：自定义每页 canvas 的 DOM 样式（阴影/圆角/CSS 滤镜等）。
   onPageCanvasStyle: null,
   touch: {

@@ -13,6 +13,9 @@
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
       </div>
       <div class="topbar-right">
+        <t-button size="small" variant="outline" @click="toggleTocPanel">
+          {{ tocToggleLabel }}
+        </t-button>
         <t-button size="small" variant="outline">{{ i18n.app.comment }}</t-button>
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
         <t-avatar size="small">U</t-avatar>
@@ -27,9 +30,27 @@
       :active-menu="activeToolbarMenu"
       :session-mode="sessionMode"
       @update:session-mode="handleSessionModeUpdate"
+      @toggle-toc="toggleTocPanel"
     />
 
     <t-content class="doc-content">
+      <aside v-if="tocPanelOpen && tocItems.length > 0" class="doc-outline">
+        <div class="doc-outline-header">
+          <span>{{ outlineTitle }}</span>
+          <button type="button" class="doc-outline-close" @click="closeTocPanel">×</button>
+        </div>
+        <button
+          v-for="item in tocItems"
+          :key="item.id"
+          type="button"
+          class="doc-outline-item"
+          :class="{ 'is-active': item.id === activeTocId }"
+          :style="{ '--toc-level': String(item.level) }"
+          @click="handleTocItemClick(item)"
+        >
+          <span class="doc-outline-item-text">{{ item.text }}</span>
+        </button>
+      </aside>
       <div class="doc-stage">
         <div ref="editorHost" class="editor-host"></div>
       </div>
@@ -48,12 +69,18 @@ import {
   watch,
   type Ref,
 } from "vue";
+import { TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { createPlaygroundI18n } from "./editor/i18n";
 import { mountPlaygroundEditor } from "./editor/editorMount";
+import {
+  findHeadingPosById,
+  type TocOutlineItem,
+  type TocOutlineSnapshot,
+} from "./editor/tocOutlinePlugin";
 import type { ToolbarMenuKey } from "./editor/toolbarCatalog";
 import type { EditorSessionMode } from "./editor/sessionMode";
 
@@ -65,6 +92,19 @@ type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const view = shallowRef<CanvasEditorView | null>(null);
+const tocItems = ref<TocOutlineItem[]>([]);
+const activeTocId = ref<string | null>(null);
+const tocPanelOpen = ref(false);
+const outlineTitle = computed(() => (debugFlags.locale === "en-US" ? "Outline" : "目录"));
+const tocToggleLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? tocPanelOpen.value
+      ? "Hide Outline"
+      : "Show Outline"
+    : tocPanelOpen.value
+      ? "隐藏目录"
+      : "显示目录"
+);
 const sessionMode = ref<EditorSessionMode>(
   debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
 );
@@ -79,6 +119,7 @@ const permissionLabel = computed(() => {
   return i18n.app.permissionEdit;
 });
 let detachEditor: null | (() => void) = null;
+let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 
 const applySessionModeToView = () => {
   const currentView = view.value;
@@ -97,6 +138,42 @@ const handleSessionModeUpdate = (nextMode: EditorSessionMode) => {
   sessionMode.value = nextMode;
 };
 
+const setTocPanelEnabled = (enabled: boolean) => {
+  tocPanelOpen.value = enabled;
+  setTocOutlineEnabled?.(enabled);
+};
+
+const toggleTocPanel = () => {
+  setTocPanelEnabled(!tocPanelOpen.value);
+};
+
+const closeTocPanel = () => {
+  setTocPanelEnabled(false);
+};
+
+const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
+  tocItems.value = Array.isArray(snapshot?.items) ? snapshot.items : [];
+  activeTocId.value = snapshot?.activeId || null;
+};
+
+const handleTocItemClick = (item: TocOutlineItem) => {
+  const currentView = view.value;
+  if (!currentView?.state?.doc || !currentView?.state?.tr || !item?.id) {
+    return;
+  }
+  const pos = findHeadingPosById(currentView.state.doc, item.id);
+  if (!Number.isFinite(pos)) {
+    return;
+  }
+  try {
+    const tr = currentView.state.tr.setSelection(TextSelection.create(currentView.state.doc, Number(pos)));
+    currentView.dispatch(tr.scrollIntoView());
+    // Keep current focus state to avoid caret jumping to document tail after TOC jump.
+  } catch (_error) {
+    // noop
+  }
+};
+
 onMounted(async () => {
   if (!editorHost.value) {
     return;
@@ -106,8 +183,11 @@ onMounted(async () => {
     host: editorHost.value,
     statusElement: toolbarRef.value?.statusEl?.value || null,
     flags: debugFlags,
+    onTocOutlineChange: handleTocOutlineChange,
+    tocOutlineEnabled: tocPanelOpen.value,
   });
   view.value = mounted.view;
+  setTocOutlineEnabled = mounted.setTocOutlineEnabled;
   applySessionModeToView();
   detachEditor = mounted.destroy;
 });
@@ -122,7 +202,10 @@ watch(
 onBeforeUnmount(() => {
   detachEditor?.();
   detachEditor = null;
+  setTocOutlineEnabled = null;
   view.value = null;
+  tocItems.value = [];
+  activeTocId.value = null;
 });
 </script>
 
@@ -189,12 +272,80 @@ onBeforeUnmount(() => {
 }
 
 .doc-content {
+  position: relative;
   display: flex;
   min-height: 0;
   flex: 1;
   padding: 0;
   overflow: hidden;
   background: #f5f6f8;
+}
+
+.doc-outline {
+  width: 240px;
+  min-width: 0;
+  border-right: 1px solid #e5e7eb;
+  background: #ffffff;
+  overflow: auto;
+  padding: 12px 10px;
+}
+
+.doc-outline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: 0.03em;
+  margin: 2px 4px 8px;
+  text-transform: uppercase;
+}
+
+.doc-outline-close {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.doc-outline-close:hover {
+  color: #111827;
+}
+
+.doc-outline-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  text-align: left;
+  display: block;
+  padding: 6px 8px;
+  padding-left: calc(8px + (var(--toc-level, 1) - 1) * 14px);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.doc-outline-item:hover {
+  background: #eff6ff;
+}
+
+.doc-outline-item.is-active {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.doc-outline-item-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .doc-stage {
@@ -237,6 +388,14 @@ onBeforeUnmount(() => {
       )
       0 0 / 36px 36px,
     linear-gradient(180deg, #f7f8fb 0%, #eef1f6 100%);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.editor-host :deep(.lumenpage-scroll-area::-webkit-scrollbar) {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .editor-host :deep(.page-canvas) {
@@ -309,6 +468,10 @@ onBeforeUnmount(() => {
 
   .doc-content {
     padding: 0;
+  }
+
+  .doc-outline {
+    display: none;
   }
 }
 </style>

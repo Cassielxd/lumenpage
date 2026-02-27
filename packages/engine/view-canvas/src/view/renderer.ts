@@ -207,43 +207,6 @@ const drawDecorationWidgets = (ctx, widgets) => {
   }
 };
 
-const drawPageCornerMarks = (ctx, width, height) => {
-  const cornerLen = 10;
-  const diagonalLen = 7;
-  const inset = 6;
-  ctx.save();
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  // top-left
-  ctx.moveTo(inset, inset + cornerLen);
-  ctx.lineTo(inset, inset);
-  ctx.lineTo(inset + cornerLen, inset);
-  // top-right
-  ctx.moveTo(width - inset - cornerLen, inset);
-  ctx.lineTo(width - inset, inset);
-  ctx.lineTo(width - inset, inset + cornerLen);
-  // bottom-right
-  ctx.moveTo(width - inset, height - inset - cornerLen);
-  ctx.lineTo(width - inset, height - inset);
-  ctx.lineTo(width - inset - cornerLen, height - inset);
-  // bottom-left
-  ctx.moveTo(inset + cornerLen, height - inset);
-  ctx.lineTo(inset, height - inset);
-  ctx.lineTo(inset, height - inset - cornerLen);
-  // corner diagonals
-  ctx.moveTo(inset + 1, inset + diagonalLen);
-  ctx.lineTo(inset + diagonalLen, inset + 1);
-  ctx.moveTo(width - inset - diagonalLen, inset + 1);
-  ctx.lineTo(width - inset - 1, inset + diagonalLen);
-  ctx.moveTo(width - inset - diagonalLen, height - inset - 1);
-  ctx.lineTo(width - inset - 1, height - inset - diagonalLen);
-  ctx.moveTo(inset + 1, height - inset - diagonalLen);
-  ctx.lineTo(inset + diagonalLen, height - inset - 1);
-  ctx.stroke();
-  ctx.restore();
-};
-
 // 构建表格分页调试信息（只统计可见页）
 const buildTablePaginationDebug = (layout, visibleRange) => {
   if (!layout?.pages?.length) {
@@ -427,7 +390,15 @@ export class Renderer {
 
   /* Page signature cache helper. */
   getPageSignature(page) {
-    if (page && typeof page.__signature === "number") {
+    const layoutVersion =
+      page && Number.isFinite(page.__layoutVersionToken) ? Number(page.__layoutVersionToken) : null;
+    if (
+      page &&
+      typeof page.__signature === "number" &&
+      (layoutVersion == null ||
+        (Number.isFinite(page.__signatureVersion) &&
+          Number(page.__signatureVersion) === layoutVersion))
+    ) {
       return page.__signature;
     }
 
@@ -475,6 +446,9 @@ export class Renderer {
 
     if (page) {
       page.__signature = hash;
+      if (layoutVersion != null) {
+        page.__signatureVersion = layoutVersion;
+      }
     }
 
     return hash;
@@ -596,6 +570,7 @@ export class Renderer {
         dirty: true,
 
         signature: null,
+        signatureVersion: null,
       };
 
       this.pageCache.set(pageIndex, entry);
@@ -727,11 +702,7 @@ export class Renderer {
     }
 
     const renderPageChrome = this.settings?.renderPageChrome;
-    const drawDefaultPageChrome = () => {
-      if (this.settings?.showPageCropMarks !== false) {
-        drawPageCornerMarks(ctx, width, height);
-      }
-    };
+    const drawDefaultPageChrome = () => {};
     let chromeHandled = false;
     if (typeof renderPageChrome === "function") {
       chromeHandled =
@@ -845,6 +816,13 @@ export class Renderer {
       this.lastLayoutVersion = layoutVersion;
     }
     const { clientWidth, clientHeight, scrollTop } = viewport;
+    if (Number.isFinite(layoutVersion) && Array.isArray(layout?.pages)) {
+      for (const page of layout.pages) {
+        if (page && Number(page.__layoutVersionToken) !== Number(layoutVersion)) {
+          page.__layoutVersionToken = Number(layoutVersion);
+        }
+      }
+    }
 
     const rawDpr = window.devicePixelRatio || 1;
     const dprStrategy = this.settings?.pixelRatioStrategy;
@@ -912,7 +890,6 @@ export class Renderer {
     let redrawCount = 0;
     let cachedPages = 0;
     const changedRange = resolveChangedRootIndexRange(layout.__changeSummary);
-
     for (let i = 0; i < pageIndices.length; i += 1) {
       const pageIndex = pageIndices[i];
 
@@ -921,8 +898,20 @@ export class Renderer {
 
       let signature = entry.signature;
       const page = layout.pages[pageIndex];
-      const hasCachedSignature =
-        typeof signature === "number" || (page && typeof page.__signature === "number");
+      const currentVersion = Number.isFinite(layoutVersion) ? Number(layoutVersion) : null;
+      const entryVersion = Number.isFinite(entry?.signatureVersion)
+        ? Number(entry.signatureVersion)
+        : null;
+      const pageVersion = Number.isFinite(page?.__signatureVersion)
+        ? Number(page.__signatureVersion)
+        : null;
+      const hasEntrySignature =
+        typeof signature === "number" && (currentVersion == null || entryVersion === currentVersion);
+      const hasPageSignature =
+        page &&
+        typeof page.__signature === "number" &&
+        (currentVersion == null || pageVersion === currentVersion);
+      const hasCachedSignature = hasEntrySignature || hasPageSignature;
       const canSkipSignature =
         !forceRedraw &&
         hasCachedSignature &&
@@ -939,8 +928,12 @@ export class Renderer {
         if (this.settings?.debugPerf) {
           signatureMs += now() - sigStart;
         }
-      } else if (signature == null && page && typeof page.__signature === "number") {
+      } else if (signature == null && hasPageSignature) {
         signature = page.__signature;
+      }
+
+      if (Number.isFinite(layoutVersion) && Number.isFinite(signature)) {
+        entry.signatureVersion = Number(layoutVersion);
       }
 
       if (forceRedraw || entry.signature !== signature) {

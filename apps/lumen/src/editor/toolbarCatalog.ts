@@ -377,10 +377,10 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "tools-chart",
       items: [
-        item("diagrams", "diagrams", "流程图", "Diagrams", "diagrams", true),
-        item("echarts", "echarts", "图表", "ECharts", "echarts", true),
-        item("mermaid", "mermaid", "Mermaid", "Mermaid", "mermaid", true),
-        item("mind-map", "mind-map", "思维导图", "Mind Map", "mind-map", true),
+        item("diagrams", "diagrams", "流程图", "Diagrams", "diagrams", false),
+        item("echarts", "echarts", "图表", "ECharts", "echarts", false),
+        item("mermaid", "mermaid", "Mermaid", "Mermaid", "mermaid", false),
+        item("mind-map", "mind-map", "思维导图", "Mind Map", "mind-map", false),
       ],
     },
     {
@@ -412,14 +412,6 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       id: "page-mark",
       items: [
         item("page-break", "page-break", "分页符", "Page Break", "page-break", true),
-        item(
-          "page-break-marks",
-          "break-marks",
-          "分页标记",
-          "Break Marks",
-          "page-break-marks",
-          true
-        ),
         item("page-line-number", "line-number", "行号", "Line Number", "page-line-number", true),
         item("page-watermark", "watermark", "水印", "Watermark", "page-watermark", true),
         item(

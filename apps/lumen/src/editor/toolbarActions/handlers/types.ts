@@ -21,7 +21,6 @@ export type LayoutActions = {
   applyPageMarginSetting: () => ToolbarActionResult;
   applyPageSizeSetting: () => ToolbarActionResult;
   togglePageOrientation: () => ToolbarActionResult;
-  togglePageBreakMarks: () => ToolbarActionResult;
   togglePageLineNumbers: () => ToolbarActionResult;
   toggleTocPlaceholder: () => ToolbarActionResult;
   applyPageBackgroundSetting: () => ToolbarActionResult;
@@ -122,6 +121,7 @@ export type ToolbarActionContext = {
   run: RunCommand;
   runWithNotice: RunWithNotice;
   getToolbarTexts: () => ToolbarTexts;
+  toggleTocPanel: () => void;
   getSessionMode: () => EditorSessionMode;
   setSessionMode: (value: EditorSessionMode) => void;
   toggleSessionMode: () => void;

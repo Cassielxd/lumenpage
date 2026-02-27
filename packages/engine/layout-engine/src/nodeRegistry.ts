@@ -11,6 +11,19 @@ export type NodeLayoutResult = {
   blockAttrs?: any;
   blockLineHeight?: number;
   overflow?: NodeLayoutResult;
+  fragments?: NodeLayoutSplitFragment[];
+};
+
+export type NodeLayoutSplitFragment = {
+  kind?: "visible" | "overflow";
+  lines: any[];
+  length: number;
+  height?: number;
+  continuation?: {
+    fromPrev?: boolean;
+    hasNext?: boolean;
+    rowSplit?: boolean;
+  };
 };
 
 export type ContainerStyle = {
