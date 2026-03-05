@@ -1,113 +1,76 @@
-# 分页布局设计（Layout Pagination）
+# 分页布局设计（2026-02-27）
 
 ## 1. 设计目标
 
-`packages/view-canvas` 的分页引擎需要同时满足三件事：
+分页引擎同时满足：
 
-- 正确性：文档结构、选区映射、命中坐标稳定。
-- 性能：大文档可增量更新，避免整文档重排与整页重绘。
-- 可扩展：节点布局能力可由 `node-*` 包扩展，不把节点细节写死在核心。
+- 正确性：文档结构、选区映射、命中坐标稳定
+- 性能：支持增量布局与页面复用
+- 可扩展：节点分页能力由 `node-*` 扩展，不在核心写死节点细节
 
-## 2. 模块边界
+## 2. 模块边界（当前）
 
-- `packages/view-canvas/src/layout-pagination/engine.ts`
+- `packages/engine/layout-engine/src/engine.ts`
   - `layoutFromDoc` 主入口
-  - 增量布局、分页切分、缓存失效控制
-- `packages/view-canvas/src/layout-pagination/textRuns.ts`
-  - 将文档节点转换为可换行 runs
-- `packages/view-canvas/src/layout-pagination/lineBreaker.ts`
-  - 将 runs 按宽度切分为行
-- `packages/view-canvas/src/layout-pagination/nodeRegistry.ts`
-  - 节点布局/渲染扩展注册
+  - 增量布局、分页切分、缓存复用
+- `packages/engine/layout-engine/src/textRuns.ts`
+  - doc -> runs
+- `packages/engine/layout-engine/src/lineBreaker.ts`
+  - runs -> lines
+- `packages/engine/layout-engine/src/nodeRegistry.ts`
+  - 节点布局/绘制扩展注册
+- `packages/engine/view-canvas/src/layout-pagination/*`
+  - 兼容转发层（门面），不承载核心算法
 
-## 3. 核心数据结构
+## 3. 关键数据
 
-### 3.1 Run
-
-Run 是布局最小文本单元，典型字段：
-
-- `text`
-- `start/end`（文本偏移区间）
-- `style`
-- `blockType/blockId/blockAttrs`
-- `break`（强制换行）
-
-### 3.2 Line
-
-行结构承载排版与命中信息：
-
-- `start/end`
-- `x/y/width/lineHeight`
-- `runs`
-- `blockType/blockId`
-
-### 3.3 Page 与 LayoutResult
-
-- `pages: Array<{ index, lines }>`
-- `totalHeight`
-- 与当前 `settings` 对齐的页面几何信息
+- `Run`：文本布局单元
+- `Line`：换行结果与命中信息
+- `Page`：分页后的行集合
+- `LayoutResult`：`pages + mapping + settings` 相关输出
 
 ## 4. 布局主流程
 
-1. `layoutFromDoc(doc, options)` 接收当前文档与可选 `previousLayout/changeSummary`。
-2. 文档转换为 runs（含节点级样式与语义信息）。
-3. runs 经过 `lineBreaker` 得到 lines。
-4. lines 按页面高度切分为 pages。
-5. 生成 `LayoutResult` 并附带增量复用元信息。
+1. `layoutFromDoc(doc, options)`
+2. 生成 runs
+3. 行断开（line break）
+4. 按页高分页
+5. 输出 `LayoutResult`
 
-## 5. 增量与缓存策略
+## 5. 增量与缓存
 
-### 5.1 变更摘要驱动
+1. `changeSummary` 驱动受影响块重排
+2. 块缓存按签名复用，减少重复计算
+3. 渐进分页支持先可交互、后补全
 
-- 通过 `changeSummary.blocks` 定位受影响 block。
-- 仅重排受影响范围及必要邻域，降低全量重排概率。
+## 6. 复杂节点分页协议
 
-### 5.2 页级复用
+节点可通过注册表实现：
 
-- 使用页面签名与版本标记判断可复用页。
-- 未变化页面直接复用缓存画面，减少绘制开销。
+- `layoutBlock`：自定义块布局
+- `splitBlock`：跨页拆分
+- `allowSplit`：拆分策略
+- `getCacheSignature`：缓存签名
 
-### 5.3 渐进布局
+表格节点已走该协议，并支持行级/行内分页。
 
-- 首先生成“可交互”布局。
-- 再异步补全完整布局，保证交互优先。
+## 7. 渲染协同
 
-## 6. 渲染协同
+- 页面内容层：canvas 页面缓存
+- overlay 层：选区、光标、装饰、NodeView
+- 布局与绘制解耦：布局引擎不直接操作 DOM
 
-布局与渲染分离：
+## 8. Worker 策略
 
-- 页面内容层：page canvas 缓存。
-- overlay 层：选区、光标、装饰、拖拽提示等动态信息。
-- NodeView overlay 独立同步，避免与文本层耦合。
+- 可在 worker 计算分页
+- 复杂场景可回退主线程，优先正确性
+- Lumen 侧 provider：`apps/lumen/src/editor/paginationDocWorkerClient.ts`
 
-## 7. 命中与映射约束
+## 9. 调试入口
 
-必须保持以下映射稳定：
-
-- `docPos -> textOffset`
-- `textOffset -> coords`
-- `coords -> docPos`
-
-任何分页、换行、滚动优化都不能破坏这组闭环，否则会出现“光标跳跃/选区错位”。
-
-## 8. Worker 化（可选）
-
-支持将分页计算放入 Worker：
-
-- 主线程保留输入与绘制。
-- Worker 处理 runs/line/page 计算。
-- 对复杂块（如表格）保留主线程回退，优先保证正确性。
-
-## 9. 调试与验收建议
-
-本地联调入口：
-
-- `?devTools=1&allSmoke=1`
-- `?devTools=1&p0Smoke=1`
-- `?devTools=1&perfBudgetSmoke=1`
-
-重点关注：
-
-- 大文档滚动/编辑是否出现卡顿尖峰。
-- 表格、列表、媒体节点是否触发异常重排。
-- 选区矩形、拖拽提示、光标坐标是否稳定。
+- `?debugPerf=1`
+- `?paginationWorker=1`
+- `?paginationWorkerForce=1`
+- `?paginationIncremental=1`
+- `?paginationMaxPages=<n>`
+- `?paginationSettleMs=<ms>`

@@ -2,9 +2,9 @@
 
 - Source: `apps/lumen/src/editor/toolbarCatalog.ts`
 - Rule: `implemented=true` means checked.
-- Stats: total `104`, done `104`, pending `0`.
-- Product completeness baseline: done `65`, pending `39` (see `docs/lumen-product-completion-plan.md`).
-- Updated: 2026-02-26
+- Stats: total `103`, done `99`, pending `4`.
+- Product completeness baseline: see `docs/lumen-product-completion-plan.md` (该文档为产品态口径，不等于 `implemented=true`)。
+- Updated: 2026-02-27
 
 ## base (36/36)
 
@@ -91,26 +91,25 @@
 - [x] `previous-cell` (Previous Cell), action: `previous-cell`, command: `goToPreviousTableCell`
 - [x] `delete-table` (Delete Table), action: `delete-table`
 
-## tools (9/9)
+## tools (5/9)
 
 - [x] `qrcode` (QR Code), action: `qrcode`
 - [x] `barcode` (Barcode), action: `barcode`
 - [x] `signature` (Signature), action: `signature`
 - [x] `seal` (Seal), action: `seal`
-- [x] `diagrams` (Diagrams), action: `diagrams`
-- [x] `echarts` (ECharts), action: `echarts`
-- [x] `mermaid` (Mermaid), action: `mermaid`
-- [x] `mind-map` (Mind Map), action: `mind-map`
+- [ ] `diagrams` (Diagrams), action: `diagrams`
+- [ ] `echarts` (ECharts), action: `echarts`
+- [ ] `mermaid` (Mermaid), action: `mermaid`
+- [ ] `mind-map` (Mind Map), action: `mind-map`
 - [x] `chinese-case` (Chinese Case), action: `chinese-case`
 
-## page (12/12)
+## page (11/11)
 
 - [x] `toggle-toc` (TOC), action: `toggle-toc`
 - [x] `page-margin` (Page Margin), action: `page-margin`
 - [x] `page-size` (Page Size), action: `page-size`
 - [x] `page-orientation` (Page Orientation), action: `page-orientation`
 - [x] `page-break` (Page Break), action: `page-break`
-- [x] `page-break-marks` (Break Marks), action: `page-break-marks`
 - [x] `page-line-number` (Line Number), action: `page-line-number`
 - [x] `page-watermark` (Watermark), action: `page-watermark`
 - [x] `page-background` (Page Background), action: `page-background`

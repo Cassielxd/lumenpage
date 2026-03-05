@@ -1,133 +1,67 @@
-# Lumen 菜单产品完成收口方案（104 项）
+# Lumen 菜单产品完成收口方案（2026-02-27）
 
-- 更新时间：2026-02-26
-- 统计来源：`apps/lumen/src/editor/toolbarCatalog.ts` + `apps/lumen/src/editor/toolbarActions/*` 实现复核
+- 统计来源：`apps/lumen/src/editor/toolbarCatalog.ts` + `apps/lumen/src/editor/toolbarActions/*`
+- 说明：本文件是“产品态收口”口径，不等同于 `implemented=true` 的“接线口径”。
 
 ## 1. 口径定义
 
-`implemented=true` 只代表“已接线”，不代表“产品完成”。
+### 接线完成（Engineering Wired）
 
-产品完成（Product Complete）按以下标准判定：
+- 菜单项在 `toolbarCatalog.ts` 中 `implemented=true`
+- 对应 action 已可触发
 
-1. 有稳定交互（非 `window.prompt/alert` 主流程）。
-2. 非占位实现（不以纯文本 fallback 代替真实能力）。
-3. 与当前编辑器状态、权限、国际化流程一致。
-4. 有可回归路径（至少可被 smoke 或明确脚本验证）。
+### 产品完成（Product Complete）
 
-## 2. 当前基线
+单项必须同时满足：
 
-- 总项数：`104`
-- 产品完成：`65`
-- 未完成：`39`
+1. 无 `window.prompt/alert` 主流程依赖。
+2. 无占位式回退（如仅插纯文本占位而非真实节点能力）。
+3. 在只读/权限模式下行为一致。
+4. 有可重复验证路径（smoke 或明确手工回归用例）。
 
-模块分布：
+## 2. 当前基线（2026-02-27）
 
-- `base`：未完成 `7`
-- `insert`：未完成 `16`
-- `table`：未完成 `2`
-- `tools`：未完成 `9`
-- `page`：未完成 `5`
-- `export`：未完成 `0`
+- 菜单总项：`103`
+- 接线完成：`99`
+- 未接线：`4`
 
-## 3. 未完成清单（39 项）
+当前未接线项：
 
-### base（7）
+- `diagrams`
+- `echarts`
+- `mermaid`
+- `mind-map`
 
-- [ ] `font-family`
-- [ ] `font-size`
-- [ ] `line-height`
-- [ ] `margin`
-- [ ] `import-word`
-- [ ] `markdown`
-- [ ] `search-replace`
+说明：
 
-### insert（16）
+- 顶部 `export` Tab 按产品策略默认隐藏，但导出能力仍在“开始”区复用。
+- 实时接线清单以 `docs/lumen-menu-feature-checklist.md` 为准。
 
-- [ ] `link`
-- [ ] `image`
-- [ ] `video`
-- [ ] `audio`
-- [ ] `file`
-- [ ] `symbol`
-- [ ] `emoji`
-- [ ] `math`
-- [ ] `columns`
-- [ ] `tag`
-- [ ] `callout`
-- [ ] `bookmark`
-- [ ] `option-box`
-- [ ] `text-box`
-- [ ] `template`
-- [ ] `web-page`
+## 3. 产品收口优先级
 
-### table（2）
+### P0：完成 4 项未接线能力
 
-- [ ] `table-insert`
-- [ ] `cells-align`
+1. `diagrams`：流程图节点/渲染能力（非仅源码块占位）。
+2. `echarts`：图表配置与可视化渲染。
+3. `mermaid`：源码编辑 + 渲染容器。
+4. `mind-map`：源码编辑 + 渲染容器。
 
-### tools（9）
+### P1：统一交互壳并去占位化
 
-- [ ] `qrcode`
-- [ ] `barcode`
-- [ ] `signature`
-- [ ] `seal`
-- [ ] `diagrams`
-- [ ] `echarts`
-- [ ] `mermaid`
-- [ ] `mind-map`
-- [ ] `chinese-case`
+1. 工具域动作统一走面板交互，不走原生弹窗。
+2. 工具节点输出优先使用结构化节点，不回退纯文本占位。
+3. 明确在线依赖（二维码/条码）与离线降级策略。
 
-### page（5）
+### P2：回归与质量门禁
 
-- [ ] `page-margin`
-- [ ] `page-size`
-- [ ] `page-watermark`
-- [ ] `page-header`
-- [ ] `page-footer`
+1. 给新增/改造能力补 smoke 或脚本化断言。
+2. 在 `readonly/comment/full` 三种模式下补行为回归。
+3. 每次交付同步更新本文件和 `lumen-menu-feature-checklist.md`。
 
-## 4. 完整实施方案（按分包与功能域）
+## 4. 验收 DoD（单项）
 
-### 阶段 A：统一交互壳层（先做）
-
-目标：清理 `prompt/alert` 主流程，建立统一可复用交互。
-
-1. 在 `apps/lumen/src/editor` 新增 `toolbarPanels/*`（或等价目录）承载表单弹层。
-2. `toolbarActions/*` 只保留业务命令，不直接弹原生对话框。
-3. 复用现有 `t-dialog` / `t-color-picker` 模式，形成 hook 化调用。
-4. 明确约束：不允许“数据兜底文本”替代真实节点能力。
-
-### 阶段 B：核心编辑能力收口（base/insert/table/page）
-
-目标：把 30 项高频编辑功能提升到产品态。
-
-1. `base`：字体/段落/查找替换/导入/Markdown 改为面板交互。
-2. `insert`：媒体与高级块改为结构化表单，直接落真实节点。
-3. `table`：插入尺寸与对齐配置改为表单，不走 prompt。
-4. `page`：页边距/纸张/页眉页脚/水印改为统一页面设置面板。
-
-### 阶段 C：工具域能力收口（tools）
-
-目标：9 项工具能力去占位化。
-
-1. 二维码/条码：明确在线服务依赖与本地降级策略。
-2. 签名/印章：提供结构化配置与节点渲染，不插占位文本。
-3. diagrams/echarts/mermaid/mind-map：落到可编辑源码块 + 渲染容器。
-4. `chinese-case`：输入与模式切换进入统一面板，支持选区回填。
-
-### 阶段 D：验收与同步机制
-
-1. 给 39 项补最小回归（smoke 或脚本化断言）。
-2. 文档双指标并行维护：
-   - 接线完成度：`implemented=true`
-   - 产品完成度：本文件 checklist
-3. 每完成一项，更新本文件勾选状态与统计数字。
-
-## 5. 完成定义（DoD）
-
-单项功能“完成”必须同时满足：
-
-- [ ] 无 `window.prompt/alert` 主流程依赖
-- [ ] 无占位 fallback 文本实现
-- [ ] 权限与只读模式行为正确
-- [ ] 中英文文案齐全
-- [ ] 有可重复验证路径（smoke/脚本/明确手工用例）
+- [ ] 接线完成且命令可触发
+- [ ] 无 `window.prompt/alert` 主流程
+- [ ] 无占位 fallback 文本方案
+- [ ] 权限模式行为正确
+- [ ] 有回归用例（自动或手工脚本）
