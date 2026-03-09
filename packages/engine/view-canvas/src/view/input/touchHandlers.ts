@@ -2,6 +2,7 @@ type TouchHandlersOptions = {
   getLayout: () => any;
   scrollArea: HTMLElement;
   getText: () => string;
+  getTextLength: () => number;
   posAtCoords: (
     layout: any,
     x: number,
@@ -23,6 +24,7 @@ type TouchHandlersOptions = {
   getLayout,
   scrollArea,
   getText,
+  getTextLength,
   posAtCoords,
   setSelectionOffsets,
   getSelectionAnchorOffset,
@@ -61,7 +63,7 @@ type TouchHandlersOptions = {
       y,
       scrollArea.scrollTop,
       scrollArea.clientWidth,
-      getText().length
+      getTextLength()
     );
   };
 

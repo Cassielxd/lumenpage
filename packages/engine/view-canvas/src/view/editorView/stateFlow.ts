@@ -86,21 +86,24 @@ export const createStateFlow = ({
     }
 
     const currentSelection = view.state.selection;
-    if (!forceText && currentSelection instanceof NodeSelection) {
-      const anchorPos = textOffsetToDocPos(view.state.doc, anchorOffset);
-      const headPos = textOffsetToDocPos(view.state.doc, headOffset);
-      if (anchorPos === currentSelection.anchor && headPos === currentSelection.head) {
-        return;
-      }
-    }
-
-    setPendingPreferredUpdate(updatePreferred);
-
     const anchorPos = textOffsetToDocPos(view.state.doc, anchorOffset);
     const headPos = textOffsetToDocPos(view.state.doc, headOffset);
     if (!Number.isFinite(anchorPos) || !Number.isFinite(headPos)) {
       return;
     }
+
+    const selectionUnchanged =
+      anchorPos === currentSelection.anchor && headPos === currentSelection.head;
+    if (selectionUnchanged) {
+      if (currentSelection instanceof TextSelection) {
+        return;
+      }
+      if (!forceText && currentSelection instanceof NodeSelection) {
+        return;
+      }
+    }
+
+    setPendingPreferredUpdate(updatePreferred);
 
     let selection;
     try {

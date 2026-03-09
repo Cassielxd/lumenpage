@@ -53,6 +53,7 @@ export class PaginationDocWorkerClient {
       wrapTolerance: Number(settings?.wrapTolerance) || 0,
       minLineWidth: Number(settings?.minLineWidth) || 0,
       disablePageReuse: settings?.disablePageReuse === true,
+      debugPerf: settings?.debugPerf === true,
       paginationWorker: {
         timeoutMs: Number(settings?.paginationWorker?.timeoutMs) || 5000,
       },
@@ -104,7 +105,8 @@ export class PaginationDocWorkerClient {
     previousLayout: any;
     changeSummary: any;
     settings: any;
-    progressiveMaxPages?: number | null;
+    cascadePagination?: boolean;
+    cascadeFromPageIndex?: number | null;
   }) {
     if (!this.worker) {
       return Promise.reject(new Error("worker-unavailable"));
@@ -133,7 +135,8 @@ export class PaginationDocWorkerClient {
         seedLayout,
         changeSummary: args?.changeSummary ?? null,
         settings: this.serializeSettingsForWorker(args?.settings ?? null),
-        progressiveMaxPages: args?.progressiveMaxPages ?? null,
+        cascadePagination: args?.cascadePagination === true,
+        cascadeFromPageIndex: args?.cascadeFromPageIndex ?? null,
       });
     });
   }

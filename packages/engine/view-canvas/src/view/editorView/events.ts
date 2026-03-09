@@ -46,6 +46,25 @@ export const createViewEventHandlers = ({
   scheduleRender,
   eventTiming = false,
 }) => {
+  let scrollRafId = 0;
+  let resizeRafId = 0;
+  const scheduleViewportSync = (
+    getHandle: () => number,
+    setHandle: (value: number) => void,
+    label: string
+  ) => {
+    if (getHandle()) {
+      return;
+    }
+    setHandle(
+      requestAnimationFrame(() => {
+        setHandle(0);
+        updateCaret(false);
+        scheduleRender();
+      })
+    );
+    logEventTiming(eventTiming, label, now());
+  };
   const onClickFocus = (event) => {
     const startedAt = eventTiming ? now() : 0;
     try {
@@ -156,17 +175,23 @@ export const createViewEventHandlers = ({
   };
 
   const onScroll = () => {
-    const startedAt = eventTiming ? now() : 0;
-    updateCaret(false);
-    scheduleRender();
-    logEventTiming(eventTiming, "scroll", startedAt);
+    scheduleViewportSync(
+      () => scrollRafId,
+      (value) => {
+        scrollRafId = value;
+      },
+      "scroll"
+    );
   };
 
   const onResize = () => {
-    const startedAt = eventTiming ? now() : 0;
-    updateCaret(false);
-    scheduleRender();
-    logEventTiming(eventTiming, "resize", startedAt);
+    scheduleViewportSync(
+      () => resizeRafId,
+      (value) => {
+        resizeRafId = value;
+      },
+      "resize"
+    );
   };
 
   return {
@@ -220,4 +245,3 @@ export const bindViewDomEvents = ({
   ownerDocument.addEventListener("selectionchange", onDocumentSelectionChange);
   ownerWindow.addEventListener("resize", onResize);
 };
-

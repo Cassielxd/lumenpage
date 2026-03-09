@@ -2,6 +2,9 @@ import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
 import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
 import {
+  getPageIndexForOffset,
+} from "lumenpage-view-runtime";
+import {
   PaginationWorkerClient,
   createWorkerPaginationRunsPayload,
   getWorkerPaginationIneligibleReason,
@@ -23,6 +26,7 @@ export const createRenderSync = ({
   status,
   inputEl,
   getText,
+  getTextLength,
   clampOffset,
   docPosToTextOffset,
   getSelectionOffsets,
@@ -56,6 +60,8 @@ export const createRenderSync = ({
   paginationTiming = false,
   renderTiming = false,
 }) => {
+  void paginationTiming;
+  void renderTiming;
   let layoutVersion = 0;
   let layoutRafId = 0;
   let stateSyncRafId = 0;
@@ -67,30 +73,85 @@ export const createRenderSync = ({
   let lastSelectionRectsKey = "";
   let lastSelectionRects: any[] | null = null;
   let lastSelectionScrollTop = Number.NaN;
+  let lastLayoutPageCount = 0;
   let lastTableSelectionRectsKey = "";
   let lastTableSelectionRects: any[] | null = null;
   let lastTableSelectionScrollTop = Number.NaN;
+  let lastDecorationData: any | null = null;
+  let lastDecorationScrollTop = Number.NaN;
+  let lastDecorationViewportWidth = -1;
+  let lastDecorationLayoutToken = -1;
+  let lastDecorationSource: any = null;
   let asyncLayoutInFlight = false;
   let asyncLayoutQueued = false;
   let pendingScrollIntoViewPos: number | null = null;
   let hasPendingScrollIntoView = false;
   let fullSettleTimer: ReturnType<typeof setTimeout> | null = null;
   let forceFullPass = false;
+  // Counter to track continuous edits - only trigger full pass after user stops editing
+  let continuousEditCount = 0;
+  const CONTINUOUS_EDIT_THRESHOLD = 3;  // Require 3+ continuous edits before full pass
+  let lastLayoutWasProgressive = false;
+  // Background full layout - runs in idle time or after progressive layout
+  let backgroundFullLayoutPending = false;
+  let backgroundLayoutRafId: number | null = null;
+  // Flag to track if full layout is needed after progressive layout
+  let needsFullLayout = false;
+  let lastDocEditAt = 0;
+  let backgroundFullLayoutDelayMs = 1500;
   let lastLayoutSettingsSignature: string | null = null;
   const workerConfig = layoutPipeline?.settings?.paginationWorker ?? null;
+  // Default to using web worker if not explicitly disabled
+  const useWorkerByDefault = workerConfig?.enabled !== false;
   const paginationWorkerProvider =
     workerConfig?.enabled === true && typeof workerConfig?.provider?.requestLayout === "function"
       ? workerConfig.provider
       : null;
   const paginationWorker =
-    workerConfig?.enabled === true &&
-    workerConfig?.mode === "experimental-runs" &&
+    useWorkerByDefault &&
+    (workerConfig?.mode === "experimental-runs" || workerConfig?.mode === undefined) &&
     !paginationWorkerProvider
       ? new PaginationWorkerClient()
       : null;
   const getActiveElement = () => {
     const ownerDocument = inputEl?.ownerDocument || (typeof document !== "undefined" ? document : null);
     return ownerDocument?.activeElement ?? null;
+  };
+  const emitPerfLog = (type: string, summary: Record<string, unknown>) => {
+    if (layoutPipeline?.settings?.debugPerf !== true) {
+      return;
+    }
+    const totalPassMs =
+      type === "layout-pass" && Number.isFinite(summary?.totalPassMs)
+        ? Number(summary.totalPassMs)
+        : 0;
+    const totalApplyMs =
+      type === "layout-apply" && Number.isFinite(summary?.totalApplyMs)
+        ? Number(summary.totalApplyMs)
+        : 0;
+    const shouldConsoleLog =
+      (type === "layout-pass" && totalPassMs >= 50) ||
+      (type === "layout-apply" && totalApplyMs >= 8);
+    if (shouldConsoleLog) {
+      console.info(`[perf][${type}]`, summary);
+    }
+    if (typeof window !== "undefined") {
+      const globalWindow = window as typeof window & {
+        __lumenPerfLogs?: Array<Record<string, unknown>>;
+        __copyLumenPerfLogs?: () => string;
+      };
+      const logs = Array.isArray(globalWindow.__lumenPerfLogs) ? globalWindow.__lumenPerfLogs : [];
+      logs.push({
+        type,
+        timestamp: new Date().toISOString(),
+        ...summary,
+      });
+      if (logs.length > 400) {
+        logs.splice(0, logs.length - 400);
+      }
+      globalWindow.__lumenPerfLogs = logs;
+      globalWindow.__copyLumenPerfLogs = () => JSON.stringify(logs, null, 2);
+    }
   };
   const hasPendingLayoutWork = () => layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
   const toFiniteNumber = (value: unknown, fallback = 0) =>
@@ -162,7 +223,28 @@ export const createRenderSync = ({
       flushPendingScrollIntoView();
     }
   };
-  const findPageIndexForOffset = (layout: any, offset: number) => {
+  const cancelScheduledBackgroundFullLayout = () => {
+    if (backgroundLayoutRafId) {
+      if (typeof cancelIdleCallback === "function") {
+        cancelIdleCallback(backgroundLayoutRafId);
+      } else {
+        window.clearTimeout(backgroundLayoutRafId);
+      }
+      backgroundLayoutRafId = null;
+    }
+    backgroundFullLayoutPending = false;
+  };
+  
+  const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
+    // Use indexed lookup if available - O(log n) instead of O(n)
+    if (layoutIndex && typeof getPageIndexForOffset === 'function') {
+      const pageIndex = getPageIndexForOffset(layoutIndex, offset);
+      if (Number.isFinite(pageIndex)) {
+        return pageIndex;
+      }
+    }
+    
+    // Fallback to linear scan
     if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
       return null;
     }
@@ -301,6 +383,39 @@ export const createRenderSync = ({
     return false;
   };
 
+  const shiftDecorationDrawData = (data: any, deltaY: number) => {
+    if (!data || !Number.isFinite(deltaY) || deltaY === 0) {
+      return data;
+    }
+    const shiftRects = (rects: any[] | null | undefined) =>
+      Array.isArray(rects)
+        ? rects.map((rect) => ({
+            ...rect,
+            y: Number.isFinite(rect?.y) ? Number(rect.y) - deltaY : rect?.y,
+          }))
+        : [];
+    const shiftSegments = (segments: any[] | null | undefined) =>
+      Array.isArray(segments)
+        ? segments.map((segment) => ({
+            ...segment,
+            y: Number.isFinite(segment?.y) ? Number(segment.y) - deltaY : segment?.y,
+          }))
+        : [];
+    const shiftWidgets = (widgets: any[] | null | undefined) =>
+      Array.isArray(widgets)
+        ? widgets.map((widget) => ({
+            ...widget,
+            y: Number.isFinite(widget?.y) ? Number(widget.y) - deltaY : widget?.y,
+          }))
+        : [];
+    return {
+      inlineRects: shiftRects(data.inlineRects),
+      nodeRects: shiftRects(data.nodeRects),
+      textSegments: shiftSegments(data.textSegments),
+      widgets: shiftWidgets(data.widgets),
+    };
+  };
+
   const scheduleRender = () => {
     if (getRafId()) {
       return;
@@ -309,7 +424,7 @@ export const createRenderSync = ({
     setRafId(
       requestAnimationFrame(() => {
         try {
-          const renderStart = renderTiming ? now() : 0;
+          const renderStart = now();
           setRafId(0);
           const layout = getLayout();
           if (!layout) {
@@ -317,17 +432,24 @@ export const createRenderSync = ({
           }
           const layoutIndex = getLayoutIndex?.() || null;
           const editorState = getEditorState();
-          const textLength = getText().length;
+          const textLength = getTextLength();
           const scrollTop = Math.round(scrollArea.scrollTop * 10) / 10;
           const viewportWidth = scrollArea.clientWidth;
           const layoutToken = Number.isFinite(layout?.__version) ? Number(layout.__version) : layoutVersion;
-          const selectionStart = renderTiming ? now() : 0;
+          const prevPageCount = lastLayoutPageCount ?? 0;
+          const currentPageCount = layout?.pages?.length ?? 0;
+          const isProgressive = currentPageCount > prevPageCount;
+          const selectionStart = now();
           const selection = getSelectionOffsets(editorState, docPosToTextOffset, clampOffset);
           const selectionRectsKey = `${layoutToken}|${selection.from}|${selection.to}|${viewportWidth}|${textLength}`;
+          // Disable selection rect caching during progressive layout to avoid using stale layout info
+          // which can cause incorrect line heights in selection borders
           const canShiftSelectionRects =
+            !isProgressive &&
             selectionRectsKey === lastSelectionRectsKey &&
             Array.isArray(lastSelectionRects) &&
             Number.isFinite(lastSelectionScrollTop);
+
           let selectionRects = canShiftSelectionRects
             ? lastSelectionRects!.map((rect) => ({
                 ...rect,
@@ -342,12 +464,13 @@ export const createRenderSync = ({
                 textLength,
                 layoutIndex
               );
+
           lastSelectionRectsKey = selectionRectsKey;
           lastSelectionRects = selectionRects;
           lastSelectionScrollTop = scrollTop;
-          const selectionMs = renderTiming ? Math.round((now() - selectionStart) * 100) / 100 : 0;
+          const selectionMs = Math.round((now() - selectionStart) * 100) / 100;
 
-          const tableSelectionStart = renderTiming ? now() : 0;
+          const tableSelectionStart = now();
           let tableSelectionRects = null;
           if (shouldComputeSpecialSelectionRects(editorState, selection)) {
             const geometry = resolveSelectionGeometry();
@@ -388,30 +511,46 @@ export const createRenderSync = ({
           if (Array.isArray(tableSelectionRects) && tableSelectionRects.length > 0) {
             selectionRects = tableSelectionRects;
           }
-          const tableSelectionMs = renderTiming
-            ? Math.round((now() - tableSelectionStart) * 100) / 100
-            : 0;
+          const tableSelectionMs = Math.round((now() - tableSelectionStart) * 100) / 100;
 
-          const decorationStart = renderTiming ? now() : 0;
+          const decorationStart = now();
           const decorations = typeof getDecorations === "function" ? getDecorations() : null;
+          const canShiftDecorationData =
+            decorations === lastDecorationSource &&
+            layoutToken === lastDecorationLayoutToken &&
+            viewportWidth === lastDecorationViewportWidth &&
+            lastDecorationData &&
+            Number.isFinite(lastDecorationScrollTop);
           const decorationData = decorations
-            ? buildDecorationDrawData({
-                layout,
-                layoutIndex,
-                doc: editorState?.doc,
-                decorations,
-                scrollTop,
-                viewportWidth,
-                textLength,
-                docPosToTextOffset,
-                coordsAtPos,
-              })
+            ? canShiftDecorationData
+              ? shiftDecorationDrawData(
+                  lastDecorationData,
+                  scrollTop - Number(lastDecorationScrollTop)
+                )
+              : buildDecorationDrawData(
+                  {
+                    layout,
+                    layoutIndex,
+                    doc: editorState?.doc,
+                    decorations,
+                    scrollTop,
+                    viewportWidth,
+                    textLength,
+                    docPosToTextOffset,
+                    coordsAtPos,
+                    layoutToken,
+                  },
+                  false
+                )
             : null;
-          const decorationMs = renderTiming
-            ? Math.round((now() - decorationStart) * 100) / 100
-            : 0;
+          lastDecorationSource = decorations;
+          lastDecorationData = decorationData;
+          lastDecorationScrollTop = scrollTop;
+          lastDecorationViewportWidth = viewportWidth;
+          lastDecorationLayoutToken = layoutToken;
+          const decorationMs = Math.round((now() - decorationStart) * 100) / 100;
 
-          const nodeOverlayStart = renderTiming ? now() : 0;
+          const nodeOverlayStart = now();
           const overlayNeedsSync =
             layoutToken !== lastOverlayLayoutToken ||
             !Number.isFinite(lastOverlayScrollTop) ||
@@ -423,22 +562,20 @@ export const createRenderSync = ({
             lastOverlayViewportWidth = viewportWidth;
             scheduleNodeOverlaySync(layout, layoutIndex);
           }
-          const nodeOverlayMs = renderTiming
-            ? Math.round((now() - nodeOverlayStart) * 100) / 100
-            : 0;
+          const nodeOverlayMs = Math.round((now() - nodeOverlayStart) * 100) / 100;
 
-          const rendererStart = renderTiming ? now() : 0;
+          const rendererStart = now();
           renderer.render(layout, scrollArea, getCaretRect(), selectionRects, [], decorationData);
-          const rendererMs = renderTiming ? Math.round((now() - rendererStart) * 100) / 100 : 0;
+          const rendererMs = Math.round((now() - rendererStart) * 100) / 100;
 
-          if (renderTiming) {
-            void renderStart;
-            void selectionMs;
-            void tableSelectionMs;
-            void decorationMs;
-            void nodeOverlayMs;
-            void rendererMs;
-          }
+          const totalMs = Math.round((now() - renderStart) * 100) / 100;
+          void totalMs;
+          void renderStart;
+          void selectionMs;
+          void tableSelectionMs;
+          void decorationMs;
+          void nodeOverlayMs;
+          void rendererMs;
         } catch (error) {
           setRafId(0);
           console.error("[render-sync] render fatal", error);
@@ -480,9 +617,10 @@ export const createRenderSync = ({
       getCaretOffset(),
       scrollArea.scrollTop,
       scrollArea.clientWidth,
-      getText().length,
+      getTextLength(),
       { preferBoundary }
     );
+
     setCaretRect(caretRect);
     if (caretRect) {
       setInputPosition(caretRect.x, caretRect.y);
@@ -491,39 +629,64 @@ export const createRenderSync = ({
       }
     }
   };
-  const applyLayout = (nextLayout, version, changeSummary) => {
+  const applyLayout = (nextLayout, version, changeSummary, skipIndexBuild = false) => {
     if (!nextLayout) {
       return;
     }
     if (version < layoutVersion) {
       return;
     }
+    const applyStartedAt = now();
     const prevLayout = getLayout?.() ?? null;
     nextLayout.__version = version;
     nextLayout.__changeSummary = changeSummary ?? null;
     nextLayout.__forceRedraw = !prevLayout;
+    const prevLayoutIndex = getLayoutIndex?.() ?? null;
     setLayout(nextLayout);
+    // Optimization: Build index for progressive layout to ensure selection/caret calculations work correctly.
+    // Even during progressive pagination, we need a valid layoutIndex for accurate selection and caret positioning.
+    // The index build is lightweight and necessary to prevent cursor jumping and selection errors.
+    const isProgressiveLayout = skipIndexBuild || (changeSummary?.docChanged === true && prevLayout && prevLayout.pages.length > 0);
+    const indexBuildStart = now();
     if (typeof buildLayoutIndex === "function") {
-      setLayoutIndex(buildLayoutIndex(nextLayout));
+      setLayoutIndex(buildLayoutIndex(nextLayout, prevLayoutIndex, prevLayout));
     }
+    const indexBuildMs = now() - indexBuildStart;
+    lastLayoutPageCount = nextLayout.pages.length;
     spacer.style.height = `${nextLayout.totalHeight}px`;
     const latestState = getEditorState();
     const latestCaretOffset = clampOffset(
       docPosToTextOffset(latestState.doc, latestState.selection.head)
     );
     setCaretOffsetValue(latestCaretOffset);
+    const caretStartedAt = now();
     updateCaret(true);
+    const caretMs = now() - caretStartedAt;
     updateStatus();
     flushPendingScrollIntoView();
     scheduleRender();
+    emitPerfLog("layout-apply", {
+      layoutVersion: version,
+      docChanged: changeSummary?.docChanged === true,
+      progressiveHint: isProgressiveLayout,
+      progressiveApplied: nextLayout?.__progressiveApplied === true,
+      prevPages: prevLayout?.pages?.length ?? 0,
+      nextPages: nextLayout?.pages?.length ?? 0,
+      indexBuildMs: Math.round(indexBuildMs),
+      caretMs: Math.round(caretMs),
+      totalApplyMs: Math.round(now() - applyStartedAt),
+    });
   };
   const updateLayout = () => {
+    const passStartedAt = now();
     const changeSummary = getPendingChangeSummary?.() ?? null;
     const nextPageWidth = resolvePageWidth?.();
     const layoutSettingsForPass = resolveLayoutSettingsForPass(layoutPipeline?.settings, nextPageWidth);
     const layoutSettingsSignature = getLayoutSettingsSignature(layoutSettingsForPass);
     const settingsChanged = layoutSettingsSignature !== lastLayoutSettingsSignature;
     const prevLayout = getLayout?.() ?? null;
+    
+    // Fast path: if doc hasn't changed and settings are same, just re-render
     if (prevLayout && !settingsChanged && changeSummary?.docChanged !== true) {
       clearPendingChangeSummary?.();
       clearPendingSteps?.();
@@ -550,44 +713,44 @@ export const createRenderSync = ({
     } catch (_error) {
       forceSyncLayoutOnce = false;
     }
-    const incrementalConfig =
-      workerConfig?.incremental && typeof workerConfig.incremental === "object"
-        ? workerConfig.incremental
-        : null;
-    const incrementalEnabled = incrementalConfig?.enabled === true;
+    const workerConfigIncremental = layoutPipeline?.settings?.paginationWorker?.incremental;
+    const incrementalEnabled = workerConfigIncremental !== false;
     const runForceFullPass = forceFullPass === true;
     if (runForceFullPass) {
       forceFullPass = false;
     }
-    let progressiveMaxPages =
-      docChanged && incrementalEnabled && !runForceFullPass
-        ? Math.max(0, Number(incrementalConfig?.maxPages) || 24)
-        : 0;
-    let progressiveDisabledReason: string | null = null;
-    let progressiveHeadPageIndex: number | null = null;
-    if (progressiveMaxPages > 0 && forceSyncLayoutOnce) {
-      progressiveMaxPages = 0;
-      progressiveDisabledReason = "force-sync-once";
+    
+    // 配置项：用于后台全量布局的延迟
+    const settleDelayMs = Number.isFinite(workerConfigIncremental?.settleDelayMs)
+      ? Math.max(120, Number(workerConfigIncremental?.settleDelayMs))
+      : 120;
+    const backgroundFullLayoutDelayMs = Math.max(settleDelayMs * 4, 1500);
+    if (docChanged) {
+      lastDocEditAt = passStartedAt;
+      cancelScheduledBackgroundFullLayout();
     }
-    if (
-      progressiveMaxPages > 0 &&
-      docChanged &&
-      prevLayout &&
-      Array.isArray(prevLayout?.pages) &&
-      prevLayout.pages.length > progressiveMaxPages
-    ) {
+    
+    // 级联分页：只在变更影响的页面进行分页，算到稳定就停止
+    // 确定级联分页的起始页：从光标所在页面开始
+    let cascadeFromPageIndex: number | null = null;
+    let useCascadePagination = false;
+    if (prevLayout && docChanged && incrementalEnabled && !runForceFullPass) {
       const headPos = getEditorState()?.selection?.head;
       const headOffset = Number.isFinite(headPos)
         ? clampOffset(docPosToTextOffset(doc, Number(headPos)))
         : null;
-      progressiveHeadPageIndex =
-        headOffset != null ? findPageIndexForOffset(prevLayout, Number(headOffset)) : null;
-      if (
-        Number.isFinite(progressiveHeadPageIndex) &&
-        Number(progressiveHeadPageIndex) >= progressiveMaxPages - 1
-      ) {
-        progressiveMaxPages = 0;
-        progressiveDisabledReason = "tail-edit-near-cutoff";
+      const prevLayoutIndex = getLayoutIndex?.() ?? null;
+      if (headOffset != null) {
+        const headPageIndex = findPageIndexForOffset(prevLayout, Number(headOffset), prevLayoutIndex);
+        if (Number.isFinite(headPageIndex)) {
+          cascadeFromPageIndex = Number(headPageIndex);
+          useCascadePagination = true;
+        }
+      }
+      // 如果没找到光标位置（比如新文档），从第0页开始
+      if (cascadeFromPageIndex === null) {
+        cascadeFromPageIndex = 0;
+        useCascadePagination = true;
       }
     }
     const workerIneligibleReason = getWorkerPaginationIneligibleReason(doc, layoutPipeline?.registry);
@@ -596,12 +759,23 @@ export const createRenderSync = ({
     const workerAllowedForPass = docChanged
       ? allowWorkerForDocChanged
       : !isInitialLayoutPass || allowWorkerForInitial;
+    const preferSyncIncrementalPass =
+      docChanged === true &&
+      !!prevLayout &&
+      useCascadePagination === true &&
+      runForceFullPass !== true;
     // Keep force/debug switch gated by the same safety checks.
     const canUseWorkerProvider =
+      !preferSyncIncrementalPass &&
       !forceSyncLayoutOnce &&
       !!paginationWorkerProvider &&
       workerAllowedForPass;
-    const canUseWorker = !forceSyncLayoutOnce && !!paginationWorker && isEligible && workerAllowedForPass;
+    const canUseWorker =
+      !preferSyncIncrementalPass &&
+      !forceSyncLayoutOnce &&
+      !!paginationWorker &&
+      isEligible &&
+      workerAllowedForPass;
     if ((canUseWorkerProvider || canUseWorker) && asyncLayoutInFlight) {
       asyncLayoutQueued = true;
       return;
@@ -609,52 +783,171 @@ export const createRenderSync = ({
     const version = (layoutVersion += 1);
     clearPendingChangeSummary?.();
     clearPendingSteps?.();
-    const applyAndLogLayout = (layout) => {
-      void paginationTiming;
+    // Track if this is a progressive layout for index optimization
+    // 级联分页就是渐进式布局
+    const isLayoutProgressive = useCascadePagination && prevLayout && prevLayout.pages.length > 1;
+    const applyAndLogLayout = (layout, source = "sync", computeMs: number | null = null) => {
+      // Discard stale async results to avoid caret jumps from out-of-date geometry.
+      if (getEditorState()?.doc !== doc) {
+        emitPerfLog("layout-pass", {
+          layoutVersion: version,
+          source,
+          discarded: true,
+          docChanged,
+          settingsChanged,
+          useCascadePagination,
+          cascadeFromPageIndex,
+          computeMs: computeMs == null ? null : Math.round(computeMs),
+          totalPassMs: Math.round(now() - passStartedAt),
+        });
+        return;
+      }
       void workerForce;
       void workerIneligibleReason;
       lastLayoutSettingsSignature = layoutSettingsSignature;
-      applyLayout(layout, version, changeSummary);
-      if (layout?.__progressiveApplied === true && incrementalEnabled) {
-        const settleDelayMs = Math.max(0, Number(incrementalConfig?.settleDelayMs) || 120);
+      const applyStartedAt = now();
+      applyLayout(layout, version, changeSummary, isLayoutProgressive);
+      const layoutPerf =
+        layout?.__layoutPerfSummary ?? layoutPipeline?.settings?.__perf?.layout ?? null;
+      const workerDebug = layout?.__workerDebug ?? null;
+      emitPerfLog("layout-pass", {
+        layoutVersion: version,
+        source,
+        discarded: false,
+        docChanged,
+        settingsChanged,
+        useCascadePagination,
+        cascadeFromPageIndex,
+        preferSyncIncrementalPass,
+        usedWorkerProvider: canUseWorkerProvider,
+        usedWorker: canUseWorker,
+        workerIneligibleReason,
+        computeMs: computeMs == null ? null : Math.round(computeMs),
+        applyMs: Math.round(now() - applyStartedAt),
+        totalPassMs: Math.round(now() - passStartedAt),
+        prevPages: prevLayout?.pages?.length ?? 0,
+        nextPages: layout?.pages?.length ?? 0,
+        progressiveApplied: layout?.__progressiveApplied === true,
+        progressiveTruncated: layout?.__progressiveTruncated === true,
+        reusedPages: layoutPerf?.reusedPages ?? null,
+        reuseReason: layoutPerf?.reuseReason ?? null,
+        disablePageReuse: layoutPerf?.disablePageReuse ?? null,
+        maybeSyncReason: layoutPerf?.maybeSyncReason ?? null,
+        cascadeMaxPages: layoutPerf?.cascadeMaxPages ?? null,
+        syncAfterIndex: layoutPerf?.syncAfterIndex ?? null,
+        syncFromIndex: layoutPerf?.syncFromIndex ?? null,
+        blockCacheHitRate: layoutPerf?.blockCacheHitRate ?? null,
+        breakLinesMs: layoutPerf?.breakLinesMs ?? null,
+        layoutLeafMs: layoutPerf?.layoutLeafMs ?? null,
+        clientHadSeedLayout: workerDebug?.clientHadSeedLayout ?? null,
+        clientSentSeedLayout: workerDebug?.clientSentSeedLayout ?? null,
+        clientSettingsChanged: workerDebug?.clientSettingsChanged ?? null,
+        clientPrevPages: workerDebug?.clientPrevPages ?? null,
+        workerHadPreviousLayoutState: workerDebug?.workerHadPreviousLayoutState ?? null,
+        workerPrevPagesBeforeSeed: workerDebug?.workerPrevPagesBeforeSeed ?? null,
+        workerPrevPagesAfterSeed: workerDebug?.workerPrevPagesAfterSeed ?? null,
+      });
+      // Optimization: Track if we applied progressive layout
+      // Only trigger full pass after user has stopped editing for a while
+      // This prevents constant full re-layouts during active typing
+      const isProgressive = layout?.__progressiveApplied === true && incrementalEnabled;
+      lastLayoutWasProgressive = isProgressive;
+
+      if (isProgressive) {
+        // Increment continuous edit counter
+        continuousEditCount += 1;
+        const appliedLayout = getLayout?.() ?? null;
+        const isLargeDocument = !!(appliedLayout && appliedLayout.pages.length > 50);
+        const progressiveTruncated = layout?.__progressiveTruncated === true;
+
+        // Only schedule background full layout if page count increased
+        // (meaning progressive cutoff was triggered)
+        const prevPageCount = prevLayout?.pages?.length ?? 0;
+        const appliedPageCount = appliedLayout?.pages?.length ?? 0;
+        const pageCountIncreased = appliedPageCount > prevPageCount;
+
+        // Mark that we need full layout eventually
+        // For large documents with page count increase, schedule background full layout
+        if (isLargeDocument && (pageCountIncreased || progressiveTruncated)) {
+          needsFullLayout = true;
+          if (fullSettleTimer) {
+            clearTimeout(fullSettleTimer);
+            fullSettleTimer = null;
+          }
+          fullSettleTimer = setTimeout(() => {
+            fullSettleTimer = null;
+            if (!needsFullLayout) {
+              return;
+            }
+            if (now() - lastDocEditAt < backgroundFullLayoutDelayMs) {
+              return;
+            }
+            scheduleBackgroundFullLayout();
+          }, backgroundFullLayoutDelayMs);
+        } else if (!pageCountIncreased && !progressiveTruncated) {
+          // No page count increase means progressive layout completed without cutoff
+          // No need for background full layout
+          needsFullLayout = false;
+        }
+        
+        // Only schedule full pass if user has stopped editing (based on counter)
+        // This ensures constant-time editing even with 300+ page documents
+        if (!isLargeDocument && continuousEditCount >= CONTINUOUS_EDIT_THRESHOLD) {
+          if (fullSettleTimer) {
+            clearTimeout(fullSettleTimer);
+            fullSettleTimer = null;
+          }
+          fullSettleTimer = setTimeout(() => {
+            fullSettleTimer = null;
+            forceFullPass = true;
+            continuousEditCount = 0;  // Reset counter after full pass
+            needsFullLayout = false;  // Clear flag since we're doing full layout now
+            scheduleLayout();
+          }, settleDelayMs);
+        }
+        // If not enough continuous edits, just keep progressive layout active
+        // This gives instant response during typing
+      } else {
+        // Reset counter when we do a full pass
+        continuousEditCount = 0;
+        needsFullLayout = false;
         if (fullSettleTimer) {
           clearTimeout(fullSettleTimer);
           fullSettleTimer = null;
         }
-        fullSettleTimer = setTimeout(() => {
-          fullSettleTimer = null;
-          forceFullPass = true;
-          scheduleLayout();
-        }, settleDelayMs);
       }
     };
 
     if (canUseWorkerProvider) {
       asyncLayoutInFlight = true;
+      const workerStartedAt = now();
       const providerPayload = {
         doc,
         previousLayout: getLayout?.() ?? null,
         changeSummary,
         settings: layoutSettingsForPass,
         registry: layoutPipeline?.registry,
-        progressiveMaxPages,
+        cascadePagination: useCascadePagination,
+        cascadeFromPageIndex: cascadeFromPageIndex,
       };
       Promise.resolve(paginationWorkerProvider.requestLayout(providerPayload))
         .then((layout) => {
           if (!layout) {
             throw new Error("provider-empty-layout");
           }
-          applyAndLogLayout(layout);
+          applyAndLogLayout(layout, "worker-provider", now() - workerStartedAt);
         })
         .catch(() => {
+          const fallbackStartedAt = now();
           const fallbackLayout = layoutPipeline.layoutFromDoc(doc, {
             previousLayout: getLayout?.() ?? null,
             changeSummary,
             docPosToTextOffset,
-            progressiveMaxPages,
             layoutSettingsOverride: layoutSettingsForPass,
+            cascadePagination: useCascadePagination,
+            cascadeFromPageIndex: cascadeFromPageIndex,
           });
-          applyAndLogLayout(fallbackLayout);
+          applyAndLogLayout(fallbackLayout, "worker-provider-fallback", now() - fallbackStartedAt);
         })
         .finally(() => {
           asyncLayoutInFlight = false;
@@ -669,6 +962,7 @@ export const createRenderSync = ({
 
     if (canUseWorker) {
       asyncLayoutInFlight = true;
+      const workerStartedAt = now();
       const payload = createWorkerPaginationRunsPayload(
         doc,
         layoutSettingsForPass,
@@ -677,16 +971,19 @@ export const createRenderSync = ({
       paginationWorker
         ?.requestLayout(payload, Number(workerConfig?.timeoutMs) || 5000)
         .then((layout) => {
-          applyAndLogLayout(layout);
+          applyAndLogLayout(layout, "worker", now() - workerStartedAt);
         })
         .catch(() => {
+          const fallbackStartedAt = now();
           const fallbackLayout = layoutPipeline.layoutFromDoc(doc, {
             previousLayout: getLayout?.() ?? null,
             changeSummary,
             docPosToTextOffset,
             layoutSettingsOverride: layoutSettingsForPass,
+            cascadePagination: useCascadePagination,
+            cascadeFromPageIndex: cascadeFromPageIndex,
           });
-          applyAndLogLayout(fallbackLayout);
+          applyAndLogLayout(fallbackLayout, "worker-fallback", now() - fallbackStartedAt);
         })
         .finally(() => {
           asyncLayoutInFlight = false;
@@ -699,25 +996,92 @@ export const createRenderSync = ({
       return;
     }
 
+    const syncStartedAt = now();
     const layout = layoutPipeline.layoutFromDoc(doc, {
       previousLayout: getLayout?.() ?? null,
       changeSummary,
       docPosToTextOffset,
-      progressiveMaxPages,
       layoutSettingsOverride: layoutSettingsForPass,
+      cascadePagination: useCascadePagination,
+      cascadeFromPageIndex: cascadeFromPageIndex,
+      perf: {},
     });
-    applyAndLogLayout(layout);
+    applyAndLogLayout(layout, "sync", now() - syncStartedAt);
   };
 
   const scheduleLayout = () => {
     if (layoutRafId) {
       return;
     }
+    const scheduleStart = performance.now();
     layoutRafId = requestAnimationFrame(() => {
+      const layoutStart = performance.now();
       layoutRafId = 0;
       updateLayout();
+      void layoutStart;
       flushPendingScrollIntoViewIfReady();
     });
+  };
+
+  // Schedule background full layout using requestIdleCallback or setTimeout fallback
+  // This runs full pagination in idle time, keeping editing responsive
+  const scheduleBackgroundFullLayout = () => {
+    if (backgroundLayoutRafId || backgroundFullLayoutPending || !needsFullLayout) {
+      return;
+    }
+    backgroundFullLayoutPending = true;
+    
+    // Use requestIdleCallback if available, otherwise use setTimeout
+    const scheduleIdle = (callback: () => void) => {
+      if (typeof requestIdleCallback === 'function') {
+        return requestIdleCallback(callback, { timeout: 2000 });
+      } else {
+        return window.setTimeout(callback, 100);
+      }
+    };
+    
+    const cancelIdle = (id: number) => {
+      if (typeof cancelIdleCallback === 'function') {
+        cancelIdleCallback(id);
+      } else {
+        window.clearTimeout(id);
+      }
+    };
+    
+    const runBackgroundLayout = () => {
+      backgroundLayoutRafId = null;
+      backgroundFullLayoutPending = false;
+      
+      if (now() - lastDocEditAt < backgroundFullLayoutDelayMs) {
+        backgroundLayoutRafId = scheduleIdle(runBackgroundLayout) as unknown as number;
+        backgroundFullLayoutPending = true;
+        return;
+      }
+
+      // Only run if there's no active editing
+      const hasPendingLayout = layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
+      if (hasPendingLayout) {
+        // Retry later
+        backgroundLayoutRafId = scheduleIdle(runBackgroundLayout) as unknown as number;
+        backgroundFullLayoutPending = true;
+        return;
+      }
+      
+      // Check if we actually need a full layout
+      const prevLayout = getLayout?.() ?? null;
+      if (!prevLayout || prevLayout.pages.length <= 50) {
+        // No need for full layout
+        needsFullLayout = false;
+        return;
+      }
+      
+      // Force full pass and schedule layout
+      forceFullPass = true;
+      needsFullLayout = false;
+      scheduleLayout();
+    };
+    
+    backgroundLayoutRafId = scheduleIdle(runBackgroundLayout) as unknown as number;
   };
 
   const scheduleNodeOverlaySync = (layout: any, layoutIndex: any) => {
@@ -773,7 +1137,9 @@ export const createRenderSync = ({
 
   const dispatchTransaction = (tr) => {
     const prevState = getEditorState();
+    const applyStart = performance.now();
     const nextState = applyTransaction(prevState, tr);
+    void applyStart;
     setEditorState(nextState);
     if (tr.docChanged) {
       const nextCaretOffset = clampOffset(
@@ -783,6 +1149,8 @@ export const createRenderSync = ({
       // Wait for the next layout after doc changes before syncing caret/selection.
       setPendingPreferredUpdate(true);
       updateStatus();
+      // Clear stale selection overlay immediately; caret geometry will be refreshed after layout.
+      scheduleRender();
       scheduleLayout();
       return;
     }
@@ -815,6 +1183,7 @@ export const createRenderSync = ({
         clearTimeout(fullSettleTimer);
         fullSettleTimer = null;
       }
+      cancelScheduledBackgroundFullLayout();
       paginationWorker?.destroy?.();
       paginationWorkerProvider?.destroy?.();
     },

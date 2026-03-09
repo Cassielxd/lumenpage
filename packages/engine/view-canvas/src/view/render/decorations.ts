@@ -1,6 +1,44 @@
 import { getFontSize, measureTextWidth } from "../measure";
 import { selectionToRects } from "./selection";
 import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
+import { getLinesInRange } from "../caret";
+
+// Cache for decoration draw data to avoid recomputing on every frame
+const decorationCache = new Map<
+  string,
+  {
+    decorations: any;
+    scrollTop: number;
+    viewportWidth: number;
+    layoutToken: number;
+    data: DecorationDrawData | null;
+  }
+>();
+
+const getDecorationCacheKey = (
+  decorations: any,
+  scrollTop: number,
+  viewportWidth: number,
+  layoutToken: number
+): string => {
+  // Use scrollTop with a threshold (rounded to nearest 50px) to avoid cache misses
+  // on every tiny scroll while still invalidating when scrolling to a different "zone"
+  const scrollBucket = Math.round(scrollTop / 50) * 50;
+
+  if (!decorations || !Array.isArray(decorations) || decorations.length === 0) {
+    // Use stable layout token for empty decorations too
+    const stableLayoutToken = Math.floor(layoutToken / 4);
+    return `empty_${stableLayoutToken}_${scrollBucket}_${viewportWidth}`;
+  }
+  const first = decorations[0];
+  const last = decorations[decorations.length - 1];
+  const hash = `${layoutToken}_${decorations.length}_${first?.from ?? 0}_${first?.to ?? 0}_${last?.from ?? 0}_${last?.to ?? 0}_${scrollBucket}_${viewportWidth}`;
+  return hash;
+};
+
+export const clearDecorationCache = () => {
+  decorationCache.clear();
+};
 
 export type DecorationRect = {
   x: number;
@@ -35,19 +73,42 @@ export type DecorationDrawData = {
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
+const getLineOffsetDelta = (line) =>
+  Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
+
 const getBaselineOffset = (lineHeight, fontSize) => Math.max(0, (lineHeight - fontSize) / 2);
 
-const collectLineItems = (layout, layoutIndex) => {
-  if (layoutIndex?.lines?.length) {
-    return layoutIndex.lines;
+const forEachLineItem = (layout, layoutIndex, visitor) => {
+  const pageEntries = Array.isArray(layoutIndex?.pageEntries) ? layoutIndex.pageEntries : null;
+  if (pageEntries) {
+    for (const pageEntry of pageEntries) {
+      const lines = Array.isArray(pageEntry?.page?.lines) ? pageEntry.page.lines : [];
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const line = lines[lineIndex];
+        visitor({
+          pageIndex: pageEntry.pageIndex,
+          lineIndex,
+          line,
+          start: line?.start,
+          end: line?.end,
+        });
+      }
+    }
+    return;
   }
 
-  const items = [];
+  if (layoutIndex?.lines?.length) {
+    for (const item of layoutIndex.lines) {
+      visitor(item);
+    }
+    return;
+  }
+
   for (let p = 0; p < layout.pages.length; p += 1) {
     const page = layout.pages[p];
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
-      items.push({
+      visitor({
         pageIndex: p,
         lineIndex: l,
         line,
@@ -56,6 +117,27 @@ const collectLineItems = (layout, layoutIndex) => {
       });
     }
   }
+};
+
+const getLineItemsInRange = (layout, layoutIndex, minOffset, maxOffset) => {
+  if (
+    layoutIndex &&
+    typeof getLinesInRange === "function" &&
+    Number.isFinite(minOffset) &&
+    Number.isFinite(maxOffset)
+  ) {
+    return getLinesInRange(layoutIndex, minOffset, maxOffset);
+  }
+
+  const items = [];
+  forEachLineItem(layout, layoutIndex, (item) => {
+    const start = Number.isFinite(item?.line?.start) ? Number(item.line.start) : 0;
+    const end = Number.isFinite(item?.line?.end) ? Number(item.line.end) : start;
+    if (end < minOffset || start > maxOffset) {
+      return;
+    }
+    items.push(item);
+  });
   return items;
 };
 
@@ -98,10 +180,11 @@ const collectTextSegments = ({
   }
 
   let cursorX = 0;
+  const lineOffsetDelta = getLineOffsetDelta(line);
 
   for (const run of line.runs) {
-    const runStart = run.start;
-    const runEnd = run.end;
+    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
+    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
     if (rangeEnd <= runStart) {
       break;
     }
@@ -184,33 +267,52 @@ const resolveContainerVisualLeft = (line: any, pageX: number, layout: any) => {
   return visualLeft;
 };
 
-export const buildDecorationDrawData = ({
-  layout,
-  layoutIndex,
-  doc,
-  decorations,
-  scrollTop,
-  viewportWidth,
-  textLength,
-  docPosToTextOffset,
-  coordsAtPos,
-}: {
-  layout: any;
-  layoutIndex: any;
-  doc: any;
-  decorations?: CanvasDecoration[] | DecorationSet | null;
-  scrollTop: number;
-  viewportWidth: number;
-  textLength: number;
-  docPosToTextOffset: (doc: any, pos: number) => number;
-  coordsAtPos: (layout: any, offset: number, scrollTop: number, viewportWidth: number, textLength: number) => any;
-}): DecorationDrawData | null => {
+export const buildDecorationDrawData = (
+  {
+    layout,
+    layoutIndex,
+    doc,
+    decorations,
+    scrollTop,
+    viewportWidth,
+    textLength,
+    docPosToTextOffset,
+    coordsAtPos,
+    layoutToken,
+  }: {
+    layout: any;
+    layoutIndex: any;
+    doc: any;
+    decorations?: CanvasDecoration[] | DecorationSet | null;
+    scrollTop: number;
+    viewportWidth: number;
+    textLength: number;
+    docPosToTextOffset: (doc: any, pos: number) => number;
+    coordsAtPos: (layout: any, offset: number, scrollTop: number, viewportWidth: number, textLength: number) => any;
+    layoutToken?: number;
+  },
+  skipCache = false
+): DecorationDrawData | null => {
   if (!layout || !doc) {
     return null;
   }
 
+  // Use caching to avoid recomputing on every frame
+  // Cache key includes layout token, scroll position, viewport, and decoration info
+  const token = Number.isFinite(layoutToken) ? layoutToken : layout.__version ?? 0;
+  const cacheKey = getDecorationCacheKey(decorations, scrollTop, viewportWidth, token);
+
+  if (!skipCache) {
+    const cached = decorationCache.get(cacheKey);
+    if (cached && cached.data) {
+      return cached.data;
+    }
+  }
+
   const items = normalizeDecorations(decorations as any);
   if (items.length === 0) {
+    // Cache empty results too
+    decorationCache.set(cacheKey, { decorations: null, scrollTop, viewportWidth, layoutToken: token, data: null });
     return null;
   }
 
@@ -221,7 +323,6 @@ export const buildDecorationDrawData = ({
 
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
   const pageSpan = layout.pageHeight + layout.pageGap;
-  const lineItems = collectLineItems(layout, layoutIndex);
   const nodeOutlineUnion = new Map<CanvasDecoration, { left: number; top: number; right: number; bottom: number }>();
 
   for (const decoration of items) {
@@ -262,6 +363,7 @@ export const buildDecorationDrawData = ({
       }
       const minOffset = Math.max(0, Math.min(outlineFromOffset, outlineToOffset));
       const maxOffset = Math.max(minOffset, Math.min(Math.max(outlineFromOffset, outlineToOffset), textLength));
+      const lineItems = getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
       for (const item of lineItems) {
         const line = item?.line;
         if (!line) {
@@ -280,6 +382,7 @@ export const buildDecorationDrawData = ({
 
         const pageTop = item.pageIndex * pageSpan - scrollTop;
         const lineHeight = getLineHeight(line, layout);
+
         const lineLeft = pageX + (line.x || 0);
         const lineWidth = Math.max(1, Number(line.width) || 0);
         let left = lineLeft;
@@ -309,6 +412,7 @@ export const buildDecorationDrawData = ({
         const top = pageTop + line.y;
         const bottom = top + lineHeight;
         const prev = nodeOutlineUnion.get(decoration);
+
         if (!prev) {
           nodeOutlineUnion.set(decoration, { left, top, right, bottom });
           continue;
@@ -339,7 +443,7 @@ export const buildDecorationDrawData = ({
     if (decoration.spec.textColor) {
       const minOffset = Math.max(0, Math.min(fromOffset, toOffset));
       const maxOffset = Math.max(minOffset, Math.min(Math.max(fromOffset, toOffset), textLength));
-
+      const lineItems = getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
       for (const item of lineItems) {
         const line = item.line;
         if (!line) {
@@ -387,7 +491,12 @@ export const buildDecorationDrawData = ({
     }
   }
 
-  return { inlineRects, nodeRects, textSegments, widgets };
+  const result: DecorationDrawData = { inlineRects, nodeRects, textSegments, widgets };
+
+  // Cache the result with scroll bucket to reduce cache misses on small scrolls
+  decorationCache.set(cacheKey, { decorations: items, scrollTop, viewportWidth, layoutToken: token, data: result });
+
+  return result;
 };
 
 

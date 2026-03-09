@@ -561,6 +561,10 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
 const createListRenderer = (mode: ListMode) => ({
   allowSplit: true,
   splitBlock: splitListBlock,
+  pagination: {
+    fragmentModel: "continuation",
+    reusePolicy: "actual-slice-only",
+  },
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, mode);
   },
@@ -573,3 +577,4 @@ const createListRenderer = (mode: ListMode) => ({
 export const bulletListRenderer = createListRenderer("bullet");
 export const orderedListRenderer = createListRenderer("ordered");
 export const taskListRenderer = createListRenderer("task");
+

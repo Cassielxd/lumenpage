@@ -36,6 +36,7 @@ export type CanvasEditorViewProps = {
   isInSpecialStructureAtPos?: (view: any, state: any, pos: number) => boolean;
   shouldAutoAdvanceAfterEnter?: (view: any, args: any) => boolean | null;
   getText?: (view: any, doc: any) => string;
+  getTextLength?: (view: any, doc: any) => number;
   parseHtmlToSlice?: (view: any, html: string) => any;
   transformCopied?: (view: any, slice: any) => any;
   transformCopiedHTML?: (view: any, html: string, slice: any) => string;

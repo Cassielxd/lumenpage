@@ -2,7 +2,7 @@
 export const createCoordinateHelpers = ({
   dom,
   getLayout,
-  getText,
+  getTextLength,
   getState,
   textOffsetToDocPos,
   posAtCoords,
@@ -18,7 +18,7 @@ export const createCoordinateHelpers = ({
 
   // 文本偏移安全钳制（避免越界）。
   const clampOffset = (offset) => {
-    const length = getText().length;
+    const length = getTextLength();
     return Math.max(0, Math.min(offset, length));
   };
 
@@ -34,7 +34,7 @@ export const createCoordinateHelpers = ({
       coords.y,
       dom.scrollArea.scrollTop,
       dom.scrollArea.clientWidth,
-      getText().length
+      getTextLength()
     );
     if (offset == null) {
       return null;

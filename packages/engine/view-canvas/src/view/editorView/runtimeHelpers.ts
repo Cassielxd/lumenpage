@@ -10,6 +10,7 @@ export const createRuntimeHelpers = ({
   queryEditorProp,
   getState,
   docToOffsetText,
+  getDocTextLength,
 }) => {
   const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
   const resolvePageWidth = () => {
@@ -39,6 +40,35 @@ export const createRuntimeHelpers = ({
       return getTextFromConfig(state.doc);
     }
     return docToOffsetText(state.doc);
+  };
+
+  const getTextLength = () => {
+    const state = getState();
+    if (!state?.doc) {
+      return 0;
+    }
+    const getTextLengthProp = queryEditorProp?.("getTextLength", state.doc);
+    if (Number.isFinite(getTextLengthProp) && Number(getTextLengthProp) >= 0) {
+      return Number(getTextLengthProp);
+    }
+    const getTextProp = queryEditorProp?.("getText", state.doc);
+    if (typeof getTextProp === "string") {
+      return getTextProp.length;
+    }
+    const getTextLengthFromConfig = resolveCanvasConfig("getTextLength");
+    if (typeof getTextLengthFromConfig === "function") {
+      warnLegacyCanvasConfigUsage("getTextLength", "EditorProps.getTextLength", strictLegacy);
+      const configuredLength = getTextLengthFromConfig(state.doc);
+      if (Number.isFinite(configuredLength) && Number(configuredLength) >= 0) {
+        return Number(configuredLength);
+      }
+    }
+    const getTextFromConfig = resolveCanvasConfig("getText");
+    if (typeof getTextFromConfig === "function") {
+      warnLegacyCanvasConfigUsage("getText", "EditorProps.getText", strictLegacy);
+      return getTextFromConfig(state.doc).length;
+    }
+    return getDocTextLength(state.doc);
   };
 
   const setInputPosition = (x, y) => {
@@ -83,6 +113,7 @@ export const createRuntimeHelpers = ({
   return {
     resolvePageWidth,
     getText,
+    getTextLength,
     setInputPosition,
     isInSpecialStructureAtPos,
     shouldAutoAdvanceAfterEnter,

@@ -1,7 +1,7 @@
-type CanvasNodeViewLike = any;
+﻿type CanvasNodeViewLike = any;
 
 /*
- * 节点渲染注册表：按节点类型挂载布局/渲染实现。
+ * 鑺傜偣娓叉煋娉ㄥ唽琛細鎸夎妭鐐圭被鍨嬫寕杞藉竷灞€/娓叉煋瀹炵幇銆?
  */
 
 export type NodeLayoutResult = {
@@ -31,12 +31,18 @@ export type ContainerStyle = {
   [key: string]: any;
 };
 
-// 节点渲染接口：可覆盖 runs、分块布局与容器渲染。
+export type NodeRendererPaginationConfig = {
+  fragmentModel?: "none" | "continuation";
+  reusePolicy?: "actual-slice-only" | "always-sensitive";
+};
+
+// 鑺傜偣娓叉煋鎺ュ彛锛氬彲瑕嗙洊 runs銆佸垎鍧楀竷灞€涓庡鍣ㄦ覆鏌撱€?
 export type NodeRenderer = {
   toRuns?: (node: any, settings: any, registry?: any) => any;
   layoutBlock?: (ctx: any) => NodeLayoutResult;
   splitBlock?: (ctx: any) => NodeLayoutResult;
   allowSplit?: boolean;
+  pagination?: NodeRendererPaginationConfig;
   cacheLayout?: boolean;
   getCacheSignature?: (ctx: {
     node: any;
@@ -53,25 +59,28 @@ export type NodeRenderer = {
 export class NodeRendererRegistry {
   renderers;
 
-  // 初始化注册表。
+  // 鍒濆鍖栨敞鍐岃〃銆?
   constructor() {
     this.renderers = new Map();
   }
 
-  // 注册节点渲染器。
+  // 娉ㄥ唽鑺傜偣娓叉煋鍣ㄣ€?
   register(typeName, renderer) {
     this.renderers.set(typeName, renderer);
 
     return this;
   }
 
-  // 获取节点渲染器。
+  // 鑾峰彇鑺傜偣娓叉煋鍣ㄣ€?
   get(typeName) {
     return this.renderers.get(typeName);
   }
 
-  // 判断是否已注册。
+  // 鍒ゆ柇鏄惁宸叉敞鍐屻€?
   has(typeName) {
     return this.renderers.has(typeName);
   }
 }
+
+
+

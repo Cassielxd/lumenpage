@@ -1,6 +1,7 @@
-﻿import { NodeSelection } from "lumenpage-state";
+import { NodeSelection } from "lumenpage-state";
 import { docPosToTextOffset } from "../../core";
 import { resolveNodeSelectionDecision } from "./selectionPolicy";
+import { getVisiblePages } from "../virtualization";
 
 import { getFirstLineForBlockId, getLineAtOffset } from "../layoutIndex";
 
@@ -18,6 +19,25 @@ export const createNodeViewManager = ({
   const nodeViewsByBlockId = new Map();
   let selectedNodeViewKey = null;
   let skipNextClickSelection = false;
+  let lastVisibleOverlayKeys = new Set();
+  const docTopLevelBlockIndexCache = new WeakMap();
+  const getDocTopLevelBlockIndex = (doc) => {
+    const cached = docTopLevelBlockIndexCache.get(doc);
+    if (cached) {
+      return cached;
+    }
+    const byId = new Map();
+    doc?.forEach?.((node, pos, index) => {
+      const blockId = node?.attrs?.id ?? null;
+      if (!blockId) {
+        return;
+      }
+      byId.set(blockId, { node, pos, index });
+    });
+    const next = { byId };
+    docTopLevelBlockIndexCache.set(doc, next);
+    return next;
+  };
   const lineHasTextContent = (line) => {
     if (!line) {
       return false;
@@ -67,15 +87,19 @@ export const createNodeViewManager = ({
     if (!blockId) {
       return null;
     }
+    const state = getState();
+    if (!state?.doc) {
+      return null;
+    }
+    const topLevelEntry = getDocTopLevelBlockIndex(state.doc).byId.get(blockId) ?? null;
+    if (topLevelEntry && Number.isFinite(topLevelEntry.pos)) {
+      return topLevelEntry.pos;
+    }
     if (nodeViewsByBlockId.has(blockId)) {
       const pos = nodeViewsByBlockId.get(blockId)?.pos;
       if (Number.isFinite(pos)) {
         return pos;
       }
-    }
-    const state = getState();
-    if (!state?.doc) {
-      return null;
     }
     let found = null;
     state.doc.descendants((node, pos) => {
@@ -179,17 +203,13 @@ export const createNodeViewManager = ({
     const viewportHeight = scrollArea.clientHeight;
     const pageSpan = layout.pageHeight + layout.pageGap;
     const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
-
-    for (const entry of nodeViews.values()) {
-      const blockId = entry?.blockId ?? null;
-      let item = blockId ? getFirstLineForBlockId(layoutIndex, blockId) : null;
-      if (!item && Number.isFinite(entry?.pos)) {
-        const offset = docPosToTextOffset(state.doc, entry.pos);
-        item = getLineAtOffset(layoutIndex, offset);
+    const syncOverlayEntry = (entry, item) => {
+      if (!entry?.view) {
+        return;
       }
       if (!item) {
-        entry.view?.syncDOM?.({ visible: false });
-        continue;
+        entry.view.syncDOM?.({ visible: false });
+        return;
       }
       const line = item.line;
       const pageTop = item.pageIndex * pageSpan - scrollTop;
@@ -200,8 +220,55 @@ export const createNodeViewManager = ({
         : layout.pageWidth - layout.margin.left - layout.margin.right;
       const height = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
       const visible = y + height > 0 && y < viewportHeight;
-      entry.view?.syncDOM?.({ x, y, width, height, visible, line, pageIndex: item.pageIndex, layout });
+      entry.view.syncDOM?.({ x, y, width, height, visible, line, pageIndex: item.pageIndex, layout });
+    };
+
+    const { startIndex, endIndex } = getVisiblePages(layout, scrollTop, viewportHeight);
+    const nextVisibleOverlayKeys = new Set();
+    const syncedBlockIds = new Set();
+
+    for (let pageIndex = startIndex; pageIndex <= endIndex; pageIndex += 1) {
+      const page = layout.pages?.[pageIndex];
+      const lines = Array.isArray(page?.lines) ? page.lines : [];
+      for (const line of lines) {
+        const blockId = line?.blockId ?? null;
+        if (!blockId || syncedBlockIds.has(blockId)) {
+          continue;
+        }
+        syncedBlockIds.add(blockId);
+        const entry = nodeViewsByBlockId.get(blockId);
+        if (!entry) {
+          continue;
+        }
+        const item = getFirstLineForBlockId(layoutIndex, blockId);
+        syncOverlayEntry(entry, item);
+        nextVisibleOverlayKeys.add(entry.key);
+      }
     }
+
+    for (const entry of nodeViews.values()) {
+      if (entry?.blockId) {
+        continue;
+      }
+      let item = null;
+      if (Number.isFinite(entry?.pos)) {
+        const offset = docPosToTextOffset(state.doc, entry.pos);
+        item = getLineAtOffset(layoutIndex, offset);
+      }
+      syncOverlayEntry(entry, item);
+      if (item) {
+        nextVisibleOverlayKeys.add(entry.key);
+      }
+    }
+
+    for (const key of lastVisibleOverlayKeys) {
+      if (nextVisibleOverlayKeys.has(key)) {
+        continue;
+      }
+      const entry = nodeViews.get(key);
+      entry?.view?.syncDOM?.({ visible: false });
+    }
+    lastVisibleOverlayKeys = nextVisibleOverlayKeys;
   };
   const syncNodeViewSelection = () => {
     // Sync NodeSelection to NodeView state.
@@ -243,8 +310,8 @@ export const createNodeViewManager = ({
     }
   };
 
-  const syncNodeViews = () => {
-    // 鏂囨。鍙樺寲鍚庡閲忓鐢?NodeView锛涙棤娉?update 鐨勫疄渚嬩細琚攢姣佸苟閲嶅缓銆?
+  const syncNodeViews = (changeSummary = null) => {
+    // 文档变化后增量复�?NodeView；无�?update 的实例会被销毁并重建�?
     const state = getState();
     if (!state?.doc) {
       return;
@@ -257,74 +324,184 @@ export const createNodeViewManager = ({
     }
 
     const decorations = typeof getDecorations === "function" ? getDecorations() : null;
-
-    const nextViews = new Map();
-    const nextByBlockId = new Map();
-
-    state.doc.descendants((node, pos) => {
-      const renderer = nodeRegistry?.get?.(node.type.name);
-      const factory = activeNodeViewFactories?.[node.type.name] ?? renderer?.createNodeView;
-      if (typeof factory !== "function") {
+    const resolveNodeViewFactory = (node) => {
+      const renderer = nodeRegistry?.get?.(node?.type?.name);
+      return activeNodeViewFactories?.[node?.type?.name] ?? renderer?.createNodeView;
+    };
+    const destroyEntry = (entry) => {
+      if (!entry) {
         return;
       }
+      nodeViews.delete(entry.key);
+      if (entry.blockId && nodeViewsByBlockId.get(entry.blockId) === entry) {
+        nodeViewsByBlockId.delete(entry.blockId);
+      }
+      entry.view?.destroy?.();
+    };
+    const createEntry = (node, pos, factory, key) => {
+      const entry = {
+        node,
+        pos,
+        view: null,
+        key,
+        blockId: node?.attrs?.id ?? null,
+        getPos: () => entry.pos,
+      };
+      entry.getPos = () => {
+        if (entry.blockId) {
+          const currentPos = getPosByBlockId(entry.blockId);
+          if (Number.isFinite(currentPos)) {
+            entry.pos = currentPos;
+            return currentPos;
+          }
+        }
+        return entry.pos;
+      };
+      const nodeView = factory(node, view, entry.getPos);
+      if (!nodeView) {
+        return null;
+      }
+      entry.view = nodeView;
+      return entry;
+    };
+    const fullSync = () => {
+      const nextViews = new Map();
+      const nextByBlockId = new Map();
 
-      const key = getNodeViewKey(node, pos);
-      let entry = nodeViews.get(key);
-
-      if (!entry) {
-        entry = { node, pos, view: null, key, blockId: node.attrs?.id ?? null };
-        entry.getPos = () => entry.pos;
-        const nodeView = factory(node, view, entry.getPos);
-        if (!nodeView) {
+      state.doc.descendants((node, pos) => {
+        const factory = resolveNodeViewFactory(node);
+        if (typeof factory !== "function") {
           return;
         }
-        entry.view = nodeView;
-      } else {
-        const shouldUpdate = entry.view?.update?.(node, decorations);
-        if (shouldUpdate === false) {
-          entry.view?.destroy?.();
-          entry = null;
-        } else if (entry) {
-          entry.node = node;
-          entry.pos = pos;
-          entry.blockId = node.attrs?.id ?? entry.blockId;
-        }
-      }
 
-      if (entry) {
+        const key = getNodeViewKey(node, pos);
+        let entry = nodeViews.get(key);
+
+        if (!entry) {
+          entry = createEntry(node, pos, factory, key);
+          if (!entry) {
+            return;
+          }
+        } else {
+          const shouldUpdate = entry.view?.update?.(node, decorations);
+          if (shouldUpdate === false) {
+            entry.view?.destroy?.();
+            entry = createEntry(node, pos, factory, key);
+            if (!entry) {
+              return;
+            }
+          } else {
+            entry.node = node;
+            entry.pos = pos;
+            entry.blockId = node.attrs?.id ?? entry.blockId;
+          }
+        }
+
         nextViews.set(key, entry);
         if (entry.blockId) {
           nextByBlockId.set(entry.blockId, entry);
         }
-      }
-    });
+      });
 
-    for (const [key, entry] of nodeViews.entries()) {
-      if (!nextViews.has(key)) {
-        entry.view?.destroy?.();
+      for (const [key, entry] of nodeViews.entries()) {
+        if (!nextViews.has(key)) {
+          entry.view?.destroy?.();
+        }
       }
+
+      nodeViews.clear();
+      nodeViewsByBlockId.clear();
+      for (const [key, entry] of nextViews.entries()) {
+        nodeViews.set(key, entry);
+      }
+      for (const [blockId, entry] of nextByBlockId.entries()) {
+        nodeViewsByBlockId.set(blockId, entry);
+      }
+    };
+
+    if (changeSummary?.docChanged !== true) {
+      syncNodeViewSelection();
+      return;
     }
 
-    nodeViews.clear();
-    nodeViewsByBlockId.clear();
-    for (const [key, entry] of nextViews.entries()) {
-      nodeViews.set(key, entry);
+    const changedIds = Array.isArray(changeSummary?.blocks?.ids)
+      ? changeSummary.blocks.ids.filter(Boolean)
+      : [];
+    const canIncremental =
+      changedIds.length > 0 &&
+      nodeViews.size > 0 &&
+      nodeViews.size === nodeViewsByBlockId.size;
+
+    if (!canIncremental) {
+      fullSync();
+      syncNodeViewSelection();
+      return;
     }
-    for (const [blockId, entry] of nextByBlockId.entries()) {
-      nodeViewsByBlockId.set(blockId, entry);
+
+    const topLevelIndex = getDocTopLevelBlockIndex(state.doc);
+    for (const blockId of changedIds) {
+      const current = topLevelIndex.byId.get(blockId) ?? null;
+      const existing = nodeViewsByBlockId.get(blockId) ?? null;
+      if (!current) {
+        destroyEntry(existing);
+        continue;
+      }
+      const factory = resolveNodeViewFactory(current.node);
+      if (typeof factory !== "function") {
+        destroyEntry(existing);
+        continue;
+      }
+      const nextKey = getNodeViewKey(current.node, current.pos);
+      let entry = existing;
+      if (entry && entry.key !== nextKey) {
+        destroyEntry(entry);
+        entry = null;
+      }
+      if (!entry) {
+        entry = createEntry(current.node, current.pos, factory, nextKey);
+        if (!entry) {
+          continue;
+        }
+        nodeViews.set(entry.key, entry);
+        if (entry.blockId) {
+          nodeViewsByBlockId.set(entry.blockId, entry);
+        }
+        continue;
+      }
+      const shouldUpdate = entry.view?.update?.(current.node, decorations);
+      if (shouldUpdate === false) {
+        destroyEntry(entry);
+        const recreated = createEntry(current.node, current.pos, factory, nextKey);
+        if (!recreated) {
+          continue;
+        }
+        nodeViews.set(recreated.key, recreated);
+        if (recreated.blockId) {
+          nodeViewsByBlockId.set(recreated.blockId, recreated);
+        }
+        continue;
+      }
+      entry.node = current.node;
+      entry.pos = current.pos;
+      entry.blockId = current.node?.attrs?.id ?? entry.blockId;
+      nodeViews.set(entry.key, entry);
+      if (entry.blockId) {
+        nodeViewsByBlockId.set(entry.blockId, entry);
+      }
     }
 
     syncNodeViewSelection();
   };
 
   const destroyNodeViews = () => {
-    // 缂栬緫鍣ㄩ攢姣佹椂缁熶竴閲婃斁 NodeView锛岄伩鍏嶆硠婕忎簨浠朵笌 DOM銆?
+    // 编辑器销毁时统一释放 NodeView，避免泄漏事件与 DOM�?
     for (const entry of nodeViews.values()) {
       entry.view?.destroy?.();
     }
     nodeViews.clear();
     nodeViewsByBlockId.clear();
     selectedNodeViewKey = null;
+    lastVisibleOverlayKeys = new Set();
   };
 
   const resolveNodeSelectionTarget = ({
@@ -333,7 +510,7 @@ export const createNodeViewManager = ({
     textOffsetToDocPos,
     queryEditorProp,
   }) => {
-    // 灏嗗懡涓瑙ｆ瀽涓哄彲閫変腑鐨勮妭鐐逛綅缃紝鍏煎鎻掍欢閲嶅啓 isNodeSelectionTarget銆?
+    // 将命中行解析为可选中的节点位置，兼容插件重写 isNodeSelectionTarget�?
     const state = getState();
     if (!hit?.line || !state?.doc) {
       return null;
@@ -414,10 +591,16 @@ export const createNodeViewManager = ({
 
     const entry = resolveNodeViewEntry(nodeView);
     const state = getState();
-    if (entry?.node && NodeSelection.isSelectable(entry.node) && state?.doc) {
+    const entryPos = Number.isFinite(entry?.getPos?.()) ? Number(entry.getPos()) : entry?.pos;
+    if (
+      entry?.node &&
+      Number.isFinite(entryPos) &&
+      NodeSelection.isSelectable(entry.node) &&
+      state?.doc
+    ) {
       const decision = resolveNodeSelectionDecision({
         node: entry.node,
-        pos: entry.pos,
+        pos: entryPos,
         hit: null,
         event,
         queryEditorProp,
@@ -426,10 +609,10 @@ export const createNodeViewManager = ({
       if (!decision.allowed) {
         return false;
       }
-      const tr = state.tr.setSelection(NodeSelection.create(state.doc, entry.pos));
+      const tr = state.tr.setSelection(NodeSelection.create(state.doc, entryPos));
       if (typeof logNodeSelection === "function") {
         logNodeSelection("click-selection", {
-          pos: entry.pos,
+          pos: entryPos,
           nodeType: entry?.node?.type?.name ?? null,
         });
       }
@@ -439,7 +622,6 @@ export const createNodeViewManager = ({
 
     return false;
   };
-
   const setSkipNextClickSelection = (value) => {
     skipNextClickSelection = value === true;
   };
@@ -463,6 +645,11 @@ export const createNodeViewManager = ({
     consumeSkipNextClickSelection,
   };
 };
+
+
+
+
+
 
 
 

@@ -1,4 +1,6 @@
 // 文本偏移量 <-> ProseMirror 位置映射
+const docTopLevelTextIndexCache = new WeakMap();
+
 const serializeContainerToText = (node) => {
   const parts = [];
   node.forEach((child, _pos, index) => {
@@ -81,6 +83,73 @@ function getNodeTextLength(node) {
 
 const getBlockTextLength = (node) => getNodeTextLength(node);
 
+const getDocTopLevelTextIndex = (doc) => {
+  if (!doc || !Number.isFinite(doc?.childCount)) {
+    return {
+      childStarts: [],
+      childEnds: [],
+      offsetStarts: [],
+      childTextLengths: [],
+      totalTextLength: 0,
+    };
+  }
+
+  const cached = docTopLevelTextIndexCache.get(doc);
+  if (cached) {
+    return cached;
+  }
+
+  const childStarts = [];
+  const childEnds = [];
+  const offsetStarts = [];
+  const childTextLengths = [];
+  let docPos = 0;
+  let textOffset = 0;
+
+  for (let i = 0; i < doc.childCount; i += 1) {
+    const child = doc.child(i);
+    const textLength = getBlockTextLength(child);
+    childStarts.push(docPos);
+    childEnds.push(docPos + child.nodeSize);
+    offsetStarts.push(textOffset);
+    childTextLengths.push(textLength);
+    docPos += child.nodeSize;
+    textOffset += textLength;
+    if (i < doc.childCount - 1) {
+      textOffset += 1;
+    }
+  }
+
+  const index = {
+    childStarts,
+    childEnds,
+    offsetStarts,
+    childTextLengths,
+    totalTextLength: textOffset,
+  };
+  docTopLevelTextIndexCache.set(doc, index);
+  return index;
+};
+
+const findLastIndexAtOrBefore = (values, target) => {
+  let low = 0;
+  let high = values.length - 1;
+  let best = -1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const value = values[mid];
+    if (value <= target) {
+      best = mid;
+      low = mid + 1;
+      continue;
+    }
+    high = mid - 1;
+  }
+
+  return best;
+};
+
 export const docToOffsetText = (doc) => {
   const parts = [];
   doc.forEach((node, _pos, index) => {
@@ -91,6 +160,8 @@ export const docToOffsetText = (doc) => {
   });
   return parts.join("");
 };
+
+export const getDocTextLength = (doc) => getDocTopLevelTextIndex(doc).totalTextLength;
 
 const mapOffsetInTextblock = (node, nodePos, offset) => {
   const textStart = nodePos + 1;
@@ -144,49 +215,25 @@ function mapOffsetInNode(node, nodePos, offset) {
 }
 
 const clampTextOffset = (doc, offset) => {
-  let length = 0;
-  for (let i = 0; i < doc.childCount; i += 1) {
-    const node = doc.child(i);
-    length += getBlockTextLength(node);
-    if (i < doc.childCount - 1) {
-      length += 1;
-    }
-  }
-  return Math.max(0, Math.min(offset, length));
+  const totalTextLength = getDocTextLength(doc);
+  return Math.max(0, Math.min(offset, totalTextLength));
 };
 
 export const textOffsetToDocPos = (doc, offset) => {
-  const clamped = clampTextOffset(doc, offset);
-
-  let remaining = clamped;
-
-  let docPos = 0;
-
-  for (let i = 0; i < doc.childCount; i += 1) {
-    const node = doc.child(i);
-
-    const textLength = getBlockTextLength(node);
-
-    const nodeStart = docPos;
-
-    if (remaining <= textLength) {
-      return mapOffsetInNode(node, nodeStart, remaining);
-    }
-
-    remaining -= textLength;
-
-    if (i < doc.childCount - 1) {
-      if (remaining === 0) {
-        return nodeStart + node.nodeSize - 1;
-      }
-
-      remaining -= 1;
-    }
-
-    docPos += node.nodeSize;
+  if (!doc || doc.childCount <= 0) {
+    return doc?.content?.size ?? 0;
   }
 
-  return doc.content.size;
+  const clamped = clampTextOffset(doc, offset);
+  const index = getDocTopLevelTextIndex(doc);
+  const childIndex = Math.max(0, findLastIndexAtOrBefore(index.offsetStarts, clamped));
+  const node = doc.child(childIndex);
+  const nodeStart = index.childStarts[childIndex] ?? 0;
+  const offsetStart = index.offsetStarts[childIndex] ?? 0;
+  const textLength = index.childTextLengths[childIndex] ?? 0;
+  const localOffset = Math.max(0, Math.min(textLength, clamped - offsetStart));
+
+  return mapOffsetInNode(node, nodeStart, localOffset);
 };
 
 const mapPosInTextblock = (node, nodePos, pos) => {
@@ -248,37 +295,34 @@ function mapPosInNode(node, nodePos, pos) {
 }
 
 export const docPosToTextOffset = (doc, pos) => {
-  const clamped = Math.max(0, Math.min(pos, doc.content.size));
-
-  let docPos = 0;
-
-  let offset = 0;
-
-  for (let i = 0; i < doc.childCount; i += 1) {
-    const node = doc.child(i);
-
-    const textLength = getBlockTextLength(node);
-
-    const nodeStart = docPos;
-
-    const nodeEnd = nodeStart + node.nodeSize;
-
-    if (clamped <= nodeStart) {
-      return offset;
-    }
-
-    if (clamped < nodeEnd) {
-      return offset + mapPosInNode(node, nodeStart, clamped);
-    }
-
-    offset += textLength;
-
-    if (i < doc.childCount - 1) {
-      offset += 1;
-    }
-
-    docPos += node.nodeSize;
+  if (!doc || doc.childCount <= 0) {
+    return 0;
   }
 
-  return offset;
+  const clamped = Math.max(0, Math.min(pos, doc.content.size));
+  const index = getDocTopLevelTextIndex(doc);
+  const childIndex = Math.max(0, findLastIndexAtOrBefore(index.childStarts, clamped));
+  const node = doc.child(childIndex);
+  const nodeStart = index.childStarts[childIndex] ?? 0;
+  const nodeEnd = index.childEnds[childIndex] ?? nodeStart;
+  const offsetStart = index.offsetStarts[childIndex] ?? 0;
+
+  if (clamped <= nodeStart) {
+    return offsetStart;
+  }
+
+  if (clamped < nodeEnd) {
+    return offsetStart + mapPosInNode(node, nodeStart, clamped);
+  }
+
+  if (childIndex >= doc.childCount - 1) {
+    return index.totalTextLength;
+  }
+
+  const nextOffsetStart = index.offsetStarts[childIndex + 1];
+  if (Number.isFinite(nextOffsetStart)) {
+    return Number(nextOffsetStart);
+  }
+
+  return offsetStart + (index.childTextLengths[childIndex] ?? 0);
 };

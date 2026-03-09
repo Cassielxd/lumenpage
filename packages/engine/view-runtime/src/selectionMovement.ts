@@ -6,12 +6,23 @@ export const createSelectionMovement = ({
   getCaretOffset,
   setCaretOffset,
   getText,
+  getTextLength,
   getPreferredX,
   updateCaret,
   scrollArea,
   getSelectionAnchorOffset,
   setSelectionOffsets,
 }) => {
+  const resolveTextLength = () => {
+    if (typeof getTextLength === "function") {
+      return getTextLength();
+    }
+    if (typeof getText === "function") {
+      return getText()?.length ?? 0;
+    }
+    return 0;
+  };
+
   const computeLineEdgeOffset = (edge) => {
     const layout = getLayout();
     if (!layout) {
@@ -21,7 +32,7 @@ export const createSelectionMovement = ({
     const info = findLineForOffsetIndexed(
       layout,
       getCaretOffset(),
-      getText().length,
+      resolveTextLength(),
       getLayoutIndex?.()
     );
     if (!info) {
@@ -40,7 +51,7 @@ export const createSelectionMovement = ({
     const info = findLineForOffsetIndexed(
       layout,
       getCaretOffset(),
-      getText().length,
+      resolveTextLength(),
       getLayoutIndex?.()
     );
     if (!info) {

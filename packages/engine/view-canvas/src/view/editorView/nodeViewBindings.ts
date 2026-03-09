@@ -5,11 +5,18 @@ export const createNodeViewBindings = ({
   getDocPosFromCoords,
   docPosToTextOffset,
   getLayoutIndex,
+  getChangeSummary,
   queryEditorProp,
   dispatchTransaction,
 }) => {
-  const syncNodeViews = () => {
-    nodeViewManager.syncNodeViews();
+  const syncNodeViews = (changeSummary = undefined) => {
+    const nextChangeSummary =
+      changeSummary === undefined
+        ? typeof getChangeSummary === "function"
+          ? getChangeSummary()
+          : null
+        : changeSummary;
+    nodeViewManager.syncNodeViews(nextChangeSummary);
   };
 
   const destroyNodeViews = () => {

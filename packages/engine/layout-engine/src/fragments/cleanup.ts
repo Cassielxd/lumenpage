@@ -25,13 +25,20 @@ const getSliceAnchorKey = (line) => {
   return null;
 };
 
-export const cleanupUnslicedDuplicateSlices = (pages) => {
+export const cleanupUnslicedDuplicateSlices = (
+  pages,
+  options: { scanUntilPageIndex?: number | null } = {}
+) => {
   if (!Array.isArray(pages) || pages.length === 0) {
     return pages;
   }
+  const scanUntilPageIndex = Number.isFinite(options?.scanUntilPageIndex)
+    ? Math.max(0, Math.min(pages.length - 1, Number(options.scanUntilPageIndex)))
+    : pages.length - 1;
 
   const slicedAnchors = new Set<string>();
-  for (const page of pages) {
+  for (let pageIndex = 0; pageIndex <= scanUntilPageIndex; pageIndex += 1) {
+    const page = pages[pageIndex];
     for (const line of page?.lines || []) {
       const anchor = getSliceAnchorKey(line);
       if (!anchor) {
@@ -47,7 +54,8 @@ export const cleanupUnslicedDuplicateSlices = (pages) => {
     return pages;
   }
 
-  for (const page of pages) {
+  for (let pageIndex = 0; pageIndex <= scanUntilPageIndex; pageIndex += 1) {
+    const page = pages[pageIndex];
     if (!Array.isArray(page?.lines) || page.lines.length === 0) {
       continue;
     }

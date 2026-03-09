@@ -1,3 +1,62 @@
+const docTopLevelBlockIndexCache = new WeakMap();
+
+const getDocTopLevelBlockIndex = (doc) => {
+  const cached = docTopLevelBlockIndexCache.get(doc);
+  if (cached) {
+    return cached;
+  }
+
+  const starts = [];
+  const ends = [];
+  const ids = [];
+
+  doc.forEach((node, pos) => {
+    starts.push(pos);
+    ends.push(pos + node.nodeSize);
+    ids.push(node.attrs?.id ?? null);
+  });
+
+  const index = { starts, ends, ids };
+  docTopLevelBlockIndexCache.set(doc, index);
+  return index;
+};
+
+const findFirstIndexWithEndAtOrAfter = (values, target) => {
+  let low = 0;
+  let high = values.length - 1;
+  let best = -1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (values[mid] >= target) {
+      best = mid;
+      high = mid - 1;
+      continue;
+    }
+    low = mid + 1;
+  }
+
+  return best;
+};
+
+const findLastIndexWithStartAtOrBefore = (values, target) => {
+  let low = 0;
+  let high = values.length - 1;
+  let best = -1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (values[mid] <= target) {
+      best = mid;
+      low = mid + 1;
+      continue;
+    }
+    high = mid - 1;
+  }
+
+  return best;
+};
+
 const collectChangedRanges = (mapping) => {
   let oldFrom = Number.POSITIVE_INFINITY;
   let oldTo = Number.NEGATIVE_INFINITY;
@@ -24,25 +83,12 @@ const collectChangedRanges = (mapping) => {
 };
 
 const collectBlockRange = (doc, from, to) => {
-  const blockIds = [];
-  const blockIndices = [];
+  const blockIndex = getDocTopLevelBlockIndex(doc);
+  const fromIndex = findFirstIndexWithEndAtOrAfter(blockIndex.ends, from);
+  const toIndex = findLastIndexWithStartAtOrBefore(blockIndex.starts, to);
+  const hasOverlap = fromIndex >= 0 && toIndex >= fromIndex;
 
-  doc.forEach((node, pos, index) => {
-    const start = pos;
-    const end = pos + node.nodeSize;
-
-    if (end < from || start > to) {
-      return;
-    }
-
-    blockIndices.push(index);
-
-    if (node.attrs?.id) {
-      blockIds.push(node.attrs.id);
-    }
-  });
-
-  if (blockIndices.length === 0) {
+  if (!hasOverlap) {
     const docSize = Number.isFinite(doc?.content?.size) ? Number(doc.content.size) : 0;
     const fallbackPos = Math.max(0, Math.min(docSize, Number.isFinite(from) ? Number(from) : 0));
     try {
@@ -63,9 +109,19 @@ const collectBlockRange = (doc, from, to) => {
     return { fromIndex: null, toIndex: null, ids: [], indices: [] };
   }
 
+  const blockIndices = [];
+  const blockIds = [];
+  for (let index = fromIndex; index <= toIndex; index += 1) {
+    blockIndices.push(index);
+    const id = blockIndex.ids[index];
+    if (id) {
+      blockIds.push(id);
+    }
+  }
+
   return {
-    fromIndex: Math.min(...blockIndices),
-    toIndex: Math.max(...blockIndices),
+    fromIndex,
+    toIndex,
     ids: blockIds,
     indices: blockIndices,
   };

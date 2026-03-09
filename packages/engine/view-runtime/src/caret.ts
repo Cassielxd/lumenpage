@@ -8,6 +8,9 @@ import { measureTextWidth, getFontSize } from "./measure";
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
+const getLineOffsetDelta = (line) =>
+  Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
+
 const getLineXForOffset = (line, offset, fallbackFont) => {
   if (!line.runs || line.runs.length === 0) {
     return measureTextWidth(
@@ -18,13 +21,14 @@ const getLineXForOffset = (line, offset, fallbackFont) => {
   }
 
   let x = 0;
+  const lineOffsetDelta = getLineOffsetDelta(line);
 
   for (const run of line.runs) {
     const runFont = run.font || fallbackFont;
 
-    const runStart = run.start;
+    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
 
-    const runEnd = run.end;
+    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
 
     const runWidth =
       typeof run.width === "number" ? run.width : measureTextWidth(runFont, run.text);
@@ -54,8 +58,11 @@ const getFontForOffset = (line, offset, fallbackFont) => {
     return fallbackFont;
   }
 
+  const lineOffsetDelta = getLineOffsetDelta(line);
   for (const run of line.runs) {
-    if (offset >= run.start && offset <= run.end) {
+    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
+    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
+    if (offset >= runStart && offset <= runEnd) {
       return run.font || fallbackFont;
     }
   }
@@ -189,9 +196,11 @@ export function offsetAtX(font, line, x) {
 
   if (line.runs && line.runs.length > 0) {
     let acc = 0;
+    const lineOffsetDelta = getLineOffsetDelta(line);
 
     for (const run of line.runs) {
       const runFont = run.font || font;
+      const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
 
       const runWidth =
         typeof run.width === "number" ? run.width : measureTextWidth(runFont, run.text);
@@ -207,13 +216,13 @@ export function offsetAtX(font, line, x) {
           const mid = acc + runAcc + w / 2;
 
           if (x < mid) {
-            return run.start + i;
+            return runStart + i;
           }
 
           runAcc += w;
         }
 
-        return run.start + run.text.length;
+        return runStart + run.text.length;
       }
 
       acc += runWidth;

@@ -8,6 +8,7 @@ export const createEditorOps = ({
   pendingPreferredUpdateRef,
   getCaretOffset,
   getText,
+  getTextLength,
   setSelectionOffsets,
   docPosToTextOffset,
   textOffsetToDocPos,
@@ -28,6 +29,16 @@ export const createEditorOps = ({
     return !specialStructureChanged && nextState.selection.head === prevHead;
   },
 }) => {
+  const getOffsetToken = (doc, offset) => {
+    const textLength = getTextLength();
+    if (!doc || offset < 0 || offset >= textLength) {
+      return null;
+    }
+    const fromPos = textOffsetToDocPos(doc, offset);
+    const toPos = textOffsetToDocPos(doc, offset + 1);
+    return doc.textBetween(fromPos, toPos, "\n");
+  };
+
   const setCaretOffset = (offset, updatePreferred) => {
     setSelectionOffsets(offset, offset, updatePreferred);
   };
@@ -38,8 +49,6 @@ export const createEditorOps = ({
     }
 
     if (text === "\n") {
-      const prevState = getEditorState();
-      const prevHead = prevState.selection.head;
       pendingPreferredUpdateRef.set(true);
       const enterCommand = basicCommands.enter || basicCommands.splitBlock;
       const handled = runCommand(enterCommand, getEditorState(), dispatchTransaction);
@@ -47,16 +56,6 @@ export const createEditorOps = ({
         const state = getEditorState();
         const tr = state.tr.insertText("\n", state.selection.from, state.selection.to);
         dispatchTransaction(tr);
-      }
-      const nextState = getEditorState();
-      const shouldAdvance =
-        shouldAutoAdvanceAfterEnter({ prevState, nextState, prevHead }) === true;
-      if (shouldAdvance && typeof docPosToTextOffset === "function") {
-        const prevOffset = docPosToTextOffset(nextState.doc, prevHead);
-        const nextOffset = Math.min(prevOffset + 1, getText().length);
-        if (nextOffset !== prevOffset) {
-          setSelectionOffsets(nextOffset, nextOffset, true);
-        }
       }
       return;
     }
@@ -67,8 +66,8 @@ export const createEditorOps = ({
     dispatchTransaction(tr);
     logDelete("after", {
       caretOffset: getCaretOffset(),
-      textLength: getText().length,
-      lastChar: getText().slice(-1) || null,
+      textLength: getTextLength(),
+      lastChar: null,
     });
   };
 
@@ -163,14 +162,18 @@ export const createEditorOps = ({
   };
 
   const deleteText = (direction) => {
-    const textValue = getText();
+    const editorState = getEditorState();
+    const doc = editorState.doc;
     const caretOffset = getCaretOffset();
+    const textLength = getTextLength();
+    const prevChar = caretOffset > 0 ? getOffsetToken(doc, caretOffset - 1) : null;
+    const nextChar = caretOffset < textLength ? getOffsetToken(doc, caretOffset) : null;
     logDelete("before", {
       direction,
       caretOffset,
-      textLength: textValue.length,
-      prevChar: caretOffset > 0 ? textValue[caretOffset - 1] : null,
-      nextChar: caretOffset < textValue.length ? textValue[caretOffset] : null,
+      textLength,
+      prevChar,
+      nextChar,
     });
 
     if (deleteSelectionIfNeeded()) {
@@ -213,8 +216,7 @@ export const createEditorOps = ({
       if (caretOffset === 0) {
         return;
       }
-      if (textValue[caretOffset - 1] === "\n") {
-        const doc = getEditorState().doc;
+      if (prevChar === "\n") {
         const fromPos = textOffsetToDocPos(doc, caretOffset - 1);
         const toPos = textOffsetToDocPos(doc, caretOffset);
         const $from = doc.resolve(fromPos);
@@ -228,8 +230,8 @@ export const createEditorOps = ({
           dispatchTransaction(tr);
           logDelete("after", {
             caretOffset: getCaretOffset(),
-            textLength: getText().length,
-            lastChar: getText().slice(-1) || null,
+            textLength: getTextLength(),
+            lastChar: null,
           });
           return;
         }
@@ -276,17 +278,16 @@ export const createEditorOps = ({
       dispatchTransaction(tr);
       logDelete("after", {
         caretOffset: getCaretOffset(),
-        textLength: getText().length,
-        lastChar: getText().slice(-1) || null,
+        textLength: getTextLength(),
+        lastChar: null,
       });
       return;
     }
 
-    if (caretOffset >= textValue.length) {
+    if (caretOffset >= textLength) {
       return;
     }
-    if (textValue[caretOffset] === "\n") {
-      const doc = getEditorState().doc;
+    if (nextChar === "\n") {
       const fromPos = textOffsetToDocPos(doc, caretOffset);
       const toPos = textOffsetToDocPos(doc, caretOffset + 1);
       const $from = doc.resolve(fromPos);
@@ -300,8 +301,8 @@ export const createEditorOps = ({
         dispatchTransaction(tr);
         logDelete("after", {
           caretOffset: getCaretOffset(),
-          textLength: getText().length,
-          lastChar: getText().slice(-1) || null,
+          textLength: getTextLength(),
+          lastChar: null,
         });
         return;
       }
@@ -331,8 +332,8 @@ export const createEditorOps = ({
     dispatchTransaction(tr);
     logDelete("after", {
       caretOffset: getCaretOffset(),
-      textLength: getText().length,
-      lastChar: getText().slice(-1) || null,
+      textLength: getTextLength(),
+      lastChar: null,
     });
   };
 

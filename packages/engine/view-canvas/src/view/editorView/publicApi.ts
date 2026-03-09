@@ -232,7 +232,7 @@ export const viewCoordsAtPos = (view, pos, docPosToTextOffset, coordsAtPosImpl) 
   if (!layout) {
     return null;
   }
-  const textLength = view?._internals?.getText?.()?.length ?? 0;
+  const textLength = view?._internals?.getTextLength?.() ?? 0;
   const offset = docPosToTextOffset(view.state.doc, pos);
   const rect = coordsAtPosImpl(
     layout,
@@ -281,7 +281,7 @@ export const viewPosAtCoords = (
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     return null;
   }
-  const textLength = view?._internals?.getText?.()?.length ?? 0;
+  const textLength = view?._internals?.getTextLength?.() ?? 0;
   const offset = posAtCoordsImpl(
     layout,
     x,
@@ -337,7 +337,7 @@ export const scrollViewIntoView = (view, pos, docPosToTextOffset, coordsAtPosImp
   }
   const scrollArea = view._internals.dom.scrollArea;
   const targetPos = Number.isFinite(pos) ? pos : view.state?.selection?.head ?? 0;
-  const textLength = view?._internals?.getText?.()?.length ?? 0;
+  const textLength = view?._internals?.getTextLength?.() ?? 0;
   const offset = docPosToTextOffset(view.state.doc, targetPos);
   const rect = coordsAtPosImpl(
     layout,

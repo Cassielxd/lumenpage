@@ -1,27 +1,32 @@
-# 会话接手入口（2026-02-27）
+﻿# 会话接手入口（2026-03-09）
 
-## 先读这个
+## 本次优化优先读
 
-1. `docs/project-onboarding-handbook.md`（总入口：架构、链路、包职责、调试方式）
-2. `docs/core-hook-boundary-analysis.md`（Hook 边界与插件/渲染职责）
-3. `docs/lumen-menu-feature-checklist.md`（菜单接线实时清单）
-4. `docs/lumen-product-completion-plan.md`（产品完成口径与收口优先级）
-5. `docs/fix-log-2026-02-24.md`（历史问题与修复轨迹）
+1. `docs/large-doc-optimization-handoff-2026-03-09.md`
+2. `docs/pagination-layout.md`
+3. `docs/architecture-analysis.md`
+4. `docs/project-onboarding-handbook.md`
 
-## 当前快照
+## 当前主线
 
-- 分层治理已落地：`core -> engine -> extensions -> apps`
-- Lumen 菜单接线基线：`103` 项中 `99` 项已接线，`4` 项未接线
-- `export` Tab 默认隐藏，但导出动作仍在“开始”区可达
-- 目录能力为插件采集标题，面板展示在 `App.vue` 左侧
+- 目标：优化 300+ 页大文档输入与回车性能
+- 已确认：主瓶颈在 `worker-provider` 布局链，不在 renderer
+- 已开始：把 `splitBlock` 从黑名单节点推进成 fragment-aware 节点
 
-## 开发时先执行
+## 当前结论
 
-- `pnpm dev:lumen`
-- `pnpm -C apps/lumen typecheck`
-- `pnpm governance:check`
+- `render-cache` 已基本生效
+- `layout-apply` 开销较小
+- `layout-pass.computeMs` 仍然偏高
+- 最近已收窄页复用禁用条件，并给 table/list 补了分页能力声明
 
-## 备注
+## 下次继续前
 
-- 旧会话中的“未提交代码清单”已失效，不再在本文件维护。
-- 本文件只保留入口与当下结论，细节统一收敛到 `project-onboarding-handbook.md`。
+- 先跑一轮 `?debugPerf=1&perfDoc=1&paginationWorker=1&paginationIncremental=1`
+- 重点看 `[perf][layout-pass]`
+- 关注字段：
+  - `disablePageReuse`
+  - `reuseReason`
+  - `reusedPages`
+  - `syncFromIndex`
+  - `computeMs`

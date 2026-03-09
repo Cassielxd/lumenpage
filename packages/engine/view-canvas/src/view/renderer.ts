@@ -406,10 +406,8 @@ export class Renderer {
     const objectSignatureCache = new WeakMap();
 
     for (const line of page.lines) {
-      hash = hashNumber(hash, line.start);
-
-      hash = hashNumber(hash, line.end);
-
+      // Canvas page cache only depends on visual output. Absolute doc offsets can shift after
+      // upstream edits without changing what this page actually draws.
       hash = hashNumber(hash, line.x);
 
       hash = hashNumber(hash, line.y);
@@ -421,7 +419,6 @@ export class Renderer {
 
       hash = hashString(hash, line.blockType || "");
       hash = hashString(hash, line.blockId || "");
-      hash = hashNumber(hash, line.blockStart);
 
       hash = hashString(hash, line.text || "");
       hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
@@ -429,10 +426,6 @@ export class Renderer {
 
       if (line.runs) {
         for (const run of line.runs) {
-          hash = hashNumber(hash, run.start);
-
-          hash = hashNumber(hash, run.end);
-
           hash = hashString(hash, run.text || "");
 
           hash = hashString(hash, run.font || "");
@@ -799,6 +792,12 @@ export class Renderer {
     let renderPagesMs = 0;
     let compositeMs = 0;
     let overlayMs = 0;
+    let pageCacheHits = 0;
+    let pageCacheMisses = 0;
+    let pageCacheRecreated = 0;
+    let signatureComputedPages = 0;
+    let signatureSkippedPages = 0;
+    const cacheClearReasons: string[] = [];
 
     const layoutVersion = typeof layout.__version === "number" ? layout.__version : null;
     const prevLayoutVersion = this.lastLayoutVersion;
@@ -809,6 +808,7 @@ export class Renderer {
       Number(layoutVersion) > Number(prevLayoutVersion) + 1;
     let forceRedraw = !!layout.__forceRedraw || skippedLayoutVersions;
     if (forceRedraw) {
+      cacheClearReasons.push(layout.__forceRedraw ? "layout-force-redraw" : "layout-version-skip");
       this.pageCache.clear();
       layout.__forceRedraw = false;
     }
@@ -816,19 +816,12 @@ export class Renderer {
       this.lastLayoutVersion = layoutVersion;
     }
     const { clientWidth, clientHeight, scrollTop } = viewport;
-    if (Number.isFinite(layoutVersion) && Array.isArray(layout?.pages)) {
-      for (const page of layout.pages) {
-        if (page && Number(page.__layoutVersionToken) !== Number(layoutVersion)) {
-          page.__layoutVersionToken = Number(layoutVersion);
-        }
-      }
-    }
-
     const rawDpr = window.devicePixelRatio || 1;
     const dprStrategy = this.settings?.pixelRatioStrategy;
     const dpr = dprStrategy === "integer" ? Math.max(1, Math.ceil(rawDpr)) : rawDpr;
 
     if (this.lastDpr !== dpr) {
+      cacheClearReasons.push(`dpr-change:${this.lastDpr}->${dpr}`);
       this.pageCache.clear();
 
       this.lastDpr = dpr;
@@ -862,7 +855,7 @@ export class Renderer {
 
     const visible = getVisiblePages(layout, scrollTop, clientHeight);
 
-    const buffer = this.settings.pageBuffer ?? 1;
+    const buffer = this.settings.pageBuffer ?? 2;
 
     const startIndex = Math.max(0, visible.startIndex - buffer);
 
@@ -892,12 +885,28 @@ export class Renderer {
     const changedRange = resolveChangedRootIndexRange(layout.__changeSummary);
     for (let i = 0; i < pageIndices.length; i += 1) {
       const pageIndex = pageIndices[i];
+      const previousEntry = this.pageCache.get(pageIndex);
+      if (
+        previousEntry &&
+        previousEntry.width === layout.pageWidth &&
+        previousEntry.height === layout.pageHeight &&
+        previousEntry.dpr === dpr
+      ) {
+        pageCacheHits += 1;
+      } else if (previousEntry) {
+        pageCacheRecreated += 1;
+      } else {
+        pageCacheMisses += 1;
+      }
 
       const entry = this.getPageCache(pageIndex, layout, dpr);
       let pageRedrawn = false;
 
       let signature = entry.signature;
       const page = layout.pages[pageIndex];
+      if (page && Number.isFinite(layoutVersion)) {
+        page.__layoutVersionToken = Number(layoutVersion);
+      }
       const currentVersion = Number.isFinite(layoutVersion) ? Number(layoutVersion) : null;
       const entryVersion = Number.isFinite(entry?.signatureVersion)
         ? Number(entry.signatureVersion)
@@ -923,13 +932,17 @@ export class Renderer {
             page.rootIndexMax < changedRange.min));
 
       if (!canSkipSignature) {
+        signatureComputedPages += 1;
         const sigStart = this.settings?.debugPerf ? now() : 0;
         signature = this.getPageSignature(page);
         if (this.settings?.debugPerf) {
           signatureMs += now() - sigStart;
         }
       } else if (signature == null && hasPageSignature) {
+        signatureSkippedPages += 1;
         signature = page.__signature;
+      } else {
+        signatureSkippedPages += 1;
       }
 
       if (Number.isFinite(layoutVersion) && Number.isFinite(signature)) {
@@ -1027,7 +1040,7 @@ export class Renderer {
       }
     }
 
-    const maxCache = this.settings.maxPageCache ?? Math.max(activePages.size * 2, 12);
+    const maxCache = this.settings.maxPageCache ?? Math.max(activePages.size * 3, 24);
 
     this.enforceCacheLimit(activePages, maxCache);
 
@@ -1099,10 +1112,21 @@ export class Renderer {
         this.lastPerfLog = now();
         const summary = {
           ms: Math.round(elapsed),
+          layoutVersion,
+          prevLayoutVersion,
+          layoutVersionChanged,
+          skippedLayoutVersions: skippedLayoutVersions === true,
+          forceRedraw,
+          cacheClearReasons,
           activePages: activePages.size,
           redrawPages: redrawCount,
           cachedPages,
+          pageCacheHits,
+          pageCacheMisses,
+          pageCacheRecreated,
           cacheSize: this.pageCache.size,
+          signatureComputedPages,
+          signatureSkippedPages,
           signatureMs: Math.round(signatureMs),
           renderPagesMs: Math.round(renderPagesMs),
           compositeMs: Math.round(compositeMs),
@@ -1110,6 +1134,32 @@ export class Renderer {
         };
         if (this.settings?.__perf) {
           this.settings.__perf.render = summary;
+        }
+        if (typeof window !== "undefined") {
+          const globalWindow = window as typeof window & {
+            __lumenPerfLogs?: Array<Record<string, unknown>>;
+            __lumenLastRenderPerf?: Record<string, unknown>;
+            __copyLumenRenderPerf?: () => string;
+          };
+          const logs = Array.isArray(globalWindow.__lumenPerfLogs)
+            ? globalWindow.__lumenPerfLogs
+            : [];
+          logs.push({
+            type: "render-cache",
+            timestamp: new Date().toISOString(),
+            ...summary,
+          });
+          if (logs.length > 200) {
+            logs.splice(0, logs.length - 200);
+          }
+          globalWindow.__lumenPerfLogs = logs;
+          globalWindow.__lumenLastRenderPerf = summary;
+          globalWindow.__copyLumenRenderPerf = () =>
+            JSON.stringify(
+              logs.filter((entry) => entry?.type === "render-cache"),
+              null,
+              2
+            );
         }
         const panel = this.settings?.perfPanelEl;
         if (panel) {
@@ -1127,10 +1177,19 @@ export class Renderer {
             `  layoutLeafMs: ${layoutPerf?.layoutLeafMs ?? "-"}`,
             "render",
             `  ms: ${summary.ms}`,
+            `  layoutVersion: ${summary.layoutVersion ?? "-"}`,
+            `  prevLayoutVersion: ${summary.prevLayoutVersion ?? "-"}`,
+            `  forceRedraw: ${summary.forceRedraw ? "yes" : "no"}`,
+            `  cacheClear: ${summary.cacheClearReasons.length ? summary.cacheClearReasons.join(",") : "-"}`,
             `  active: ${summary.activePages}`,
             `  redraw: ${summary.redrawPages}`,
             `  cached: ${summary.cachedPages}`,
+            `  cacheHits: ${summary.pageCacheHits}`,
+            `  cacheMisses: ${summary.pageCacheMisses}`,
+            `  cacheRecreated: ${summary.pageCacheRecreated}`,
             `  cacheSize: ${summary.cacheSize}`,
+            `  sigComputed: ${summary.signatureComputedPages}`,
+            `  sigSkipped: ${summary.signatureSkippedPages}`,
             `  signatureMs: ${summary.signatureMs}`,
             `  renderPagesMs: ${summary.renderPagesMs}`,
             `  compositeMs: ${summary.compositeMs}`,

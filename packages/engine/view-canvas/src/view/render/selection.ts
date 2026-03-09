@@ -1,4 +1,4 @@
-import { findLineForOffset, offsetAtX } from "../caret";
+import { findLineForOffset, offsetAtX, getLinesInRange } from "../caret";
 import { measureTextWidth } from "../measure";
 
 const getLineHeight = (line, layout) =>
@@ -10,19 +10,23 @@ const isImageLine = (line) =>
   line?.blockType === "video" ||
   line?.blockType === "horizontal_rule";
 
+const getLineOffsetDelta = (line) =>
+  Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
+
 const offsetToX = (line, offset, layout) => {
   if (!line.runs || line.runs.length === 0) {
     return measureTextWidth(layout.font, line.text.slice(0, Math.max(0, offset - line.start)));
   }
 
   let x = 0;
+  const lineOffsetDelta = getLineOffsetDelta(line);
 
   for (const run of line.runs) {
     const runFont = run.font || layout.font;
 
-    const runStart = run.start;
+    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
 
-    const runEnd = run.end;
+    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
 
     const runWidth =
       typeof run.width === "number" ? run.width : measureTextWidth(runFont, run.text);
@@ -68,6 +72,10 @@ const getLineMetrics = (layout) => {
       maxOffset = Math.max(maxOffset, line.end ?? 0);
     }
   }
+
+  // Sort by start offset to enable binary search in getLinesInRange
+  // This is critical for correct selection rect calculation
+  items.sort((a, b) => a.start - b.start);
 
   return { items, totalLines, maxOffset };
 };
@@ -116,8 +124,150 @@ const binarySearchClosest = (lines, target) => {
   return best;
 };
 
+const getPageEntries = (layoutIndex) =>
+  Array.isArray(layoutIndex?.pageEntries) ? layoutIndex.pageEntries : null;
+
+const findPageInfoForOffset = (layoutIndex, offset) => {
+  const pageIndex = Array.isArray(layoutIndex?.pageIndex) ? layoutIndex.pageIndex : null;
+  if (!pageIndex || pageIndex.length === 0) {
+    return null;
+  }
+
+  let low = 0;
+  let high = pageIndex.length - 1;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const item = pageIndex[mid];
+    if (offset < item.startOffset) {
+      high = mid - 1;
+      continue;
+    }
+    if (offset > item.endOffset) {
+      low = mid + 1;
+      continue;
+    }
+    return item;
+  }
+
+  if (low >= pageIndex.length) {
+    return pageIndex[pageIndex.length - 1] ?? null;
+  }
+  if (high < 0) {
+    return pageIndex[0] ?? null;
+  }
+
+  const lowItem = pageIndex[low];
+  const highItem = pageIndex[high];
+  if (!lowItem) {
+    return highItem ?? null;
+  }
+  if (!highItem) {
+    return lowItem ?? null;
+  }
+  return Math.abs(offset - lowItem.startOffset) <= Math.abs(offset - highItem.startOffset)
+    ? lowItem
+    : highItem;
+};
+
+const binarySearchClosestInPage = (pageEntry, target) => {
+  const lines = Array.isArray(pageEntry?.page?.lines) ? pageEntry.page.lines : [];
+  if (lines.length === 0) {
+    return null;
+  }
+
+  let low = 0;
+  let high = lines.length - 1;
+  let best = lines.length - 1;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const line = lines[mid];
+    const start = Number.isFinite(line?.start) ? Number(line.start) : 0;
+    const end = Number.isFinite(line?.end) ? Number(line.end) : start;
+    if (target < start) {
+      best = mid;
+      high = mid - 1;
+      continue;
+    }
+    if (target > end) {
+      low = mid + 1;
+      continue;
+    }
+    return {
+      pageIndex: pageEntry.pageIndex,
+      lineIndex: mid,
+      line,
+      start,
+      end,
+      mid: (start + end) / 2,
+    };
+  }
+
+  const lineIndex = Math.max(0, best);
+  const line = lines[lineIndex];
+  const start = Number.isFinite(line?.start) ? Number(line.start) : 0;
+  const end = Number.isFinite(line?.end) ? Number(line.end) : start;
+  return {
+    pageIndex: pageEntry.pageIndex,
+    lineIndex,
+    line,
+    start,
+    end,
+    mid: (start + end) / 2,
+  };
+};
+
+const forEachLineItem = (layout, layoutIndex, visitor) => {
+  const pageEntries = getPageEntries(layoutIndex);
+  if (pageEntries) {
+    for (const pageEntry of pageEntries) {
+      const lines = Array.isArray(pageEntry?.page?.lines) ? pageEntry.page.lines : [];
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+        const line = lines[lineIndex];
+        visitor({
+          pageIndex: pageEntry.pageIndex,
+          lineIndex,
+          line,
+          start: line?.start,
+          end: line?.end,
+          mid:
+            Number.isFinite(line?.start) && Number.isFinite(line?.end)
+              ? (Number(line.start) + Number(line.end)) / 2
+              : 0,
+        });
+      }
+    }
+    return;
+  }
+
+  if (layoutIndex?.lines?.length) {
+    for (const item of layoutIndex.lines) {
+      visitor(item);
+    }
+    return;
+  }
+
+  for (let p = 0; p < layout.pages.length; p += 1) {
+    const page = layout.pages[p];
+    for (let l = 0; l < page.lines.length; l += 1) {
+      const line = page.lines[l];
+      visitor({
+        pageIndex: p,
+        lineIndex: l,
+        line,
+        start: line?.start,
+        end: line?.end,
+        mid:
+          Number.isFinite(line?.start) && Number.isFinite(line?.end)
+            ? (Number(line.start) + Number(line.end)) / 2
+            : 0,
+      });
+    }
+  }
+};
+
 export const getLineAtOffset = (layoutIndex, offset) => {
-  if (!layoutIndex || !layoutIndex.lines || layoutIndex.lines.length === 0) {
+  if (!layoutIndex) {
     return null;
   }
 
@@ -127,6 +277,20 @@ export const getLineAtOffset = (layoutIndex, offset) => {
   }
 
   const clamped = Math.max(0, Math.min(offset, layoutIndex.maxOffset));
+
+  const pageEntries = getPageEntries(layoutIndex);
+  if (pageEntries?.length) {
+    const pageInfo = findPageInfoForOffset(layoutIndex, clamped);
+    if (!pageInfo) {
+      return null;
+    }
+    const pageEntry = pageEntries[pageInfo.pageIndex];
+    return pageEntry ? binarySearchClosestInPage(pageEntry, clamped) : null;
+  }
+
+  if (!layoutIndex.lines || layoutIndex.lines.length === 0) {
+    return null;
+  }
 
   return binarySearchClosest(layoutIndex.lines, clamped);
 };
@@ -164,8 +328,11 @@ export function selectionToRects(
 
   const rects = [];
 
-  if (layoutIndex && layoutIndex.lines?.length) {
-    for (const item of layoutIndex.lines) {
+  // Use getLinesInRange for O(k) complexity where k = lines in selection range
+  if (layoutIndex && typeof getLinesInRange === "function") {
+    const linesInRange = getLinesInRange(layoutIndex, minOffset, maxOffset);
+
+    for (const item of linesInRange) {
       const line = item.line;
 
       const lineStart = line.start;
@@ -175,10 +342,10 @@ export function selectionToRects(
       const isEmptyLine = lineStart === lineEnd;
       if (isEmptyLine) {
         if (minOffset > lineStart || maxOffset < lineEnd) {
-          continue;
+          return;
         }
       } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
-        continue;
+        return;
       }
 
       const start = Math.max(minOffset, lineStart);
@@ -199,7 +366,7 @@ export function selectionToRects(
       const width = Math.max(0, xEnd - xStart);
 
       if (width <= 0) {
-        continue;
+        return;
       }
 
       rects.push({
@@ -212,6 +379,59 @@ export function selectionToRects(
         height: getLineHeight(line, layout),
       });
     }
+
+    return rects;
+  }
+
+  // Fallback: iterate current layout structure without forcing full index flattening.
+  if (layoutIndex) {
+    forEachLineItem(layout, layoutIndex, (item) => {
+      const line = item.line;
+
+      const lineStart = line.start;
+
+      const lineEnd = line.end;
+
+      const isEmptyLine = lineStart === lineEnd;
+      if (isEmptyLine) {
+        if (minOffset > lineStart || maxOffset < lineEnd) {
+          return;
+        }
+      } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
+        return;
+      }
+
+      const start = Math.max(minOffset, lineStart);
+
+      const end = Math.min(maxOffset, lineEnd);
+
+      const isImage = isImageLine(line);
+
+      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
+      const xStart = isImage ? 0 : offsetToX(line, start, layout);
+      let xEnd = isImage
+        ? Math.max(xStart, line.width || 0)
+        : offsetToX(line, end, layout);
+      if (isEmptyLine) {
+        xEnd = Math.max(xEnd, line.width || availableWidth);
+      }
+
+      const width = Math.max(0, xEnd - xStart);
+
+      if (width <= 0) {
+        return;
+      }
+
+      rects.push({
+        x: pageX + line.x + xStart,
+
+        y: item.pageIndex * pageSpan - scrollTop + line.y,
+
+        width,
+
+        height: getLineHeight(line, layout),
+      });
+    });
 
     return rects;
   }
@@ -350,18 +570,16 @@ export const tableCellSelectionToRects = ({
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
   const pageSpan = layout.pageHeight + layout.pageGap;
   const cellMap = new Map();
-  const lineItems = layoutIndex?.lines || [];
-
-  for (const item of lineItems) {
+  forEachLineItem(layout, layoutIndex, (item) => {
     const line = item?.line;
     if (!line || line.blockType !== "table") {
-      continue;
+      return;
     }
     const lineStart = Number.isFinite(line.start) ? line.start : null;
     const lineEnd = Number.isFinite(line.end) ? line.end : null;
     if (lineStart != null && lineEnd != null) {
       if (lineEnd < offsetMin || lineStart > offsetMax) {
-        continue;
+        return;
       }
     }
 
@@ -369,10 +587,10 @@ export const tableCellSelectionToRects = ({
     const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : null;
     const colIndex = Number.isFinite(attrs.colIndex) ? attrs.colIndex : null;
     if (rowIndex == null || colIndex == null) {
-      continue;
+      return;
     }
     if (rowIndex < minRow || rowIndex > maxRow || colIndex < minCol || colIndex > maxCol) {
-      continue;
+      return;
     }
 
     const paddingX = Number.isFinite(line.cellPadding)
@@ -402,13 +620,13 @@ export const tableCellSelectionToRects = ({
     const prev = cellMap.get(key);
     if (!prev) {
       cellMap.set(key, { left, top, right, bottom });
-      continue;
+      return;
     }
     prev.left = Math.min(prev.left, left);
     prev.top = Math.min(prev.top, top);
     prev.right = Math.max(prev.right, right);
     prev.bottom = Math.max(prev.bottom, bottom);
-  }
+  });
 
   const rects = [];
   for (const entry of cellMap.values()) {
@@ -435,7 +653,7 @@ export const tableRangeSelectionToCellRects = ({
   viewportWidth,
   layoutIndex,
 }) => {
-  if (!layout || !layoutIndex?.lines || !Number.isFinite(fromOffset) || !Number.isFinite(toOffset)) {
+  if (!layout || !layoutIndex || !Number.isFinite(fromOffset) || !Number.isFinite(toOffset)) {
     return [];
   }
   const minOffset = Math.min(fromOffset, toOffset);
@@ -448,29 +666,29 @@ export const tableRangeSelectionToCellRects = ({
   const pageSpan = layout.pageHeight + layout.pageGap;
   const cellMap = new Map();
 
-  for (const item of layoutIndex.lines) {
+  forEachLineItem(layout, layoutIndex, (item) => {
     const line = item?.line;
     if (!line || line.blockType !== "table") {
-      continue;
+      return;
     }
     const lineStart = Number.isFinite(line.start) ? line.start : null;
     const lineEnd = Number.isFinite(line.end) ? line.end : null;
     if (lineStart == null || lineEnd == null) {
-      continue;
+      return;
     }
     const isEmptyLine = lineStart === lineEnd;
     if (isEmptyLine) {
       if (minOffset > lineStart || maxOffset < lineEnd) {
-        continue;
+        return;
       }
     } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
-      continue;
+      return;
     }
     const attrs = line.blockAttrs || {};
     const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : null;
     const colIndex = Number.isFinite(attrs.colIndex) ? attrs.colIndex : null;
     if (rowIndex == null || colIndex == null) {
-      continue;
+      return;
     }
 
     const paddingX = Number.isFinite(line.cellPadding)
@@ -501,13 +719,13 @@ export const tableRangeSelectionToCellRects = ({
     const prev = cellMap.get(key);
     if (!prev) {
       cellMap.set(key, { left, top, right, bottom });
-      continue;
+      return;
     }
     prev.left = Math.min(prev.left, left);
     prev.top = Math.min(prev.top, top);
     prev.right = Math.max(prev.right, right);
     prev.bottom = Math.max(prev.bottom, bottom);
-  }
+  });
 
   const rects = [];
   for (const entry of cellMap.values()) {
@@ -583,10 +801,8 @@ export function activeBlockToRects(
   const pageSpan = layout.pageHeight + layout.pageGap;
   const rects = [];
 
-  const lineItems = layoutIndex?.lines || null;
-
-  if (lineItems) {
-    for (const item of lineItems) {
+  if (layoutIndex) {
+    forEachLineItem(layout, layoutIndex, (item) => {
       const line = item.line;
 
       const matchesBlock =
@@ -599,7 +815,7 @@ export function activeBlockToRects(
           : line === targetLine;
 
       if (!matchesBlock) {
-        continue;
+        return;
       }
 
       const width = Math.max(0, line.width || 0);
@@ -607,7 +823,7 @@ export function activeBlockToRects(
       const resolvedWidth = Math.max(width, minWidth);
 
       if (resolvedWidth <= 0) {
-        continue;
+        return;
       }
 
       rects.push({
@@ -619,7 +835,7 @@ export function activeBlockToRects(
 
         height: getLineHeight(line, layout),
       });
-    }
+    });
 
     return rects;
   }

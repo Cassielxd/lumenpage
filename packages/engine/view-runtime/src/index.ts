@@ -23,6 +23,8 @@ export {
   findLineForOffsetIndexed,
   getFirstLineForBlockId,
   getLineAtOffset,
+  getLinesInRange,
+  getPageIndexForOffset,
   offsetAtXIndexed,
   posAtCoordsIndexed,
 } from "./layoutIndex";

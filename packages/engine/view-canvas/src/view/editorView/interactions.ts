@@ -12,6 +12,7 @@ export const createInteractionPipeline = ({
   getLayout,
   getLayoutIndex,
   getText,
+  getTextLength,
   posAtCoords,
   setSelectionOffsets,
   setSelectionFromHit,
@@ -67,6 +68,7 @@ export const createInteractionPipeline = ({
     scrollArea: dom.scrollArea,
     inputEl: dom.input,
     getText,
+    getTextLength,
     posAtCoords,
     getHitAtCoords: (x, y) =>
       getCaretFromPoint(
@@ -75,7 +77,7 @@ export const createInteractionPipeline = ({
         y,
         dom.scrollArea.scrollTop,
         dom.scrollArea.clientWidth,
-        getText().length
+        getTextLength()
       ),
     setSelectionOffsets: (anchor, head, updatePreferred) =>
       setSelectionOffsets(anchor, head, updatePreferred, true),
@@ -106,6 +108,7 @@ export const createInteractionPipeline = ({
       getLayout,
       scrollArea: dom.scrollArea,
       getText,
+      getTextLength,
       posAtCoords,
       setSelectionOffsets,
       getSelectionAnchorOffset,

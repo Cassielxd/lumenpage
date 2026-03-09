@@ -9,7 +9,14 @@ type PaginationDocWorkerRequest = {
   seedLayout: any;
   changeSummary: any;
   settings: any;
-  progressiveMaxPages?: number | null;
+  cascadePagination?: boolean;
+  cascadeFromPageIndex?: number | null;
+  workerDebug?: {
+    hadSeedLayout?: boolean;
+    sentSeedLayout?: boolean;
+    settingsChanged?: boolean;
+    prevPages?: number;
+  };
 };
 
 type PaginationDocWorkerResponse =
@@ -64,6 +71,7 @@ const normalizeSettings = (settings: any) => ({
   wrapTolerance: Number(settings?.wrapTolerance) || 0,
   minLineWidth: Number(settings?.minLineWidth) || 0,
   disablePageReuse: settings?.disablePageReuse === true,
+  debugPerf: settings?.debugPerf === true,
   measureTextWidth: createMeasureTextWidth(),
 });
 
@@ -93,20 +101,41 @@ self.onmessage = (event: MessageEvent<PaginationDocWorkerRequest>) => {
   try {
     const layoutPipeline = ensurePipeline(request.settings);
     const doc = schema.nodeFromJSON(request.docJson);
+    const hadPreviousLayoutState = !!previousLayoutState;
+    const previousLayoutPagesBeforeSeed = previousLayoutState?.pages?.length ?? 0;
     if (request.seedLayout) {
       previousLayoutState = request.seedLayout;
     }
+    const previousLayoutPagesAfterSeed = previousLayoutState?.pages?.length ?? 0;
     const layout = layoutPipeline.layoutFromDoc(
       doc,
       {
         previousLayout: previousLayoutState ?? null,
         changeSummary: request.changeSummary ?? null,
         docPosToTextOffset,
-        progressiveMaxPages: request.progressiveMaxPages ?? null,
+        cascadePagination: request.cascadePagination === true,
+        cascadeFromPageIndex: request.cascadeFromPageIndex ?? null,
       } as any
     );
     previousLayoutState = layout;
-    const response: PaginationDocWorkerResponse = { id: request.id, ok: true, layout };
+    const response: PaginationDocWorkerResponse = {
+      id: request.id,
+      ok: true,
+      layout: {
+        ...layout,
+        __layoutPerfSummary: layoutPipeline?.settings?.__perf?.layout ?? null,
+        __workerDebug: {
+          clientHadSeedLayout: request.workerDebug?.hadSeedLayout ?? null,
+          clientSentSeedLayout: request.workerDebug?.sentSeedLayout ?? null,
+          clientSettingsChanged: request.workerDebug?.settingsChanged ?? null,
+          clientPrevPages: request.workerDebug?.prevPages ?? null,
+          workerHadPreviousLayoutState: hadPreviousLayoutState,
+          workerPrevPagesBeforeSeed: previousLayoutPagesBeforeSeed,
+          workerPrevPagesAfterSeed: previousLayoutPagesAfterSeed,
+          workerNextPages: layout?.pages?.length ?? 0,
+        },
+      },
+    };
     self.postMessage(response);
   } catch (error: any) {
     const response: PaginationDocWorkerResponse = {

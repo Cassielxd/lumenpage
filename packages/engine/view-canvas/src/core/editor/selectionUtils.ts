@@ -12,7 +12,20 @@ export const createSelectionStateAtOffset = (editorState, textOffsetToDocPos, of
 };
 
 export const getSelectionOffsets = (editorState, docPosToTextOffset, clampOffset) => {
-  const { from, to } = editorState.selection;
+  const selection = editorState?.selection;
+  if (!selection) {
+    return { from: 0, to: 0 };
+  }
+
+  if (selection.empty === true) {
+    const collapsed = clampOffset(docPosToTextOffset(editorState.doc, selection.head));
+    return {
+      from: collapsed,
+      to: collapsed,
+    };
+  }
+
+  const { from, to } = selection;
   return {
     from: clampOffset(docPosToTextOffset(editorState.doc, from)),
     to: clampOffset(docPosToTextOffset(editorState.doc, to)),

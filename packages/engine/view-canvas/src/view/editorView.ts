@@ -8,6 +8,7 @@ import {
   createChangeEvent,
   createSelectionStateAtOffset,
   docPosToTextOffset,
+  getDocTextLength,
   getSelectionAnchorOffset,
   getSelectionOffsets,
   LayoutPipeline,
@@ -165,6 +166,7 @@ export class CanvasEditorView {
     const {
       resolvePageWidth,
       getText,
+      getTextLength,
       setInputPosition,
       isInSpecialStructureAtPos,
       shouldAutoAdvanceAfterEnter,
@@ -176,12 +178,13 @@ export class CanvasEditorView {
       queryEditorProp: (name, ...args) => queryEditorProp(name, ...args),
       getState: () => this.state,
       docToOffsetText,
+      getDocTextLength,
     });
 
     const { getEventCoords, clampOffset, getDocPosFromCoords } = createCoordinateHelpers({
       dom,
       getLayout: () => layout,
-      getText,
+      getTextLength,
       getState: () => this.state,
       textOffsetToDocPos,
       posAtCoords,
@@ -251,6 +254,7 @@ export class CanvasEditorView {
       status,
       inputEl: dom.input,
       getText,
+      getTextLength,
       clampOffset,
       docPosToTextOffset,
       getSelectionOffsets,
@@ -383,6 +387,7 @@ export class CanvasEditorView {
       },
       getCaretOffset: () => caretOffset,
       getText,
+      getTextLength,
       setSelectionOffsets,
       docPosToTextOffset,
       textOffsetToDocPos,
@@ -445,6 +450,7 @@ export class CanvasEditorView {
       getLayout: () => layout,
       getLayoutIndex: () => layoutIndex,
       getText,
+      getTextLength,
       posAtCoords,
       setSelectionOffsets,
       setSelectionFromHit,
@@ -486,6 +492,7 @@ export class CanvasEditorView {
       getDocPosFromCoords,
       docPosToTextOffset,
       getLayoutIndex: () => layoutIndex,
+      getChangeSummary: () => pendingChangeSummary,
       queryEditorProp,
       dispatchTransaction: dispatchViaView,
     });
@@ -535,7 +542,7 @@ export class CanvasEditorView {
 
     // 鍒濆甯冨眬涓庢覆鏌撱€?
     updateLayout();
-    syncNodeViews();
+    syncNodeViews(null);
     syncAfterStateChange();
     updateA11yStatus();
 
@@ -547,6 +554,7 @@ export class CanvasEditorView {
       layoutPipeline,
       renderSync,
       getText,
+      getTextLength,
       getLayout: () => layout,
       getLayoutIndex: () => layoutIndex,
       getRafId: () => rafId,
@@ -739,9 +747,6 @@ export class CanvasEditorView {
     destroyView(this);
   }
 }
-
-
-
 
 
 

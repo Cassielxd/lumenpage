@@ -4,6 +4,7 @@ export const createPointerHandlers = ({
   scrollArea,
   inputEl,
   getText,
+  getTextLength,
   posAtCoords,
   getHitAtCoords,
   setSelectionOffsets,
@@ -119,7 +120,7 @@ export const createPointerHandlers = ({
         y,
         scrollArea.scrollTop,
         scrollArea.clientWidth,
-        getText().length
+        getTextLength()
       );
 
       const currentRange =
@@ -238,7 +239,7 @@ export const createPointerHandlers = ({
         y,
         scrollArea.scrollTop,
         scrollArea.clientWidth,
-        getText().length
+        getTextLength()
       );
 
       if (hitOffset !== null) {
