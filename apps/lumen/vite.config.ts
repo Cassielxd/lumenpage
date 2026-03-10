@@ -9,7 +9,7 @@ const workspaceRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig(({ mode }) => {
   const useSrc = true;
-  const packageScopes = ["core", "engine", "extensions", "tooling"] as const;
+  const packageScopes = ["lp"] as const;
   const resolvePackageDir = (pkg: string) => {
     for (const scope of packageScopes) {
       const scoped = path.resolve(workspaceRoot, `packages/${scope}/${pkg}`);
@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     resolve: {
       alias: [
+        { find: /^lumenpage-core$/, replacement: entry("core") },
         { find: /^lumenpage-view-canvas$/, replacement: entry("view-canvas") },
         { find: /^lumenpage-state$/, replacement: entry("state") },
         { find: /^lumenpage-commands$/, replacement: entry("commands") },
@@ -59,6 +60,7 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       exclude: [
+        "lumenpage-core",
         "lumenpage-view-canvas",
         "lumenpage-state",
         "lumenpage-commands",
@@ -87,3 +89,4 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+

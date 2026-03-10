@@ -15,11 +15,18 @@ const readJson = (filePath) => {
 
 const layerFromRelativePath = (relativePath) => {
   const normalized = relativePath.replace(/\\/g, "/");
-  if (normalized.startsWith("packages/core/")) return "core";
-  if (normalized.startsWith("packages/engine/")) return "engine";
-  if (normalized.startsWith("packages/extensions/")) return "extensions";
-  if (normalized.startsWith("packages/tooling/")) return "tooling";
-  if (normalized.startsWith("apps/")) return "apps";
+  if (normalized.startsWith("packages/lp/")) return "lp";
+  if (!normalized.startsWith("packages/")) {
+    if (normalized.startsWith("apps/")) return "apps";
+    return "unknown";
+  }
+
+  const segments = normalized.split("/");
+  const pkgDir = segments[1];
+  if (pkgDir === "core" || pkgDir === "link") return "core";
+  if (pkgDir === "layout-engine" || pkgDir === "view-canvas" || pkgDir === "view-runtime") return "engine";
+  if (pkgDir === "dev-tools") return "tooling";
+  if (pkgDir) return "extensions";
   return "unknown";
 };
 
@@ -154,3 +161,4 @@ const main = () => {
 };
 
 main();
+

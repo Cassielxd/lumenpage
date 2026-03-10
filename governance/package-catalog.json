@@ -1,24 +1,33 @@
 {
   "allowedDependencyLayers": {
+    "lp": [
+      "lp"
+    ],
     "core": [
-      "core"
+      "lp",
+      "core",
+      "engine"
     ],
     "engine": [
+      "lp",
       "core",
       "engine"
     ],
     "extensions": [
+      "lp",
       "core",
       "engine",
       "extensions"
     ],
     "tooling": [
+      "lp",
       "core",
       "engine",
       "extensions",
       "tooling"
     ],
     "apps": [
+      "lp",
       "core",
       "engine",
       "extensions",
@@ -27,43 +36,48 @@
     ]
   },
   "packages": {
-    "lumenpage-model": {
+    "lumenpage-core": {
       "layer": "core",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-model": {
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-state": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-transform": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-view-types": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-commands": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-keymap": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-history": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
     "lumenpage-inputrules": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "public",
       "action": "keep"
     },
@@ -73,7 +87,7 @@
       "action": "keep"
     },
     "lumenpage-collab": {
-      "layer": "core",
+      "layer": "lp",
       "visibility": "internal",
       "action": "keep"
     },

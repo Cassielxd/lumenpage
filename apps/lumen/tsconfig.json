@@ -5,28 +5,32 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-collab": ["../../packages/core/collab/dist/index.d.ts"],
-      "lumenpage-commands": ["../../packages/core/commands/dist/index.d.ts"],
-      "lumenpage-editor-plugins": ["../../packages/extensions/editor-plugins/dist/index.d.ts"],
-      "lumenpage-history": ["../../packages/core/history/dist/index.d.ts"],
-      "lumenpage-inputrules": ["../../packages/core/inputrules/dist/index.d.ts"],
-      "lumenpage-keymap": ["../../packages/core/keymap/dist/index.d.ts"],
-      "lumenpage-kit-basic": ["../../packages/extensions/kit-basic/dist/index.d.ts"],
-      "lumenpage-link": ["../../packages/core/link/dist/index.d.ts"],
-      "lumenpage-layout-engine": ["../../packages/engine/layout-engine/src/index.ts"],
-      "lumenpage-view-runtime": ["../../packages/engine/view-runtime/src/index.ts"],
-      "lumenpage-markdown": ["../../packages/extensions/markdown/dist/index.d.ts"],
-      "lumenpage-model": ["../../packages/core/model/dist/index.d.ts"],
-      "lumenpage-node-basic": ["../../packages/extensions/node-basic/dist/index.d.ts"],
-      "lumenpage-node-media": ["../../packages/extensions/node-media/dist/index.d.ts"],
-      "lumenpage-node-list": ["../../packages/extensions/node-list/dist/index.d.ts"],
-      "lumenpage-node-table": ["../../packages/extensions/node-table/dist/index.d.ts"],
-      "lumenpage-schema-basic": ["../../packages/extensions/schema-basic/dist/index.d.ts"],
-      "lumenpage-state": ["../../packages/core/state/dist/index.d.ts"],
-      "lumenpage-transform": ["../../packages/core/transform/dist/index.d.ts"],
-      "lumenpage-view-canvas": ["../../packages/engine/view-canvas/dist/index.d.ts"],
-      "lumenpage-view-types": ["../../packages/core/view-types/dist/index.d.ts"]
+      "lumenpage-collab": ["../../packages/lp/collab/dist/index.d.ts"],
+      "lumenpage-commands": ["../../packages/lp/commands/dist/index.d.ts"],
+      "lumenpage-editor-plugins": ["../../packages/editor-plugins/src/index.ts"],
+      "lumenpage-core": ["../../packages/core/src/index.ts"],
+      "lumenpage-history": ["../../packages/lp/history/dist/index.d.ts"],
+      "lumenpage-inputrules": ["../../packages/lp/inputrules/dist/index.d.ts"],
+      "lumenpage-keymap": ["../../packages/lp/keymap/dist/index.d.ts"],
+      "lumenpage-kit-basic": ["../../packages/kit-basic/src/index.ts"],
+      "lumenpage-link": ["../../packages/link/dist/index.d.ts"],
+      "lumenpage-layout-engine": ["../../packages/layout-engine/src/index.ts"],
+      "lumenpage-view-runtime": ["../../packages/view-runtime/src/index.ts"],
+      "lumenpage-markdown": ["../../packages/markdown/dist/index.d.ts"],
+      "lumenpage-model": ["../../packages/lp/model/dist/index.d.ts"],
+      "lumenpage-node-basic": ["../../packages/node-basic/dist/index.d.ts"],
+      "lumenpage-node-media": ["../../packages/node-media/dist/index.d.ts"],
+      "lumenpage-node-list": ["../../packages/node-list/dist/index.d.ts"],
+      "lumenpage-node-table": ["../../packages/node-table/dist/index.d.ts"],
+      "lumenpage-schema-basic": ["../../packages/schema-basic/src/index.ts"],
+      "lumenpage-state": ["../../packages/lp/state/dist/index.d.ts"],
+      "lumenpage-transform": ["../../packages/lp/transform/dist/index.d.ts"],
+      "lumenpage-view-canvas": ["../../packages/view-canvas/dist/index.d.ts"],
+      "lumenpage-view-types": ["../../packages/lp/view-types/dist/index.d.ts"]
     }
   },
   "include": ["src", "src/**/*.vue"]
 }
+
+
+

@@ -7,24 +7,24 @@ const ROOT = process.cwd();
 
 const EXPECTED_FILES = [
   {
-    source: "packages/engine/view-canvas/src/layout-pagination/engine.ts",
+    source: "packages/view-canvas/src/layout-pagination/engine.ts",
     expected: 'export { LayoutPipeline } from "lumenpage-layout-engine";',
   },
   {
-    source: "packages/engine/view-canvas/src/layout-pagination/lineBreaker.ts",
+    source: "packages/view-canvas/src/layout-pagination/lineBreaker.ts",
     expected: 'export { breakLines } from "lumenpage-layout-engine";',
   },
   {
-    source: "packages/engine/view-canvas/src/layout-pagination/textRuns.ts",
+    source: "packages/view-canvas/src/layout-pagination/textRuns.ts",
     expected: 'export { docToRuns, textToRuns, textblockToRuns } from "lumenpage-layout-engine";',
   },
   {
-    source: "packages/engine/view-canvas/src/layout-pagination/nodeRegistry.ts",
+    source: "packages/view-canvas/src/layout-pagination/nodeRegistry.ts",
     expected:
       'export type { ContainerStyle, NodeLayoutResult, NodeRenderer } from "lumenpage-layout-engine";\nexport { NodeRendererRegistry } from "lumenpage-layout-engine";',
   },
   {
-    source: "packages/engine/view-canvas/src/layout-pagination/index.ts",
+    source: "packages/view-canvas/src/layout-pagination/index.ts",
     expected:
       'export {\n  LayoutPipeline,\n  NodeRendererRegistry,\n  breakLines,\n  docToRuns,\n  textToRuns,\n  textblockToRuns,\n} from "lumenpage-layout-engine";\nexport type { ContainerStyle, NodeLayoutResult, NodeRenderer } from "lumenpage-layout-engine";',
   },
@@ -67,3 +67,4 @@ const main = () => {
 };
 
 main();
+

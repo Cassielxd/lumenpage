@@ -2,25 +2,55 @@
   "files": [],
   "references": [
     {
-      "path": "packages/engine/view-canvas"
+      "path": "packages/core"
     },
     {
-      "path": "packages/engine/layout-engine"
+      "path": "packages/lp/model"
     },
     {
-      "path": "packages/engine/view-runtime"
+      "path": "packages/lp/state"
     },
     {
-      "path": "packages/extensions/schema-basic"
+      "path": "packages/lp/transform"
     },
     {
-      "path": "packages/extensions/editor-plugins"
+      "path": "packages/lp/view-types"
     },
     {
-      "path": "packages/core/link"
+      "path": "packages/lp/commands"
     },
     {
-      "path": "packages/extensions/markdown"
+      "path": "packages/lp/keymap"
+    },
+    {
+      "path": "packages/lp/inputrules"
+    },
+    {
+      "path": "packages/lp/history"
+    },
+    {
+      "path": "packages/lp/collab"
+    },
+    {
+      "path": "packages/view-canvas"
+    },
+    {
+      "path": "packages/layout-engine"
+    },
+    {
+      "path": "packages/view-runtime"
+    },
+    {
+      "path": "packages/schema-basic"
+    },
+    {
+      "path": "packages/editor-plugins"
+    },
+    {
+      "path": "packages/link"
+    },
+    {
+      "path": "packages/markdown"
     },
     {
       "path": "apps/playground"
@@ -29,25 +59,20 @@
       "path": "apps/lumen"
     },
     {
-      "path": "packages/extensions/node-basic"
+      "path": "packages/node-basic"
     },
     {
-      "path": "packages/extensions/node-table"
+      "path": "packages/node-table"
     },
     {
-      "path": "packages/extensions/node-list"
+      "path": "packages/node-list"
     },
     {
-      "path": "packages/extensions/node-media"
+      "path": "packages/node-media"
     },
     {
-      "path": "packages/extensions/kit-basic"
-    },
-    {
-      "path": "packages/core/inputrules"
-    },
-    {
-      "path": "packages/core/collab"
+      "path": "packages/kit-basic"
     }
   ]
 }
+

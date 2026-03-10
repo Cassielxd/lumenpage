@@ -1,15 +1,5 @@
-import {
-  basicCommands,
-  createCanvasEditorKeymap,
-  createDefaultNodeRendererRegistry,
-  createDocFromText,
-  createViewCommands,
-  runCommand,
-  schema,
-  setBlockAlign,
-} from "lumenpage-kit-basic";
-import { baseKeymap } from "lumenpage-commands";
-import { keymap } from "lumenpage-keymap";
+import { createDocFromText, createLumenInputRulesExtension, LumenStarterKit } from "lumenpage-kit-basic";
+import { LumenEditor } from "lumenpage-core";
 import {
   normalizeNavigableHref,
   resolveLinkHrefAtPos,
@@ -19,18 +9,14 @@ import {
   CanvasEditorView,
   type NodeSelectionTargetArgs,
   type CanvasEditorViewProps,
-  createBlockIdPlugin,
-  createBlockIdTransaction,
-  createCanvasState,
 } from "lumenpage-view-canvas";
 import {
-  createActiveBlockSelectionPlugin,
-  createDragHandlePlugin,
-  createMentionPlugin,
-  createSelectionBubblePlugin,
+  createLumenBlockIdExtension,
+  createLumenActiveBlockSelectionExtension,
+  createLumenDragHandleExtension,
+  createLumenMentionExtension,
+  createLumenSelectionBubbleExtension,
 } from "lumenpage-editor-plugins";
-import { history } from "lumenpage-history";
-import { inputRules, emDash, ellipsis, smartQuotes } from "lumenpage-inputrules";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
@@ -75,29 +61,6 @@ const isInTableAtResolvedPos = ($pos: any) => {
   return false;
 };
 
-const createTableSelectionGeometry = () => ({
-  shouldComputeSelectionRects: ({ editorState, selection }: { editorState: any; selection: any }) => {
-    const pmSel = editorState?.selection;
-    if (!pmSel) {
-      return false;
-    }
-    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
-      return true;
-    }
-    if (pmSel?.constructor?.name === "NodeSelection") {
-      return pmSel?.node?.type?.name === "table";
-    }
-    if (!selection || selection.from === selection.to) {
-      return false;
-    }
-    return isInTableAtResolvedPos(pmSel?.$from) || isInTableAtResolvedPos(pmSel?.$to);
-  },
-  shouldRenderBorderOnly: ({ editorState }: { editorState: any }) => {
-    const pmSel = editorState?.selection;
-    return pmSel?.constructor?.name === "NodeSelection" && pmSel?.node?.type?.name === "table";
-  },
-});
-
 export const mountPlaygroundEditor = ({
   host,
   statusElement,
@@ -126,49 +89,28 @@ export const mountPlaygroundEditor = ({
     };
   }
 
-  const nodeRegistry = createDefaultNodeRendererRegistry();
+  const extensions = [
+    LumenStarterKit,
+    createLumenBlockIdExtension(),
+    ...(flags.enableInputRules ? [createLumenInputRulesExtension()] : []),
+    createLumenActiveBlockSelectionExtension(),
+    createLumenMentionExtension(createLumenMentionPluginOptions()),
+    createLumenSelectionBubbleExtension(),
+    createLumenDragHandleExtension({ onlyTopLevel: true }),
+  ];
   const tocOutlineController = createTocOutlinePlugin({
     onChange: onTocOutlineChange ?? undefined,
     emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "无标题",
     initialEnabled: tocOutlineEnabled !== false,
   });
   const plugins: any[] = [
-    history(),
-    createBlockIdPlugin(),
-    createActiveBlockSelectionPlugin(),
-    createMentionPlugin(createLumenMentionPluginOptions()),
     tocOutlineController.plugin,
-    createSelectionBubblePlugin(),
-    keymap(createCanvasEditorKeymap()),
-    keymap(baseKeymap),
   ];
 
   const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
   if (permissionPlugin) {
     plugins.push(permissionPlugin);
   }
-
-  if (flags.enableInputRules) {
-    const rules = [ellipsis, emDash, ...smartQuotes].filter(Boolean);
-    plugins.push(inputRules({ rules }));
-  }
-
-  plugins.push(
-    createDragHandlePlugin({
-      schema,
-      nodeRegistry,
-      onlyTopLevel: true,
-    })
-  );
-
-  const editorState = createCanvasState({
-    schema,
-    createDocFromText,
-    json: initialDocJson,
-    plugins,
-  });
-  const initBlockIdTr = createBlockIdTransaction(editorState);
-  const readyState = initBlockIdTr ? editorState.apply(initBlockIdTr) : editorState;
 
   const isInNodeTypeAtPos = (state: any, pos: number, typeName: string) => {
     if (!state?.doc || !Number.isFinite(pos) || !typeName) {
@@ -209,10 +151,7 @@ export const mountPlaygroundEditor = ({
     return handled;
   };
 
-  const tableSelectionGeometry = createTableSelectionGeometry();
-
-  const viewProps: CanvasEditorViewProps = {
-    state: readyState,
+  const viewProps: Partial<CanvasEditorViewProps> = {
     attributes: {
       "aria-label": i18n.app.editorAriaLabel,
       lang: flags.locale,
@@ -224,22 +163,8 @@ export const mountPlaygroundEditor = ({
       return `${pageCount} ${i18n.toolbar.statusPageUnit} | ${focused}`;
     },
     editable: () => flags.permissionMode !== "readonly",
-    canvasViewConfig: {
-      settings,
-      nodeRegistry,
-      legacyPolicy: { strict: true },
-      statusElement: statusElement || undefined,
-    },
-    commandConfig: {
-      basicCommands,
-      runCommand,
-      setBlockAlign,
-      viewCommands: createViewCommands(),
-    },
     transformPastedText: (_view: CanvasEditorView, text: string) => normalizePastedText(text),
     transformPastedHTML: (_view: CanvasEditorView, html: string) => sanitizePastedHtml(html),
-    selectionGeometry: () => tableSelectionGeometry,
-    nodeSelectionTypes: ["image", "video", "horizontal_rule"],
     isInSpecialStructureAtPos: (_view: CanvasEditorView, state: any, pos: number) =>
       isInNodeTypeAtPos(state, pos, "table"),
     isNodeSelectionTarget: (_view: CanvasEditorView, args: NodeSelectionTargetArgs) => {
@@ -300,7 +225,20 @@ export const mountPlaygroundEditor = ({
     },
   };
 
-  const view = new CanvasEditorView(host, viewProps);
+  const editor = new LumenEditor({
+    element: host,
+    extensions,
+    json: initialDocJson,
+    createDocFromText,
+    prependPlugins: plugins,
+    canvasViewConfig: {
+      settings,
+      legacyPolicy: { strict: true },
+      statusElement: statusElement || undefined,
+    },
+    editorProps: viewProps,
+  });
+  const view = editor.view!;
   try {
     const currentSelection = view?.state?.selection;
     if (currentSelection && view?.state?.tr) {
@@ -322,7 +260,9 @@ export const mountPlaygroundEditor = ({
     destroy: () => {
       configurePlaygroundSecurityPolicy({ enableAudit: false });
       paginationDocWorkerClient?.destroy?.();
-      view.destroy();
+      editor.destroy();
     },
   };
 };
+
+

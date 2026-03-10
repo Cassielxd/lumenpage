@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-link": ["../link/dist/index.d.ts"],
+      "lumenpage-model": ["../../lp/model/dist/index.d.ts"],
+      "lumenpage-state": ["../../lp/state/dist/index.d.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/dist/index.d.ts"]
+    }
+  },
+  "include": ["src"]
+}
+
+

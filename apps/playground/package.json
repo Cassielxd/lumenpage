@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "lumenpage-core": "workspace:*",
     "lumenpage-kit-basic": "workspace:*",
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-layout-engine": "workspace:*",
@@ -36,3 +37,4 @@
     "@vitejs/plugin-vue": "^5.2.0"
   }
 }
+

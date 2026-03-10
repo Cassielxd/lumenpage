@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-inputrules": ["../lp/inputrules/dist/index.d.ts"],
+      "lumenpage-keymap": ["../lp/keymap/dist/index.d.ts"],
+      "lumenpage-layout-engine": ["../engine/layout-engine/dist/index.d.ts"],
+      "lumenpage-model": ["../lp/model/dist/index.d.ts"],
+      "lumenpage-view-canvas": ["../engine/view-canvas/dist/index.d.ts"],
+      "lumenpage-view-runtime": ["../engine/view-runtime/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

@@ -1,0 +1,1 @@
+{"root":["./src/caret.ts","./src/index.ts","./src/layoutindex.ts","./src/measure.ts","./src/pagealign.ts","./src/posindex.ts","./src/segmenter.ts","./src/selectionmovement.ts","./src/virtualization.ts"],"version":"5.9.3"}
