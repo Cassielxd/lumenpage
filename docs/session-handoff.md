@@ -1,32 +1,66 @@
-﻿# 会话接手入口（2026-03-09）
+﻿# 会话接手入口（2026-03-10）
 
-## 本次优化优先读
+## 本次继续前先读
 
 1. `docs/large-doc-optimization-handoff-2026-03-09.md`
-2. `docs/pagination-layout.md`
-3. `docs/architecture-analysis.md`
-4. `docs/project-onboarding-handbook.md`
+2. `docs/architecture-analysis.md`
+3. `docs/lumen-feature-packaging-plan.md`
+4. `docs/package-governance-checklist.md`
 
 ## 当前主线
 
-- 目标：优化 300+ 页大文档输入与回车性能
-- 已确认：主瓶颈在 `worker-provider` 布局链，不在 renderer
-- 已开始：把 `splitBlock` 从黑名单节点推进成 fragment-aware 节点
+- 大文档性能主线仍然成立：300+ 页输入、回车、滚动继续做增量化。
+- 包结构主线已经切到 `core + lp/* + engine + extensions + apps`。
+- `lp/*` 只承载底层编辑内核，不承载分页和 Canvas 渲染引擎。
 
-## 当前结论
+## 当前包结构
 
-- `render-cache` 已基本生效
-- `layout-apply` 开销较小
-- `layout-pass.computeMs` 仍然偏高
-- 最近已收窄页复用禁用条件，并给 table/list 补了分页能力声明
+- `packages/core`
+  - `LumenEditor`
+  - `ExtensionManager`
+  - schema 与运行时装配门面
+- `packages/lp/*`
+  - `model`
+  - `state`
+  - `transform`
+  - `commands`
+  - `keymap`
+  - `inputrules`
+  - `history`
+  - `collab`
+  - `view-types`
+- `packages/layout-engine` / `packages/view-runtime` / `packages/view-canvas`
+  - Lumen 自己的分页、几何、Canvas 运行时
+- `packages/node-*` / `packages/kit-basic` / `packages/editor-plugins`
+  - 扩展层
+- `apps/*`
+  - 产品壳
 
-## 下次继续前
+## 这轮已经完成
 
-- 先跑一轮 `?debugPerf=1&perfDoc=1&paginationWorker=1&paginationIncremental=1`
-- 重点看 `[perf][layout-pass]`
-- 关注字段：
-  - `disablePageReuse`
-  - `reuseReason`
-  - `reusedPages`
-  - `syncFromIndex`
-  - `computeMs`
+- 包目录已平铺到 `packages/*`，只保留 `packages/lp/*` 这一层嵌套。
+- `pnpm-workspace.yaml`、根 `tsconfig.json`、治理脚本已经同步到新结构。
+- `packages/lp/commands`、`packages/lp/history` 等缺失 `tsconfig.json` 的问题已经修复。
+- `LumenEditor` 已经成为真实门面，不再只是包壳。
+- 两个 app 都改成通过 `LumenEditor` 装配 schema、node registry、selection geometry、plugins。
+
+## 当前可验证状态
+
+- `node scripts/check-package-governance.mjs` 通过。
+- 内部包 typecheck 已通过：
+  - `packages/node-basic`
+  - `packages/node-list`
+  - `packages/node-table`
+  - `packages/schema-basic`
+- 剩余阻塞主要是当前环境缺外部依赖，不是这轮结构改造错误：
+  - `w3c-keyname`
+  - `orderedmap`
+  - `vue`
+  - `tdesign-vue-next`
+  - `tippy.js`
+
+## 下次继续的切入点
+
+1. 把 `history / keymap / inputRules / basicCommands` 继续收进 `LumenStarterKit` 和 `LumenEditor`。
+2. 把 `mention / selection bubble` 继续迁成 `LumenExtension`。
+3. 在新结构上继续推进大文档分页和滚动性能优化。

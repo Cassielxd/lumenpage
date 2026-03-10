@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "declaration": true,
@@ -7,20 +7,20 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-core": ["../../core/src/index.ts"],
-      "lumenpage-commands": ["../../lp/commands/dist/index.d.ts"],
-      "lumenpage-history": ["../../lp/history/dist/index.d.ts"],
-      "lumenpage-inputrules": ["../../lp/inputrules/dist/index.d.ts"],
-      "lumenpage-keymap": ["../../lp/keymap/dist/index.d.ts"],
-      "lumenpage-layout-engine": ["../layout-engine/dist/index.d.ts"],
-      "lumenpage-model": ["../../lp/model/dist/index.d.ts"],
-      "lumenpage-state": ["../../lp/state/dist/index.d.ts"],
-      "lumenpage-transform": ["../../lp/transform/dist/index.d.ts"],
-      "lumenpage-view-canvas": ["../view-canvas/dist/index.d.ts"],
-      "lumenpage-node-basic": ["../node-basic/dist/index.d.ts"],
-      "lumenpage-node-table": ["../node-table/dist/index.d.ts"],
-      "lumenpage-node-list": ["../node-list/dist/index.d.ts"],
-      "lumenpage-node-media": ["../node-media/dist/index.d.ts"],
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-commands": ["../lp/commands/src/index.ts"],
+      "lumenpage-history": ["../lp/history/src/index.ts"],
+      "lumenpage-inputrules": ["../lp/inputrules/src/index.ts"],
+      "lumenpage-keymap": ["../lp/keymap/src/index.ts"],
+      "lumenpage-layout-engine": ["../layout-engine/src/index.ts"],
+      "lumenpage-model": ["../lp/model/src/index.ts"],
+      "lumenpage-state": ["../lp/state/src/index.ts"],
+      "lumenpage-transform": ["../lp/transform/src/index.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
+      "lumenpage-node-basic": ["../node-basic/src/index.ts"],
+      "lumenpage-node-table": ["../node-table/src/index.ts"],
+      "lumenpage-node-list": ["../node-list/src/index.ts"],
+      "lumenpage-node-media": ["../node-media/src/index.ts"],
       "lumenpage-schema-basic": ["../schema-basic/src/index.ts"]
     }
   },
@@ -28,4 +28,7 @@
     "src"
   ]
 }
+
+
+
 

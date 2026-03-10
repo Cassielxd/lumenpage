@@ -1,23 +1,25 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-core": ["../../core/src/index.ts"],
-      "lumenpage-inputrules": ["../../lp/inputrules/src/index.ts"],
-      "lumenpage-keymap": ["../../lp/keymap/dist/index.d.ts"],
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-inputrules": ["../lp/inputrules/src/index.ts"],
+      "lumenpage-keymap": ["../lp/keymap/src/index.ts"],
       "lumenpage-layout-engine": ["../layout-engine/src/index.ts"],
-      "lumenpage-model": ["../../lp/model/dist/index.d.ts"],
-      "lumenpage-state": ["../../lp/state/dist/index.d.ts"],
-      "lumenpage-transform": ["../../lp/transform/dist/index.d.ts"],
-      "lumenpage-view-canvas": ["../view-canvas/dist/index.d.ts"],
-      "lumenpage-view-types": ["../../lp/view-types/dist/index.d.ts"]
+      "lumenpage-model": ["../lp/model/src/index.ts"],
+      "lumenpage-state": ["../lp/state/src/index.ts"],
+      "lumenpage-transform": ["../lp/transform/src/index.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
+      "lumenpage-view-types": ["../lp/view-types/src/index.ts"]
     }
   },
   "include": ["src/**/*"]
 }
+
+
 
 
 

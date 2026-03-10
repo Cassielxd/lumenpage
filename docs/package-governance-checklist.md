@@ -1,71 +1,68 @@
-﻿# LumenPage 包治理清单（最高优先级）
+﻿# LumenPage 包治理清单（2026-03-10）
 
 ## 目标
 
 在不破坏现有编辑能力的前提下，收敛包边界、降低依赖复杂度、建立可持续演进机制。
 
-## 当前进度（2026-02-24）
+## 当前进度
 
-- [X]  完成目录分层迁移：`packages/core`、`packages/engine`、`packages/extensions`、`packages/tooling`
-- [X]  同步 workspace 与应用侧路径解析（`pnpm-workspace.yaml`、`tsconfig`、`vite alias`）
-- [X]  完成包标签登记：`governance/package-catalog.json`
-- [X]  完成依赖层级校验脚本：`scripts/check-package-governance.mjs`
-- [X]  完成 node 包模板校验脚本：`scripts/check-node-package-template.mjs`
-- [X]  创建插件聚合包：`packages/extensions/editor-plugins`（过渡层）
-- [X]  创建分页引擎包骨架：`packages/engine/layout-engine`（从 `view-canvas/layout-pagination` 抽取）
-- [X]  创建视图运行时包骨架：`packages/engine/view-runtime`
-- [X]  迁移首批纯工具到 `view-runtime`：`segmenter` / `measure` / `pageAlign`（未接线）
-- [X]  迁移第二批运行时工具到 `view-runtime`：`virtualization` / `caret` / `posIndex`（未接线）
-- [X]  增加运行时同步校验：`scripts/check-view-runtime-sync.mjs`
-- [X]  完成首个低风险接线：`view-canvas/view/virtualization` -> `lumenpage-view-runtime`
-- [X]  完成低风险接线：`view-canvas/view/segmenter` -> `lumenpage-view-runtime`
-- [X]  完成 app 侧 `segmentText` 依赖切换到 `lumenpage-view-runtime`
-- [X]  完成 app worker 接线：`LayoutPipeline` 由 `lumenpage-layout-engine` 提供
-- [X]  完成 `view-canvas/layout-pagination` 转发到 `lumenpage-layout-engine`
-- [X]  新增 `layout-pagination` 转发守护：`scripts/check-layout-engine-redirects.mjs`
-- [X]  新增插件聚合导入治理：`scripts/check-plugin-aggregation-imports.mjs`
-- [X]  创建基础节点聚合包：`packages/extensions/node-basic`
-- [X]  完成 `node-basic` 合并：`paragraph/heading/blockquote/code-block/hard-break/horizontal-rule` 迁移并删除旧包
-- [X]  创建媒体节点聚合包：`packages/extensions/node-media`
-- [X]  完成 `node-media` 合并：`image/video` 迁移并删除旧包
-- [X]  新增 node 测试基线清单：`governance/node-test-baseline.json`
-- [X]  新增 node 测试基线校验：`scripts/check-node-test-baseline.mjs`
-- [X]  清理 app 侧旧兼容包映射（`vite alias` / `tsconfig paths` 仅保留聚合包）
-- [X]  新增 app 配置一致性守护：`scripts/check-app-config-consistency.mjs`
-- [X]  新增旧包硬约束守护：`scripts/check-no-legacy-wrapper-packages.mjs`
-- [X]  输出保留/合并/拆分清单：`docs/package-governance-inventory.md`
+- [X] 完成目录平铺迁移：`packages/*` 直接平铺，`packages/lp/*` 保留底层内核分组
+- [X] 同步 workspace 与应用侧路径解析（`pnpm-workspace.yaml`、`tsconfig`、`vite alias`）
+- [X] 完成包标签登记：`governance/package-catalog.json`
+- [X] 完成依赖层级校验脚本：`scripts/check-package-governance.mjs`
+- [X] 完成 node 包模板校验脚本：`scripts/check-node-package-template.mjs`
+- [X] 创建插件聚合包：`packages/editor-plugins`
+- [X] 创建分页引擎包骨架：`packages/layout-engine`
+- [X] 创建视图运行时包骨架：`packages/view-runtime`
+- [X] 完成 `view-canvas` 到 `layout-engine/view-runtime` 的核心接线
+- [X] 创建基础节点聚合包：`packages/node-basic`
+- [X] 创建媒体节点聚合包：`packages/node-media`
+- [X] 完成 `node-basic` / `node-media` 聚合迁移
+- [X] 输出保留/合并/拆分清单：`docs/package-governance-inventory.md`
+- [X] 修复平铺后 `packages/lp/*` 缺失 `tsconfig.json` 的包内阻塞
+- [X] 当前治理校验通过：`node scripts/check-package-governance.mjs`
 
-## P0（先做，1 周内）
+## 当前分层
 
-- [X]  给每个包打标签：`public` / `internal` / `app-only`
-- [X]  建立依赖层级并锁死（CI 检查）：`core -> engine -> extensions -> apps`
-- [X]  输出包清单：`保留 / 合并 / 拆分`
-
-## P1（第二阶段，2-3 周）
-
-- [X]  拆分 `view-canvas`
-  - [X]  `layout-engine` 包骨架已建立
-  - [X]  `view-runtime` 包骨架已建立
-  - [X]  `view-runtime` 代码迁移与接线（`segmenter/measure/pageAlign/virtualization/caret/posIndex/layoutIndex/selectionMovement`）
-  - [X]  `view-canvas` 改为组合 `layout-engine + view-runtime`（`layout-pagination` 与核心 view 工具均由新包提供）
-- [X]  将零散插件包并入聚合包（实现已迁移到 `editor-plugins`，旧包已删除）
-- [X]  `node-*` 统一模板（`node-basic` / `node-media` 合并与测试基线已完成）
-
-## P2（第三阶段，1 个月）
-
-- [X]  引入 Changesets（版本/发布可追踪）
-- [X]  CI 切换 affected 模式（已接入 `.github/workflows/ci.yml`）
-- [X]  建立预算指标：冷构建时间、增量构建时间、依赖深度、公共 API 数量（`governance/perf-budget.json` + `scripts/check-governance-budgets.mjs`）
+- `lp`
+  - 底层编辑内核，只向上提供基础能力
+- `core`
+  - `LumenEditor` 与扩展系统门面
+- `engine`
+  - 分页、几何、Canvas 运行时
+- `extensions`
+  - 节点扩展、插件扩展、StarterKit
+- `apps`
+  - 产品壳
 
 ## 关键策略
 
-- `model/state/transform/...` 这类底层包保持稳定，不轻易拆分
-- 优先治理 `view-canvas`（当前职责过多）
-- `playground/lumen` 相关功能先在 app 层验证，再下沉到公共包
+- `packages/lp/*` 只放底层编辑内核，不再承载分页和渲染引擎
+- `packages/core` 作为 Lumen 对外门面，负责 `Editor` 与扩展系统
+- `packages/layout-engine` / `packages/view-runtime` / `packages/view-canvas` 与 `core` 平级
+- app 侧优先变薄，只保留产品差异和业务壳逻辑
 
-## 收口项（发布前）
+## 当前可验证状态
 
-- 在本地非沙箱环境执行 `pnpm governance:budget:measure`，回填 `governance/build-budget-snapshot.json` 的真实时延
-- 旧兼容包已移除（通过 `governance:check:no-legacy-wrappers` 持续禁止回流）
-- CI 已接入 `typecheck:affected` + `build:affected`，并增加 smoke 门禁校验（`governance:check:smoke-gate`）
-- 后续可再补浏览器运行态 smoke gate（例如 Playwright 执行 `?allSmoke=1`）
+- `node scripts/check-package-governance.mjs` 通过
+- 内部包 typecheck 已通过：
+  - `packages/node-basic`
+  - `packages/node-list`
+  - `packages/node-table`
+  - `packages/schema-basic`
+
+## 当前已知剩余阻塞
+
+当前内部路径和包治理已经打通。剩余 typecheck 阻塞主要是环境缺外部依赖，不是这轮包结构错误：
+
+- `w3c-keyname`
+- `orderedmap`
+- `vue`
+- `tdesign-vue-next`
+- `tippy.js`
+
+## 下一阶段
+
+1. 把 `history / keymap / inputRules / basicCommands` 收回 `LumenStarterKit` 与 `LumenEditor`
+2. 把 `mention / selection bubble` 等插件迁成扩展
+3. 继续压大文档分页、滚动、overlay 的同步成本

@@ -1,15 +1,17 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-state": ["../../lp/state/dist/index.d.ts"],
-      "lumenpage-transform": ["../../lp/transform/dist/index.d.ts"]
+      "lumenpage-state": ["../lp/state/src/index.ts"],
+      "lumenpage-transform": ["../lp/transform/src/index.ts"]
     }
   },
   "include": ["src/**/*"]
 }
+
+
 

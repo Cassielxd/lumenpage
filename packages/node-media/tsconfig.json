@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
@@ -8,13 +8,15 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-link": ["../link/dist/index.d.ts"],
-      "lumenpage-model": ["../../lp/model/dist/index.d.ts"],
-      "lumenpage-state": ["../../lp/state/dist/index.d.ts"],
-      "lumenpage-view-canvas": ["../view-canvas/dist/index.d.ts"]
+      "lumenpage-link": ["../link/src/index.ts"],
+      "lumenpage-model": ["../lp/model/src/index.ts"],
+      "lumenpage-state": ["../lp/state/src/index.ts"],
+      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"]
     }
   },
   "include": ["src"]
 }
+
+
 
 

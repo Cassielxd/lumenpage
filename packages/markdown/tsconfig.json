@@ -1,14 +1,16 @@
 {
-  "extends": "../../../tsconfig.base.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-model": ["../model/dist/index.d.ts"],
-      "lumenpage-schema-basic": ["../schema-basic/dist/index.d.ts"]
+      "lumenpage-model": ["../model/src/index.ts"],
+      "lumenpage-schema-basic": ["../schema-basic/src/index.ts"]
     }
   },
   "include": ["src/**/*"]
 }
+
+
