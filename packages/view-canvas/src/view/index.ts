@@ -16,7 +16,6 @@ export { createSegmentText, createLinebreakSegmentText } from "./segmenter";
 export { Decoration, DecorationSet, type CanvasDecoration, type DecorationSpec } from "./decorations";
 export { type CanvasNodeView, type NodeViewFactory } from "./nodeView";
 export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
-export { createCanvasState } from "./canvasState";
 export {
   clearLegacyCanvasConfigHits,
   getLegacyCanvasConfigHits,

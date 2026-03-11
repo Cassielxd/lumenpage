@@ -11,6 +11,16 @@ type TableTexts = {
   alertInvalidCellAlign: string;
 };
 
+const isTableCellTypeName = (typeName: string | null | undefined) =>
+  typeName === "tableCell" || typeName === "tableHeader";
+
+const withoutLegacyHeaderAttr = (attrs: Record<string, unknown> | null | undefined) => {
+  if (!attrs || typeof attrs !== "object") {
+    return {};
+  }
+  return Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== "header"));
+};
+
 const resolveTexts = (_locale: PlaygroundLocale): TableTexts => ({
   promptCellAlign: "Cell alignment: left / center / right / justify",
   alertCellRequired: "Place the caret inside a table cell first",
@@ -56,8 +66,8 @@ const isValidCssColor = (color: string) => {
 const createDefaultTableNode = (view: any, rows: number, cols: number) => {
   const schema = view?.state?.schema;
   const tableType = schema?.nodes?.table;
-  const rowType = schema?.nodes?.table_row;
-  const cellType = schema?.nodes?.table_cell;
+  const rowType = schema?.nodes?.tableRow;
+  const cellType = schema?.nodes?.tableCell;
   const paragraphType = schema?.nodes?.paragraph;
   if (!tableType || !rowType || !cellType || !paragraphType) {
     return null;
@@ -314,7 +324,7 @@ const findCellLocationByPos = (grid: TableGrid, cellPos: number) => {
 const getCellSelectionRect = (state: any, grid: TableGrid) => {
   const selection = state?.selection;
   const jsonType = selection?.toJSON?.()?.type;
-  if (jsonType !== "table_cell") {
+  if (jsonType !== "tableCell") {
     return null;
   }
   const anchorPos = Number(selection?.anchor);
@@ -500,11 +510,17 @@ export const createTableActions = ({
     if (targets.length === 0) {
       return false;
     }
-    const shouldEnable = targets.some((item) => item.cell?.attrs?.header !== true);
+    const tableCellType = context.state.schema?.nodes?.tableCell;
+    const tableHeaderType = context.state.schema?.nodes?.tableHeader;
+    if (!tableCellType || !tableHeaderType) {
+      return false;
+    }
+    const shouldEnable = targets.some((item) => item.cell?.type?.name !== "tableHeader");
     let tr = context.state.tr;
     for (const target of targets) {
-      const attrs = { ...(target.cell.attrs || {}), header: shouldEnable };
-      tr = tr.setNodeMarkup(target.pos, undefined, attrs, target.cell.marks);
+      const targetType = shouldEnable ? tableHeaderType : tableCellType;
+      const attrs = withoutLegacyHeaderAttr(target.cell.attrs || {});
+      tr = tr.setNodeMarkup(target.pos, targetType, attrs, target.cell.marks);
     }
     context.view.dispatch(tr.scrollIntoView());
     return true;
@@ -549,7 +565,7 @@ export const createTableActions = ({
     let uniform: string | null | undefined = undefined;
     for (const target of targets) {
       const cellNode = context.state.doc.nodeAt(target.pos);
-      if (!cellNode || cellNode.type?.name !== "table_cell") {
+      if (!cellNode || !isTableCellTypeName(cellNode.type?.name)) {
         continue;
       }
       const value = String(cellNode.attrs?.background || "").trim() || null;
@@ -581,7 +597,7 @@ export const createTableActions = ({
     let changed = false;
     for (const target of targets) {
       const cellNode = context.state.doc.nodeAt(target.pos);
-      if (!cellNode || cellNode.type?.name !== "table_cell") {
+      if (!cellNode || !isTableCellTypeName(cellNode.type?.name)) {
         continue;
       }
       const current = String(cellNode.attrs?.background || "").trim();
@@ -606,7 +622,7 @@ export const createTableActions = ({
     callback: (node: any, pos: number) => void
   ) => {
     const cellNode = context.state.doc.nodeAt(cellPos);
-    if (!cellNode || cellNode.type?.name !== "table_cell") {
+    if (!cellNode || !isTableCellTypeName(cellNode.type?.name)) {
       return;
     }
     cellNode.descendants((node: any, relativePos: number) => {

@@ -1,7 +1,8 @@
-import { schema, createDefaultNodeRendererRegistry } from "lumenpage-kit-basic";
-import { LayoutPipeline } from "lumenpage-layout-engine";
+import { ExtensionManager, createSchema } from "lumenpage-core";
+import { LayoutPipeline, createLumenCompatNodeRegistry } from "lumenpage-layout-engine";
 import { createLinebreakSegmentText } from "lumenpage-view-runtime";
 import { docPosToTextOffset } from "lumenpage-view-canvas";
+import { lumenDocumentExtensions } from "./documentExtensions";
 
 type PaginationDocWorkerRequest = {
   id: number;
@@ -45,7 +46,10 @@ const createMeasureTextWidth = () => {
   return (_font: string, text: string) => (text || "").length * 8;
 };
 
-const registry = createDefaultNodeRendererRegistry();
+const extensionManager = new ExtensionManager([...lumenDocumentExtensions]);
+const resolvedStructure = extensionManager.resolveStructure();
+const schema = createSchema(resolvedStructure);
+const registry = createLumenCompatNodeRegistry(resolvedStructure);
 let pipeline: LayoutPipeline | null = null;
 let previousLayoutState: any = null;
 

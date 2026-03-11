@@ -1,4 +1,4 @@
-import { createDocFromText } from "lumenpage-kit-basic";
+import { createDocument } from "lumenpage-core";
 import { DOMParser as PMDOMParser } from "lumenpage-model";
 import type { PlaygroundLocale } from "../i18n";
 
@@ -55,9 +55,19 @@ const parseHtmlToDoc = (schema: any, html: string) => {
   }
 };
 
-const parseTextToDoc = (text: string) => {
+const parseTextToDoc = (schema: any, text: string) => {
   try {
-    return createDocFromText(String(text || ""));
+    const lines = String(text || "").split(/\r?\n/);
+    return createDocument({
+      schema,
+      content: {
+        type: "doc",
+        content: (lines.length > 0 ? lines : [""]).map((line) => ({
+          type: "paragraph",
+          ...(line ? { content: [{ type: "text", text: line }] } : {}),
+        })),
+      },
+    });
   } catch (_error) {
     return null;
   }
@@ -120,8 +130,8 @@ export const createImportActions = ({
 
       const nextDoc =
         ext === "txt"
-          ? parseTextToDoc(text)
-          : parseHtmlToDoc(state.schema, text) || parseTextToDoc(text);
+          ? parseTextToDoc(state.schema, text)
+          : parseHtmlToDoc(state.schema, text) || parseTextToDoc(state.schema, text);
 
       if (!nextDoc) {
         window.alert(texts.alertParseFailed);

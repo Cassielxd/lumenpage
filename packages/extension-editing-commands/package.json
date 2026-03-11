@@ -1,0 +1,37 @@
+{
+  "name": "lumenpage-extension-editing-commands",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "lumenpage-core": "workspace:*",
+    "lumenpage-commands": "workspace:*",
+    "lumenpage-extension-list-item": "workspace:*",
+    "lumenpage-extension-table": "workspace:*",
+    "lumenpage-extension-task-item": "workspace:*",
+    "lumenpage-history": "workspace:*",
+    "lumenpage-state": "workspace:*",
+    "lumenpage-transform": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

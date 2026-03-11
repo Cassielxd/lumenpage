@@ -1,5 +1,4 @@
-import { createDocFromText, createLumenInputRulesExtension, LumenStarterKit } from "lumenpage-kit-basic";
-import { LumenEditor } from "lumenpage-core";
+import { Editor } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 import {
   normalizeNavigableHref,
@@ -13,11 +12,8 @@ import {
   Decoration,
   DecorationSet,
 } from "lumenpage-view-canvas";
-import {
-  createLumenBlockIdExtension,
-  createLumenActiveBlockSelectionExtension,
-  createLumenDragHandleExtension,
-} from "lumenpage-editor-plugins";
+import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
+import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
@@ -25,6 +21,7 @@ import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
+import { playgroundDocumentExtensions } from "./documentExtensions";
 import {
   configurePlaygroundSecurityPolicy,
   normalizePastedText,
@@ -79,7 +76,12 @@ const isInTableAtResolvedPos = ($pos: any) => {
   }
   for (let depth = $pos.depth; depth >= 0; depth -= 1) {
     const typeName = $pos.node(depth)?.type?.name;
-    if (typeName === "table" || typeName === "table_row" || typeName === "table_cell") {
+    if (
+      typeName === "table" ||
+      typeName === "tableRow" ||
+      typeName === "tableCell" ||
+      typeName === "tableHeader"
+    ) {
       return true;
     }
   }
@@ -155,11 +157,9 @@ export const mountPlaygroundEditor = ({
     };
   }
   const extensions = [
-    LumenStarterKit,
-    createLumenBlockIdExtension(),
-    ...(flags.enableInputRules ? [createLumenInputRulesExtension()] : []),
-    createLumenActiveBlockSelectionExtension(),
-    createLumenDragHandleExtension({ onlyTopLevel: true }),
+    ...playgroundDocumentExtensions,
+    ActiveBlockSelectionExtension,
+    DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
 
   const plugins: any[] = [];
@@ -209,7 +209,12 @@ export const mountPlaygroundEditor = ({
       isInNodeTypeAtPos(state, pos, "table"),
     isNodeSelectionTarget: (_view: CanvasEditorView, args: NodeSelectionTargetArgs) => {
       const nodeType = args?.node?.type?.name;
-      if (nodeType === "table" || nodeType === "table_row" || nodeType === "table_cell") {
+      if (
+        nodeType === "table" ||
+        nodeType === "tableRow" ||
+        nodeType === "tableCell" ||
+        nodeType === "tableHeader"
+      ) {
         return false;
       }
       return null;
@@ -263,13 +268,13 @@ export const mountPlaygroundEditor = ({
     };
   }
 
-  const editor = new LumenEditor({
+  const editor = new Editor({
     element: host,
     extensions,
-    json: initialDoc,
-    createDocFromText,
-    prependPlugins: plugins,
-    canvasViewConfig: {
+    content: initialDoc,
+    plugins,
+    enableInputRules: flags.enableInputRules,
+    canvas: {
       settings,
       debug: flags.debugTimingLogs
         ? ({ timing: true, eventTiming: true, paginationTiming: true, renderTiming: true } as any)

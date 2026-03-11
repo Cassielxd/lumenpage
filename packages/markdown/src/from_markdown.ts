@@ -246,25 +246,25 @@ function listIsTight(tokens: readonly Token[], i: number) {
 export const defaultMarkdownParser = new MarkdownParser(schema, MarkdownIt("commonmark", {html: false}), {
   blockquote: {block: "blockquote"},
   paragraph: {block: "paragraph"},
-  list_item: {block: "list_item"},
-  bullet_list: {block: "bullet_list", getAttrs: (_, tokens, i) => ({tight: listIsTight(tokens, i)})},
-  ordered_list: {block: "ordered_list", getAttrs: (tok, tokens, i) => ({
+  list_item: {block: "listItem"},
+  bullet_list: {block: "bulletList", getAttrs: (_, tokens, i) => ({tight: listIsTight(tokens, i)})},
+  ordered_list: {block: "orderedList", getAttrs: (tok, tokens, i) => ({
     order: +tok.attrGet("start")! || 1,
     tight: listIsTight(tokens, i)
   })},
   heading: {block: "heading", getAttrs: tok => ({level: +tok.tag.slice(1)})},
-  code_block: {block: "code_block", noCloseToken: true},
-  fence: {block: "code_block", getAttrs: tok => ({params: tok.info || ""}), noCloseToken: true},
-  hr: {node: "horizontal_rule"},
+  code_block: {block: "codeBlock", noCloseToken: true},
+  fence: {block: "codeBlock", getAttrs: tok => ({params: tok.info || ""}), noCloseToken: true},
+  hr: {node: "horizontalRule"},
   image: {node: "image", getAttrs: tok => ({
     src: sanitizeImageSrc(tok.attrGet("src"), { source: "markdown" }),
     title: tok.attrGet("title") || null,
     alt: tok.children![0] && tok.children![0].content || null
   })},
-  hardbreak: {node: "hard_break"},
+  hardbreak: {node: "hardBreak"},
 
-  em: {mark: "em"},
-  strong: {mark: "strong"},
+  em: {mark: "italic"},
+  strong: {mark: "bold"},
   s: {mark: "strike"},
   link: {mark: "link", getAttrs: tok => ({
     href: sanitizeLinkHref(tok.attrGet("href"), { source: "markdown" }) || "#",

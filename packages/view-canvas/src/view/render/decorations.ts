@@ -397,10 +397,10 @@ export const buildDecorationDrawData = (
         if (Number.isFinite(containerVisualLeft)) {
           left = Math.min(left, Number(containerVisualLeft));
         }
-        // 代码块是容器背景（margin 内全宽）+ 内部文字（padding 后起始），
-        // 选中框需要对齐容器边界而不是文字起始位置。
+        // 浠ｇ爜鍧楁槸瀹瑰櫒鑳屾櫙锛坢argin 鍐呭叏瀹斤級+ 鍐呴儴鏂囧瓧锛坧adding 鍚庤捣濮嬶級锛?
+        // 閫変腑妗嗛渶瑕佸榻愬鍣ㄨ竟鐣岃€屼笉鏄枃瀛楄捣濮嬩綅缃€?
         const isCodeBlock =
-          line?.blockType === "code_block" ||
+          line?.blockType === "codeBlock" ||
           Number.isFinite(Number(line?.blockAttrs?.codeBlockPadding));
         if (isCodeBlock) {
           const codePadding = Math.max(0, Number(line?.blockAttrs?.codeBlockPadding) || 0);

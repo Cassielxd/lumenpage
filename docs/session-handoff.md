@@ -31,7 +31,7 @@
   - `view-types`
 - `packages/layout-engine` / `packages/view-runtime` / `packages/view-canvas`
   - Lumen 自己的分页、几何、Canvas 运行时
-- `packages/node-*` / `packages/kit-basic` / `packages/editor-plugins`
+- `packages/extension-*` / `packages/starter-kit`
   - 扩展层
 - `apps/*`
   - 产品壳
@@ -47,11 +47,7 @@
 ## 当前可验证状态
 
 - `node scripts/check-package-governance.mjs` 通过。
-- 内部包 typecheck 已通过：
-  - `packages/node-basic`
-  - `packages/node-list`
-  - `packages/node-table`
-  - `packages/schema-basic`
+- 主链路已切到 `packages/starter-kit` + `packages/extension-*`，旧的 `node-* / schema-basic / editor-plugins` 已退役。
 - 剩余阻塞主要是当前环境缺外部依赖，不是这轮结构改造错误：
   - `w3c-keyname`
   - `orderedmap`

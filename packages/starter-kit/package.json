@@ -1,0 +1,50 @@
+{
+  "name": "lumenpage-starter-kit",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js",
+      "development": "./src/index.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
+  },
+  "dependencies": {
+    "lumenpage-core": "workspace:*",
+    "lumenpage-extension-base-keymap": "workspace:*",
+    "lumenpage-extension-blockquote": "workspace:*",
+    "lumenpage-extension-bold": "workspace:*",
+    "lumenpage-extension-bullet-list": "workspace:*",
+    "lumenpage-extension-canvas-keymap": "workspace:*",
+    "lumenpage-extension-code": "workspace:*",
+    "lumenpage-extension-code-block": "workspace:*",
+    "lumenpage-extension-document": "workspace:*",
+    "lumenpage-extension-editing-commands": "workspace:*",
+    "lumenpage-extension-hard-break": "workspace:*",
+    "lumenpage-extension-heading": "workspace:*",
+    "lumenpage-extension-horizontal-rule": "workspace:*",
+    "lumenpage-extension-italic": "workspace:*",
+    "lumenpage-extension-list-item": "workspace:*",
+    "lumenpage-extension-ordered-list": "workspace:*",
+    "lumenpage-extension-paragraph": "workspace:*",
+    "lumenpage-extension-smart-input-rules": "workspace:*",
+    "lumenpage-extension-strike": "workspace:*",
+    "lumenpage-extension-text": "workspace:*",
+    "lumenpage-extension-undo-redo": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

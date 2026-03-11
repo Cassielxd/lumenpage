@@ -77,7 +77,7 @@ export interface GenericParseRule {
   /// `"section//"` matches any position inside a section—a double
   /// slash matches any sequence of ancestor nodes. To allow multiple
   /// different contexts, they can be separated by a pipe (`|`)
-  /// character, as in `"blockquote/|list_item/"`.
+  /// character, as in `"blockquote/|listItem/"`.
   context?: string
 
   /// The name of the mark type to wrap the matched content in.

@@ -1,4 +1,4 @@
-﻿export const initialDocJson = {
+export const initialDocJson = {
   "type": "doc",
   "content": [
     {
@@ -53,10 +53,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -70,7 +70,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -84,7 +84,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -112,10 +112,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -129,7 +129,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -143,7 +143,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -157,7 +157,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -171,7 +171,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -199,10 +199,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -216,7 +216,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -230,7 +230,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -244,7 +244,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -258,7 +258,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -286,10 +286,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -303,7 +303,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -317,7 +317,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -331,7 +331,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -345,7 +345,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -359,7 +359,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -387,10 +387,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -404,7 +404,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -418,7 +418,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -458,10 +458,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -475,7 +475,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -489,7 +489,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -503,7 +503,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -517,7 +517,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -531,7 +531,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -545,7 +545,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -559,7 +559,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -573,7 +573,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -587,7 +587,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -601,7 +601,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -615,7 +615,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -629,7 +629,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -643,7 +643,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -657,7 +657,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -685,10 +685,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -702,21 +702,21 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/kit-basic`：默认 schema、命令与节点渲染注册"
+                  "text": "`packages/starter-kit`：默认 schema、命令与节点渲染注册"
                 }
               ]
             }
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -730,7 +730,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -744,7 +744,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -772,10 +772,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -789,7 +789,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -803,7 +803,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -831,10 +831,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -848,7 +848,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -862,7 +862,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -876,7 +876,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -890,7 +890,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -904,7 +904,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -932,7 +932,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -941,7 +941,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -959,7 +959,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -980,10 +980,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -997,7 +997,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1011,7 +1011,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1025,7 +1025,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1039,7 +1039,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1053,7 +1053,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1067,7 +1067,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1107,10 +1107,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1124,7 +1124,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1138,7 +1138,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1152,7 +1152,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1166,7 +1166,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1180,7 +1180,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1208,10 +1208,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1225,7 +1225,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1239,7 +1239,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1267,10 +1267,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1284,7 +1284,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1298,7 +1298,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1326,10 +1326,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1343,7 +1343,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1357,7 +1357,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1382,7 +1382,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -1412,10 +1412,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1429,7 +1429,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1443,7 +1443,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1480,10 +1480,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1497,7 +1497,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1534,10 +1534,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1551,7 +1551,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1565,7 +1565,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1579,7 +1579,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1593,7 +1593,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1607,7 +1607,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1621,7 +1621,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1635,7 +1635,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1663,10 +1663,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1680,7 +1680,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1694,35 +1694,35 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/schema-basic`：统一基础 schema（节点/mark 定义）"
+                  "text": "`packages/starter-kit` + `packages/extension-*`：统一默认 schema 与扩展装配"
                 }
               ]
             }
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/kit-basic`：默认 schema + commands + registry"
+                  "text": "`packages/starter-kit`：默认 schema + commands + registry"
                 }
               ]
             }
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1736,7 +1736,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1750,7 +1750,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1764,7 +1764,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1792,10 +1792,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1809,7 +1809,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1823,7 +1823,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1863,10 +1863,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1880,7 +1880,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1894,7 +1894,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1908,7 +1908,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1922,7 +1922,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1950,10 +1950,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1967,7 +1967,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1981,7 +1981,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -1995,7 +1995,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2009,7 +2009,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2037,10 +2037,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2054,7 +2054,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2068,7 +2068,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2082,7 +2082,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2119,10 +2119,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2147,10 +2147,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2164,7 +2164,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2178,7 +2178,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2194,10 +2194,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2211,7 +2211,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2225,7 +2225,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2239,7 +2239,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2253,7 +2253,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2267,21 +2267,21 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
               "content": [
                 {
                   "type": "text",
-                  "text": "`?blockOutlineSmoke=1`：块容器几何一致性冒烟（`code_block` / `blockquote`）。"
+                  "text": "`?blockOutlineSmoke=1`：块容器几何一致性冒烟（`codeBlock` / `blockquote`）。"
                 }
               ]
             }
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2295,7 +2295,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2309,7 +2309,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2323,7 +2323,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2337,7 +2337,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2351,7 +2351,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2365,7 +2365,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2379,7 +2379,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2393,7 +2393,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2407,7 +2407,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2421,7 +2421,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2435,7 +2435,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2449,7 +2449,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2474,10 +2474,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2491,7 +2491,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2505,7 +2505,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2519,7 +2519,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2533,7 +2533,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2547,7 +2547,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2561,7 +2561,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2575,7 +2575,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2589,7 +2589,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2603,7 +2603,7 @@
           ]
         },
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",
@@ -2628,7 +2628,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -2646,7 +2646,7 @@
       ]
     },
     {
-      "type": "code_block",
+      "type": "codeBlock",
       "content": [
         {
           "type": "text",
@@ -2664,10 +2664,10 @@
       ]
     },
     {
-      "type": "bullet_list",
+      "type": "bulletList",
       "content": [
         {
-          "type": "list_item",
+          "type": "listItem",
           "content": [
             {
               "type": "paragraph",

@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-commands": ["../lp/commands/src/index.ts"],
+      "lumenpage-extension-list-item": ["../extension-list-item/src/index.ts"],
+      "lumenpage-extension-table": ["../extension-table/src/index.ts"],
+      "lumenpage-extension-task-item": ["../extension-task-item/src/index.ts"],
+      "lumenpage-history": ["../lp/history/src/index.ts"],
+      "lumenpage-state": ["../lp/state/src/index.ts"],
+      "lumenpage-transform": ["../lp/transform/src/index.ts"]
+    }
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../lp/commands" },
+    { "path": "../extension-list-item" },
+    { "path": "../extension-table" },
+    { "path": "../extension-task-item" },
+    { "path": "../lp/history" },
+    { "path": "../lp/state" },
+    { "path": "../lp/transform" }
+  ]
+}

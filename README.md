@@ -68,7 +68,7 @@ LumenPage 面向“在线文档/报告编辑”场景，提供接近桌面文档
 ### 2.2 分层架构
 
 - `packages/view-canvas`：Canvas 视图层（输入、选区、渲染、分页、事件编排）
-- `packages/kit-basic`：默认 schema、命令与节点渲染注册
+- `packages/starter-kit`：默认 schema、命令与节点渲染注册
 - `packages/node-*`：节点级能力（paragraph/heading/list/table/image/video/...）
 - `packages/drag-handle`：块级拖拽句柄插件（含 drop cursor 默认实现）
 - `apps/playground`：演示与联调入口
@@ -204,11 +204,11 @@ const settings = {
 
 - `apps/playground`：演示应用
 - `packages/view-canvas`：Canvas EditorView 与分页布局引擎
-- `packages/schema-basic`：统一基础 schema（节点/mark 定义）
-- `packages/kit-basic`：默认 schema + commands + registry
+- `packages/starter-kit`：默认 StarterKit 聚合入口
+- `packages/extension-*`：节点、mark、命令与交互扩展
 - `packages/drag-handle`：拖拽句柄插件
 - `packages/link`：链接解析与安全跳转工具
-- `packages/node-*`：节点实现包
+- `packages/extension-table` / `packages/extension-list-item`：复杂扩展的内部实现入口
 - `docs/`：设计文档与差异记录
 
 ## 9. 相关文档

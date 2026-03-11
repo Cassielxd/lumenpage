@@ -1,29 +1,24 @@
 import { inputRules } from "lumenpage-inputrules";
 import { keymap } from "lumenpage-keymap";
 import { createLumenCompatNodeRegistry } from "lumenpage-layout-engine";
+import { EditorState, Selection } from "lumenpage-state";
 import {
   CanvasEditorView,
   collectLumenNodeSelectionTypes,
-  createCanvasState,
   createLumenCompatSelectionGeometry,
   type CanvasCommandConfig,
   type CanvasEditorViewProps,
 } from "lumenpage-view-canvas";
 
-import { createLumenSchema } from "./createSchema";
-import { LumenExtensionManager } from "./ExtensionManager";
-import type {
-  LumenExtensionInput,
-  LumenResolvedExtensions,
-  LumenResolvedStructure,
-} from "./types";
+import { CommandManager } from "./CommandManager";
+import { createDocument, type ContentParser } from "./createDocument";
+import { createSchema } from "./createSchema";
+import { ExtensionManager } from "./ExtensionManager";
+import type { AnyExtensionInput, ResolvedExtensions, ResolvedStructure } from "./types";
 
-type CreateStateOverrides = {
-  doc?: any;
-  json?: any;
-  text?: string;
+type CreateStateOptions = {
+  content?: any;
   plugins?: any[];
-  createDocFromText?: ((text: string) => any) | null;
 };
 
 const BASIC_COMMAND_KEYS = [
@@ -38,67 +33,95 @@ const BASIC_COMMAND_KEYS = [
   "redo",
 ] as const;
 
-export type LumenEditorStateFactoryContext = {
-  editor: LumenEditor;
-  schema: ReturnType<typeof createLumenSchema>;
+export type EditorStateFactoryContext = {
+  editor: Editor;
+  schema: ReturnType<typeof createSchema>;
   plugins: any[];
-  createState: (overrides?: CreateStateOverrides) => any;
+  createState: (overrides?: CreateStateOptions) => any;
 };
 
-export type LumenEditorConfig = {
-  extensions: ReadonlyArray<LumenExtensionInput> | LumenExtensionInput;
+export type EditorOptions = {
+  extensions: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput;
   element?: HTMLElement | null;
+  content?: any;
   state?: any | null;
-  doc?: any;
-  json?: any;
-  text?: string;
-  createDocFromText?: ((text: string) => any) | null;
-  prependPlugins?: any[];
-  appendPlugins?: any[];
+  parseContent?: ContentParser | null;
+  plugins?: any[];
   editorProps?: Partial<CanvasEditorViewProps>;
-  canvasViewConfig?: Record<string, any> | null;
+  canvas?: Record<string, any> | null;
   commandConfig?: CanvasCommandConfig | null;
-  stateFactory?: ((ctx: LumenEditorStateFactoryContext) => any) | null;
+  stateFactory?: ((ctx: EditorStateFactoryContext) => any) | null;
+  enableInputRules?: boolean;
+  autofocus?: boolean | "start" | "end" | number;
+  editable?: boolean;
+  onBeforeCreate?: ((args: { editor: Editor }) => void) | null;
+  onCreate?: ((args: { editor: Editor }) => void) | null;
+  onDestroy?: (() => void) | null;
 };
 
-const hasSchemaSpec = (resolved: LumenResolvedStructure) =>
+const defaultOptions: EditorOptions = {
+  extensions: [],
+  element: null,
+  content: "",
+  state: null,
+  parseContent: null,
+  plugins: [],
+  editorProps: {},
+  canvas: null,
+  commandConfig: null,
+  stateFactory: null,
+  enableInputRules: true,
+  autofocus: false,
+  editable: true,
+  onBeforeCreate: null,
+  onCreate: null,
+  onDestroy: null,
+};
+
+const hasSchemaSpec = (resolved: ResolvedStructure) =>
   Object.keys(resolved.schema.nodes).length > 0 || Object.keys(resolved.schema.marks).length > 0;
 
-const createShortcutPlugins = (resolved: LumenResolvedExtensions) =>
-  resolved.state.shortcuts
+const createShortcutPlugins = (resolved: ResolvedExtensions) =>
+  resolved.state.keyboardShortcuts
     .filter((shortcuts) => shortcuts && Object.keys(shortcuts).length > 0)
     .map((shortcuts) => keymap(shortcuts));
 
-const createInputRulePlugins = (resolved: LumenResolvedExtensions) => {
+const createInputRulePlugins = (resolved: ResolvedExtensions, enabled: boolean) => {
+  if (!enabled) {
+    return [];
+  }
   const rules = resolved.state.inputRules.filter(Boolean);
   return rules.length ? [inputRules({ rules })] : [];
 };
 
-export class LumenEditor {
-  readonly options: LumenEditorConfig;
-  readonly extensionManager: LumenExtensionManager;
-  readonly schema: ReturnType<typeof createLumenSchema> | null;
+export class Editor {
+  options: EditorOptions;
+  readonly extensionManager: ExtensionManager;
+  readonly schema: ReturnType<typeof createSchema> | null;
   readonly nodeRegistry: any | null;
   readonly selectionGeometry: any;
   readonly nodeSelectionTypes: string[];
-  readonly resolvedExtensions: LumenResolvedExtensions;
-  readonly storage: Record<string, any>;
+  readonly resolvedExtensions: ResolvedExtensions;
+  readonly extensionStorage: Record<string, any>;
   readonly rawCommands: Record<string, any>;
-  readonly commands: Record<string, any>;
   readonly plugins: any[];
 
   state: any | null;
   view: CanvasEditorView | null;
 
-  constructor(config: LumenEditorConfig) {
-    this.options = config;
-    this.extensionManager = new LumenExtensionManager(config.extensions);
+  private readonly commandManager: CommandManager;
+
+  constructor(options: Partial<EditorOptions> = {}) {
+    this.options = { ...defaultOptions, ...options };
+    this.extensionManager = new ExtensionManager(this.options.extensions, this);
 
     const structure = this.extensionManager.resolveStructure(this);
-    this.schema = hasSchemaSpec(structure) ? createLumenSchema(structure) : null;
+    this.schema = hasSchemaSpec(structure) ? createSchema(structure) : null;
     this.nodeRegistry = structure.layout.byNodeName.size
       ? createLumenCompatNodeRegistry(structure)
       : null;
+    this.extensionManager.setRuntime({ schema: this.schema, nodeRegistry: this.nodeRegistry });
+
     this.selectionGeometry = createLumenCompatSelectionGeometry(structure);
     this.nodeSelectionTypes = collectLumenNodeSelectionTypes(structure);
 
@@ -108,35 +131,66 @@ export class LumenEditor {
       state,
     };
 
-    this.storage = Object.fromEntries(
+    this.extensionStorage = Object.fromEntries(
       this.resolvedExtensions.instances.map((instance) => [instance.name, instance.storage])
     );
     this.rawCommands = this.resolvedExtensions.state.commands;
     this.plugins = this.buildPlugins();
     this.state = this.initializeState();
-    this.commands = this.createCommandFacade(false);
     this.view = null;
+    this.commandManager = new CommandManager(this, this.rawCommands);
 
-    if (config.element) {
-      this.mount(config.element);
+    this.options.onBeforeCreate?.({ editor: this });
+
+    if (this.options.element) {
+      this.mount(this.options.element);
     }
+
+    this.options.onCreate?.({ editor: this });
   }
 
-  createState(overrides: CreateStateOverrides = {}) {
+  get storage() {
+    return this.extensionStorage;
+  }
+
+  get commands() {
+    return this.commandManager.commands;
+  }
+
+  chain() {
+    return this.commandManager.chain();
+  }
+
+  can() {
+    return this.commandManager.can();
+  }
+
+  setOptions(options: Partial<EditorOptions> = {}) {
+    this.options = {
+      ...this.options,
+      ...options,
+    };
+  }
+
+  createState(overrides: CreateStateOptions = {}) {
     if (!this.schema) {
       throw new Error("Cannot create editor state without a resolved schema.");
     }
 
-    const state = createCanvasState({
+    const doc = createDocument({
+      content: overrides.content ?? this.options.content,
       schema: this.schema,
-      createDocFromText: overrides.createDocFromText ?? this.options.createDocFromText ?? undefined,
-      doc: overrides.doc ?? this.options.doc ?? null,
-      json: overrides.json ?? this.options.json ?? null,
-      text: overrides.text ?? this.options.text ?? "",
-      plugins: overrides.plugins ?? this.plugins,
+      parseContent: this.options.parseContent,
     });
 
-    return this.applyStateTransforms(state);
+    return this.applyStateTransforms(
+      EditorState.create({
+        schema: this.schema,
+        doc,
+        selection: Selection.atEnd(doc),
+        plugins: overrides.plugins ?? this.plugins,
+      })
+    );
   }
 
   mount(element: HTMLElement) {
@@ -147,7 +201,7 @@ export class LumenEditor {
       this.state = this.initializeState();
     }
     if (!this.state) {
-      throw new Error("Editor state is not available. Pass state/doc/json/createDocFromText.");
+      throw new Error("Editor state is not available. Pass state or content.");
     }
     if (this.view) {
       return this.view;
@@ -155,10 +209,9 @@ export class LumenEditor {
 
     const editorProps = this.options.editorProps || {};
     const resolvedCanvasViewConfig = {
-      ...(this.options.canvasViewConfig || {}),
+      ...(this.options.canvas || {}),
       ...(editorProps.canvasViewConfig || {}),
-      nodeRegistry:
-        editorProps.canvasViewConfig?.nodeRegistry || this.options.canvasViewConfig?.nodeRegistry || this.nodeRegistry,
+      nodeRegistry: editorProps.canvasViewConfig?.nodeRegistry || this.options.canvas?.nodeRegistry || this.nodeRegistry,
     };
 
     const viewProps: CanvasEditorViewProps = {
@@ -177,22 +230,22 @@ export class LumenEditor {
     return this.view;
   }
 
-  destroy() {
+  unmount() {
     this.view?.destroy();
     this.view = null;
   }
 
-  can() {
-    return this.createCommandFacade(true);
+  destroy() {
+    this.unmount();
+    this.options.onDestroy?.();
   }
 
   private buildPlugins() {
     return [
-      ...(this.options.prependPlugins || []),
-      ...this.resolvedExtensions.state.plugins,
+      ...(this.options.plugins || []),
+      ...this.resolvedExtensions.state.proseMirrorPlugins,
       ...createShortcutPlugins(this.resolvedExtensions),
-      ...createInputRulePlugins(this.resolvedExtensions),
-      ...(this.options.appendPlugins || []),
+      ...createInputRulePlugins(this.resolvedExtensions, this.options.enableInputRules !== false),
     ];
   }
 
@@ -201,16 +254,6 @@ export class LumenEditor {
       return this.options.state;
     }
     if (!this.schema) {
-      return null;
-    }
-
-    const hasContentSource =
-      this.options.doc != null ||
-      this.options.json != null ||
-      this.options.createDocFromText != null ||
-      this.options.text != null;
-
-    if (!hasContentSource && !this.options.stateFactory) {
       return null;
     }
 
@@ -260,67 +303,5 @@ export class LumenEditor {
       basicCommands,
       viewCommands: this.rawCommands,
     };
-  }
-
-  private getDispatch(canOnly: boolean) {
-    if (canOnly) {
-      return null;
-    }
-    if (this.view) {
-      return this.view.dispatch.bind(this.view);
-    }
-    if (!this.state) {
-      return null;
-    }
-    return (tr: any) => {
-      this.state = this.state.apply(tr);
-    };
-  }
-
-  private runResolvedCommand(command: any, args: any[], canOnly: boolean) {
-    if (typeof command !== "function") {
-      return false;
-    }
-
-    const dispatch = this.getDispatch(canOnly);
-    const state = this.view?.state || this.state;
-    const view = this.view;
-    if (!state) {
-      return false;
-    }
-
-    if (args.length > 0) {
-      const maybe = command(...args);
-      if (typeof maybe === "function") {
-        return maybe(state, dispatch, view);
-      }
-      if (typeof maybe === "boolean") {
-        return maybe;
-      }
-    }
-
-    if (command.length >= 2) {
-      return command(state, dispatch, view);
-    }
-
-    const maybe = command();
-    if (typeof maybe === "function") {
-      return maybe(state, dispatch, view);
-    }
-    if (typeof maybe === "boolean") {
-      return maybe;
-    }
-    return false;
-  }
-
-  private createCommandFacade(canOnly: boolean) {
-    const commands: Record<string, any> = {};
-    for (const [name, command] of Object.entries(this.rawCommands)) {
-      commands[name] = (...args: any[]) => this.runResolvedCommand(command, args, canOnly);
-    }
-    commands.run = (command: any, ...args: any[]) => this.runResolvedCommand(command, args, canOnly);
-    commands.can = (name: string, ...args: any[]) =>
-      this.runResolvedCommand(this.rawCommands[name], args, true);
-    return commands;
   }
 }

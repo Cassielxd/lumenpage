@@ -18,7 +18,7 @@
   - 几何索引、坐标、selection movement、命中测试
 - `packages/view-canvas`
   - Canvas 渲染、输入桥接、overlay 调度
-- `packages/node-*` / `packages/editor-plugins` / `packages/kit-basic`
+- `packages/extension-*` / `packages/starter-kit`
   - 扩展层
 - `apps/*`
   - 产品壳

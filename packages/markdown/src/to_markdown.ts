@@ -52,7 +52,7 @@ export class MarkdownSerializer {
       /// preceded by a backslash.
       escapeExtraCharacters?: RegExp,
       /// Specify the node name of hard breaks.
-      /// Defaults to "hard_break"
+      /// Defaults to "hardBreak"
       hardBreakNodeName?: string,
       /// By default, the serializer raises an error when it finds a
       /// node or mark type for which no serializer is defined. Set
@@ -82,7 +82,7 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
   blockquote(state, node) {
     state.wrapBlock("> ", null, node, () => state.renderContent(node))
   },
-  code_block(state, node) {
+  codeBlock(state, node) {
     // Make sure the front matter fences are longer than any dash sequence within it
     const backticks = node.textContent.match(/`{3,}/gm)
     const fence = backticks ? (backticks.sort().slice(-1)[0] + "`") : "```"
@@ -99,14 +99,14 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
     state.renderInline(node, false)
     state.closeBlock(node)
   },
-  horizontal_rule(state, node) {
+  horizontalRule(state, node) {
     state.write(node.attrs.markup || "---")
     state.closeBlock(node)
   },
-  bullet_list(state, node) {
+  bulletList(state, node) {
     state.renderList(node, "  ", () => (node.attrs.bullet || "*") + " ")
   },
-  ordered_list(state, node) {
+  orderedList(state, node) {
     let start = node.attrs.order || 1
     let maxW = String(start + node.childCount - 1).length
     let space = state.repeat(" ", maxW + 2)
@@ -115,7 +115,7 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
       return state.repeat(" ", maxW - nStr.length) + nStr + ". "
     })
   },
-  list_item(state, node) {
+  listItem(state, node) {
     state.renderContent(node)
   },
   paragraph(state, node) {
@@ -127,7 +127,7 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
     node.forEach((row) => {
       state.write("\n<tr>")
       row.forEach((cell) => {
-        const tag = cell.attrs?.header === true ? "th" : "td"
+        const tag = cell.type.name === "tableHeader" ? "th" : "td"
         const attrs: string[] = []
         const colspan = Number(cell.attrs?.colspan)
         const rowspan = Number(cell.attrs?.rowspan)
@@ -170,7 +170,7 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
     state.write("![" + state.esc(node.attrs.alt || "") + "](" + node.attrs.src.replace(/[\(\)]/g, "\\$&") +
                 (node.attrs.title ? ' "' + node.attrs.title.replace(/"/g, '\\"') + '"' : "") + ")")
   },
-  hard_break(state, node, parent, index) {
+  hardBreak(state, node, parent, index) {
     for (let i = index + 1; i < parent.childCount; i++)
       if (parent.child(i).type != node.type) {
         state.write("\\\n")
@@ -181,8 +181,8 @@ export const defaultMarkdownSerializer = new MarkdownSerializer({
     state.text(node.text!, !state.inAutolink)
   }
 }, {
-  em: {open: "*", close: "*", mixable: true, expelEnclosingWhitespace: true},
-  strong: {open: "**", close: "**", mixable: true, expelEnclosingWhitespace: true},
+  italic: {open: "*", close: "*", mixable: true, expelEnclosingWhitespace: true},
+  bold: {open: "**", close: "**", mixable: true, expelEnclosingWhitespace: true},
   link: {
     open(state, mark, parent, index) {
       state.inAutolink = isPlainURL(mark, parent, index)
@@ -248,7 +248,7 @@ export class MarkdownSerializerState {
     if (typeof this.options.tightLists == "undefined")
       this.options.tightLists = false
     if (typeof this.options.hardBreakNodeName == "undefined")
-      this.options.hardBreakNodeName = "hard_break"
+      this.options.hardBreakNodeName = "hardBreak"
   }
 
   /// @internal
@@ -356,7 +356,7 @@ export class MarkdownSerializerState {
     let progress = (node: Node | null, offset: number, index: number) => {
       let marks = node ? node.marks : []
 
-      // Remove marks from `hard_break` that are the last node inside
+      // Remove marks from `hardBreak` that are the last node inside
       // that mark to prevent parser edge cases with new lines just
       // before closing marks.
       if (node && node.type.name === this.options.hardBreakNodeName)

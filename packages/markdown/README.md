@@ -22,7 +22,7 @@ to communication around the project.</p>
 <h2>Documentation</h2>
 <dl>
 <dt id="schema">
-  <code><strong><a href="#schema">schema</a></strong>: <span class="type">Schema</span><<span class="string">"doc"</span> | <span class="string">"paragraph"</span> | <span class="string">"blockquote"</span> | <span class="string">"horizontal_rule"</span> | <span class="string">"heading"</span> | <span class="string">"code_block"</span> | <span class="string">"ordered_list"</span> | <span class="string">"bullet_list"</span> | <span class="string">"list_item"</span> | <span class="string">"text"</span> | <span class="string">"image"</span> | <span class="string">"hard_break"</span>, <span class="string">"em"</span> | <span class="string">"strong"</span> | <span class="string">"link"</span> | <span class="string">"code"</span>></code></dt>
+  <code><strong><a href="#schema">schema</a></strong>: <span class="type">Schema</span><<span class="string">"doc"</span> | <span class="string">"paragraph"</span> | <span class="string">"blockquote"</span> | <span class="string">"horizontalRule"</span> | <span class="string">"heading"</span> | <span class="string">"codeBlock"</span> | <span class="string">"orderedList"</span> | <span class="string">"bulletList"</span> | <span class="string">"listItem"</span> | <span class="string">"text"</span> | <span class="string">"image"</span> | <span class="string">"hardBreak"</span>, <span class="string">"em"</span> | <span class="string">"strong"</span> | <span class="string">"link"</span> | <span class="string">"code"</span>></code></dt>
 
 <dd><p>Document schema for the data model used by CommonMark.</p>
 </dd>

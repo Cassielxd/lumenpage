@@ -118,12 +118,13 @@ export class CanvasEditorView {
     };
     const onChange = resolveCanvasConfig("onChange", null);
     const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
-    const { runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } = createCommandRuntime({
-      view: this,
-      schema,
-      resolveCanvasConfig,
-      commandConfigFromProps: viewProps?.commandConfig ?? null,
-    });
+    const { commandConfig, runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } =
+      createCommandRuntime({
+        view: this,
+        schema,
+        resolveCanvasConfig,
+        commandConfigFromProps: viewProps?.commandConfig ?? null,
+      });
 
     // NodeView 管理能力由独立模块提供，editorView 只做装配。
     const configuredNodeSelectionTypes = resolveCanvasConfig("nodeSelectionTypes", null);
@@ -558,13 +559,17 @@ export class CanvasEditorView {
       getLayout: () => layout,
       getLayoutIndex: () => layoutIndex,
       getRafId: () => rafId,
-      getEditorProps: () => editorProps,
-      setEditorProps: (value) => {
-        editorProps = value ?? {};
-      },
-      setPendingChangeSummary: (value) => {
-        setPendingChangeSummaryValue(value);
-      },
+        getEditorProps: () => editorProps,
+        setEditorProps: (value) => {
+          editorProps = value ?? {};
+        },
+        commandConfig,
+        runCommand,
+        basicCommands,
+        runKeymap,
+        setPendingChangeSummary: (value) => {
+          setPendingChangeSummaryValue(value);
+        },
       dispatchTransaction: dispatchViaView,
       updateLayout,
       scheduleLayout,

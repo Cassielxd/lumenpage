@@ -8,7 +8,7 @@ const isImageLine = (line) =>
   line?.imageMeta ||
   line?.blockType === "image" ||
   line?.blockType === "video" ||
-  line?.blockType === "horizontal_rule";
+  line?.blockType === "horizontalRule";
 
 const getLineOffsetDelta = (line) =>
   Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
@@ -495,8 +495,10 @@ export function selectionToRects(
 
 const isTableCellSelection = (selection) => {
   const json = selection?.toJSON?.();
-  return json?.type === "table_cell";
+  return json?.type === "tableCell";
 };
+
+const isTableCellTypeName = (typeName) => typeName === "tableCell" || typeName === "tableHeader";
 
 const resolveTableCellPoint = (doc, pos) => {
   if (!doc || !Number.isFinite(pos)) {
@@ -518,10 +520,10 @@ const resolveTableCellPoint = (doc, pos) => {
   if (tableDepth < 0) {
     return null;
   }
-  if (tableDepth + 1 > $pos.depth || $pos.node(tableDepth + 1)?.type?.name !== "table_row") {
+  if (tableDepth + 1 > $pos.depth || $pos.node(tableDepth + 1)?.type?.name !== "tableRow") {
     return null;
   }
-  if (tableDepth + 2 > $pos.depth || $pos.node(tableDepth + 2)?.type?.name !== "table_cell") {
+  if (tableDepth + 2 > $pos.depth || !isTableCellTypeName($pos.node(tableDepth + 2)?.type?.name)) {
     return null;
   }
   const tableNode = $pos.node(tableDepth);

@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-core": [
+        "../core/src/index.ts"
+      ],
+      "lumenpage-history": [
+        "../lp/history/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../lp/history"
+    }
+  ]
+}

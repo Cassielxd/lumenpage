@@ -5,6 +5,117 @@
       "path": "packages/core"
     },
     {
+      "path": "packages/extension-active-block"
+    },
+    {
+      "path": "packages/extension-base-keymap"
+    },
+    {
+      "path": "packages/extension-block-id"
+    },
+    {
+      "path": "packages/extension-blockquote"
+    },
+    {
+      "path": "packages/extension-bold"
+    },
+    {
+      "path": "packages/extension-bullet-list"
+    },
+    {
+      "path": "packages/extension-canvas-keymap"
+    },
+    {
+      "path": "packages/extension-code-block"
+    },
+    {
+      "path": "packages/extension-code"
+    },
+    {
+      "path": "packages/extension-document"
+    },
+    {
+      "path": "packages/extension-editing-commands"
+    },
+    {
+      "path": "packages/extension-drag-handle"
+    },
+    {
+      "path": "packages/extension-heading"
+    },
+    {
+      "path": "packages/extension-hard-break"
+    },
+    {
+      "path": "packages/extension-undo-redo"
+    },
+    {
+      "path": "packages/extension-horizontal-rule"
+    },
+    {
+      "path": "packages/extension-image"
+    },
+    {
+      "path": "packages/extension-italic"
+    },
+    {
+      "path": "packages/extension-link"
+    },
+    {
+      "path": "packages/extension-list-item"
+    },
+    {
+      "path": "packages/extension-mention"
+    },
+    {
+      "path": "packages/extension-ordered-list"
+    },
+    {
+      "path": "packages/extension-page-break"
+    },
+    {
+      "path": "packages/extension-paragraph"
+    },
+    {
+      "path": "packages/extension-popup"
+    },
+    {
+      "path": "packages/extension-selection-bubble"
+    },
+    {
+      "path": "packages/extension-smart-input-rules"
+    },
+    {
+      "path": "packages/extension-strike"
+    },
+    {
+      "path": "packages/extension-subscript"
+    },
+    {
+      "path": "packages/extension-superscript"
+    },
+    {
+      "path": "packages/extension-table"
+    },
+    {
+      "path": "packages/extension-task-item"
+    },
+    {
+      "path": "packages/extension-task-list"
+    },
+    {
+      "path": "packages/extension-text"
+    },
+    {
+      "path": "packages/extension-text-style"
+    },
+    {
+      "path": "packages/extension-underline"
+    },
+    {
+      "path": "packages/extension-video"
+    },
+    {
       "path": "packages/lp/model"
     },
     {
@@ -41,37 +152,19 @@
       "path": "packages/view-runtime"
     },
     {
-      "path": "packages/schema-basic"
-    },
-    {
-      "path": "packages/editor-plugins"
-    },
-    {
       "path": "packages/link"
     },
     {
       "path": "packages/markdown"
     },
     {
+      "path": "packages/starter-kit"
+    },
+    {
       "path": "apps/playground"
     },
     {
       "path": "apps/lumen"
-    },
-    {
-      "path": "packages/node-basic"
-    },
-    {
-      "path": "packages/node-table"
-    },
-    {
-      "path": "packages/node-list"
-    },
-    {
-      "path": "packages/node-media"
-    },
-    {
-      "path": "packages/kit-basic"
     }
   ]
 }

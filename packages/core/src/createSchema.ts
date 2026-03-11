@@ -1,8 +1,8 @@
 import { Schema } from "lumenpage-model";
 
-import type { LumenResolvedExtensions, LumenResolvedStructure } from "./types";
+import type { ResolvedExtensions, ResolvedStructure } from "./types";
 
-export const createLumenSchema = (resolved: LumenResolvedStructure | LumenResolvedExtensions) =>
+export const createSchema = (resolved: ResolvedStructure | ResolvedExtensions) =>
   new Schema({
     nodes: resolved.schema.nodes,
     marks: resolved.schema.marks,

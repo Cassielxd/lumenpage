@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <t-header
     class="toolbar"
     role="toolbar"
@@ -523,7 +523,7 @@ const toggleCodeBlock = () => {
   if (run("toggleCodeBlock")) {
     return true;
   }
-  return run("setBlockType", "code_block");
+  return run("setBlockType", "codeBlock");
 };
 const insertHorizontalRule = () => run("insertHorizontalRule");
 const toggleBulletList = () => run("toggleBulletList");

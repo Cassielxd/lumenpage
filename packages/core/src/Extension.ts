@@ -1,17 +1,17 @@
-import type { LumenExtensionConfig } from "./types";
+import type { ExtensionConfig } from "./types";
+import { Extendable } from "./Extendable";
 
-export class LumenExtension<Options = any, Storage = any> {
-  config: LumenExtensionConfig<Options, Storage>;
+export class Extension<Options = any, Storage = any> extends Extendable<
+  Options,
+  Storage,
+  ExtensionConfig<Options, Storage>
+> {
+  type = "extension" as const;
 
-  constructor(config: LumenExtensionConfig<Options, Storage>) {
-    this.config = {
-      kind: "extension",
-      priority: 100,
-      ...config,
-    };
-  }
-
-  static create<Options = any, Storage = any>(config: LumenExtensionConfig<Options, Storage>) {
-    return new LumenExtension(config);
+  static create<O = any, S = any>(
+    config: Partial<ExtensionConfig<O, S>> | (() => Partial<ExtensionConfig<O, S>>) = {}
+  ) {
+    const resolvedConfig = typeof config === "function" ? config() : config;
+    return new Extension<O, S>(resolvedConfig);
   }
 }

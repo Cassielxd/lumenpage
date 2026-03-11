@@ -1,5 +1,5 @@
 import type { PlaygroundLocale } from "../i18n";
-import { openMentionPicker } from "lumenpage-editor-plugins";
+import { openMentionPicker } from "lumenpage-extension-mention";
 import { sanitizeLinkHref } from "lumenpage-link";
 import { TextSelection } from "lumenpage-state";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
@@ -213,8 +213,8 @@ const createTableNode = (
   getCellText: (rowIndex: number, colIndex: number) => string
 ) => {
   const tableType = schema?.nodes?.table;
-  const rowType = schema?.nodes?.table_row;
-  const cellType = schema?.nodes?.table_cell;
+  const rowType = schema?.nodes?.tableRow;
+  const cellType = schema?.nodes?.tableCell;
   if (!tableType || !rowType || !cellType) {
     return null;
   }
@@ -240,33 +240,33 @@ const createTableNode = (
 };
 
 const createTaskListNode = (schema: any, items: string[]) => {
-  const taskListType = schema?.nodes?.task_list;
-  const listItemType = schema?.nodes?.list_item;
-  if (!taskListType || !listItemType) {
+  const taskListType = schema?.nodes?.taskList;
+  const taskItemType = schema?.nodes?.taskItem;
+  if (!taskListType || !taskItemType) {
     return null;
   }
   const safeItems = (items || []).map((item) => String(item || "").trim()).filter(Boolean);
   if (safeItems.length === 0) {
     return null;
   }
-  const listItems = [];
+  const taskItems = [];
   for (const item of safeItems) {
     const paragraph = createParagraphNode(schema, item);
     if (!paragraph) {
       return null;
     }
-    const listItem =
-      listItemType.createAndFill?.({ checked: false }, [paragraph]) ??
-      listItemType.create?.({ checked: false }, [paragraph]) ??
+    const taskItem =
+      taskItemType.createAndFill?.({ checked: false }, [paragraph]) ??
+      taskItemType.create?.({ checked: false }, [paragraph]) ??
       null;
-    if (!listItem) {
+    if (!taskItem) {
       return null;
     }
-    listItems.push(listItem);
+    taskItems.push(taskItem);
   }
   return (
-    taskListType.createAndFill?.(null, listItems) ??
-    taskListType.create?.(null, listItems) ??
+    taskListType.createAndFill?.(null, taskItems) ??
+    taskListType.create?.(null, taskItems) ??
     null
   );
 };
@@ -285,8 +285,8 @@ const createHeadingNode = (schema: any, text: string, level = 2) => {
 };
 
 const createBulletListNode = (schema: any, items: string[]) => {
-  const bulletListType = schema?.nodes?.bullet_list;
-  const listItemType = schema?.nodes?.list_item;
+  const bulletListType = schema?.nodes?.bulletList;
+  const listItemType = schema?.nodes?.listItem;
   if (!bulletListType || !listItemType) {
     return null;
   }

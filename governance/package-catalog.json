@@ -106,39 +106,194 @@
       "visibility": "internal",
       "action": "keep"
     },
-    "lumenpage-schema-basic": {
+    "lumenpage-starter-kit": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-kit-basic": {
+    "lumenpage-extension-active-block": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-basic": {
+    "lumenpage-extension-base-keymap": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-media": {
+    "lumenpage-extension-block-id": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-list": {
+    "lumenpage-extension-blockquote": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-node-table": {
+    "lumenpage-extension-bold": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-editor-plugins": {
+    "lumenpage-extension-bullet-list": {
       "layer": "extensions",
-      "visibility": "internal",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-canvas-keymap": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-code-block": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-code": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-document": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-drag-handle": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-editing-commands": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-heading": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-hard-break": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-undo-redo": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-horizontal-rule": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-image": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-italic": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-link": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-list-item": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-mention": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-ordered-list": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-page-break": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-paragraph": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-popup": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-selection-bubble": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-smart-input-rules": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-strike": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-subscript": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-superscript": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-table": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-task-item": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-task-list": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-text": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-text-style": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-underline": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-video": {
+      "layer": "extensions",
+      "visibility": "public",
       "action": "keep"
     },
     "lumenpage-markdown": {

@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-extension-*": ["../extension-*/src/index.ts"],
+      "lumenpage-extension-base-keymap": ["../extension-base-keymap/src/index.ts"],
+      "lumenpage-extension-canvas-keymap": ["../extension-canvas-keymap/src/index.ts"],
+      "lumenpage-extension-editing-commands": ["../extension-editing-commands/src/index.ts"],
+      "lumenpage-extension-smart-input-rules": ["../extension-smart-input-rules/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

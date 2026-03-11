@@ -25,7 +25,9 @@
     "lumenpage-inputrules": "workspace:*",
     "lumenpage-keymap": "workspace:*",
     "lumenpage-layout-engine": "workspace:*",
+    "lumenpage-link": "workspace:*",
     "lumenpage-model": "workspace:*",
+    "lumenpage-state": "workspace:*",
     "lumenpage-view-canvas": "workspace:*"
   },
   "devDependencies": {

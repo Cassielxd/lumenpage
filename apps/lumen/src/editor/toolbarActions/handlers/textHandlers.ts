@@ -115,7 +115,7 @@ export const createTextActionHandlers = ({
   },
   "code-block": () => {
     if (!run("toggleCodeBlock")) {
-      run("setBlockType", "code_block");
+      run("setBlockType", "codeBlock");
     }
   },
   image: () => {

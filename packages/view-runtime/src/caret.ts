@@ -1,6 +1,6 @@
 /*
- * 文件说明：光标/命中逻辑。
- * 主要职责：根据文本偏移计算光标位置；根据坐标反算偏移。
+ * 鏂囦欢璇存槑锛氬厜鏍?鍛戒腑閫昏緫銆?
+ * 涓昏鑱岃矗锛氭牴鎹枃鏈亸绉昏绠楀厜鏍囦綅缃紱鏍规嵁鍧愭爣鍙嶇畻鍋忕Щ銆?
  */
 
 import { measureTextWidth, getFontSize } from "./measure";
@@ -84,7 +84,7 @@ const isVisualBlockLine = (line) => {
     line.videoMeta ||
     line.blockType === "image" ||
     line.blockType === "video" ||
-    line.blockType === "horizontal_rule"
+    line.blockType === "horizontalRule"
   );
 };
 
@@ -250,7 +250,7 @@ export function offsetAtX(font, line, x) {
   return line.start + line.text.length;
 }
 
-/* 光标矩形：根据偏移定位到行，再按字体大小居中 */
+/* 鍏夋爣鐭╁舰锛氭牴鎹亸绉诲畾浣嶅埌琛岋紝鍐嶆寜瀛椾綋澶у皬灞呬腑 */
 
 export function getCaretRect(layout, offset, scrollTop, viewportWidth, textLength, options = null) {
   const info = findLineForOffset(layout, offset, textLength, options);
@@ -331,7 +331,7 @@ const pickLineAtPoint = (lines, x, pageX) => {
   return best || lines[0];
 };
 
-/* 命中测试：根据坐标选择最近行并反算偏移 */
+/* 鍛戒腑娴嬭瘯锛氭牴鎹潗鏍囬€夋嫨鏈€杩戣骞跺弽绠楀亸绉?*/
 
 export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength) {
   if (!layout || layout.pages.length === 0) {

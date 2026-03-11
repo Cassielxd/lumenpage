@@ -22,10 +22,16 @@
   "license": "MIT",
   "dependencies": {
     "@types/markdown-it": "^14.0.0",
+    "lumenpage-core": "workspace:*",
+    "lumenpage-extension-image": "workspace:*",
+    "lumenpage-extension-link": "workspace:*",
+    "lumenpage-extension-table": "workspace:*",
+    "lumenpage-extension-underline": "workspace:*",
+    "lumenpage-extension-video": "workspace:*",
     "lumenpage-link": "workspace:*",
-    "lumenpage-schema-basic": "workspace:*",
     "markdown-it": "^14.0.0",
-    "lumenpage-model": "workspace:*"
+    "lumenpage-model": "workspace:*",
+    "lumenpage-starter-kit": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

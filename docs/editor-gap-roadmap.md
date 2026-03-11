@@ -31,8 +31,8 @@
 
 - `packages/model` / `packages/state` / `packages/transform` / `packages/commands`：ProseMirror 思想的 headless 核心能力。
 - `packages/view-canvas`：Canvas 视图实现，负责输入、布局、渲染、命中、坐标映射。
-- `packages/schema-basic` + `packages/kit-basic`：默认 schema、命令、节点渲染注册。
-- `packages/node-*`：节点级扩展（paragraph、heading、list、table、image、video 等）。
+- `packages/starter-kit` + `packages/extension-*`：默认 schema、命令、节点/mark/交互扩展注册。
+- `packages/extension-*`：节点级与交互级扩展（paragraph、heading、list、table、image、video 等）。
 - `apps/playground`：集成入口、调试面板、Smoke 触发与回归汇总。
 
 ### 2. 关键数据流

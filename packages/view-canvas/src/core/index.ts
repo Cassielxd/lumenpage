@@ -1,7 +1,7 @@
 ﻿/*
  * 鏂囦欢璇存槑锛氭牳蹇冨簱瀵煎嚭鍏ュ彛銆? * 涓昏鑱岃矗锛氱粺涓€杈撳嚭缂栬緫鍣ㄧ姸鎬併€佸懡浠ゃ€侀€夊尯涓庡竷灞€鐩稿叧 API銆? */
 
-export { createEditorState, applyTransaction } from "./editor/state";
+export { applyTransaction } from "./editor/state";
 
 export { LayoutPipeline } from "../layout-pagination";
 

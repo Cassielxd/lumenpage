@@ -185,8 +185,8 @@
   <t-dialog
     :visible="colorDialogVisible"
     :header="colorDialogTitle"
-    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '确定'"
-    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '取消'"
+    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '??'"
+    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '??'"
     :close-on-overlay-click="false"
     :close-on-esc-keydown="true"
     width="440"
@@ -573,10 +573,10 @@ const collectRuntimeFontFamilies = () => {
 const getCurrentTextStyleAttrs = () => {
   const view = getView();
   const state = view?.state;
-  if (!state?.selection?.$from || !state?.schema?.marks?.text_style) {
+  if (!state?.selection?.$from || !state?.schema?.marks?.textStyle) {
     return null;
   }
-  const textStyleType = state.schema.marks.text_style;
+  const textStyleType = state.schema.marks.textStyle;
   const marks = state.selection.empty
     ? state.storedMarks || state.selection.$from.marks()
     : state.doc.resolve(state.selection.from).marks();
@@ -635,7 +635,7 @@ const syncInlineFontControls = () => {
 };
 
 const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel = localeKey.value === "en-US" ? "Clear font family" : "清除字体";
+  const clearLabel = localeKey.value === "en-US" ? "Clear font family" : "????";
   const values = new Map<string, string>();
   const append = (family: string) => {
     const value = String(family || "").trim();
@@ -662,7 +662,7 @@ const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
 });
 
 const fontSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel = localeKey.value === "en-US" ? "Clear font size" : "清除字号";
+  const clearLabel = localeKey.value === "en-US" ? "Clear font size" : "????";
   const current = Number(fontSizeValue.value);
   const set = new Set<number>([
     ...TOOLBAR_FONT_SIZE_PRESETS,
@@ -687,7 +687,7 @@ const handleInlineFontFamilyChange = (value: unknown) => {
   const ok = !next ? run("clearTextFontFamily") : run("setTextFontFamily", next);
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(localeKey.value === "en-US" ? "Unable to apply font family" : "当前无法应用字体");
+    window.alert(localeKey.value === "en-US" ? "Unable to apply font family" : "????????");
   }
   syncInlineFontControls();
 };
@@ -704,21 +704,21 @@ const handleInlineFontSizeChange = (value: unknown) => {
     const ok = run("clearTextFontSize");
     pendingInlineStyleSelection.value = null;
     if (!ok) {
-      window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "当前无法应用字号");
+      window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "????????");
     }
     syncInlineFontControls();
     return;
   }
   const size = Number(next);
   if (!Number.isFinite(size) || size <= 0) {
-    window.alert(localeKey.value === "en-US" ? "Invalid font size" : "字号无效");
+    window.alert(localeKey.value === "en-US" ? "Invalid font size" : "????");
     syncInlineFontControls();
     return;
   }
   const ok = run("setTextFontSize", Math.round(size));
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "当前无法应用字号");
+    window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "????????");
   }
   syncInlineFontControls();
 };
@@ -1121,7 +1121,7 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (!item.implemented) {
-    MessagePlugin.warning(localeKey.value === "en-US" ? "In development" : "开发中");
+    MessagePlugin.warning(localeKey.value === "en-US" ? "In development" : "???");
     return;
   }
   if (isToolbarColorAction(item.action)) {

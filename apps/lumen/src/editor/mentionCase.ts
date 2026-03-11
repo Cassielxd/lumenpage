@@ -1,4 +1,4 @@
-import type { MentionItem, MentionPluginOptions } from "lumenpage-editor-plugins";
+import type { MentionItem, MentionPluginOptions } from "lumenpage-extension-mention";
 
 const LUMEN_MENTION_ITEMS: MentionItem[] = [
   { id: "u-alex", label: "Alex" },

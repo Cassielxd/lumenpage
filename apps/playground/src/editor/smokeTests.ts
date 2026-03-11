@@ -1,7 +1,6 @@
-﻿import { basicCommands, createCanvasEditorKeymap, runCommand } from "lumenpage-kit-basic";
 import { docPosToTextOffset, textOffsetToDocPos } from "lumenpage-view-canvas";
 import { NodeSelection, TextSelection } from "lumenpage-state";
-import { CellSelection } from "lumenpage-node-table";
+import { CellSelection } from "lumenpage-extension-table";
 import { DOMParser as PMDOMParser, DOMSerializer } from "lumenpage-model";
 import { normalizeNavigableHref } from "lumenpage-link";
 import { loadMarkdownModule } from "./markdownBridge";
@@ -34,7 +33,7 @@ const getLegacyConfigHits = () => {
 const findFirstTableCellPos = (doc: any) => {
   let tableCellPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
-    if (node.type?.name === "table_cell") {
+    if (node.type?.name === "tableCell") {
       tableCellPos = pos;
       return false;
     }
@@ -46,7 +45,7 @@ const findFirstTableCellPos = (doc: any) => {
 const findFirstTableCellCursorPos = (doc: any) => {
   let cursorPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
-    if (node.type?.name !== "table_cell") {
+    if (node.type?.name !== "tableCell") {
       return true;
     }
     if (node.childCount > 0 && node.child(0)?.isTextblock) {
@@ -62,7 +61,7 @@ const findFirstTableCellCursorPos = (doc: any) => {
 const findFirstTableCellParagraphEndPos = (doc: any) => {
   let cursorPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
-    if (node.type?.name !== "table_cell") {
+    if (node.type?.name !== "tableCell") {
       return true;
     }
     let childPos = pos + 1;
@@ -83,7 +82,7 @@ const findFirstTableCellParagraphEndPos = (doc: any) => {
 const findFirstTableCellParagraphStartPos = (doc: any) => {
   let cursorPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
-    if (node.type?.name !== "table_cell") {
+    if (node.type?.name !== "tableCell") {
       return true;
     }
     if (node.childCount > 0 && node.child(0)?.isTextblock) {
@@ -135,6 +134,30 @@ const verifyOffsetRoundtrip = (doc: any, pos: number) => {
   };
 };
 
+const getCommandRuntime = (editorView: any) => editorView?._internals ?? null;
+
+const getBasicCommand = (editorView: any, name: string) =>
+  getCommandRuntime(editorView)?.basicCommands?.[name] ?? null;
+
+const getKeymapCommand = (editorView: any, name: string) =>
+  getCommandRuntime(editorView)?.commandConfig?.keymap?.[name] ?? null;
+
+const runViewCommand = (editorView: any, command: any) => {
+  if (typeof command !== "function") {
+    return false;
+  }
+  const runtimeRunCommand = getCommandRuntime(editorView)?.runCommand;
+  if (typeof runtimeRunCommand === "function") {
+    return runtimeRunCommand(
+      command,
+      editorView?.state,
+      (tr: any) => editorView.dispatch(tr),
+      editorView
+    );
+  }
+  return command(editorView?.state, (tr: any) => editorView.dispatch(tr), editorView);
+};
+
 export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const commands = editorView?.commands;
   if (!commands) {
@@ -144,7 +167,7 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
   const cellPos = findFirstTableCellPos(editorView.state.doc);
   const cursorPos = findFirstTableCellCursorPos(editorView.state.doc);
   if (!Number.isFinite(cellPos) || !Number.isFinite(cursorPos)) {
-    const message = "[table-smoke] skipped: no table_cell found.";
+    const message = "[table-smoke] skipped: no tableCell found.";
     console.warn(message);
     appendDebugLine(debugPanelEl, message);
     return;
@@ -257,11 +280,7 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
 
     const beforeHead = editorView.state.selection.head;
     const beforeRoundtrip = verifyOffsetRoundtrip(editorView.state.doc, beforeHead);
-    const enterHandled = runCommand(
-      basicCommands.enter,
-      editorView.state,
-      (tr) => editorView.dispatch(tr)
-    );
+    const enterHandled = runViewCommand(editorView, getBasicCommand(editorView, "enter"));
     const afterHead = editorView.state.selection.head;
     const inTableAfter = !!findAncestorNodeByType(editorView.state.selection.$from, "table");
     const afterRoundtrip = verifyOffsetRoundtrip(editorView.state.doc, afterHead);
@@ -328,11 +347,11 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
     splitHandled &&
     afterSplit.ok &&
     cellRangeSelectHandled &&
-    cellRangeSelectionType === "table_cell" &&
+    cellRangeSelectionType === "tableCell" &&
     mergeSelectedHandled &&
     afterCellRange.ok &&
     verticalRangeSelectHandled &&
-    verticalRangeSelectionType === "table_cell" &&
+    verticalRangeSelectionType === "tableCell" &&
     mergeVerticalHandled &&
     splitVerticalHandled &&
     afterVerticalMergeSplit.ok &&
@@ -349,7 +368,7 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
 
 export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const commands = editorView?.commands;
-  const keymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
+  const keymap = (getCommandRuntime(editorView)?.commandConfig?.keymap ?? {}) as Record<string, any>;
   if (!commands || !keymap) {
     return;
   }
@@ -363,12 +382,7 @@ export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLE
     return;
   }
 
-  const runWithDispatch = (command: any) => {
-    if (typeof command !== "function") {
-      return false;
-    }
-    return runCommand(command, editorView.state, (tr) => editorView.dispatch(tr));
-  };
+  const runWithDispatch = (command: any) => runViewCommand(editorView, command);
 
   const setTextSelection = (pos: number, bias: 1 | -1 = 1) => {
     let selection: any;
@@ -425,7 +439,7 @@ export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLE
   const enterHandled = runWithDispatch(keymap.Enter);
   const selectionTypeAfterEnter = editorView.state.selection?.toJSON?.()?.type ?? null;
   const inTableAfterEnter = !!findAncestorNodeByType(editorView.state.selection?.$from, "table");
-  const enterCollapsedToText = selectionTypeAfterEnter !== "table_cell" && inTableAfterEnter;
+  const enterCollapsedToText = selectionTypeAfterEnter !== "tableCell" && inTableAfterEnter;
 
   const summary = {
     backspaceBoundaryHandled,
@@ -451,7 +465,7 @@ export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLE
     deleteBoundaryHandled &&
     deleteBoundaryStable &&
     selectRangeHandled &&
-    selectionTypeBeforeDelete === "table_cell" &&
+    selectionTypeBeforeDelete === "tableCell" &&
     backspaceRangeHandled &&
     tableShapeStable &&
     selectRangeForEnterHandled &&
@@ -490,7 +504,7 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
     let i = 0;
     while (i < lines.length) {
       const line = lines[i];
-      if (line?.blockType !== "ordered_list") {
+      if (line?.blockType !== "orderedList") {
         i += 1;
         continue;
       }
@@ -500,7 +514,7 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
       while (j < lines.length) {
         const current = lines[j];
         const sameBlock =
-          current?.blockType === "ordered_list" &&
+          current?.blockType === "orderedList" &&
           ((Number.isFinite(current.blockStart) && current.blockStart === blockStart) ||
             (!Number.isFinite(current.blockStart) && blockStart === null));
         if (!sameBlock) {
@@ -735,9 +749,7 @@ export const runPaginationRegressionSmoke = async (
   const enterCount = 18;
   const stressDoc = buildPaginationRegressionDoc(baseParagraphCount);
   const original = getJSON();
-  const dispatch = (tr: any) => editorView.dispatch(tr);
-  const keymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
-  const keymapEnter = keymap.Enter;
+  const keymapEnter = getKeymapCommand(editorView, "Enter");
 
   let applied = false;
   let restored = false;
@@ -780,10 +792,10 @@ export const runPaginationRegressionSmoke = async (
     for (let index = 0; index < enterCount; index += 1) {
       let handled = false;
       if (typeof keymapEnter === "function") {
-        handled = runCommand(keymapEnter as any, editorView.state, dispatch);
+        handled = runViewCommand(editorView, keymapEnter);
       }
       if (!handled) {
-        handled = runCommand(basicCommands.enter, editorView.state, dispatch);
+        handled = runViewCommand(editorView, getBasicCommand(editorView, "enter"));
       }
       if (!handled) {
         break;
@@ -879,7 +891,7 @@ const hasMarkInSelection = (state: any, markName: string) => {
 const findFirstListItemTextEndPos = (doc: any) => {
   let endPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
-    if (node.type?.name !== "list_item") {
+    if (node.type?.name !== "listItem") {
       return true;
     }
     let childPos = pos + 1;
@@ -903,7 +915,7 @@ const countListItemsInCurrentList = (selection: any) => {
     return null;
   }
   const list =
-    findAncestorNodeByType($from, "ordered_list") || findAncestorNodeByType($from, "bullet_list");
+    findAncestorNodeByType($from, "orderedList") || findAncestorNodeByType($from, "bulletList");
   if (!list) {
     return null;
   }
@@ -936,9 +948,9 @@ export const runListBehaviorSmoke = (editorView: any, debugPanelEl: HTMLElement 
   editorView.dispatch(editorView.state.tr.setSelection(selection).scrollIntoView());
 
   const toOrdered = commands.toggleOrderedList?.() === true;
-  const orderedActive = !!findAncestorNodeByType(editorView.state.selection.$from, "ordered_list");
+  const orderedActive = !!findAncestorNodeByType(editorView.state.selection.$from, "orderedList");
   const toBullet = commands.toggleBulletList?.() === true;
-  const bulletActive = !!findAncestorNodeByType(editorView.state.selection.$from, "bullet_list");
+  const bulletActive = !!findAncestorNodeByType(editorView.state.selection.$from, "bulletList");
 
   const itemEndPos = findFirstListItemTextEndPos(editorView.state.doc);
   let enterHandled = false;
@@ -957,17 +969,15 @@ export const runListBehaviorSmoke = (editorView: any, debugPanelEl: HTMLElement 
     }
     editorView.dispatch(editorView.state.tr.setSelection(listSelection).scrollIntoView());
     beforeCount = countListItemsInCurrentList(editorView.state.selection);
-    const dispatch = (tr: any) => editorView.dispatch(tr);
-  const listKeymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
-  const enterCommand = listKeymap.Enter;
+    const enterCommand = getKeymapCommand(editorView, "Enter");
     enterHandled =
       (typeof enterCommand === "function" &&
-        runCommand(enterCommand as any, editorView.state, dispatch)) ||
-      runCommand(basicCommands.enter, editorView.state, dispatch);
+        runViewCommand(editorView, enterCommand)) ||
+      runViewCommand(editorView, getBasicCommand(editorView, "enter"));
     afterCount = countListItemsInCurrentList(editorView.state.selection);
     stillInList =
-      !!findAncestorNodeByType(editorView.state.selection.$from, "ordered_list") ||
-      !!findAncestorNodeByType(editorView.state.selection.$from, "bullet_list");
+      !!findAncestorNodeByType(editorView.state.selection.$from, "orderedList") ||
+      !!findAncestorNodeByType(editorView.state.selection.$from, "bulletList");
   }
 
   const enterSplitOk =
@@ -1011,7 +1021,7 @@ const validateCodeBlockContainer = (line: any, pageX: number, tolerance: number)
     return null;
   }
   return {
-    kind: "code_block",
+    kind: "codeBlock",
     lineStart: line?.start ?? null,
     lineX: line?.x ?? null,
     padding,
@@ -1068,7 +1078,7 @@ export const runBlockOutlineAlignmentSmoke = (
     const lines = page?.lines || [];
     for (const line of lines) {
       const codeIssue =
-        line?.blockType === "code_block"
+        line?.blockType === "codeBlock"
           ? validateCodeBlockContainer(line, pageX, tolerance)
           : null;
       if (codeIssue) {
@@ -1884,8 +1894,8 @@ export const runToolCommandSmoke = (editorView: any, debugPanelEl: HTMLElement |
     };
   };
 
-  const bold = runToggleMarkCycle("strong", commands.toggleBold);
-  const italic = runToggleMarkCycle("em", commands.toggleItalic);
+  const bold = runToggleMarkCycle("bold", commands.toggleBold);
+  const italic = runToggleMarkCycle("italic", commands.toggleItalic);
   const underline = runToggleMarkCycle("underline", commands.toggleUnderline);
 
   let linkAddOk = false;
@@ -1999,7 +2009,7 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
   const snapshotText = () =>
     editorView.state.doc.textBetween(0, editorView.state.doc.content.size, "\n", "\n");
 
-  // 闁稿繐鐗婄敮鏉棵圭€ｎ偅笑闁告熬绠戣ぐ鏌ュ礃濞嗘瑧绀夐梺顒€鐏濋崢銈夊捶閵娿儱娑ч悹鍥╃帛鑶╃€殿喖绻嬬粭鍛村箮婵犲倶浜奸悹鎰╁劥椤曘倝宕氶妶鍕 paste FAIL.
+  // 闂佺绻愰悧濠勬暜閺夋５鍦偓锝庡亝绗戦梺鍛婄啲缁犳垼銇愰弻銉ョ婵炲棙鐟х粈澶愭⒑椤掆偓閻忔繈宕㈤妶澶婃嵍闁靛鍎卞☉褔鎮归崶鈺冨笡閼垛晝鈧鍠栫换瀣箔閸涙潙绠┑鐘插€舵禍濂告偣閹扳晛鍔ユい鏇樺€濆畷姘跺Χ閸曨喚顦?paste FAIL.
   const probeBefore = snapshotText();
   const probeMarker = "__PASTE_PROBE__";
   const probeFrom = editorView.state.selection.from;
@@ -2012,7 +2022,7 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
     appendDebugLine(debugPanelEl, text);
     return;
   }
-  // 闁搞儳鍋炵划鎾箳閵忋倖瀚涢柟缁樺笒閸欏棝濡存穱妾?
+  // 闂佹悶鍎抽崑鐐靛垝閹绢喖绠抽柕蹇嬪€栫€氭盯鏌熺紒妯虹瑨闁告瑥妫濇俊瀛樼┍濡?
   editorView.dispatch(
     editorView.state.tr.delete(probeFrom, Math.min(probeFrom + probeMarker.length, editorView.state.doc.content.size))
   );
@@ -3001,19 +3011,19 @@ export const runMarkdownIoSmoke = async (debugPanelEl: HTMLElement | null) => {
         marks.length > 0 ? markedText.mark(marks as any) : markedText;
       const blocks: any[] = [paragraphType.create(null, [markedNode])];
 
-      if (node.table && node.table_row && node.table_cell) {
+      if (node.table && node.tableRow && node.tableCell && node.tableHeader) {
         const makeCell = (text: string) =>
-          node.table_cell.create(
+          node.tableCell.create(
             { colspan: 1, rowspan: 1 },
             [paragraphType.create(null, text ? [schema.text(text)] : undefined)]
           );
         const makeHeaderCell = (text: string) =>
-          node.table_cell.create(
-            { colspan: 1, rowspan: 1, header: true },
+          node.tableHeader.create(
+            { colspan: 1, rowspan: 1 },
             [paragraphType.create(null, text ? [schema.text(text)] : undefined)]
           );
-        const row1 = node.table_row.create(null, [makeHeaderCell("h1"), makeHeaderCell("h2")]);
-        const row2 = node.table_row.create(null, [makeCell("a2"), makeCell("b2")]);
+        const row1 = node.tableRow.create(null, [makeHeaderCell("h1"), makeHeaderCell("h2")]);
+        const row2 = node.tableRow.create(null, [makeCell("a2"), makeCell("b2")]);
         blocks.push(node.table.create({ id: null }, [row1, row2]));
       }
 
@@ -3033,7 +3043,7 @@ export const runMarkdownIoSmoke = async (debugPanelEl: HTMLElement | null) => {
       extendedSerializedLen = typeof extendedSerialized === "string" ? extendedSerialized.length : 0;
       extendedSerializeOk = typeof extendedSerialized === "string" && extendedSerialized.length > 0;
       const hasTable = !node.table || extendedSerialized.includes("<table>");
-      const hasTableHeader = !node.table || !node.table_cell || extendedSerialized.includes("<th>");
+      const hasTableHeader = !node.table || !node.tableHeader || extendedSerialized.includes("<th>");
       const hasVideo = !node.video || /<video\b|<iframe\b/.test(extendedSerialized);
       const hasStrike = !mark.strike || extendedSerialized.includes("~~");
       const hasUnderline = !mark.underline || extendedSerialized.includes("<u>");
@@ -3546,7 +3556,7 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
         content: [
           {
             type: "text",
-            text: "中文 English 混排 123，标点。CJK + Latin wrap probe.",
+            text: "涓枃 English 娣锋帓 123锛屾爣鐐广€侰JK + Latin wrap probe.",
           },
         ],
       },
@@ -3555,7 +3565,7 @@ export const runI18nSmoke = async (editorView: any, debugPanelEl: HTMLElement | 
         content: [
           {
             type: "text",
-            text: "第二段 mixed：测试行分割与坐标映射稳定。",
+            text: "CJK mixed wrap probe with ASCII fallback 456.",
           },
         ],
       },

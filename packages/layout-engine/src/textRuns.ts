@@ -1,5 +1,5 @@
 /*
- * runs 生成器：将文档/段落/文本转换为带样式的 runs，并维护全局偏移。
+ * runs 鐢熸垚鍣細灏嗘枃妗?娈佃惤/鏂囨湰杞崲涓哄甫鏍峰紡鐨?runs锛屽苟缁存姢鍏ㄥ眬鍋忕Щ銆?
  */
 
 
@@ -40,7 +40,7 @@ const normalizeFontSize = (value: unknown) => {
   return Math.round(size);
 };
 
-// 根据 marks 生成样式并缓存。
+// 鏍规嵁 marks 鐢熸垚鏍峰紡骞剁紦瀛樸€?
 const buildStyle = (baseFont, marks, settings = null) => {
   let bold = false;
 
@@ -69,12 +69,12 @@ const buildStyle = (baseFont, marks, settings = null) => {
   if (marks && marks.length) {
     for (const mark of marks) {
       switch (mark.type.name) {
-        case "strong":
+        case "bold":
           bold = true;
 
           break;
 
-        case "em":
+        case "italic":
           italic = true;
 
           break;
@@ -112,7 +112,7 @@ const buildStyle = (baseFont, marks, settings = null) => {
 
           break;
 
-        case "text_style":
+        case "textStyle":
           if (mark?.attrs) {
             textColor = normalizeCssColor(mark.attrs.color) ?? textColor;
             textBackground = normalizeCssColor(mark.attrs.background) ?? textBackground;
@@ -177,7 +177,7 @@ const buildStyle = (baseFont, marks, settings = null) => {
 
   return style;
 };
-// 合并连续文本 run。
+// 鍚堝苟杩炵画鏂囨湰 run銆?
 const appendRun = (runs, run) => {
   const last = runs[runs.length - 1];
 
@@ -192,7 +192,7 @@ const appendRun = (runs, run) => {
   runs.push(run);
 };
 
-// 将局部 run 偏移映射为全局偏移。
+// 灏嗗眬閮?run 鍋忕Щ鏄犲皠涓哄叏灞€鍋忕Щ銆?
 const applyRunOffset = (runs, offset) => {
   if (!offset) {
     return;
@@ -209,7 +209,7 @@ const applyRunOffset = (runs, offset) => {
   }
 };
 
-// 写入 block 元信息。
+// 鍐欏叆 block 鍏冧俊鎭€?
 const applyBlockMeta = (runs, meta) => {
   if (!meta) {
     return;
@@ -234,7 +234,7 @@ const applyBlockMeta = (runs, meta) => {
   }
 };
 
-// 文本块转 runs。
+// 鏂囨湰鍧楄浆 runs銆?
 export function textblockToRuns(
   block,
 
@@ -252,10 +252,10 @@ export function textblockToRuns(
 
   let offset = 0;
 
-  // 子节点可能是文本或 hard_break。
+  // 瀛愯妭鐐瑰彲鑳芥槸鏂囨湰鎴?hardBreak銆?
   block.forEach((child) => {
     if (!child.isText) {
-      if (child.type?.name === "hard_break") {
+      if (child.type?.name === "hardBreak") {
         runs.push({
           type: "break",
 
@@ -365,7 +365,7 @@ export function textblockToRuns(
   return { runs, length: offset, blockType, blockId, blockAttrs, blockStart };
 }
 
-// 文档转 runs。
+// 鏂囨。杞?runs銆?
 export function docToRuns(doc, settings, registry = null) {
   if (doc?.isTextblock) {
     const local = textblockToRuns(doc, settings, doc.type?.name, 0, doc.attrs, 0);
@@ -377,7 +377,7 @@ export function docToRuns(doc, settings, registry = null) {
 
   let offset = 0;
 
-  // 允许节点自定义 toRuns，否则走默认文本块流程。
+  // 鍏佽鑺傜偣鑷畾涔?toRuns锛屽惁鍒欒蛋榛樿鏂囨湰鍧楁祦绋嬨€?
   doc.forEach((block, _pos, index) => {
     let local = null;
 
@@ -445,7 +445,7 @@ export function docToRuns(doc, settings, registry = null) {
   return { runs, length: offset };
 }
 
-// 纯文本转 runs。
+// 绾枃鏈浆 runs銆?
 export function textToRuns(text, settings) {
   const runs = [];
 

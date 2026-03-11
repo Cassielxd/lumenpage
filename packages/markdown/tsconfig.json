@@ -6,8 +6,11 @@
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-model": ["../model/src/index.ts"],
-      "lumenpage-schema-basic": ["../schema-basic/src/index.ts"]
+      "lumenpage-core": ["../core/src/index.ts"],
+      "lumenpage-extension-*": ["../extension-*/src/index.ts"],
+      "lumenpage-model": ["../lp/model/src/index.ts"],
+      "lumenpage-node-*": ["../node-*/src/index.ts"],
+      "lumenpage-starter-kit": ["../starter-kit/src/index.ts"]
     }
   },
   "include": ["src/**/*"]

@@ -1,4 +1,4 @@
-﻿import { Slice } from "lumenpage-model";
+import { Slice } from "lumenpage-model";
 
 import { docPosToTextOffset } from "../../core";
 import { NodeSelection, Selection } from "lumenpage-state";
@@ -130,7 +130,7 @@ export const createDragHandlers = ({
       Number(offset) >= Number(lineEnd);
     const blockType = line?.blockType || null;
     const isVisualBlock =
-      blockType === "image" || blockType === "video" || blockType === "horizontal_rule";
+      blockType === "image" || blockType === "video" || blockType === "horizontalRule";
     const blockWidth = Number.isFinite(line?.width) ? Number(line.width) : null;
     const lineX = Number.isFinite(line?.x) ? Number(line.x) : null;
     const marginLeft = Number.isFinite(settings?.margin?.left) ? Number(settings.margin.left) : null;

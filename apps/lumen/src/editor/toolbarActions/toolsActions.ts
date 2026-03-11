@@ -112,7 +112,7 @@ const replaceSelectionWithNode = (getView: GetView, node: any) => {
 };
 
 const createCodeBlockNode = (schema: any, source: string) => {
-  const codeBlockType = schema?.nodes?.code_block;
+  const codeBlockType = schema?.nodes?.codeBlock;
   if (!codeBlockType) {
     return null;
   }
@@ -309,7 +309,7 @@ export const createToolsActions = ({
   const insertQrCode = async () => {
     const texts = resolveTexts(getLocaleKey());
     const content = await readInput({
-      title: dialogTitle("Insert QR Code", "插入二维码"),
+      title: dialogTitle("Insert QR Code", "?????"),
       label: texts.promptQrCodeContent,
       defaultValue: texts.defaultQrCodeContent,
       required: true,
@@ -330,7 +330,7 @@ export const createToolsActions = ({
   const insertBarcode = async () => {
     const texts = resolveTexts(getLocaleKey());
     const content = await readInput({
-      title: dialogTitle("Insert Barcode", "插入条形码"),
+      title: dialogTitle("Insert Barcode", "?????"),
       label: texts.promptBarcodeContent,
       defaultValue: texts.defaultBarcodeContent,
       required: true,
@@ -349,7 +349,7 @@ export const createToolsActions = ({
   const insertSignature = async () => {
     const texts = resolveTexts(getLocaleKey());
     const name = await readInput({
-      title: dialogTitle("Insert Signature", "插入签名"),
+      title: dialogTitle("Insert Signature", "????"),
       label: texts.promptSignatureName,
       defaultValue: texts.defaultSignatureName,
       required: true,
@@ -364,7 +364,7 @@ export const createToolsActions = ({
   const insertSeal = async () => {
     const texts = resolveTexts(getLocaleKey());
     const raw = await readInput({
-      title: dialogTitle("Insert Seal", "插入印章"),
+      title: dialogTitle("Insert Seal", "????"),
       label: texts.promptSealText,
       defaultValue: texts.defaultSealText,
       required: true,
@@ -378,7 +378,7 @@ export const createToolsActions = ({
   const insertDiagrams = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Diagram", "插入流程图"),
+      title: dialogTitle("Insert Diagram", "?????"),
       label: texts.promptDiagramsCode,
       defaultValue: texts.defaultDiagramCode,
       type: "textarea",
@@ -393,7 +393,7 @@ export const createToolsActions = ({
   const insertEcharts = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert ECharts", "插入图表"),
+      title: dialogTitle("Insert ECharts", "????"),
       label: texts.promptEchartsCode,
       defaultValue: texts.defaultEchartsCode,
       type: "textarea",
@@ -408,7 +408,7 @@ export const createToolsActions = ({
   const insertMermaid = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Mermaid", "插入 Mermaid"),
+      title: dialogTitle("Insert Mermaid", "?? Mermaid"),
       label: texts.promptMermaidCode,
       defaultValue: texts.defaultMermaidCode,
       type: "textarea",
@@ -423,7 +423,7 @@ export const createToolsActions = ({
   const insertMindMap = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Mind Map", "插入思维导图"),
+      title: dialogTitle("Insert Mind Map", "??????"),
       label: texts.promptMindMapCode,
       defaultValue: texts.defaultMindMapCode,
       type: "textarea",
@@ -439,7 +439,7 @@ export const createToolsActions = ({
     const texts = resolveTexts(getLocaleKey());
     const selected = getSelectionText(getView).trim();
     const result = await requestInputDialog({
-      title: dialogTitle("Chinese Case", "中文大小写转换"),
+      title: dialogTitle("Chinese Case", "???????"),
       width: 560,
       fields: [
         {
@@ -455,8 +455,8 @@ export const createToolsActions = ({
           options:
             getLocaleKey() === "en-US"
               ? [
-                  { label: "Upper", value: "upper" },
-                  { label: "Lower", value: "lower" },
+                  { label: "??", value: "upper" },
+                  { label: "??", value: "lower" },
                 ]
               : [
                   { label: "大写", value: "upper" },
