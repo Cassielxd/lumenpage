@@ -24,9 +24,20 @@ export const createStateFlow = ({
         return;
       }
       const prevState = view.state;
-      const nextState = applyTransaction(prevState, tr);
+      const applied =
+        typeof prevState?.applyTransaction === "function"
+          ? prevState.applyTransaction(tr)
+          : { state: applyTransaction(prevState, tr), transactions: [tr] };
+      const nextState = applied?.state ?? prevState;
+      const transactions = Array.isArray(applied?.transactions) ? applied.transactions : [tr];
+      if (transactions.length === 0) {
+        return;
+      }
       const shouldScroll = tr?.scrolledIntoView;
-      const changeEvent = createChangeEvent(tr, prevState, nextState);
+      const changeEvent = createChangeEvent(tr, prevState, nextState, {
+        transactions,
+        appendedTransactions: transactions.slice(1),
+      });
       if (changeEvent?.summary?.blocks?.ids?.length) {
         layoutPipeline.invalidateBlocks(changeEvent.summary.blocks.ids);
       }

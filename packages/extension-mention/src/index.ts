@@ -8,7 +8,7 @@ export const MentionExtension = Extension.create<MentionPluginOptions>({
   addOptions() {
     return {} as MentionPluginOptions;
   },
-  addProseMirrorPlugins() {
+  addPlugins() {
     return [createMentionPlugin(this.options)];
   },
 });

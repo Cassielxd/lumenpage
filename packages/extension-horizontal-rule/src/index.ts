@@ -18,13 +18,13 @@ export const HorizontalRule = Node.create({
   schema: {
     offsetMapping: horizontalRuleNodeSpec.offsetMapping,
   },
-  addLayout() {
+  layout() {
     return {
       renderer: horizontalRuleRenderer,
       pagination: horizontalRuleRenderer?.pagination,
     };
   },
-  addCanvas() {
+  canvas() {
     return {
       nodeSelectionTypes: ["horizontalRule"],
     };

@@ -12,7 +12,6 @@ import type {
   ResolvedExtensions,
   ResolvedState,
   ResolvedStructure,
-  SchemaSpec,
 } from "./types";
 
 const flattenExtensions = (
@@ -30,7 +29,7 @@ const createResolvedSchema = (): ResolvedStructure["schema"] => ({
 });
 
 const createResolvedState = (): ResolvedState => ({
-  proseMirrorPlugins: [],
+  plugins: [],
   keyboardShortcuts: [],
   inputRules: [],
   pasteRules: [],
@@ -76,11 +75,13 @@ export class ExtensionManager {
   editor: any | null;
   schema: any | null;
   nodeRegistry: any | null;
+  private boundEditor: any | null;
 
   constructor(extensions: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput, editor: any = null) {
     this.editor = editor;
     this.schema = null;
     this.nodeRegistry = null;
+    this.boundEditor = null;
     this.extensions = this.resolveExtensions(extensions);
   }
 
@@ -105,16 +106,8 @@ export class ExtensionManager {
         this.applyDirectSchema(schema, instance, directSchema);
       }
 
-      const schemaSpec = callConfigValue(
-        getExtensionField<() => SchemaSpec | null>(instance.extension, "addSchema", ctx),
-        null
-      );
-      if (schemaSpec) {
-        this.applySchemaSpec(schema, schemaSpec, instance.name);
-      }
-
       const layoutHooks = callConfigValue(
-        getExtensionField<() => LayoutHooks | null>(instance.extension, "addLayout", ctx),
+        getExtensionField<() => LayoutHooks | null>(instance.extension, "layout", ctx),
         null
       );
       if (layoutHooks) {
@@ -122,7 +115,7 @@ export class ExtensionManager {
       }
 
       const canvasHooks = callConfigValue(
-        getExtensionField<() => CanvasHooks | null>(instance.extension, "addCanvas", ctx),
+        getExtensionField<() => CanvasHooks | null>(instance.extension, "canvas", ctx),
         null
       );
       if (canvasHooks) {
@@ -159,12 +152,12 @@ export class ExtensionManager {
     for (const instance of instances) {
       const ctx = this.createContext(instance, editor);
 
-      const proseMirrorPlugins = callConfigValue(
-        getExtensionField<() => any[]>(instance.extension, "addProseMirrorPlugins", ctx),
+      const plugins = callConfigValue(
+        getExtensionField<() => any[]>(instance.extension, "addPlugins", ctx),
         []
       );
-      if (proseMirrorPlugins.length) {
-        state.proseMirrorPlugins.push(...proseMirrorPlugins);
+      if (plugins.length) {
+        state.plugins.push(...plugins);
       }
 
       const keyboardShortcuts = callConfigValue(
@@ -306,6 +299,157 @@ export class ExtensionManager {
       },
       baseTransform || ((slice: any) => slice)
     );
+  }
+
+  transformCopied(baseTransform?: (slice: any, view?: any) => any) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduce(
+      (transform, extension) => {
+        const ctx = this.createDetachedContext(extension);
+        const extensionTransform = getExtensionField<(slice: any) => any>(
+          extension,
+          "transformCopied",
+          ctx
+        );
+
+        if (!extensionTransform) {
+          return transform;
+        }
+
+        return (slice: any, view?: any) => {
+          const transformedSlice = transform(slice, view);
+          return extensionTransform(transformedSlice) ?? transformedSlice;
+        };
+      },
+      baseTransform || ((slice: any) => slice)
+    );
+  }
+
+  transformCopiedHTML(baseTransform?: (html: string, slice?: any, view?: any) => string) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduce(
+      (transform, extension) => {
+        const ctx = this.createDetachedContext(extension);
+        const extensionTransform = getExtensionField<
+          (html: string, slice?: any) => string | null | undefined
+        >(extension, "transformCopiedHTML", ctx);
+
+        if (!extensionTransform) {
+          return transform;
+        }
+
+        return (html: string, slice?: any, view?: any) => {
+          const transformedHtml = transform(html, slice, view);
+          return extensionTransform(transformedHtml, slice) ?? transformedHtml;
+        };
+      },
+      baseTransform || ((html: string) => html)
+    );
+  }
+
+  clipboardTextSerializer(baseSerializer?: (slice: any, view?: any) => string | null) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return (slice: any, view?: any) => {
+      for (const extension of extensions) {
+        const ctx = this.createDetachedContext(extension);
+        const serializer = getExtensionField<(slice: any) => string | null | undefined>(
+          extension,
+          "clipboardTextSerializer",
+          ctx
+        );
+        if (!serializer) {
+          continue;
+        }
+        const text = serializer(slice);
+        if (text != null) {
+          return text;
+        }
+      }
+      return baseSerializer ? baseSerializer(slice, view) : null;
+    };
+  }
+
+  clipboardTextParser(baseParser?: (text: string, context?: any, plain?: boolean, view?: any) => any) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return (text: string, context?: any, plain?: boolean, view?: any) => {
+      for (const extension of extensions) {
+        const ctx = this.createDetachedContext(extension);
+        const parser = getExtensionField<(text: string, context?: any, plain?: boolean) => any>(
+          extension,
+          "clipboardTextParser",
+          ctx
+        );
+        if (!parser) {
+          continue;
+        }
+        const slice = parser(text, context, plain);
+        if (slice != null) {
+          return slice;
+        }
+      }
+      return baseParser ? baseParser(text, context, plain, view) : null;
+    };
+  }
+
+  clipboardParser(baseParser?: any) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    for (const extension of extensions) {
+      const ctx = this.createDetachedContext(extension);
+      const parser = getExtensionField<any>(extension, "clipboardParser", ctx);
+      if (parser != null) {
+        return parser;
+      }
+    }
+
+    return baseParser ?? null;
+  }
+
+  clipboardSerializer(baseSerializer?: any) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    for (const extension of extensions) {
+      const ctx = this.createDetachedContext(extension);
+      const serializer = getExtensionField<any>(extension, "clipboardSerializer", ctx);
+      if (serializer != null) {
+        return serializer;
+      }
+    }
+
+    return baseSerializer ?? null;
+  }
+
+  bindEditorEvents(editor: any = this.editor) {
+    if (!editor || this.boundEditor === editor) {
+      return;
+    }
+
+    this.boundEditor = editor;
+    const eventMap = [
+      ["beforeCreate", "onBeforeCreate"],
+      ["create", "onCreate"],
+      ["update", "onUpdate"],
+      ["selectionUpdate", "onSelectionUpdate"],
+      ["transaction", "onTransaction"],
+      ["focus", "onFocus"],
+      ["blur", "onBlur"],
+      ["destroy", "onDestroy"],
+    ] as const;
+
+    for (const extension of sortByPriority([...this.extensions])) {
+      const ctx = this.createDetachedContext(extension);
+
+      for (const [eventName, fieldName] of eventMap) {
+        const handler = getExtensionField<(event: any) => void>(extension, fieldName, ctx);
+        if (typeof handler === "function") {
+          editor.on(eventName, handler);
+        }
+      }
+    }
   }
 
   private resolveExtensions(input: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput): AnyExtension[] {

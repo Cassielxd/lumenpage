@@ -40,7 +40,7 @@ export const BlockIdExtension = Extension.create({
       },
     ];
   },
-  addProseMirrorPlugins() {
+  addPlugins() {
     return [createBlockIdPlugin()];
   },
   addStateTransforms() {

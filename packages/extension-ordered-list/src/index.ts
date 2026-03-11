@@ -8,7 +8,7 @@ export const OrderedList = Node.create({
   name: "orderedList",
   priority: 100,
   schema: orderedListNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: orderedListRenderer,
       pagination: orderedListRenderer?.pagination,

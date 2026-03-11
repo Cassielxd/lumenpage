@@ -7,7 +7,7 @@ export const Image = Node.create({
   name: "image",
   priority: 100,
   schema: imageNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: imageRenderer,
       pagination: imageRenderer?.pagination,
@@ -16,7 +16,7 @@ export const Image = Node.create({
   addNodeView() {
     return imageRenderer?.createNodeView;
   },
-  addCanvas() {
+  canvas() {
     return {
       nodeSelectionTypes: ["image"],
     };

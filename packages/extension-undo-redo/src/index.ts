@@ -4,7 +4,7 @@ import { history } from "lumenpage-history";
 export const UndoRedo = Extension.create({
   name: "undoRedo",
   priority: 900,
-  addProseMirrorPlugins() {
+  addPlugins() {
     return [history()];
   },
 });

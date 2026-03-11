@@ -47,7 +47,7 @@ export const Heading = Node.create({
     const level = Math.max(1, Math.min(3, Number(node?.attrs?.level) || 1));
     return [`h${level}`, HTMLAttributes, 0];
   },
-  addLayout() {
+  layout() {
     return {
       renderer: headingRenderer,
       pagination: headingRenderer?.pagination,

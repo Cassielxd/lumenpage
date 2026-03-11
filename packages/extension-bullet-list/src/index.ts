@@ -8,7 +8,7 @@ export const BulletList = Node.create({
   name: "bulletList",
   priority: 100,
   schema: bulletListNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: bulletListRenderer,
       pagination: bulletListRenderer?.pagination,

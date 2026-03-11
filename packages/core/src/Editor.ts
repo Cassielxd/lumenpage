@@ -18,6 +18,9 @@ import { pasteRulesPlugin } from "./PasteRule";
 import type {
   AnyExtensionInput,
   EnableRules,
+  EditorBaseEvent,
+  EditorFocusEvent,
+  EditorTransactionEvent,
   ResolvedExtensions,
   ResolvedStructure,
 } from "./types";
@@ -61,9 +64,14 @@ export type EditorOptions = {
   enablePasteRules?: EnableRules;
   autofocus?: boolean | "start" | "end" | number;
   editable?: boolean;
-  onBeforeCreate?: ((args: { editor: Editor }) => void) | null;
-  onCreate?: ((args: { editor: Editor }) => void) | null;
-  onDestroy?: (() => void) | null;
+  onBeforeCreate?: ((args: EditorBaseEvent) => void) | null;
+  onCreate?: ((args: EditorBaseEvent) => void) | null;
+  onUpdate?: ((args: EditorTransactionEvent) => void) | null;
+  onSelectionUpdate?: ((args: EditorTransactionEvent) => void) | null;
+  onTransaction?: ((args: EditorTransactionEvent) => void) | null;
+  onFocus?: ((args: EditorFocusEvent) => void) | null;
+  onBlur?: ((args: EditorFocusEvent) => void) | null;
+  onDestroy?: ((args: EditorBaseEvent) => void) | null;
 };
 
 const defaultOptions: EditorOptions = {
@@ -83,6 +91,11 @@ const defaultOptions: EditorOptions = {
   editable: true,
   onBeforeCreate: null,
   onCreate: null,
+  onUpdate: null,
+  onSelectionUpdate: null,
+  onTransaction: null,
+  onFocus: null,
+  onBlur: null,
   onDestroy: null,
 };
 
@@ -118,8 +131,10 @@ export class Editor {
 
   state: any | null;
   view: CanvasEditorView | null;
+  isFocused: boolean;
 
   private readonly commandManager: CommandManager;
+  private readonly listeners = new Map<string, Set<(payload: any) => void>>();
 
   constructor(options: Partial<EditorOptions> = {}) {
     this.options = { ...defaultOptions, ...options };
@@ -148,15 +163,18 @@ export class Editor {
     this.plugins = this.buildPlugins();
     this.state = this.initializeState();
     this.view = null;
+    this.isFocused = false;
     this.commandManager = new CommandManager(this, this.rawCommands);
+    this.bindOptionEvents();
+    this.extensionManager.bindEditorEvents(this);
 
-    this.options.onBeforeCreate?.({ editor: this });
+    this.emit("beforeCreate", { editor: this });
 
     if (this.options.element) {
       this.mount(this.options.element);
     }
 
-    this.options.onCreate?.({ editor: this });
+    this.emit("create", { editor: this });
   }
 
   get storage() {
@@ -175,11 +193,65 @@ export class Editor {
     return this.commandManager.can();
   }
 
+  on(event: string, listener: (payload: any) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)?.add(listener);
+    return this;
+  }
+
+  off(event: string, listener: (payload: any) => void) {
+    this.listeners.get(event)?.delete(listener);
+    return this;
+  }
+
+  emit(event: string, payload: any) {
+    const listeners = this.listeners.get(event);
+    if (!listeners?.size) {
+      return this;
+    }
+    for (const listener of listeners) {
+      listener(payload);
+    }
+    return this;
+  }
+
+  get isEditable() {
+    return this.options.editable !== false && !!this.view?.editable;
+  }
+
+  focus() {
+    this.view?.focus();
+    return this;
+  }
+
   setOptions(options: Partial<EditorOptions> = {}) {
     this.options = {
       ...this.options,
       ...options,
     };
+    if (this.view) {
+      this.view.setProps({
+        ...(this.options.editorProps || {}),
+        editable: this.options.editable,
+      });
+    }
+  }
+
+  setEditable(editable: boolean, emitUpdate = true) {
+    this.setOptions({ editable });
+    if (emitUpdate) {
+      const transaction = this.view?.state?.tr || this.state?.tr;
+      if (transaction) {
+        this.emit("update", {
+          editor: this,
+          transaction,
+          state: this.view?.state || this.state,
+          appendedTransactions: [],
+        });
+      }
+    }
   }
 
   createState(overrides: CreateStateOptions = {}) {
@@ -218,6 +290,36 @@ export class Editor {
     }
 
     const editorProps = this.options.editorProps || {};
+    const baseOnChange = typeof editorProps.onChange === "function" ? editorProps.onChange : null;
+    const baseHandleDOMEvents = editorProps.handleDOMEvents || {};
+    const baseTransformCopied =
+      typeof editorProps.transformCopied === "function"
+        ? (slice: any, view?: any) => editorProps.transformCopied?.(view, slice) ?? slice
+        : undefined;
+    const transformCopied = this.extensionManager.transformCopied(baseTransformCopied);
+    const baseTransformCopiedHTML =
+      typeof editorProps.transformCopiedHTML === "function"
+        ? (html: string, slice?: any, view?: any) =>
+            editorProps.transformCopiedHTML?.(view, html, slice) ?? html
+        : undefined;
+    const transformCopiedHTML = this.extensionManager.transformCopiedHTML(baseTransformCopiedHTML);
+    const baseClipboardTextSerializer =
+      typeof editorProps.clipboardTextSerializer === "function"
+        ? (slice: any, view?: any) => editorProps.clipboardTextSerializer?.(view, slice) ?? null
+        : undefined;
+    const clipboardTextSerializer = this.extensionManager.clipboardTextSerializer(
+      baseClipboardTextSerializer
+    );
+    const baseClipboardTextParser =
+      typeof editorProps.clipboardTextParser === "function"
+        ? (text: string, context?: any, plain?: boolean, view?: any) =>
+            editorProps.clipboardTextParser?.(view, text, context, plain) ?? null
+        : undefined;
+    const clipboardTextParser = this.extensionManager.clipboardTextParser(baseClipboardTextParser);
+    const clipboardParser = this.extensionManager.clipboardParser(editorProps.clipboardParser ?? null);
+    const clipboardSerializer = this.extensionManager.clipboardSerializer(
+      editorProps.clipboardSerializer ?? null
+    );
     const baseTransformPasted =
       typeof editorProps.transformPasted === "function"
         ? (slice: any, view?: any) => editorProps.transformPasted?.(view, slice) ?? slice
@@ -243,16 +345,72 @@ export class Editor {
     const viewProps: CanvasEditorViewProps = {
       ...editorProps,
       state: this.state,
+      editable: this.options.editable,
       canvasViewConfig: resolvedCanvasViewConfig,
       commandConfig: this.createResolvedCommandConfig(
         this.options.commandConfig || editorProps.commandConfig || null
       ),
+      onChange: (view, event) => {
+        const oldState = event?.oldState ?? this.state;
+        const nextState = event?.state ?? view?.state ?? oldState;
+        this.state = nextState ?? this.state;
+        baseOnChange?.(view, event);
+
+        const transaction = event?.transaction;
+        if (!transaction) {
+          return;
+        }
+
+        const payload = {
+          editor: this,
+          transaction,
+          state: nextState,
+          oldState,
+          appendedTransactions: event?.appendedTransactions || [],
+        };
+
+        this.emit("transaction", payload);
+
+        if (event?.selectionChanged === true) {
+          this.emit("selectionUpdate", payload);
+        }
+
+        if (event?.docChanged) {
+          this.emit("update", payload);
+        }
+      },
+      handleDOMEvents: {
+        ...baseHandleDOMEvents,
+        focus: (view, event) => {
+          const handled = baseHandleDOMEvents.focus?.(view, event) === true;
+          if (!this.isFocused) {
+            this.isFocused = true;
+            this.emit("focus", { editor: this, event, view });
+          }
+          return handled;
+        },
+        blur: (view, event) => {
+          const handled = baseHandleDOMEvents.blur?.(view, event) === true;
+          if (this.isFocused) {
+            this.isFocused = false;
+            this.emit("blur", { editor: this, event, view });
+          }
+          return handled;
+        },
+      },
       selectionGeometry: editorProps.selectionGeometry || this.selectionGeometry || undefined,
       nodeSelectionTypes:
         editorProps.nodeSelectionTypes || (this.nodeSelectionTypes.length ? this.nodeSelectionTypes : undefined),
+      transformCopied: (view, slice) => transformCopied(slice, view),
+      transformCopiedHTML: (view, html, slice) => transformCopiedHTML(html, slice, view),
       transformPasted: (view, slice) => transformPasted(slice, view),
       transformPastedText: (view, text, plain) => transformPastedText(text, plain, view),
       transformPastedHTML: (view, html) => transformPastedHTML(html, view),
+      clipboardTextSerializer: (view, slice) => clipboardTextSerializer(slice, view),
+      clipboardTextParser: (view, text, context, plain) =>
+        clipboardTextParser(text, context, plain, view),
+      clipboardParser,
+      clipboardSerializer,
     };
 
     this.view = new CanvasEditorView(element, viewProps);
@@ -266,13 +424,13 @@ export class Editor {
 
   destroy() {
     this.unmount();
-    this.options.onDestroy?.();
+    this.emit("destroy", { editor: this });
   }
 
   private buildPlugins() {
     return [
       ...(this.options.plugins || []),
-      ...this.resolvedExtensions.state.proseMirrorPlugins,
+      ...this.resolvedExtensions.state.plugins,
       ...createShortcutPlugins(this.resolvedExtensions),
       ...createInputRulePlugins(this.resolvedExtensions),
       ...createPasteRulePlugins(this, this.resolvedExtensions),
@@ -333,5 +491,24 @@ export class Editor {
       basicCommands,
       viewCommands: this.rawCommands,
     };
+  }
+
+  private bindOptionEvents() {
+    const events: Array<[string, ((payload: any) => void) | null | undefined]> = [
+      ["beforeCreate", this.options.onBeforeCreate],
+      ["create", this.options.onCreate],
+      ["update", this.options.onUpdate],
+      ["selectionUpdate", this.options.onSelectionUpdate],
+      ["transaction", this.options.onTransaction],
+      ["focus", this.options.onFocus],
+      ["blur", this.options.onBlur],
+      ["destroy", this.options.onDestroy],
+    ];
+
+    for (const [event, listener] of events) {
+      if (typeof listener === "function") {
+        this.on(event, listener);
+      }
+    }
   }
 }

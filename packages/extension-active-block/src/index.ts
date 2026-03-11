@@ -13,7 +13,7 @@ export const ActiveBlockSelectionExtension = Extension.create<ActiveBlockExtensi
   addOptions() {
     return {};
   },
-  addProseMirrorPlugins() {
+  addPlugins() {
     return [createActiveBlockSelectionPlugin(this.options)];
   },
 });

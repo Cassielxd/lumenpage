@@ -8,7 +8,7 @@ export const SelectionBubbleExtension = Extension.create<SelectionBubblePluginOp
   addOptions() {
     return {} as SelectionBubblePluginOptions;
   },
-  addProseMirrorPlugins() {
+  addPlugins() {
     return [createSelectionBubblePlugin(this.options)];
   },
 });

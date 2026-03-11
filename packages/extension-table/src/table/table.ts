@@ -51,13 +51,13 @@ export const Table = Node.create({
   name: "table",
   priority: 100,
   schema: tableNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: tableRenderer,
       pagination: tableRenderer?.pagination,
     };
   },
-  addCanvas() {
+  canvas() {
     return {
       selectionGeometries: [createTableSelectionGeometry()],
     };

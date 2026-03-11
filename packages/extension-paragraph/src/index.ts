@@ -44,7 +44,7 @@ export const Paragraph = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["p", HTMLAttributes, 0];
   },
-  addLayout() {
+  layout() {
     return {
       renderer: paragraphRenderer,
       pagination: paragraphRenderer?.pagination,

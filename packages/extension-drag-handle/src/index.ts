@@ -20,7 +20,7 @@ export const DragHandleExtension = Extension.create<DragHandleOptions>({
   addOptions() {
     return {};
   },
-  addProseMirrorPlugins() {
+  addPlugins() {
     const editor = this.editor as { schema?: any; nodeRegistry?: any } | null;
     const schema = this.options.schema || this.schema || editor?.schema;
     const nodeRegistry = this.options.nodeRegistry || this.nodeRegistry || editor?.nodeRegistry;

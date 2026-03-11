@@ -17,7 +17,7 @@ export const Blockquote = Node.create({
   schema: {
     offsetMapping: blockquoteNodeSpec.offsetMapping,
   },
-  addLayout() {
+  layout() {
     return {
       renderer: blockquoteRenderer,
       pagination: blockquoteRenderer?.pagination,

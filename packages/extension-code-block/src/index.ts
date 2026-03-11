@@ -21,7 +21,7 @@ export const CodeBlock = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["pre", HTMLAttributes, ["code", 0]];
   },
-  addLayout() {
+  layout() {
     return {
       renderer: codeBlockRenderer,
       pagination: codeBlockRenderer?.pagination,

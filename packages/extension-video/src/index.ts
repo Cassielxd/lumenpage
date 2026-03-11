@@ -7,7 +7,7 @@ export const Video = Node.create({
   name: "video",
   priority: 100,
   schema: videoNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: videoRenderer,
       pagination: videoRenderer?.pagination,
@@ -16,7 +16,7 @@ export const Video = Node.create({
   addNodeView() {
     return videoRenderer?.createNodeView;
   },
-  addCanvas() {
+  canvas() {
     return {
       nodeSelectionTypes: ["video"],
     };

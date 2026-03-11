@@ -8,7 +8,7 @@ export const TaskList = Node.create({
   name: "taskList",
   priority: 100,
   schema: taskListNodeSpec,
-  addLayout() {
+  layout() {
     return {
       renderer: taskListRenderer,
       pagination: taskListRenderer?.pagination,

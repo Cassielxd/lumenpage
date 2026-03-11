@@ -5,6 +5,8 @@ export const CHANGE_SOURCE_META = "lumenpageChangeSource";
 
 type ChangeEventOptions = {
   source?: string;
+  transactions?: readonly any[];
+  appendedTransactions?: readonly any[];
 };
 
 export const getChangeSource = (tr, fallback = "local") => {
@@ -33,6 +35,10 @@ export const deserializeSteps = (schema, steps = []) =>
 export const createChangeEvent = (tr, oldState, newState, options: ChangeEventOptions = {}) => {
   const summary = createChangeSummary(tr, oldState, newState);
   const source = options.source || getChangeSource(tr);
+  const transactions = Array.isArray(options.transactions) ? options.transactions : [tr];
+  const appendedTransactions = Array.isArray(options.appendedTransactions)
+    ? options.appendedTransactions
+    : transactions.slice(1);
   const selection = newState?.selection
     ? {
         from: newState.selection.from,
@@ -41,10 +47,23 @@ export const createChangeEvent = (tr, oldState, newState, options: ChangeEventOp
         head: newState.selection.head,
       }
     : null;
+  const selectionChanged =
+    !!oldState?.selection &&
+    !!newState?.selection &&
+    typeof oldState.selection.eq === "function" &&
+    oldState.selection.eq(newState.selection) === false;
+  const docChanged =
+    summary.docChanged === true || transactions.some((transaction) => transaction?.docChanged === true);
 
   return {
+    transaction: tr,
+    state: newState,
+    oldState,
+    transactions,
+    appendedTransactions,
     source,
-    docChanged: summary.docChanged === true,
+    docChanged,
+    selectionChanged,
     steps: serializeSteps(tr),
     selection,
     summary,

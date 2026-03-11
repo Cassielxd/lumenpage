@@ -64,6 +64,22 @@ export type ExtensionContext<Options = any, Storage = any> = {
   nodeRegistry: any | null;
 };
 
+export type EditorBaseEvent = {
+  editor: Editor;
+};
+
+export type EditorTransactionEvent = EditorBaseEvent & {
+  transaction: any;
+  state?: any;
+  oldState?: any;
+  appendedTransactions?: any[];
+};
+
+export type EditorFocusEvent = EditorBaseEvent & {
+  event: Event;
+  view?: any;
+};
+
 export interface ExtendableConfig<
   Options = any,
   Storage = any,
@@ -80,17 +96,14 @@ export interface ExtendableConfig<
   addExtensions?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addExtensions"];
   }) => Extensions;
-  addSchema?: (this: ExtensionContext<Options, Storage> & {
-    parent: ParentConfig<Config>["addSchema"];
-  }) => SchemaSpec | null;
   addGlobalAttributes?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addGlobalAttributes"];
   }) => GlobalAttributes;
-  addLayout?: (this: ExtensionContext<Options, Storage> & {
-    parent: ParentConfig<Config>["addLayout"];
+  layout?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["layout"];
   }) => LayoutHooks | null;
-  addCanvas?: (this: ExtensionContext<Options, Storage> & {
-    parent: ParentConfig<Config>["addCanvas"];
+  canvas?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["canvas"];
   }) => CanvasHooks | null;
   addCommands?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addCommands"];
@@ -104,17 +117,59 @@ export interface ExtendableConfig<
   addPasteRules?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addPasteRules"];
   }) => PasteRule[];
+  transformCopied?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["transformCopied"];
+  }, slice: any) => any;
+  transformCopiedHTML?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["transformCopiedHTML"];
+  }, html: string, slice?: any) => string | null | undefined;
   transformPasted?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["transformPasted"];
   }, slice: any) => any;
+  clipboardTextSerializer?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["clipboardTextSerializer"];
+  }, slice: any) => string | null | undefined;
+  clipboardTextParser?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["clipboardTextParser"];
+  }, text: string, context?: any, plain?: boolean) => any;
+  clipboardParser?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["clipboardParser"];
+  }) => any;
+  clipboardSerializer?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["clipboardSerializer"];
+  }) => any;
   transformPastedText?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["transformPastedText"];
   }, text: string, plain: boolean) => string | null | undefined;
   transformPastedHTML?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["transformPastedHTML"];
   }, html: string) => string | null | undefined;
-  addProseMirrorPlugins?: (this: ExtensionContext<Options, Storage> & {
-    parent: ParentConfig<Config>["addProseMirrorPlugins"];
+  onBeforeCreate?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onBeforeCreate"];
+  }, event: EditorBaseEvent) => void;
+  onCreate?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onCreate"];
+  }, event: EditorBaseEvent) => void;
+  onUpdate?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onUpdate"];
+  }, event: EditorTransactionEvent) => void;
+  onSelectionUpdate?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onSelectionUpdate"];
+  }, event: EditorTransactionEvent) => void;
+  onTransaction?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onTransaction"];
+  }, event: EditorTransactionEvent) => void;
+  onFocus?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onFocus"];
+  }, event: EditorFocusEvent) => void;
+  onBlur?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onBlur"];
+  }, event: EditorFocusEvent) => void;
+  onDestroy?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onDestroy"];
+  }, event: EditorBaseEvent) => void;
+  addPlugins?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["addPlugins"];
   }) => any[];
   addStateTransforms?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addStateTransforms"];
@@ -283,7 +338,7 @@ export type ExtensionInstance = {
 };
 
 export type ResolvedState = {
-  proseMirrorPlugins: any[];
+  plugins: any[];
   keyboardShortcuts: Record<string, any>[];
   inputRules: any[];
   pasteRules: PasteRule[];
