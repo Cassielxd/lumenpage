@@ -26,10 +26,10 @@
 - `view-canvas` 负责 Canvas 渲染、输入桥接、overlay 调度。
 - 这一层不放到 `lp/*` 下面，因为它不是通用编辑内核，而是 Lumen 特有的页面化和 Canvas 运行时。
 
-### `packages/node-*` / `packages/kit-basic` / `packages/editor-plugins`
+### `packages/node-*` / `packages/extension-*` / `packages/starter-kit`
 
 - 扩展层。
-- 节点扩展、插件扩展、StarterKit 风格组合包都留在这里。
+- 节点扩展、交互扩展、StarterKit 风格组合包都留在这里。
 
 ### `apps/*`
 

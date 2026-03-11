@@ -23,8 +23,7 @@
 | `lumenpage-layout-engine` | engine | 新增：分页/映射纯引擎骨架 |
 | `lumenpage-view-runtime` | engine | 新增：视图输入/渲染/事件运行时骨架 |
 | `lumenpage-schema-basic` | extensions | 基础 schema |
-| `lumenpage-kit-basic` | extensions | 默认能力装配入口 |
-| `lumenpage-editor-plugins` | extensions | 交互插件聚合入口（迁移过渡层） |
+| `lumenpage-starter-kit` | extensions | 默认能力装配入口 |
 | `lumenpage-node-basic` | extensions | 基础文本节点聚合入口 |
 | `lumenpage-node-media` | extensions | 媒体节点聚合入口 |
 | `lumenpage-node-list` | extensions | 列表行为复杂，暂独立 |
@@ -36,9 +35,6 @@
 
 | 当前包 | 目标聚合 | 原因 |
 |---|---|---|
-| `lumenpage-drag-handle` | `editor-plugins` | 交互插件强耦合，合并可降依赖跳转 |
-| `lumenpage-gapcursor` | `editor-plugins` | 同类插件，维护节奏一致 |
-| `lumenpage-plugin-active-block` | `editor-plugins` | 同类插件，聚合更清晰 |
 | `lumenpage-node-paragraph` | `node-basic` | 体量小，独立版本价值低 |
 | `lumenpage-node-heading` | `node-basic` | 体量小，独立版本价值低 |
 | `lumenpage-node-blockquote` | `node-basic` | 体量小，独立版本价值低 |
@@ -48,7 +44,7 @@
 | `lumenpage-node-image` | `node-media` | 与视频同类，接口可统一 |
 | `lumenpage-node-video` | `node-media` | 与图片同类，接口可统一 |
 
-已完成（2026-02-24）：`drag-handle` / `gapcursor` / `plugin-active-block` 实现迁入 `editor-plugins`，旧包仅保留兼容转发。
+已完成（2026-03-11）：交互扩展已拆成独立 `extension-*` 包，不再保留 `editor-plugins` 聚合兼容层。
 已完成（2026-02-24）：`node-paragraph` / `node-heading` / `node-blockquote` / `node-code-block` / `node-hard-break` / `node-horizontal-rule` 实现迁入 `node-basic`，旧包仅保留兼容转发。
 已完成（2026-02-24）：`node-image` / `node-video` 实现迁入 `node-media`，旧包仅保留兼容转发。
 已完成（2026-02-25）：上述兼容转发包已删除，不再保留兼容层。

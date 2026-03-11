@@ -60,10 +60,10 @@ export class PlaywrightDevPage {
     this.saveSnapshotButton = page.getByText("Save snapshots", { exact: true });
 
     this.listItemActive = page.locator(
-      "[data-test-id=__prosemirror_devtools_list_item__]",
+      "[data-test-id=__prosemirror_devtools_listItem__]",
     );
     this.listItemInactive = page.locator(
-      "[data-test-id=__prosemirror_devtools_list_item_inactive__]",
+      "[data-test-id=__prosemirror_devtools_listItem_inactive__]",
     );
   }
 

@@ -5,7 +5,7 @@
 - 核心：`lumenpage-model` / `lumenpage-state` / `lumenpage-transform`
 - 视图：`lumenpage-view-canvas`
 - 插件聚合：`lumenpage-editor-plugins`
-- 节点扩展：`lumenpage-node-*` / `lumenpage-kit-basic`
+- 节点扩展：`lumenpage-node-*` / `lumenpage-starter-kit`
 
 ## 版本策略
 

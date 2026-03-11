@@ -26,7 +26,7 @@ const ListItem = (props: ListItemProps) => {
       : "transparent";
   return (
     <div
-      data-test-id={`__prosemirror_devtools_list_item${
+      data-test-id={`__prosemirror_devtools_listItem${
         props.isDimmed ? "_inactive" : ""
       }__`}
       onClick={props.onClick}
