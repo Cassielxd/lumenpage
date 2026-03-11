@@ -58,6 +58,7 @@ import {
   runTableNavigationSmoke,
   runToolCommandSmoke,
 } from "./smokeTests";
+import * as smokeTests from "./smokeTests";
 import { initialDocJson, initialDocPerfJson, initialDocSmokeJson } from "../initialDoc";
 
 type MountPlaygroundEditorParams = {
@@ -321,6 +322,10 @@ export const mountPlaygroundEditor = ({
       () => runListBehaviorSmoke(view, tableDebugPanelElement || null)
     );
     enqueueSmoke(
+      flags.debugPaginationRegressionSmoke,
+      () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
       flags.debugBlockOutlineSmoke,
       () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null)
     );
@@ -408,6 +413,7 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragSelectionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragActionSmoke(view, tableDebugPanelElement || null));
@@ -436,6 +442,7 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragSelectionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragActionSmoke(view, tableDebugPanelElement || null));
@@ -516,6 +523,7 @@ export const mountPlaygroundEditor = ({
               "table-smoke",
               "list-smoke",
               "list-behavior-smoke",
+              "pagination-regression-smoke",
               "block-outline-smoke",
               "drag-smoke",
               "drag-action-smoke",

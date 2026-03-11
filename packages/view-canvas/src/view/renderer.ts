@@ -13,6 +13,39 @@ const now = () =>
     ? performance.now()
     : Date.now();
 
+const isGhostTraceEnabled = (settings) =>
+  settings?.debugGhostTrace === true ||
+  (typeof globalThis !== "undefined" &&
+    (globalThis as typeof globalThis & { __lumenGhostTraceEnabled?: boolean })
+      .__lumenGhostTraceEnabled === true);
+
+const emitGhostTrace = (type, summary, settings) => {
+  if (!isGhostTraceEnabled(settings)) {
+    return;
+  }
+  if (typeof globalThis === "undefined") {
+    return;
+  }
+  const globalState = globalThis as typeof globalThis & {
+    __lumenGhostTrace?: Array<Record<string, unknown>>;
+    __copyLumenGhostTrace?: () => string;
+  };
+  const logs = Array.isArray(globalState.__lumenGhostTrace) ? globalState.__lumenGhostTrace : [];
+  logs.push({
+    type,
+    timestamp: new Date().toISOString(),
+    ...summary,
+  });
+  if (logs.length > 400) {
+    logs.splice(0, logs.length - 400);
+  }
+  globalState.__lumenGhostTrace = logs;
+  globalState.__copyLumenGhostTrace = () => JSON.stringify(logs, null, 2);
+  if (typeof console !== "undefined" && typeof console.info === "function") {
+    console.info(`[ghost-trace][${type}]`, summary);
+  }
+};
+
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
@@ -423,6 +456,10 @@ export class Renderer {
       hash = hashString(hash, line.text || "");
       hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.imageMeta || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.videoMeta || null, objectSignatureCache);
 
       if (line.runs) {
         for (const run of line.runs) {
@@ -432,7 +469,14 @@ export class Renderer {
 
           hash = hashString(hash, run.color || "");
 
+          hash = hashNumber(hash, run.width);
           hash = hashNumber(hash, run.underline ? 1 : 0);
+          hash = hashNumber(hash, run.strike ? 1 : 0);
+          hash = hashNumber(hash, run.shiftY);
+          hash =
+            typeof run.background === "string"
+              ? hashString(hash, run.background)
+              : hashObjectLike(hash, run.background || null, objectSignatureCache);
         }
       }
     }
@@ -882,6 +926,8 @@ export class Renderer {
 
     let redrawCount = 0;
     let cachedPages = 0;
+    const pageTrace =
+      isGhostTraceEnabled(this.settings) || this.settings?.debugPerf === true ? [] : null;
     const changedRange = resolveChangedRootIndexRange(layout.__changeSummary);
     for (let i = 0; i < pageIndices.length; i += 1) {
       const pageIndex = pageIndices[i];
@@ -901,6 +947,7 @@ export class Renderer {
 
       const entry = this.getPageCache(pageIndex, layout, dpr);
       let pageRedrawn = false;
+      const prevEntrySignature = entry.signature;
 
       let signature = entry.signature;
       const page = layout.pages[pageIndex];
@@ -1015,6 +1062,20 @@ export class Renderer {
         canvasEntry.signature !== entry.signature ||
         canvasEntry.dprX !== canvasDprX ||
         canvasEntry.dprY !== canvasDprY;
+      if (pageTrace) {
+        pageTrace.push({
+          pageIndex,
+          rootIndexMin: Number.isFinite(page?.rootIndexMin) ? Number(page.rootIndexMin) : null,
+          rootIndexMax: Number.isFinite(page?.rootIndexMax) ? Number(page.rootIndexMax) : null,
+          lineCount: Array.isArray(page?.lines) ? page.lines.length : 0,
+          reused: page?.__reused === true,
+          canSkipSignature,
+          hasCachedSignature,
+          pageRedrawn,
+          needsComposite,
+          signatureChanged: forceRedraw || prevEntrySignature !== signature,
+        });
+      }
       if (needsComposite) {
         const compositeStart = this.settings?.debugPerf ? now() : 0;
         ctx.clearRect(0, 0, layout.pageWidth, layout.pageHeight);
@@ -1116,11 +1177,18 @@ export class Renderer {
           prevLayoutVersion,
           layoutVersionChanged,
           skippedLayoutVersions: skippedLayoutVersions === true,
+          docChanged: layout?.__changeSummary?.docChanged === true,
           forceRedraw,
           cacheClearReasons,
           activePages: activePages.size,
+          visibleStartIndex: visible.startIndex,
+          visibleEndIndex: visible.endIndex,
+          activeStartIndex: startIndex,
+          activeEndIndex: endIndex,
           redrawPages: redrawCount,
           cachedPages,
+          changedRangeMin: changedRange?.min ?? null,
+          changedRangeMax: changedRange?.max ?? null,
           pageCacheHits,
           pageCacheMisses,
           pageCacheRecreated,
@@ -1131,6 +1199,10 @@ export class Renderer {
           renderPagesMs: Math.round(renderPagesMs),
           compositeMs: Math.round(compositeMs),
           overlayMs: Math.round(overlayMs),
+          pageTrace:
+            layout?.__changeSummary?.docChanged === true || forceRedraw
+              ? pageTrace || []
+              : undefined,
         };
         if (this.settings?.__perf) {
           this.settings.__perf.render = summary;
@@ -1196,6 +1268,39 @@ export class Renderer {
             `  overlayMs: ${summary.overlayMs}`,
           ].join("\n");
         }
+        const shouldConsoleLog =
+          summary.docChanged === true ||
+          summary.forceRedraw === true ||
+          summary.redrawPages === 0 ||
+          summary.signatureSkippedPages > 0;
+        if (shouldConsoleLog) {
+          console.info("[perf][render-cache]", summary);
+        }
+        emitGhostTrace(
+          "render-cache",
+          {
+            layoutVersion,
+            prevLayoutVersion,
+            layoutVersionChanged,
+            forceRedraw,
+            cacheClearReasons,
+            visibleStartIndex: visible.startIndex,
+            visibleEndIndex: visible.endIndex,
+            activeStartIndex: startIndex,
+            activeEndIndex: endIndex,
+            changedRangeMin: changedRange?.min ?? null,
+            changedRangeMax: changedRange?.max ?? null,
+            pageCacheHits,
+            pageCacheMisses,
+            pageCacheRecreated,
+            redrawCount,
+            cachedPages,
+            signatureComputedPages,
+            signatureSkippedPages,
+            pageTrace: pageTrace || [],
+          },
+          this.settings
+        );
       }
     }
   }

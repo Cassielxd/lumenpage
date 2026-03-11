@@ -30,6 +30,8 @@ export class PaginationDocWorkerClient {
       textLocale: settings?.textLocale || "zh-CN",
       wrapTolerance: Number(settings?.wrapTolerance) || 0,
       minLineWidth: Number(settings?.minLineWidth) || 0,
+      disablePageReuse: settings?.disablePageReuse === true,
+      debugGhostTrace: settings?.debugGhostTrace === true,
     });
   }
 
@@ -54,6 +56,7 @@ export class PaginationDocWorkerClient {
       minLineWidth: Number(settings?.minLineWidth) || 0,
       disablePageReuse: settings?.disablePageReuse === true,
       debugPerf: settings?.debugPerf === true,
+      debugGhostTrace: settings?.debugGhostTrace === true,
       paginationWorker: {
         timeoutMs: Number(settings?.paginationWorker?.timeoutMs) || 5000,
       },
@@ -120,6 +123,7 @@ export class PaginationDocWorkerClient {
         this.settingsKey = nextSettingsKey;
         this.hasSeedLayout = false;
       }
+      const hadSeedLayout = this.hasSeedLayout;
       const seedLayout = !this.hasSeedLayout ? args?.previousLayout ?? null : null;
       const timeoutId =
         timeoutMs > 0
@@ -137,6 +141,12 @@ export class PaginationDocWorkerClient {
         settings: this.serializeSettingsForWorker(args?.settings ?? null),
         cascadePagination: args?.cascadePagination === true,
         cascadeFromPageIndex: args?.cascadeFromPageIndex ?? null,
+        workerDebug: {
+          hadSeedLayout,
+          sentSeedLayout: !!seedLayout,
+          settingsChanged,
+          prevPages: args?.previousLayout?.pages?.length ?? 0,
+        },
       });
     });
   }

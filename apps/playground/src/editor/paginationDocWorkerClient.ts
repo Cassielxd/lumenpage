@@ -30,6 +30,8 @@ export class PaginationDocWorkerClient {
       textLocale: settings?.textLocale || "zh-CN",
       wrapTolerance: Number(settings?.wrapTolerance) || 0,
       minLineWidth: Number(settings?.minLineWidth) || 0,
+      disablePageReuse: settings?.disablePageReuse === true,
+      debugGhostTrace: settings?.debugGhostTrace === true,
     });
   }
 
@@ -54,6 +56,7 @@ export class PaginationDocWorkerClient {
       minLineWidth: Number(settings?.minLineWidth) || 0,
       disablePageReuse: settings?.disablePageReuse === true,
       debugPerf: settings?.debugPerf === true,
+      debugGhostTrace: settings?.debugGhostTrace === true,
       paginationWorker: {
         timeoutMs: Number(settings?.paginationWorker?.timeoutMs) || 5000,
       },

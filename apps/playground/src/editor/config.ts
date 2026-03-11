@@ -12,6 +12,7 @@ export type PlaygroundDebugFlags = {
   debugTableBehaviorSmoke: boolean;
   debugListSmoke: boolean;
   debugListBehaviorSmoke: boolean;
+  debugPaginationRegressionSmoke: boolean;
   debugBlockOutlineSmoke: boolean;
   debugDragSmoke: boolean;
   debugDragActionSmoke: boolean;
@@ -118,6 +119,7 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugTableBehaviorSmoke: resolveDebugFlag("tableBehaviorSmoke"),
   debugListSmoke: resolveDebugFlag("listSmoke"),
   debugListBehaviorSmoke: resolveDebugFlag("listBehaviorSmoke"),
+  debugPaginationRegressionSmoke: resolveDebugFlag("paginationRegressionSmoke"),
   debugBlockOutlineSmoke: resolveDebugFlag("blockOutlineSmoke"),
   debugDragSmoke: resolveDebugFlag("dragSmoke"),
   debugDragActionSmoke: resolveDebugFlag("dragActionSmoke"),

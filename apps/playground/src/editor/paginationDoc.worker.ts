@@ -72,6 +72,8 @@ const normalizeSettings = (settings: any) => ({
   minLineWidth: Number(settings?.minLineWidth) || 0,
   disablePageReuse: settings?.disablePageReuse === true,
   debugPerf: settings?.debugPerf === true,
+  debugGhostTrace: settings?.debugGhostTrace === true,
+  __perf: settings?.debugPerf === true ? { layout: null } : undefined,
   measureTextWidth: createMeasureTextWidth(),
 });
 
@@ -124,6 +126,7 @@ self.onmessage = (event: MessageEvent<PaginationDocWorkerRequest>) => {
       layout: {
         ...layout,
         __layoutPerfSummary: layoutPipeline?.settings?.__perf?.layout ?? null,
+        __ghostTrace: Array.isArray(layout?.__ghostTrace) ? layout.__ghostTrace : null,
         __workerDebug: {
           clientHadSeedLayout: request.workerDebug?.hadSeedLayout ?? null,
           clientSentSeedLayout: request.workerDebug?.sentSeedLayout ?? null,

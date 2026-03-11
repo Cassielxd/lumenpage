@@ -53,6 +53,9 @@ const offsetLine = (line, delta) => {
   if (typeof line.end === "number") {
     line.end += delta;
   }
+  if (Number.isFinite(line?.blockStart)) {
+    line.blockStart += delta;
+  }
   if (line.runs) {
     for (const run of line.runs) {
       if (typeof run.start === "number") {

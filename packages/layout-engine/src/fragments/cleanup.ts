@@ -37,8 +37,10 @@ export const cleanupUnslicedDuplicateSlices = (
     : pages.length - 1;
 
   const slicedAnchors = new Set<string>();
+  const pageSlicedAnchors = new Map<number, Set<string>>();
   for (let pageIndex = 0; pageIndex <= scanUntilPageIndex; pageIndex += 1) {
     const page = pages[pageIndex];
+    const slicedAnchorsOnPage = new Set<string>();
     for (const line of page?.lines || []) {
       const anchor = getSliceAnchorKey(line);
       if (!anchor) {
@@ -46,7 +48,11 @@ export const cleanupUnslicedDuplicateSlices = (
       }
       if (hasSliceFlags(line)) {
         slicedAnchors.add(anchor);
+        slicedAnchorsOnPage.add(anchor);
       }
+    }
+    if (slicedAnchorsOnPage.size > 0) {
+      pageSlicedAnchors.set(pageIndex, slicedAnchorsOnPage);
     }
   }
 
@@ -59,12 +65,16 @@ export const cleanupUnslicedDuplicateSlices = (
     if (!Array.isArray(page?.lines) || page.lines.length === 0) {
       continue;
     }
+    const slicedAnchorsOnPage = pageSlicedAnchors.get(pageIndex);
     page.lines = page.lines.filter((line) => {
       const anchor = getSliceAnchorKey(line);
       if (!anchor || !slicedAnchors.has(anchor)) {
         return true;
       }
-      return hasSliceFlags(line);
+      if (hasSliceFlags(line)) {
+        return true;
+      }
+      return slicedAnchorsOnPage?.has(anchor) === true;
     });
   }
 

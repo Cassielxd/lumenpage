@@ -540,6 +540,19 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
   appendDebugLine(debugPanelEl, text);
 };
 
+const buildPaginationRegressionDoc = (paragraphCount: number) => ({
+  type: "doc",
+  content: Array.from({ length: Math.max(1, paragraphCount) }, (_value, index) => ({
+    type: "paragraph",
+    content: [
+      {
+        type: "text",
+        text: `pagination paragraph ${String(index + 1).padStart(3, "0")}`,
+      },
+    ],
+  })),
+});
+
 const findFirstParagraphCursorPos = (doc: any) => {
   let cursorPos: number | null = null;
   doc.descendants((node: any, pos: number) => {
@@ -564,6 +577,18 @@ const findLastParagraphCursorPos = (doc: any) => {
   return cursorPos;
 };
 
+const findLastParagraphEndPos = (doc: any) => {
+  let endPos: number | null = null;
+  doc.descendants((node: any, pos: number) => {
+    if (!node?.isTextblock || node.type?.name !== "paragraph") {
+      return true;
+    }
+    endPos = pos + 1 + Number(node.content?.size || 0);
+    return true;
+  });
+  return endPos;
+};
+
 const findParagraphRanges = (doc: any) => {
   const ranges: Array<{ start: number; end: number; text: string }> = [];
   doc.descendants((node: any, pos: number) => {
@@ -580,6 +605,237 @@ const findParagraphRanges = (doc: any) => {
     return ranges.length < 3;
   });
   return ranges;
+};
+
+const waitForLayoutIdle = async (editorView: any, stableFrames = 2, maxFrames = 240) => {
+  const renderSync = editorView?._internals?.renderSync;
+  let previousVersion: number | null = null;
+  let stableCount = 0;
+  for (let frame = 0; frame < maxFrames; frame += 1) {
+    await waitRaf();
+    const layoutVersion = Number.isFinite(editorView?._internals?.getLayout?.()?.__version)
+      ? Number(editorView._internals.getLayout().__version)
+      : null;
+    const pending = renderSync?.isLayoutPending?.() === true;
+    if (!pending && layoutVersion === previousVersion) {
+      stableCount += 1;
+    } else {
+      stableCount = 0;
+    }
+    previousVersion = layoutVersion;
+    if (stableCount >= stableFrames) {
+      return {
+        timedOut: false,
+        frames: frame + 1,
+        layoutVersion,
+      };
+    }
+  }
+  return {
+    timedOut: true,
+    frames: maxFrames,
+    layoutVersion: Number.isFinite(editorView?._internals?.getLayout?.()?.__version)
+      ? Number(editorView._internals.getLayout().__version)
+      : null,
+  };
+};
+
+const inspectPaginationRegressionLayout = (layout: any, expectedBlocks: number) => {
+  const emptyPages: number[] = [];
+  const pageRangeIssues: Array<Record<string, number | null>> = [];
+  const lineOrderIssues: Array<Record<string, number | null>> = [];
+  const rootIndexBacktracks: Array<Record<string, number | null>> = [];
+  const seenRootIndexes = new Set<number>();
+  let previousRootIndex = -1;
+
+  const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+  for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+    const page = pages[pageIndex];
+    const lines = Array.isArray(page?.lines) ? page.lines : [];
+    if (lines.length === 0) {
+      emptyPages.push(pageIndex + 1);
+    }
+    const pageMin = Number.isFinite(page?.rootIndexMin) ? Number(page.rootIndexMin) : null;
+    const pageMax = Number.isFinite(page?.rootIndexMax) ? Number(page.rootIndexMax) : null;
+    if (pageMin != null && pageMax != null && pageMax < pageMin) {
+      pageRangeIssues.push({
+        page: pageIndex + 1,
+        rootIndexMin: pageMin,
+        rootIndexMax: pageMax,
+      });
+    }
+    let previousY = Number.NEGATIVE_INFINITY;
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+      const line = lines[lineIndex];
+      const y = Number.isFinite(line?.y) ? Number(line.y) : null;
+      if (y != null && y + 0.5 < previousY) {
+        lineOrderIssues.push({
+          page: pageIndex + 1,
+          line: lineIndex,
+          previousY,
+          y,
+        });
+      }
+      if (y != null) {
+        previousY = y;
+      }
+      const rootIndex = Number.isFinite(line?.rootIndex) ? Number(line.rootIndex) : null;
+      if (rootIndex == null) {
+        continue;
+      }
+      seenRootIndexes.add(rootIndex);
+      if (previousRootIndex > rootIndex) {
+        rootIndexBacktracks.push({
+          page: pageIndex + 1,
+          line: lineIndex,
+          previousRootIndex,
+          rootIndex,
+        });
+      }
+      previousRootIndex = Math.max(previousRootIndex, rootIndex);
+    }
+  }
+
+  const missingRootIndexes: number[] = [];
+  for (let index = 0; index < Math.max(0, expectedBlocks); index += 1) {
+    if (!seenRootIndexes.has(index)) {
+      missingRootIndexes.push(index);
+    }
+  }
+
+  return {
+    ok:
+      emptyPages.length === 0 &&
+      pageRangeIssues.length === 0 &&
+      lineOrderIssues.length === 0 &&
+      rootIndexBacktracks.length === 0 &&
+      missingRootIndexes.length === 0,
+    emptyPages,
+    pageRangeIssues,
+    lineOrderIssues,
+    rootIndexBacktracks,
+    missingRootIndexes,
+  };
+};
+
+export const runPaginationRegressionSmoke = async (
+  editorView: any,
+  debugPanelEl: HTMLElement | null
+) => {
+  const getJSON = editorView?.getJSON?.bind(editorView);
+  const setJSON = editorView?.setJSON?.bind(editorView);
+  if (typeof getJSON !== "function" || typeof setJSON !== "function") {
+    const text = "[pagination-regression-smoke] skipped: getJSON/setJSON unavailable.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const baseParagraphCount = 84;
+  const enterCount = 18;
+  const stressDoc = buildPaginationRegressionDoc(baseParagraphCount);
+  const original = getJSON();
+  const dispatch = (tr: any) => editorView.dispatch(tr);
+  const keymap = (createCanvasEditorKeymap?.() ?? {}) as Record<string, any>;
+  const keymapEnter = keymap.Enter;
+
+  let applied = false;
+  let restored = false;
+  let beforePages = 0;
+  let afterPages = 0;
+  let beforeChildCount = 0;
+  let afterChildCount = 0;
+  let handledCount = 0;
+  let settleBefore: any = null;
+  let settleAfter: any = null;
+  let restoreSettle: any = null;
+  let layoutInspection: any = null;
+
+  try {
+    applied = setJSON(stressDoc) === true;
+    settleBefore = await waitForLayoutIdle(editorView);
+    const beforeLayout = editorView?._internals?.getLayout?.();
+    beforePages = Number(beforeLayout?.pages?.length ?? 0);
+    beforeChildCount = Number(editorView?.state?.doc?.childCount ?? 0);
+
+    const endPos = findLastParagraphEndPos(editorView.state?.doc);
+    if (!Number.isFinite(endPos)) {
+      const text = "[pagination-regression-smoke] skipped: no paragraph cursor found.";
+      console.warn(text);
+      appendDebugLine(debugPanelEl, text);
+      return;
+    }
+
+    let selection: any;
+    try {
+      selection = TextSelection.create(editorView.state.doc, Number(endPos));
+    } catch (_error) {
+      selection = editorView.state.selection.constructor.near(
+        editorView.state.doc.resolve(Number(endPos)),
+        -1
+      );
+    }
+    editorView.dispatch(editorView.state.tr.setSelection(selection).scrollIntoView());
+
+    for (let index = 0; index < enterCount; index += 1) {
+      let handled = false;
+      if (typeof keymapEnter === "function") {
+        handled = runCommand(keymapEnter as any, editorView.state, dispatch);
+      }
+      if (!handled) {
+        handled = runCommand(basicCommands.enter, editorView.state, dispatch);
+      }
+      if (!handled) {
+        break;
+      }
+      handledCount += 1;
+    }
+
+    settleAfter = await waitForLayoutIdle(editorView);
+    const afterLayout = editorView?._internals?.getLayout?.();
+    afterPages = Number(afterLayout?.pages?.length ?? 0);
+    afterChildCount = Number(editorView?.state?.doc?.childCount ?? 0);
+    layoutInspection = inspectPaginationRegressionLayout(afterLayout, afterChildCount);
+  } finally {
+    if (original) {
+      restored = setJSON(original) === true;
+      restoreSettle = await waitForLayoutIdle(editorView);
+    }
+  }
+
+  const summary = {
+    applied,
+    restored,
+    baseParagraphCount,
+    enterCount,
+    handledCount,
+    beforePages,
+    afterPages,
+    beforeChildCount,
+    afterChildCount,
+    expectedChildCount: baseParagraphCount + enterCount,
+    settleBefore,
+    settleAfter,
+    restoreSettle,
+    layoutInspection,
+  };
+  const ok =
+    applied &&
+    restored &&
+    handledCount === enterCount &&
+    afterChildCount === baseParagraphCount + enterCount &&
+    afterPages > beforePages &&
+    settleBefore?.timedOut !== true &&
+    settleAfter?.timedOut !== true &&
+    restoreSettle?.timedOut !== true &&
+    layoutInspection?.ok === true;
+  const text = `[pagination-regression-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
 };
 
 const findParagraphTextRange = (doc: any) => {

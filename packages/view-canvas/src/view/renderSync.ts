@@ -15,6 +15,39 @@ const now = () =>
     ? performance.now()
     : Date.now();
 
+const isGhostTraceEnabled = (settings: any) =>
+  settings?.debugGhostTrace === true ||
+  (typeof globalThis !== "undefined" &&
+    (globalThis as typeof globalThis & { __lumenGhostTraceEnabled?: boolean })
+      .__lumenGhostTraceEnabled === true);
+
+const emitGhostTrace = (type: string, summary: Record<string, unknown>, settings: any) => {
+  if (!isGhostTraceEnabled(settings)) {
+    return;
+  }
+  if (typeof globalThis === "undefined") {
+    return;
+  }
+  const globalState = globalThis as typeof globalThis & {
+    __lumenGhostTrace?: Array<Record<string, unknown>>;
+    __copyLumenGhostTrace?: () => string;
+  };
+  const logs = Array.isArray(globalState.__lumenGhostTrace) ? globalState.__lumenGhostTrace : [];
+  logs.push({
+    type,
+    timestamp: new Date().toISOString(),
+    ...summary,
+  });
+  if (logs.length > 400) {
+    logs.splice(0, logs.length - 400);
+  }
+  globalState.__lumenGhostTrace = logs;
+  globalState.__copyLumenGhostTrace = () => JSON.stringify(logs, null, 2);
+  if (typeof console !== "undefined" && typeof console.info === "function") {
+    console.info(`[ghost-trace][${type}]`, summary);
+  }
+};
+
 export const createRenderSync = ({
   getEditorState,
   setEditorState,
@@ -640,7 +673,7 @@ export const createRenderSync = ({
     const prevLayout = getLayout?.() ?? null;
     nextLayout.__version = version;
     nextLayout.__changeSummary = changeSummary ?? null;
-    nextLayout.__forceRedraw = !prevLayout;
+    nextLayout.__forceRedraw = !prevLayout || changeSummary?.docChanged === true;
     const prevLayoutIndex = getLayoutIndex?.() ?? null;
     setLayout(nextLayout);
     // Optimization: Build index for progressive layout to ensure selection/caret calculations work correctly.
@@ -836,6 +869,13 @@ export const createRenderSync = ({
         cascadeMaxPages: layoutPerf?.cascadeMaxPages ?? null,
         syncAfterIndex: layoutPerf?.syncAfterIndex ?? null,
         syncFromIndex: layoutPerf?.syncFromIndex ?? null,
+        resumeFromAnchor: layoutPerf?.resumeFromAnchor ?? null,
+        resumeAnchorPageIndex: layoutPerf?.resumeAnchorPageIndex ?? null,
+        resumeAnchorLineIndex: layoutPerf?.resumeAnchorLineIndex ?? null,
+        resumeAnchorMatchKey: layoutPerf?.resumeAnchorMatchKey ?? null,
+        resumeAnchorSkippedReason: layoutPerf?.resumeAnchorSkippedReason ?? null,
+        reusedPrefixPages: layoutPerf?.reusedPrefixPages ?? null,
+        reusedPrefixLines: layoutPerf?.reusedPrefixLines ?? null,
         blockCacheHitRate: layoutPerf?.blockCacheHitRate ?? null,
         breakLinesMs: layoutPerf?.breakLinesMs ?? null,
         layoutLeafMs: layoutPerf?.layoutLeafMs ?? null,
@@ -847,6 +887,36 @@ export const createRenderSync = ({
         workerPrevPagesBeforeSeed: workerDebug?.workerPrevPagesBeforeSeed ?? null,
         workerPrevPagesAfterSeed: workerDebug?.workerPrevPagesAfterSeed ?? null,
       });
+      emitGhostTrace(
+        "layout-pass",
+        {
+          layoutVersion: version,
+          source,
+          docChanged,
+          settingsChanged,
+          useCascadePagination,
+          cascadeFromPageIndex,
+          prevPages: prevLayout?.pages?.length ?? 0,
+          nextPages: layout?.pages?.length ?? 0,
+          progressiveApplied: layout?.__progressiveApplied === true,
+          progressiveTruncated: layout?.__progressiveTruncated === true,
+          reusedPages: layoutPerf?.reusedPages ?? null,
+          reuseReason: layoutPerf?.reuseReason ?? null,
+          disablePageReuse: layoutPerf?.disablePageReuse ?? null,
+          maybeSyncReason: layoutPerf?.maybeSyncReason ?? null,
+          syncAfterIndex: layoutPerf?.syncAfterIndex ?? null,
+          syncFromIndex: layoutPerf?.syncFromIndex ?? null,
+          resumeFromAnchor: layoutPerf?.resumeFromAnchor ?? null,
+          resumeAnchorPageIndex: layoutPerf?.resumeAnchorPageIndex ?? null,
+          resumeAnchorLineIndex: layoutPerf?.resumeAnchorLineIndex ?? null,
+          resumeAnchorMatchKey: layoutPerf?.resumeAnchorMatchKey ?? null,
+          resumeAnchorSkippedReason: layoutPerf?.resumeAnchorSkippedReason ?? null,
+          reusedPrefixPages: layoutPerf?.reusedPrefixPages ?? null,
+          reusedPrefixLines: layoutPerf?.reusedPrefixLines ?? null,
+          ghostTrace: Array.isArray(layout?.__ghostTrace) ? layout.__ghostTrace : [],
+        },
+        layoutPipeline?.settings
+      );
       // Optimization: Track if we applied progressive layout
       // Only trigger full pass after user has stopped editing for a while
       // This prevents constant full re-layouts during active typing
