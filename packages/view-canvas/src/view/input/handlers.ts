@@ -485,7 +485,7 @@ export const createInputHandlers = ({
     event.preventDefault();
     if (slice) {
       const editorState = getEditorState();
-      const tr = editorState.tr.replaceSelection(slice);
+      const tr = editorState.tr.replaceSelection(slice).setMeta("uiEvent", "paste");
       setPendingPreferredUpdate(true);
       dispatchTransaction(tr);
       inputEl.value = "";

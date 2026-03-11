@@ -4,6 +4,7 @@ import type {
   AnyExtension,
   AnyExtensionInput,
   CanvasHooks,
+  EnableRules,
   ExtensionContext,
   ExtensionInstance,
   GlobalAttributes,
@@ -32,6 +33,7 @@ const createResolvedState = (): ResolvedState => ({
   proseMirrorPlugins: [],
   keyboardShortcuts: [],
   inputRules: [],
+  pasteRules: [],
   commands: {},
   stateTransforms: [],
 });
@@ -46,6 +48,20 @@ const createResolvedCanvas = (): ResolvedStructure["canvas"] => ({
 
 const sortByPriority = <T extends { priority: number }>(items: T[]) =>
   [...items].sort((a, b) => b.priority - a.priority);
+
+const isExtensionRulesEnabled = (
+  extension: AnyExtension,
+  enabled: EnableRules | undefined
+) => {
+  if (Array.isArray(enabled)) {
+    return enabled.some((entry) => {
+      const name = typeof entry === "string" ? entry : entry?.name;
+      return name === extension.name;
+    });
+  }
+
+  return enabled !== false;
+};
 
 const callConfigValue = <Value>(value: Value | (() => Value) | undefined, fallback: Value) => {
   if (typeof value === "function") {
@@ -163,8 +179,22 @@ export class ExtensionManager {
         getExtensionField<() => any[]>(instance.extension, "addInputRules", ctx),
         []
       );
-      if (inputRules.length) {
+      if (
+        isExtensionRulesEnabled(instance.extension, this.editor?.options?.enableInputRules) &&
+        inputRules.length
+      ) {
         state.inputRules.push(...inputRules);
+      }
+
+      const pasteRules = callConfigValue(
+        getExtensionField<() => any[]>(instance.extension, "addPasteRules", ctx),
+        []
+      );
+      if (
+        isExtensionRulesEnabled(instance.extension, this.editor?.options?.enablePasteRules) &&
+        pasteRules.length
+      ) {
+        state.pasteRules.push(...pasteRules);
       }
 
       const commands = callConfigValue(
@@ -203,6 +233,79 @@ export class ExtensionManager {
       ...structure,
       state,
     };
+  }
+
+  transformPastedHTML(baseTransform?: (html: string, view?: any) => string) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduce(
+      (transform, extension) => {
+        const ctx = this.createDetachedContext(extension);
+        const extensionTransform = getExtensionField<(html: string) => string | null | undefined>(
+          extension,
+          "transformPastedHTML",
+          ctx
+        );
+
+        if (!extensionTransform) {
+          return transform;
+        }
+
+        return (html: string, view?: any) => {
+          const transformedHtml = transform(html, view);
+          return extensionTransform(transformedHtml) ?? transformedHtml;
+        };
+      },
+      baseTransform || ((html: string) => html)
+    );
+  }
+
+  transformPastedText(baseTransform?: (text: string, plain: boolean, view?: any) => string) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduce(
+      (transform, extension) => {
+        const ctx = this.createDetachedContext(extension);
+        const extensionTransform = getExtensionField<
+          (text: string, plain: boolean) => string | null | undefined
+        >(extension, "transformPastedText", ctx);
+
+        if (!extensionTransform) {
+          return transform;
+        }
+
+        return (text: string, plain: boolean, view?: any) => {
+          const transformedText = transform(text, plain, view);
+          return extensionTransform(transformedText, plain) ?? transformedText;
+        };
+      },
+      baseTransform || ((text: string) => text)
+    );
+  }
+
+  transformPasted(baseTransform?: (slice: any, view?: any) => any) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduce(
+      (transform, extension) => {
+        const ctx = this.createDetachedContext(extension);
+        const extensionTransform = getExtensionField<(slice: any) => any>(
+          extension,
+          "transformPasted",
+          ctx
+        );
+
+        if (!extensionTransform) {
+          return transform;
+        }
+
+        return (slice: any, view?: any) => {
+          const transformedSlice = transform(slice, view);
+          return extensionTransform(transformedSlice) ?? transformedSlice;
+        };
+      },
+      baseTransform || ((slice: any) => slice)
+    );
   }
 
   private resolveExtensions(input: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput): AnyExtension[] {

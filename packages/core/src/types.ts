@@ -1,4 +1,5 @@
 import type { Editor } from "./Editor";
+import type { PasteRule } from "./PasteRule";
 
 export type ExtensionType = "extension" | "node" | "mark";
 
@@ -100,6 +101,18 @@ export interface ExtendableConfig<
   addInputRules?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addInputRules"];
   }) => any[];
+  addPasteRules?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["addPasteRules"];
+  }) => PasteRule[];
+  transformPasted?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["transformPasted"];
+  }, slice: any) => any;
+  transformPastedText?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["transformPastedText"];
+  }, text: string, plain: boolean) => string | null | undefined;
+  transformPastedHTML?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["transformPastedHTML"];
+  }, html: string) => string | null | undefined;
   addProseMirrorPlugins?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addProseMirrorPlugins"];
   }) => any[];
@@ -202,6 +215,11 @@ export interface NodeConfig<Options = any, Storage = any>
 
 export interface MarkConfig<Options = any, Storage = any>
   extends ExtendableConfig<Options, Storage, MarkConfig<Options, Storage>> {
+  group?:
+    | string
+    | ((this: ExtensionContext<Options, Storage> & {
+        parent: ParentConfig<MarkConfig<Options, Storage>>["group"];
+      }) => string | null);
   inclusive?:
     | boolean
     | ((this: ExtensionContext<Options, Storage> & {
@@ -253,6 +271,7 @@ export interface ExtensionLike<Options = any, Storage = any> {
 export type AnyExtension = ExtensionLike<any, any>;
 export type AnyExtensionInput = AnyExtension | ReadonlyArray<AnyExtensionInput>;
 export type Extensions = ReadonlyArray<AnyExtensionInput>;
+export type EnableRules = ReadonlyArray<AnyExtension | string> | boolean;
 
 export type ExtensionInstance = {
   name: string;
@@ -267,6 +286,7 @@ export type ResolvedState = {
   proseMirrorPlugins: any[];
   keyboardShortcuts: Record<string, any>[];
   inputRules: any[];
+  pasteRules: PasteRule[];
   commands: Record<string, any>;
   stateTransforms: Array<(state: any) => any>;
 };

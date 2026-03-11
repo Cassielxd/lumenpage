@@ -1,12 +1,22 @@
 export { Editor } from "./Editor";
 export type { EditorOptions, EditorStateFactoryContext } from "./Editor";
 export { CommandManager } from "./CommandManager";
+export { createChainableState } from "./createChainableState";
 export { createDocument } from "./createDocument";
 export type { ContentParser } from "./createDocument";
 export { Extension } from "./Extension";
 export { ExtensionManager } from "./ExtensionManager";
 export { Mark } from "./Mark";
 export { Node } from "./Node";
+export {
+  PasteRule,
+  pasteRulesPlugin,
+  type ExtendedRegExpMatchArray,
+  type PasteRuleFinder,
+  type PasteRuleMatch,
+  type Range,
+} from "./PasteRule";
+export { markPasteRule, nodePasteRule, textPasteRule } from "./pasteRules";
 export { createSchema } from "./createSchema";
 
 export type {
@@ -16,6 +26,7 @@ export type {
   AnyExtensionInput,
   CanvasHooks,
   CanvasSelectionGeometry,
+  EnableRules,
   ExtensionConfig,
   ExtensionContext,
   ExtensionInstance,

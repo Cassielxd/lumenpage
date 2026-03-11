@@ -14,7 +14,13 @@ import { CommandManager } from "./CommandManager";
 import { createDocument, type ContentParser } from "./createDocument";
 import { createSchema } from "./createSchema";
 import { ExtensionManager } from "./ExtensionManager";
-import type { AnyExtensionInput, ResolvedExtensions, ResolvedStructure } from "./types";
+import { pasteRulesPlugin } from "./PasteRule";
+import type {
+  AnyExtensionInput,
+  EnableRules,
+  ResolvedExtensions,
+  ResolvedStructure,
+} from "./types";
 
 type CreateStateOptions = {
   content?: any;
@@ -51,7 +57,8 @@ export type EditorOptions = {
   canvas?: Record<string, any> | null;
   commandConfig?: CanvasCommandConfig | null;
   stateFactory?: ((ctx: EditorStateFactoryContext) => any) | null;
-  enableInputRules?: boolean;
+  enableInputRules?: EnableRules;
+  enablePasteRules?: EnableRules;
   autofocus?: boolean | "start" | "end" | number;
   editable?: boolean;
   onBeforeCreate?: ((args: { editor: Editor }) => void) | null;
@@ -71,6 +78,7 @@ const defaultOptions: EditorOptions = {
   commandConfig: null,
   stateFactory: null,
   enableInputRules: true,
+  enablePasteRules: true,
   autofocus: false,
   editable: true,
   onBeforeCreate: null,
@@ -86,12 +94,14 @@ const createShortcutPlugins = (resolved: ResolvedExtensions) =>
     .filter((shortcuts) => shortcuts && Object.keys(shortcuts).length > 0)
     .map((shortcuts) => keymap(shortcuts));
 
-const createInputRulePlugins = (resolved: ResolvedExtensions, enabled: boolean) => {
-  if (!enabled) {
-    return [];
-  }
+const createInputRulePlugins = (resolved: ResolvedExtensions) => {
   const rules = resolved.state.inputRules.filter(Boolean);
   return rules.length ? [inputRules({ rules })] : [];
+};
+
+const createPasteRulePlugins = (editor: Editor, resolved: ResolvedExtensions) => {
+  const rules = resolved.state.pasteRules.filter(Boolean);
+  return rules.length ? pasteRulesPlugin({ editor, rules }) : [];
 };
 
 export class Editor {
@@ -208,6 +218,22 @@ export class Editor {
     }
 
     const editorProps = this.options.editorProps || {};
+    const baseTransformPasted =
+      typeof editorProps.transformPasted === "function"
+        ? (slice: any, view?: any) => editorProps.transformPasted?.(view, slice) ?? slice
+        : undefined;
+    const transformPasted = this.extensionManager.transformPasted(baseTransformPasted);
+    const baseTransformPastedText =
+      typeof editorProps.transformPastedText === "function"
+        ? (text: string, plain: boolean, view?: any) =>
+            editorProps.transformPastedText?.(view, text, plain) ?? text
+        : undefined;
+    const transformPastedText = this.extensionManager.transformPastedText(baseTransformPastedText);
+    const baseTransformPastedHTML =
+      typeof editorProps.transformPastedHTML === "function"
+        ? (html: string, view?: any) => editorProps.transformPastedHTML?.(view, html) ?? html
+        : undefined;
+    const transformPastedHTML = this.extensionManager.transformPastedHTML(baseTransformPastedHTML);
     const resolvedCanvasViewConfig = {
       ...(this.options.canvas || {}),
       ...(editorProps.canvasViewConfig || {}),
@@ -224,6 +250,9 @@ export class Editor {
       selectionGeometry: editorProps.selectionGeometry || this.selectionGeometry || undefined,
       nodeSelectionTypes:
         editorProps.nodeSelectionTypes || (this.nodeSelectionTypes.length ? this.nodeSelectionTypes : undefined),
+      transformPasted: (view, slice) => transformPasted(slice, view),
+      transformPastedText: (view, text, plain) => transformPastedText(text, plain, view),
+      transformPastedHTML: (view, html) => transformPastedHTML(html, view),
     };
 
     this.view = new CanvasEditorView(element, viewProps);
@@ -245,7 +274,8 @@ export class Editor {
       ...(this.options.plugins || []),
       ...this.resolvedExtensions.state.proseMirrorPlugins,
       ...createShortcutPlugins(this.resolvedExtensions),
-      ...createInputRulePlugins(this.resolvedExtensions, this.options.enableInputRules !== false),
+      ...createInputRulePlugins(this.resolvedExtensions),
+      ...createPasteRulePlugins(this, this.resolvedExtensions),
     ];
   }
 

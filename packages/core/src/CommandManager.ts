@@ -1,12 +1,20 @@
-﻿import type { Editor } from "./Editor";
+import type { Editor } from "./Editor";
+
+type CommandRuntime = {
+  state?: any;
+  view?: any;
+  dispatch?: ((tr: any) => void) | null;
+};
 
 export class CommandManager {
   readonly editor: Editor;
   readonly rawCommands: Record<string, any>;
+  readonly runtime: CommandRuntime;
 
-  constructor(editor: Editor, rawCommands: Record<string, any>) {
+  constructor(editor: Editor, rawCommands: Record<string, any>, runtime: CommandRuntime = {}) {
     this.editor = editor;
     this.rawCommands = rawCommands;
+    this.runtime = runtime;
   }
 
   get commands() {
@@ -25,13 +33,20 @@ export class CommandManager {
     }
 
     chain.run = () => queued.every((step) => step() === true);
-    chain.can = () => this.chain(true);
+    chain.can = () => this.withRuntime(this.runtime).chain(true);
 
     return chain;
   }
 
   can() {
     return this.createCommandFacade(true);
+  }
+
+  withRuntime(runtime: CommandRuntime = {}) {
+    return new CommandManager(this.editor, this.rawCommands, {
+      ...this.runtime,
+      ...runtime,
+    });
   }
 
   private createCommandFacade(canOnly: boolean) {
@@ -42,13 +57,19 @@ export class CommandManager {
     commands.run = (command: any, ...args: any[]) => this.runResolvedCommand(command, args, canOnly);
     commands.can = (name: string, ...args: any[]) =>
       this.runResolvedCommand(this.rawCommands[name], args, true);
-    commands.chain = () => this.chain(canOnly);
+    commands.chain = () => this.withRuntime(this.runtime).chain(canOnly);
     return commands;
   }
 
   private getDispatch(canOnly: boolean) {
     if (canOnly) {
       return null;
+    }
+    if (this.runtime.dispatch !== undefined) {
+      return this.runtime.dispatch;
+    }
+    if (this.runtime.state) {
+      return () => undefined;
     }
     if (this.editor.view) {
       return this.editor.view.dispatch.bind(this.editor.view);
@@ -61,14 +82,22 @@ export class CommandManager {
     };
   }
 
+  private getState() {
+    return this.runtime.state || this.editor.view?.state || this.editor.state;
+  }
+
+  private getView() {
+    return this.runtime.view ?? this.editor.view ?? null;
+  }
+
   private runResolvedCommand(command: any, args: any[], canOnly: boolean) {
     if (typeof command !== "function") {
       return false;
     }
 
     const dispatch = this.getDispatch(canOnly);
-    const state = this.editor.view?.state || this.editor.state;
-    const view = this.editor.view;
+    const state = this.getState();
+    const view = this.getView();
     if (!state) {
       return false;
     }

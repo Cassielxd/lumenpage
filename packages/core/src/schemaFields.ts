@@ -208,7 +208,7 @@ const buildMarkSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => 
   const renderHTML = getExtensionField<any>(instance.extension, "renderHTML", ctx);
   const spec: Record<string, any> = {};
 
-  for (const field of ["inclusive", "excludes", "spanning", "code"]) {
+  for (const field of ["inclusive", "excludes", "group", "spanning", "code"]) {
     const value = resolveConfigField<any>(instance, ctx, field, undefined);
     if (value !== undefined && value !== null) {
       spec[field] = value;
