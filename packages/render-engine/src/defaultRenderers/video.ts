@@ -1,18 +1,30 @@
-﻿export const videoRenderer = {
+const resolvePositiveDimension = (value: unknown) => {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+export const videoRenderer = {
   allowSplit: false,
 
   layoutBlock({ node, settings }) {
     const attrs = node.attrs || {};
     const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const desiredWidth = Number.isFinite(Number(attrs.width)) ? Number(attrs.width) : Math.min(480, maxWidth);
+    const desiredWidth = resolvePositiveDimension(attrs.width) ?? Math.min(480, maxWidth);
     const width = Math.max(1, Math.min(maxWidth, desiredWidth));
-    const desiredHeight = Number.isFinite(Number(attrs.height)) ? Number(attrs.height) : Math.round(width * 0.5625);
+    const desiredHeight = resolvePositiveDimension(attrs.height) ?? Math.round(width * 0.5625);
     const height = Math.max(1, desiredHeight);
     const line = {
       text: "",
       start: 0,
       end: 1,
       width,
+      lineHeight: height,
       runs: [],
       x: settings.margin.left,
       blockType: "video",

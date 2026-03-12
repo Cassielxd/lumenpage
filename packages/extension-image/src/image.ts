@@ -2,6 +2,14 @@ import type { NodeSpec } from "lumenpage-model";
 import { sanitizeImageSrc } from "lumenpage-link";
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
+const readPositiveDimensionAttr = (dom, name) => {
+  const raw = dom?.getAttribute?.(name);
+  if (raw == null || raw === "") {
+    return null;
+  }
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
 
 export const serializeImageToText = () => " ";
 
@@ -35,8 +43,8 @@ export const imageNodeSpec: NodeSpec = {
           id: readIdAttr(dom),
           src,
           alt: dom.getAttribute("alt") || "",
-          width: dom.getAttribute("width"),
-          height: dom.getAttribute("height"),
+          width: readPositiveDimensionAttr(dom, "width"),
+          height: readPositiveDimensionAttr(dom, "height"),
         };
       },
     },
