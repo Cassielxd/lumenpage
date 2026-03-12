@@ -60,6 +60,10 @@ export type BubbleMenuPluginProps = {
   className?: string;
 };
 
+export type BubbleMenuUpdateOptions = Partial<
+  Omit<BubbleMenuPluginProps, "editor" | "pluginKey" | "element">
+>;
+
 type BubbleMenuViewProps = BubbleMenuPluginProps & {
   view: any;
   pluginKeyRef: string | PluginKey;
@@ -86,6 +90,8 @@ const DEFAULT_POPUP_OPTIONS: Omit<PopupControllerOptions, "appendTo"> = {
   maxWidth: 360,
   interactive: true,
 };
+
+const resolvePluginKeyRef = (pluginKey?: string | PluginKey) => pluginKey || DEFAULT_PLUGIN_KEY;
 
 const toFiniteNumber = (value: unknown, fallback = 0) => {
   const next = Number(value);
@@ -389,6 +395,7 @@ export class BubbleMenuView {
   pluginKeyRef: string | PluginKey;
   defaultElementRuntime: DefaultBubbleMenuElement | null;
   actions: BubbleMenuAction[];
+  className?: string;
 
   private updateDebounceTimer: number | undefined;
   private resizeDebounceTimer: number | undefined;
@@ -420,6 +427,7 @@ export class BubbleMenuView {
     this.ownerDocument = view?.dom?.ownerDocument || document;
     this.useDefaultRenderer = !element || Array.isArray(actions);
     this.actions = this.useDefaultRenderer ? normalizeActions(actions) : [];
+    this.className = className;
 
     this.defaultElementRuntime = this.useDefaultRenderer
       ? createDefaultBubbleMenuElement({
@@ -508,6 +516,11 @@ export class BubbleMenuView {
     const meta = transaction?.getMeta?.(this.pluginKeyRef);
     if (meta === "updatePosition") {
       this.updatePosition();
+      return;
+    }
+
+    if (meta && typeof meta === "object" && meta.type === "updateOptions") {
+      this.updateOptions(meta.options || {});
     }
   };
 
@@ -686,6 +699,55 @@ export class BubbleMenuView {
     this.updateHandler(view, selectionChanged, docChanged, oldState);
   }
 
+  updateOptions(newOptions: BubbleMenuUpdateOptions) {
+    if (!newOptions) {
+      return;
+    }
+
+    if (newOptions.updateDelay !== undefined) {
+      this.updateDelay = Math.max(0, toFiniteNumber(newOptions.updateDelay, this.updateDelay));
+    }
+    if (newOptions.resizeDelay !== undefined) {
+      this.resizeDelay = Math.max(0, toFiniteNumber(newOptions.resizeDelay, this.resizeDelay));
+    }
+    if (newOptions.getReferencedVirtualElement !== undefined) {
+      this.getReferencedVirtualElement = newOptions.getReferencedVirtualElement;
+    }
+    if (newOptions.shouldShow !== undefined) {
+      this.shouldShow = newOptions.shouldShow || defaultShouldShow;
+    }
+    if (newOptions.className !== undefined) {
+      this.className = newOptions.className;
+      if (this.defaultElementRuntime) {
+        this.element.className = this.className || "lumen-bubble-menu";
+      }
+    }
+    if (newOptions.actions !== undefined && this.useDefaultRenderer) {
+      this.actions = normalizeActions(newOptions.actions);
+    }
+
+    const popupOptions: Partial<PopupControllerOptions> = {};
+    if (newOptions.appendTo !== undefined) {
+      popupOptions.appendTo = newOptions.appendTo;
+    }
+    if (newOptions.options) {
+      popupOptions.placement = newOptions.options.placement;
+      popupOptions.maxWidth = newOptions.options.maxWidth;
+      popupOptions.interactive = newOptions.options.interactive;
+      popupOptions.offset = newOptions.options.offset;
+    }
+    this.popup.updateOptions(popupOptions);
+
+    if (this.isVisible) {
+      const { reference, rect } = this.resolveReference();
+      if (!reference || !rect) {
+        this.hide();
+        return;
+      }
+      this.show(reference, rect);
+    }
+  }
+
   destroy() {
     const defaultView = this.ownerDocument.defaultView;
     if (defaultView && this.updateDebounceTimer) {
@@ -710,7 +772,7 @@ export class BubbleMenuView {
 }
 
 export const BubbleMenuPlugin = (options: BubbleMenuPluginProps) => {
-  const pluginKeyRef = options.pluginKey || DEFAULT_PLUGIN_KEY;
+  const pluginKeyRef = resolvePluginKeyRef(options.pluginKey);
   const pluginKey =
     pluginKeyRef instanceof PluginKey ? pluginKeyRef : new PluginKey(String(pluginKeyRef));
 
@@ -723,4 +785,31 @@ export const BubbleMenuPlugin = (options: BubbleMenuPluginProps) => {
         pluginKeyRef,
       }),
   });
+};
+
+export const updateBubbleMenuPosition = (view: any, pluginKey?: string | PluginKey) => {
+  const pluginKeyRef = resolvePluginKeyRef(pluginKey);
+  const transaction = view?.state?.tr?.setMeta?.(pluginKeyRef, "updatePosition");
+  if (!transaction) {
+    return false;
+  }
+  view.dispatch(transaction);
+  return true;
+};
+
+export const updateBubbleMenuOptions = (
+  view: any,
+  options: BubbleMenuUpdateOptions,
+  pluginKey?: string | PluginKey
+) => {
+  const pluginKeyRef = resolvePluginKeyRef(pluginKey);
+  const transaction = view?.state?.tr?.setMeta?.(pluginKeyRef, {
+    type: "updateOptions",
+    options,
+  });
+  if (!transaction) {
+    return false;
+  }
+  view.dispatch(transaction);
+  return true;
 };

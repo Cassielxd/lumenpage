@@ -12,6 +12,7 @@ export type PopupReference = PopupRect | (() => DOMRect | null) | null;
 export type PopupController = {
   show: (reference: PopupReference, content: HTMLElement) => void;
   hide: () => void;
+  updateOptions: (options: Partial<PopupControllerOptions>) => void;
   destroy: () => void;
 };
 
@@ -74,14 +75,14 @@ export const createPopupController = (
   ownerDocument: Document,
   options: PopupControllerOptions = {}
 ): PopupController => {
-  const placement =
+  let placement =
     typeof options.placement === "string" && options.placement.trim().length > 0
       ? options.placement
       : "bottom-start";
-  const maxWidth = Number.isFinite(options.maxWidth) ? Number(options.maxWidth) : 320;
-  const interactive = options.interactive !== false;
-  const [skid, distance] = normalizeOffset(options.offset);
-  const appendTo = options.appendTo;
+  let maxWidth = Number.isFinite(options.maxWidth) ? Number(options.maxWidth) : 320;
+  let interactive = options.interactive !== false;
+  let [skid, distance] = normalizeOffset(options.offset);
+  let appendTo = options.appendTo;
 
   const floatingEl = ownerDocument.createElement("div");
   floatingEl.style.position = "fixed";
@@ -195,6 +196,38 @@ export const createPopupController = (
       }
       stopWatching();
       floatingEl.style.display = "none";
+    },
+    updateOptions(nextOptions) {
+      if (destroyed || !nextOptions) {
+        return;
+      }
+
+      if (typeof nextOptions.placement === "string" && nextOptions.placement.trim().length > 0) {
+        placement = nextOptions.placement;
+      }
+      if (Number.isFinite(nextOptions.maxWidth)) {
+        maxWidth = Number(nextOptions.maxWidth);
+        floatingEl.style.maxWidth = `${maxWidth}px`;
+      }
+      if (typeof nextOptions.interactive === "boolean") {
+        interactive = nextOptions.interactive;
+        floatingEl.style.pointerEvents = interactive ? "auto" : "none";
+      }
+      if (nextOptions.offset !== undefined) {
+        [skid, distance] = normalizeOffset(nextOptions.offset);
+      }
+      if (nextOptions.appendTo !== undefined) {
+        appendTo = nextOptions.appendTo;
+      }
+
+      const appendTarget = resolveAppendTarget();
+      if (floatingEl.parentNode !== appendTarget) {
+        appendTarget.appendChild(floatingEl);
+      }
+
+      if (floatingEl.style.display !== "none") {
+        void updatePosition();
+      }
     },
     destroy() {
       if (destroyed) {
