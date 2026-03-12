@@ -462,6 +462,7 @@ export class ExtensionManager {
       ["unmount", "onUnmount"],
       ["beforeCreate", "onBeforeCreate"],
       ["create", "onCreate"],
+      ["beforeTransaction", "onBeforeTransaction"],
       ["update", "onUpdate"],
       ["selectionUpdate", "onSelectionUpdate"],
       ["transaction", "onTransaction"],

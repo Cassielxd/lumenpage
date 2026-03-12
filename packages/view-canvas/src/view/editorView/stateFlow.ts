@@ -8,6 +8,7 @@ export const createStateFlow = ({
   getEditorPropsList,
   applyTransaction,
   createChangeEvent,
+  onBeforeTransaction,
   layoutPipeline,
   onChange,
   setPendingChangeSummary,
@@ -23,11 +24,19 @@ export const createStateFlow = ({
         typeof prevState?.applyTransaction === "function"
           ? prevState.applyTransaction(tr)
           : { state: applyTransaction(prevState, tr), transactions: [tr] };
-      const nextState = applied?.state ?? prevState;
-      const transactions = Array.isArray(applied?.transactions) ? applied.transactions : [tr];
-      if (transactions.length === 0) {
-        return;
-      }
+    const nextState = applied?.state ?? prevState;
+    const transactions = Array.isArray(applied?.transactions) ? applied.transactions : [tr];
+
+    if (typeof onBeforeTransaction === "function") {
+      onBeforeTransaction({
+        transaction: tr,
+        nextState,
+      });
+    }
+
+    if (transactions.length === 0) {
+      return;
+    }
       const shouldScroll = tr?.scrolledIntoView;
       const changeEvent = createChangeEvent(tr, prevState, nextState, {
         transactions,

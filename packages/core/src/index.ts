@@ -29,6 +29,7 @@ export type {
   DispatchTransactionProps,
   EnableRules,
   EditorBaseEvent,
+  EditorBeforeTransactionEvent,
   EditorDropEvent,
   EditorEvents,
   EditorFocusEvent,

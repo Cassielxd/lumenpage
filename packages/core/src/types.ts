@@ -75,8 +75,14 @@ export type EditorTransactionEvent = EditorBaseEvent & {
   appendedTransactions?: any[];
 };
 
+export type EditorBeforeTransactionEvent = EditorBaseEvent & {
+  transaction: any;
+  nextState: any;
+};
+
 export type EditorFocusEvent = EditorBaseEvent & {
-  event: Event;
+  event: FocusEvent;
+  transaction: any;
   view?: any;
 };
 
@@ -103,6 +109,7 @@ export type EditorEvents = {
   unmount: EditorBaseEvent;
   beforeCreate: EditorBaseEvent;
   create: EditorBaseEvent;
+  beforeTransaction: EditorBeforeTransactionEvent;
   update: EditorTransactionEvent;
   selectionUpdate: EditorTransactionEvent;
   transaction: EditorTransactionEvent;
@@ -189,6 +196,9 @@ export interface ExtendableConfig<
   onCreate?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onCreate"];
   }, event: EditorBaseEvent) => void;
+  onBeforeTransaction?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onBeforeTransaction"];
+  }, event: EditorBeforeTransactionEvent) => void;
   onUpdate?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onUpdate"];
   }, event: EditorTransactionEvent) => void;

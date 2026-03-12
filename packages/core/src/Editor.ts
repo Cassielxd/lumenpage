@@ -20,6 +20,7 @@ import type {
   AnyExtensionInput,
   EnableRules,
   EditorBaseEvent,
+  EditorBeforeTransactionEvent,
   EditorDropEvent,
   EditorEvents,
   EditorFocusEvent,
@@ -59,6 +60,7 @@ export type EditorOptions = {
   onMount?: ((args: EditorBaseEvent) => void) | null;
   onUnmount?: ((args: EditorBaseEvent) => void) | null;
   onCreate?: ((args: EditorBaseEvent) => void) | null;
+  onBeforeTransaction?: ((args: EditorBeforeTransactionEvent) => void) | null;
   onUpdate?: ((args: EditorTransactionEvent) => void) | null;
   onSelectionUpdate?: ((args: EditorTransactionEvent) => void) | null;
   onTransaction?: ((args: EditorTransactionEvent) => void) | null;
@@ -82,6 +84,7 @@ const defaultOptions: EditorOptions = {
   onMount: null,
   onUnmount: null,
   onCreate: null,
+  onBeforeTransaction: null,
   onUpdate: null,
   onSelectionUpdate: null,
   onTransaction: null,
@@ -125,9 +128,11 @@ export class Editor extends EventEmitter<EditorEvents> {
   state: any | null;
   view: CanvasEditorView | null;
   isFocused: boolean;
+  isCapturingTransaction: boolean;
 
   private readonly commandManager: CommandManager;
   private customDispatchTransaction: ((transaction: any) => void) | null;
+  private capturedTransaction: any | null;
 
   constructor(options: Partial<EditorOptions> = {}) {
     super();
@@ -156,7 +161,9 @@ export class Editor extends EventEmitter<EditorEvents> {
     this.state = this.initializeState();
     this.view = null;
     this.isFocused = false;
+    this.isCapturingTransaction = false;
     this.customDispatchTransaction = null;
+    this.capturedTransaction = null;
     this.commandManager = new CommandManager(this, this.rawCommands);
     this.bindOptionEvents();
     this.extensionManager.bindEditorEvents(this);
@@ -193,6 +200,17 @@ export class Editor extends EventEmitter<EditorEvents> {
   focus() {
     this.view?.focus();
     return this;
+  }
+
+  captureTransaction(fn: () => void) {
+    this.isCapturingTransaction = true;
+    fn();
+    this.isCapturingTransaction = false;
+
+    const transaction = this.capturedTransaction;
+    this.capturedTransaction = null;
+
+    return transaction;
   }
 
   setOptions(options: Partial<EditorOptions> = {}) {
@@ -353,6 +371,21 @@ export class Editor extends EventEmitter<EditorEvents> {
           this.emit("selectionUpdate", payload);
         }
 
+        const transactions = [transaction, ...(event?.appendedTransactions || [])].filter(Boolean);
+        const focusTransaction = [...transactions].reverse().find((tr: any) => {
+          return tr?.getMeta?.("focus") || tr?.getMeta?.("blur");
+        });
+        const focusMeta = focusTransaction?.getMeta?.("focus");
+        const blurMeta = focusTransaction?.getMeta?.("blur");
+
+        if (focusMeta) {
+          this.emit("focus", { editor: this, event: focusMeta.event, transaction: focusTransaction, view });
+        }
+
+        if (blurMeta) {
+          this.emit("blur", { editor: this, event: blurMeta.event, transaction: focusTransaction, view });
+        }
+
         if (event?.docChanged) {
           this.emit("update", payload);
         }
@@ -363,7 +396,12 @@ export class Editor extends EventEmitter<EditorEvents> {
           const handled = baseHandleDOMEvents.focus?.(view, event) === true;
           if (!this.isFocused) {
             this.isFocused = true;
-            this.emit("focus", { editor: this, event, view });
+            const transaction = view?.state?.tr
+              ?.setMeta("focus", { event })
+              ?.setMeta("addToHistory", false);
+            if (transaction) {
+              view.dispatch(transaction);
+            }
           }
           return handled;
         },
@@ -371,7 +409,12 @@ export class Editor extends EventEmitter<EditorEvents> {
           const handled = baseHandleDOMEvents.blur?.(view, event) === true;
           if (this.isFocused) {
             this.isFocused = false;
-            this.emit("blur", { editor: this, event, view });
+            const transaction = view?.state?.tr
+              ?.setMeta("blur", { event })
+              ?.setMeta("addToHistory", false);
+            if (transaction) {
+              view.dispatch(transaction);
+            }
           }
           return handled;
         },
@@ -418,9 +461,29 @@ export class Editor extends EventEmitter<EditorEvents> {
       return;
     }
 
+    if (this.isCapturingTransaction) {
+      if (!this.capturedTransaction) {
+        this.capturedTransaction = transaction;
+        return;
+      }
+
+      transaction.steps?.forEach?.((step: any) => this.capturedTransaction?.step?.(step));
+      return;
+    }
+
     if (this.customDispatchTransaction) {
       this.customDispatchTransaction(transaction);
       return;
+    }
+
+    const currentState = this.view?.state ?? this.state;
+    if (currentState && typeof currentState.applyTransaction === "function") {
+      const applied = currentState.applyTransaction(transaction);
+      this.emit("beforeTransaction", {
+        editor: this,
+        transaction,
+        nextState: applied?.state ?? currentState,
+      });
     }
 
     const baseDispatch = this.view?._internals?.dispatchTransactionBase;
@@ -505,6 +568,7 @@ export class Editor extends EventEmitter<EditorEvents> {
       ["unmount", this.options.onUnmount],
       ["beforeCreate", this.options.onBeforeCreate],
       ["create", this.options.onCreate],
+      ["beforeTransaction", this.options.onBeforeTransaction],
       ["update", this.options.onUpdate],
       ["selectionUpdate", this.options.onSelectionUpdate],
       ["transaction", this.options.onTransaction],
