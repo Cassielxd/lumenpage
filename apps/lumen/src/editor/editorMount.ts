@@ -236,12 +236,15 @@ export const mountPlaygroundEditor = ({
     content: initialDocJson,
     plugins,
     enableInputRules: flags.enableInputRules,
-    canvas: {
-      settings,
-      legacyPolicy: { strict: true },
-      statusElement: statusElement || undefined,
+    editorProps: {
+      ...viewProps,
+      canvasViewConfig: {
+        ...(viewProps.canvasViewConfig || {}),
+        settings,
+        legacyPolicy: { strict: true },
+        statusElement: statusElement || undefined,
+      },
     },
-    editorProps: viewProps,
   });
   const view = editor.view!;
   try {

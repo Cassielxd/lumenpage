@@ -274,18 +274,21 @@ export const mountPlaygroundEditor = ({
     content: initialDoc,
     plugins,
     enableInputRules: flags.enableInputRules,
-    canvas: {
-      settings,
-      debug: flags.debugTimingLogs
-        ? ({ timing: true, eventTiming: true, paginationTiming: true, renderTiming: true } as any)
-        : undefined,
-      legacyPolicy: { strict: true },
-      statusElement: statusElement || undefined,
-      tablePaginationPanelEl: flags.debugTablePagination
-        ? tableDebugPanelElement || undefined
-        : undefined,
+    editorProps: {
+      ...viewProps,
+      canvasViewConfig: {
+        ...(viewProps.canvasViewConfig || {}),
+        settings,
+        debug: flags.debugTimingLogs
+          ? ({ timing: true, eventTiming: true, paginationTiming: true, renderTiming: true } as any)
+          : undefined,
+        legacyPolicy: { strict: true },
+        statusElement: statusElement || undefined,
+        tablePaginationPanelEl: flags.debugTablePagination
+          ? tableDebugPanelElement || undefined
+          : undefined,
+      },
     },
-    editorProps: viewProps,
   });
   const view = editor.view!;
   try {

@@ -51,7 +51,6 @@ export type EditorOptions = {
   state?: any | null;
   plugins?: any[];
   editorProps?: Partial<CanvasEditorViewProps>;
-  canvas?: Record<string, any> | null;
   enableInputRules?: EnableRules;
   enablePasteRules?: EnableRules;
   autofocus?: boolean | "start" | "end" | number;
@@ -73,7 +72,6 @@ const defaultOptions: EditorOptions = {
   state: null,
   plugins: [],
   editorProps: {},
-  canvas: null,
   enableInputRules: true,
   enablePasteRules: true,
   autofocus: false,
@@ -299,9 +297,8 @@ export class Editor extends EventEmitter<EditorEvents> {
         : undefined;
     const transformPastedHTML = this.extensionManager.transformPastedHTML(baseTransformPastedHTML);
     const resolvedCanvasViewConfig = {
-      ...(this.options.canvas || {}),
       ...(editorProps.canvasViewConfig || {}),
-      nodeRegistry: editorProps.canvasViewConfig?.nodeRegistry || this.options.canvas?.nodeRegistry || this.nodeRegistry,
+      nodeRegistry: editorProps.canvasViewConfig?.nodeRegistry || this.nodeRegistry,
     };
 
     const viewProps: CanvasEditorViewProps = {
