@@ -1,10 +1,10 @@
 import { inputRules } from "lumenpage-inputrules";
 import { keymap } from "lumenpage-keymap";
-import { createLumenCompatNodeRegistry } from "lumenpage-layout-engine";
 import { EditorState, Selection } from "lumenpage-state";
 import {
   CanvasEditorView,
   collectLumenNodeSelectionTypes,
+  createLumenCompatNodeRegistry,
   createLumenCompatSelectionGeometry,
   type CanvasCommandConfig,
   type CanvasEditorViewProps,
@@ -142,9 +142,7 @@ export class Editor {
 
     const structure = this.extensionManager.resolveStructure(this);
     this.schema = hasSchemaSpec(structure) ? createSchema(structure) : null;
-    this.nodeRegistry = structure.layout.byNodeName.size
-      ? createLumenCompatNodeRegistry(structure)
-      : null;
+    this.nodeRegistry = this.schema ? createLumenCompatNodeRegistry(structure) : null;
     this.extensionManager.setRuntime({ schema: this.schema, nodeRegistry: this.nodeRegistry });
 
     this.selectionGeometry = createLumenCompatSelectionGeometry(structure);

@@ -95,6 +95,7 @@ export class ExtensionManager {
     const schema = createResolvedSchema();
     const layout = {
       byNodeName: new Map<string, LayoutHooks>(),
+      renderPresetsByNodeName: new Map<string, string>(),
     };
     const canvas = createResolvedCanvas();
 
@@ -123,6 +124,14 @@ export class ExtensionManager {
       }
 
       if (instance.type === "node") {
+        const renderPreset = callConfigValue(
+          getExtensionField<() => string | null>(instance.extension, "renderPreset", ctx),
+          null
+        );
+        if (renderPreset) {
+          layout.renderPresetsByNodeName.set(instance.name, renderPreset);
+        }
+
         const nodeView = callConfigValue(
           getExtensionField<() => any>(instance.extension, "addNodeView", ctx),
           null

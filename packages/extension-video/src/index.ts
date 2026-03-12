@@ -1,18 +1,15 @@
 import { Node } from "lumenpage-core";
-import { videoNodeSpec, videoRenderer } from "./video";
+import { defaultVideoRenderer as videoRenderer } from "lumenpage-view-canvas";
+import { videoNodeSpec } from "./video";
 
-export { videoNodeSpec, videoRenderer, serializeVideoToText } from "./video";
+export { videoNodeSpec };
+export { serializeVideoToText } from "./video";
+export { defaultVideoRenderer as videoRenderer } from "lumenpage-view-canvas";
 
 export const Video = Node.create({
   name: "video",
   priority: 100,
   schema: videoNodeSpec,
-  layout() {
-    return {
-      renderer: videoRenderer,
-      pagination: videoRenderer?.pagination,
-    };
-  },
   addNodeView() {
     return videoRenderer?.createNodeView;
   },

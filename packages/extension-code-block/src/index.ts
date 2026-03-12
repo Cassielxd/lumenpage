@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
-import { codeBlockRenderer } from "./codeBlock";
 
-export { codeBlockNodeSpec, codeBlockRenderer } from "./codeBlock";
+export { codeBlockNodeSpec } from "./codeBlock";
+export { defaultCodeBlockRenderer as codeBlockRenderer } from "lumenpage-view-canvas";
 
 export const CodeBlock = Node.create({
   name: "codeBlock",
@@ -20,12 +20,6 @@ export const CodeBlock = Node.create({
   },
   renderHTML({ HTMLAttributes }) {
     return ["pre", HTMLAttributes, ["code", 0]];
-  },
-  layout() {
-    return {
-      renderer: codeBlockRenderer,
-      pagination: codeBlockRenderer?.pagination,
-    };
   },
 });
 

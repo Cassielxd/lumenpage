@@ -1,7 +1,8 @@
 import { Node } from "lumenpage-core";
-import { horizontalRuleNodeSpec, horizontalRuleRenderer } from "./horizontalRule";
+import { horizontalRuleNodeSpec } from "./horizontalRule";
 
-export { horizontalRuleNodeSpec, horizontalRuleRenderer } from "./horizontalRule";
+export { horizontalRuleNodeSpec };
+export { defaultHorizontalRuleRenderer as horizontalRuleRenderer } from "lumenpage-view-canvas";
 
 export const HorizontalRule = Node.create({
   name: "horizontalRule",
@@ -17,12 +18,6 @@ export const HorizontalRule = Node.create({
   },
   schema: {
     offsetMapping: horizontalRuleNodeSpec.offsetMapping,
-  },
-  layout() {
-    return {
-      renderer: horizontalRuleRenderer,
-      pagination: horizontalRuleRenderer?.pagination,
-    };
   },
   canvas() {
     return {

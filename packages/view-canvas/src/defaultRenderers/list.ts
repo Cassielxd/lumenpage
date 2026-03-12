@@ -1,4 +1,4 @@
-import { breakLines, docToRuns, textblockToRuns } from "lumenpage-view-canvas";
+import { breakLines, docToRuns, textblockToRuns } from "../core/index";
 
 type ListMode = "bullet" | "ordered" | "task";
 

@@ -1,7 +1,8 @@
 import { Node } from "lumenpage-core";
-import { blockquoteNodeSpec, blockquoteRenderer } from "./blockquote";
+import { blockquoteNodeSpec } from "./blockquote";
 
-export { blockquoteNodeSpec, blockquoteRenderer } from "./blockquote";
+export { blockquoteNodeSpec };
+export { defaultBlockquoteRenderer as blockquoteRenderer } from "lumenpage-view-canvas";
 
 export const Blockquote = Node.create({
   name: "blockquote",
@@ -16,12 +17,6 @@ export const Blockquote = Node.create({
   },
   schema: {
     offsetMapping: blockquoteNodeSpec.offsetMapping,
-  },
-  layout() {
-    return {
-      renderer: blockquoteRenderer,
-      pagination: blockquoteRenderer?.pagination,
-    };
   },
 });
 

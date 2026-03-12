@@ -5,7 +5,6 @@ import {
   addTableRowAfter,
   addTableRowBefore,
   CellSelection,
-  createTableSelectionGeometry,
   deleteTableCellSelection,
   deleteTableColumn,
   deleteTableRow,
@@ -22,8 +21,11 @@ import {
   serializeTableToText,
   splitTableCell,
   tableNodeSpecs,
-  tableRenderer,
 } from "./implementation";
+import {
+  createDefaultTableSelectionGeometry as createTableSelectionGeometry,
+  defaultTableRenderer as tableRenderer,
+} from "lumenpage-view-canvas";
 
 export const tableNodeSpec = tableNodeSpecs.table;
 export { CellSelection, getTableTextLength, serializeTableToText, tableRenderer };
@@ -51,12 +53,6 @@ export const Table = Node.create({
   name: "table",
   priority: 100,
   schema: tableNodeSpec,
-  layout() {
-    return {
-      renderer: tableRenderer,
-      pagination: tableRenderer?.pagination,
-    };
-  },
   canvas() {
     return {
       selectionGeometries: [createTableSelectionGeometry()],

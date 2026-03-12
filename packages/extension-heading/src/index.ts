@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
-import { headingRenderer } from "./heading";
 
-export { headingNodeSpec, headingRenderer } from "./heading";
+export { headingNodeSpec } from "./heading";
+export { defaultHeadingRenderer as headingRenderer } from "lumenpage-view-canvas";
 
 export const Heading = Node.create({
   name: "heading",
@@ -46,12 +46,6 @@ export const Heading = Node.create({
   renderHTML({ node, HTMLAttributes }) {
     const level = Math.max(1, Math.min(3, Number(node?.attrs?.level) || 1));
     return [`h${level}`, HTMLAttributes, 0];
-  },
-  layout() {
-    return {
-      renderer: headingRenderer,
-      pagination: headingRenderer?.pagination,
-    };
   },
 });
 

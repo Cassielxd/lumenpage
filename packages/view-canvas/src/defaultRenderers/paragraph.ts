@@ -1,8 +1,8 @@
-import type { NodeSpec } from "lumenpage-model";
+﻿import { textblockToRuns } from "../core/index";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
-export const paragraphNodeSpec: NodeSpec = {
+export const paragraphNodeSpec: any = {
   content: "inline*",
   group: "block",
   attrs: {
@@ -46,3 +46,15 @@ export const paragraphNodeSpec: NodeSpec = {
     return ["p", attrs, 0];
   },
 };
+
+export const paragraphRenderer = {
+  allowSplit: true,
+  toRuns(node: any, settings: any) {
+    return textblockToRuns(node, settings, node.type.name, node.attrs?.id ?? null, node.attrs);
+  },
+  renderLine({ defaultRender, line, pageX, pageTop, layout }: any) {
+    defaultRender(line, pageX, pageTop, layout);
+  },
+};
+
+

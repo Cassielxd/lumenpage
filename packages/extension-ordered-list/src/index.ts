@@ -1,19 +1,13 @@
 import { Node } from "lumenpage-core";
-import { listNodeSpecs, orderedListRenderer } from "lumenpage-extension-list-item";
+import { listNodeSpecs } from "lumenpage-extension-list-item";
 
 export const orderedListNodeSpec = listNodeSpecs.orderedList;
-export { orderedListRenderer };
+export { defaultOrderedListRenderer as orderedListRenderer } from "lumenpage-view-canvas";
 
 export const OrderedList = Node.create({
   name: "orderedList",
   priority: 100,
   schema: orderedListNodeSpec,
-  layout() {
-    return {
-      renderer: orderedListRenderer,
-      pagination: orderedListRenderer?.pagination,
-    };
-  },
 });
 
 export default OrderedList;

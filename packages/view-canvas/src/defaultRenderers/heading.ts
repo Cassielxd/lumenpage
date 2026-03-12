@@ -1,8 +1,8 @@
-import type { NodeSpec } from "lumenpage-model";
+﻿import { textblockToRuns } from "../core/index";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
-export const headingNodeSpec: NodeSpec = {
+export const headingNodeSpec: any = {
   content: "inline*",
   group: "block",
   attrs: {
@@ -63,3 +63,36 @@ export const headingNodeSpec: NodeSpec = {
     return [`h${level}`, attrs, 0];
   },
 };
+
+const getHeadingStyle = (level: number, baseFont: string) => {
+  const match = /(\d+(?:\.\d+)?)px\s+(.*)/.exec(baseFont);
+  const baseSize = match ? Number.parseFloat(match[1]) : 16;
+  const family = match ? match[2] : "Arial";
+  const scale = level === 1 ? 1.6 : level === 2 ? 1.35 : 1.2;
+  const size = Math.max(12, Math.round(baseSize * scale));
+  return {
+    font: `bold ${size}px ${family}`,
+    lineHeight: Math.max(size + 8, size * 1.2),
+  };
+};
+
+export const headingRenderer = {
+  allowSplit: true,
+  toRuns(node: any, settings: any) {
+    const level = Math.max(1, Math.min(3, Number(node.attrs?.level) || 1));
+    const { font, lineHeight } = getHeadingStyle(level, settings.font);
+    const runs = textblockToRuns(
+      node,
+      { ...settings, font },
+      node.type.name,
+      node.attrs?.id ?? null,
+      node.attrs
+    );
+    return { ...runs, blockAttrs: { ...node.attrs, lineHeight } };
+  },
+  renderLine({ defaultRender, line, pageX, pageTop, layout }: any) {
+    defaultRender(line, pageX, pageTop, layout);
+  },
+};
+
+

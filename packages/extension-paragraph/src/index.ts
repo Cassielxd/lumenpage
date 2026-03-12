@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
-import { paragraphRenderer } from "./paragraph";
 
-export { paragraphNodeSpec, paragraphRenderer } from "./paragraph";
+export { paragraphNodeSpec } from "./paragraph";
+export { defaultParagraphRenderer as paragraphRenderer } from "lumenpage-view-canvas";
 
 export const Paragraph = Node.create({
   name: "paragraph",
@@ -43,12 +43,6 @@ export const Paragraph = Node.create({
   },
   renderHTML({ HTMLAttributes }) {
     return ["p", HTMLAttributes, 0];
-  },
-  layout() {
-    return {
-      renderer: paragraphRenderer,
-      pagination: paragraphRenderer?.pagination,
-    };
   },
 });
 

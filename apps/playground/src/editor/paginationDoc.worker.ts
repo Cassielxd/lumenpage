@@ -1,7 +1,7 @@
 import { ExtensionManager, createSchema } from "lumenpage-core";
-import { LayoutPipeline, createLumenCompatNodeRegistry } from "lumenpage-layout-engine";
+import { LayoutPipeline } from "lumenpage-layout-engine";
 import { createLinebreakSegmentText } from "lumenpage-view-runtime";
-import { docPosToTextOffset } from "lumenpage-view-canvas";
+import { createLumenCompatNodeRegistry, docPosToTextOffset } from "lumenpage-view-canvas";
 import { playgroundDocumentExtensions } from "./documentExtensions";
 
 type PaginationDocWorkerRequest = {

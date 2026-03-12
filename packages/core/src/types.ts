@@ -252,6 +252,11 @@ export interface NodeConfig<Options = any, Storage = any>
   addNodeView?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<NodeConfig<Options, Storage>>["addNodeView"];
   }) => any;
+  renderPreset?:
+    | string
+    | ((this: ExtensionContext<Options, Storage> & {
+        parent: ParentConfig<NodeConfig<Options, Storage>>["renderPreset"];
+      }) => string | null);
   parseHTML?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<NodeConfig<Options, Storage>>["parseHTML"];
   }) => any[];
@@ -354,6 +359,7 @@ export type ResolvedStructure = {
   };
   layout: {
     byNodeName: Map<string, LayoutHooks>;
+    renderPresetsByNodeName: Map<string, string>;
   };
   canvas: {
     nodeViews: Record<string, any>;

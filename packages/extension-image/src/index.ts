@@ -1,18 +1,15 @@
 import { Node } from "lumenpage-core";
-import { imageNodeSpec, imageRenderer } from "./image";
+import { defaultImageRenderer as imageRenderer } from "lumenpage-view-canvas";
+import { imageNodeSpec } from "./image";
 
-export { imageNodeSpec, imageRenderer, serializeImageToText } from "./image";
+export { imageNodeSpec };
+export { serializeImageToText } from "./image";
+export { defaultImageRenderer as imageRenderer } from "lumenpage-view-canvas";
 
 export const Image = Node.create({
   name: "image",
   priority: 100,
   schema: imageNodeSpec,
-  layout() {
-    return {
-      renderer: imageRenderer,
-      pagination: imageRenderer?.pagination,
-    };
-  },
   addNodeView() {
     return imageRenderer?.createNodeView;
   },
