@@ -20,9 +20,9 @@ import {
 } from "./commands";
 import { CellSelection } from "./cellSelection";
 import { getTableTextLength, serializeTableToText, tableNodeSpecs } from "./specs";
+import { defaultTableRenderer as tableRenderer } from "lumenpage-render-engine";
 import {
   createDefaultTableSelectionGeometry as createTableSelectionGeometry,
-  defaultTableRenderer as tableRenderer,
 } from "lumenpage-view-canvas";
 
 export const tableNodeSpec = tableNodeSpecs.table;

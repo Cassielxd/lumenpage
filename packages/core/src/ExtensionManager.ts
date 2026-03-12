@@ -9,9 +9,12 @@ import type {
   ExtensionInstance,
   GlobalAttributes,
   LayoutHooks,
+  MarkAdapterMap,
+  MarkAnnotationResolverMap,
   ResolvedExtensions,
   ResolvedState,
   ResolvedStructure,
+  SchemaSpec,
 } from "./types";
 
 const flattenExtensions = (
@@ -39,6 +42,8 @@ const createResolvedState = (): ResolvedState => ({
 
 const createResolvedCanvas = (): ResolvedStructure["canvas"] => ({
   nodeViews: {},
+  markAdapters: {},
+  markAnnotationResolvers: {},
   selectionGeometries: [],
   nodeSelectionTypes: [],
   decorationProviders: [],
@@ -123,6 +128,32 @@ export class ExtensionManager {
         this.applyCanvasHooks(canvas, canvasHooks);
       }
 
+      const markAdapters = callConfigValue(
+        getExtensionField<() => MarkAdapterMap>(instance.extension, "addMarkAdapters", ctx),
+        {}
+      );
+      if (markAdapters && Object.keys(markAdapters).length) {
+        canvas.markAdapters = {
+          ...canvas.markAdapters,
+          ...markAdapters,
+        };
+      }
+
+      const markAnnotationResolvers = callConfigValue(
+        getExtensionField<() => MarkAnnotationResolverMap>(
+          instance.extension,
+          "addMarkAnnotations",
+          ctx
+        ),
+        {}
+      );
+      if (markAnnotationResolvers && Object.keys(markAnnotationResolvers).length) {
+        canvas.markAnnotationResolvers = {
+          ...canvas.markAnnotationResolvers,
+          ...markAnnotationResolvers,
+        };
+      }
+
       if (instance.type === "node") {
         const renderPreset = callConfigValue(
           getExtensionField<() => string | null>(instance.extension, "renderPreset", ctx),
@@ -138,6 +169,24 @@ export class ExtensionManager {
         );
         if (nodeView) {
           canvas.nodeViews[instance.name] = nodeView;
+        }
+      }
+
+      if (instance.type === "mark") {
+        const markAdapter = callConfigValue(
+          getExtensionField<() => any>(instance.extension, "addMarkAdapter", ctx),
+          null
+        );
+        if (typeof markAdapter === "function") {
+          canvas.markAdapters[instance.name] = markAdapter;
+        }
+
+        const markAnnotationResolver = callConfigValue(
+          getExtensionField<() => any>(instance.extension, "addMarkAnnotation", ctx),
+          null
+        );
+        if (typeof markAnnotationResolver === "function") {
+          canvas.markAnnotationResolvers[instance.name] = markAnnotationResolver;
         }
       }
     }

@@ -143,6 +143,12 @@
       "path": "packages/lp/collab"
     },
     {
+      "path": "packages/render-engine"
+    },
+    {
+      "path": "packages/suggestion"
+    },
+    {
       "path": "packages/view-canvas"
     },
     {

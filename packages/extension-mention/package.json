@@ -24,6 +24,7 @@
   "dependencies": {
     "lumenpage-core": "workspace:*",
     "lumenpage-extension-popup": "workspace:*",
+    "lumenpage-suggestion": "workspace:*",
     "lumenpage-state": "workspace:*"
   },
   "devDependencies": {

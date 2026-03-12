@@ -1,0 +1,101 @@
+import type { MarkRenderAdapter } from "./mark";
+import type { MarkAnnotationResolver } from "./mark";
+
+type CanvasNodeViewLike = any;
+
+export type NodeLayoutResult = {
+  lines: any[];
+  length: number;
+  height?: number;
+  blockAttrs?: any;
+  blockLineHeight?: number;
+  overflow?: NodeLayoutResult;
+  fragments?: NodeLayoutSplitFragment[];
+};
+
+export type NodeLayoutSplitFragment = {
+  kind?: "visible" | "overflow";
+  lines: any[];
+  length: number;
+  height?: number;
+  continuation?: {
+    fromPrev?: boolean;
+    hasNext?: boolean;
+    rowSplit?: boolean;
+  };
+};
+
+export type ContainerStyle = {
+  indent?: number;
+  [key: string]: any;
+};
+
+export type NodeRendererPaginationConfig = {
+  fragmentModel?: "none" | "continuation";
+  reusePolicy?: "actual-slice-only" | "always-sensitive";
+};
+
+export type NodeRenderer = {
+  toRuns?: (node: any, settings: any, registry?: any) => any;
+  layoutBlock?: (ctx: any) => NodeLayoutResult;
+  splitBlock?: (ctx: any) => NodeLayoutResult;
+  allowSplit?: boolean;
+  pagination?: NodeRendererPaginationConfig;
+  cacheLayout?: boolean;
+  getCacheSignature?: (ctx: {
+    node: any;
+    settings: any;
+    registry?: any;
+    indent?: number;
+  }) => unknown;
+  renderLine?: (ctx: any) => void;
+  getContainerStyle?: (ctx: any) => ContainerStyle | null;
+  renderContainer?: (ctx: any) => void;
+  createNodeView?: (node: any, view: any, getPos: () => number) => CanvasNodeViewLike;
+};
+
+export class NodeRendererRegistry {
+  renderers;
+  markAdapters;
+  markAnnotationResolvers;
+
+  constructor() {
+    this.renderers = new Map();
+    this.markAdapters = new Map();
+    this.markAnnotationResolvers = new Map();
+  }
+
+  register(typeName, renderer) {
+    this.renderers.set(typeName, renderer);
+
+    return this;
+  }
+
+  registerMarkAdapter(typeName, adapter: MarkRenderAdapter) {
+    this.markAdapters.set(typeName, adapter);
+
+    return this;
+  }
+
+  registerMarkAnnotationResolver(typeName, resolver: MarkAnnotationResolver) {
+    this.markAnnotationResolvers.set(typeName, resolver);
+
+    return this;
+  }
+
+  get(typeName) {
+    return this.renderers.get(typeName);
+  }
+
+  getMarkAdapter(typeName) {
+    return this.markAdapters.get(typeName);
+  }
+
+  getMarkAnnotationResolver(typeName) {
+    return this.markAnnotationResolvers.get(typeName);
+  }
+
+  has(typeName) {
+    return this.renderers.has(typeName);
+  }
+}

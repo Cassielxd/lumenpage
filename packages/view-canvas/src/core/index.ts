@@ -1,15 +1,13 @@
 ﻿/*
- * 鏂囦欢璇存槑锛氭牳蹇冨簱瀵煎嚭鍏ュ彛銆? * 涓昏鑱岃矗锛氱粺涓€杈撳嚭缂栬緫鍣ㄧ姸鎬併€佸懡浠ゃ€侀€夊尯涓庡竷灞€鐩稿叧 API銆? */
+ * 鏂囦欢璇存槑锛氭牳蹇冨簱瀵煎嚭鍏ュ彛銆?
+ * 涓昏鑱岃矗锛氱粺涓€杈撳嚭缂栬緫鍣ㄧ姸鎬併€佸懡浠ゃ€侀€夊尯涓庡竷灞€鐩稿叧 API銆?
+ */
 
 export { applyTransaction } from "./editor/state";
 
 export { LayoutPipeline } from "../layout-pagination";
 
-export { docToRuns, textToRuns, textblockToRuns } from "../layout-pagination";
-
-export { breakLines } from "../layout-pagination";
-
-export { NodeRendererRegistry } from "../layout-pagination";
+export { breakLines, docToRuns, NodeRendererRegistry, textToRuns, textblockToRuns } from "lumenpage-render-engine";
 
 export {
   textOffsetToDocPos,

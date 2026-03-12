@@ -38,6 +38,7 @@
   "dependencies": {
     "lumenpage-link": "workspace:*",
     "lumenpage-layout-engine": "workspace:*",
+    "lumenpage-render-engine": "workspace:*",
     "lumenpage-view-runtime": "workspace:*"
   },
   "peerDependencies": {

@@ -1,6 +1,6 @@
 import { NodeSelection, Plugin } from "lumenpage-state";
 import {
-  createTippyPopupController,
+  createPopupController,
   type PopupController,
   type PopupControllerOptions,
   type PopupRect,
@@ -346,7 +346,7 @@ export const createSelectionBubblePlugin = (options: SelectionBubblePluginOption
       let currentView = view;
       const ownerDocument = currentView?.dom?.ownerDocument || document;
       const actions = normalizeActions(options.actions);
-      const popup = createTippyPopupController(ownerDocument, resolvePopupOptions(options));
+      const popup = createPopupController(ownerDocument, resolvePopupOptions(options));
       const renderer =
         options.render?.() ||
         createDefaultSelectionBubbleRenderer({

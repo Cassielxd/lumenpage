@@ -48,6 +48,39 @@ export type CanvasHooks = {
   hitTestPolicies?: any[];
 };
 
+export type MarkAdapterContextLike = {
+  baseFont: string;
+  settings: any;
+  marks: any[];
+  markIndex: number;
+  annotation?: MarkAnnotationLike | null;
+  annotations?: MarkAnnotationLike[];
+};
+
+export type MarkAdapter = (state: any, mark: any, ctx: MarkAdapterContextLike) => void;
+
+export type MarkAdapterMap = Record<string, MarkAdapter>;
+
+export type MarkAnnotationLike = {
+  name: string;
+  attrs?: Record<string, any> | null;
+  key?: string | null;
+  rank?: number;
+  sourceIndex?: number;
+  group?: string | null;
+  inclusive?: boolean | null;
+  excludes?: string | null;
+  spanning?: boolean | null;
+  data?: any;
+};
+
+export type MarkAnnotationResolver = (
+  mark: any,
+  ctx: MarkAdapterContextLike
+) => MarkAnnotationLike | null | undefined;
+
+export type MarkAnnotationResolverMap = Record<string, MarkAnnotationResolver>;
+
 export type ParentConfig<T> = Partial<{
   [Key in keyof T]: T[Key] extends (...args: any[]) => any
     ? (...args: Parameters<T[Key]>) => ReturnType<T[Key]>
@@ -145,6 +178,14 @@ export interface ExtendableConfig<
   canvas?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["canvas"];
   }) => CanvasHooks | null;
+  // Batch registration for shared render-engine mark adapters.
+  addMarkAdapters?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["addMarkAdapters"];
+  }) => MarkAdapterMap;
+  // Batch registration for shared serializable inline mark annotations.
+  addMarkAnnotations?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["addMarkAnnotations"];
+  }) => MarkAnnotationResolverMap;
   addCommands?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addCommands"];
   }) => Record<string, any>;
@@ -361,6 +402,13 @@ export interface MarkConfig<Options = any, Storage = any>
   addAttributes?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<MarkConfig<Options, Storage>>["addAttributes"];
   }) => AttributeConfigs;
+  // Explicit override for this mark's default render-engine adapter.
+  addMarkAdapter?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<MarkConfig<Options, Storage>>["addMarkAdapter"];
+  }) => MarkAdapter | null;
+  addMarkAnnotation?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<MarkConfig<Options, Storage>>["addMarkAnnotation"];
+  }) => MarkAnnotationResolver | null;
   parseHTML?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<MarkConfig<Options, Storage>>["parseHTML"];
   }) => any[];
@@ -421,6 +469,8 @@ export type ResolvedStructure = {
   };
   canvas: {
     nodeViews: Record<string, any>;
+    markAdapters: MarkAdapterMap;
+    markAnnotationResolvers: MarkAnnotationResolverMap;
     selectionGeometries: CanvasSelectionGeometry[];
     nodeSelectionTypes: string[];
     decorationProviders: any[];

@@ -1,4 +1,5 @@
-import { breakLines, docToRuns, textblockToRuns } from "../core/index";
+import { breakLines } from "../lineBreaker";
+import { docToRuns, textblockToRuns } from "../textRuns";
 
 type ListMode = "bullet" | "ordered" | "task";
 
@@ -139,7 +140,7 @@ const layoutLeafInList = ({
     const runsResult = renderer?.toRuns
       ? renderer.toRuns(node, blockSettings, registry)
       : node.isTextblock
-        ? textblockToRuns(node, blockSettings, node.type.name, blockId, node.attrs, 0)
+        ? textblockToRuns(node, blockSettings, node.type.name, blockId, node.attrs, 0, registry)
         : docToRuns(node, blockSettings, registry);
 
     const { runs, length } = runsResult;

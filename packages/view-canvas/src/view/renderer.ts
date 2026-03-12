@@ -7,6 +7,13 @@ import { getVisiblePages } from "./virtualization";
 
 import { measureTextWidth, getFontSize } from "./measure";
 import { type DecorationDrawData } from "./render/decorations";
+import {
+  drawRunBackground,
+  drawRunMarkInstructions,
+  drawRunStrike,
+  drawRunUnderline,
+  drawWavyLine as drawMarkWavyLine,
+} from "lumenpage-render-engine";
 
 const now = () =>
   typeof performance !== "undefined" && typeof performance.now === "function"
@@ -202,7 +209,7 @@ const drawDecorationRects = (ctx, rects) => {
       ctx.lineWidth = 1;
       const underlineY = rect.y + rect.height - 2;
       if (spec.underline.style === "wavy") {
-        drawWavyLine(ctx, rect.x, underlineY, rect.width);
+        drawMarkWavyLine(ctx, rect.x, underlineY, rect.width);
       } else {
         ctx.beginPath();
         ctx.moveTo(rect.x, underlineY);
@@ -471,8 +478,19 @@ export class Renderer {
 
           hash = hashNumber(hash, run.width);
           hash = hashNumber(hash, run.underline ? 1 : 0);
+          hash = hashString(hash, run.underlineStyle || "");
+          hash = hashString(hash, run.underlineColor || "");
           hash = hashNumber(hash, run.strike ? 1 : 0);
+          hash = hashString(hash, run.strikeColor || "");
           hash = hashNumber(hash, run.shiftY);
+          hash = hashNumber(hash, run.backgroundRadius);
+          hash = hashNumber(hash, run.backgroundPaddingX);
+          hash = hashString(hash, run.linkHref || "");
+          hash = hashString(hash, run.annotationKey || "");
+          hash = hashObjectLike(hash, run.annotations || null, objectSignatureCache);
+          hash = hashString(hash, run.styleKey || "");
+          hash = hashObjectLike(hash, run.extras || null, objectSignatureCache);
+          hash = hashObjectLike(hash, run.drawInstructions || null, objectSignatureCache);
           hash =
             typeof run.background === "string"
               ? hashString(hash, run.background)
@@ -638,52 +656,35 @@ export class Renderer {
         const shiftY = Number.isFinite(run.shiftY) ? Number(run.shiftY) : 0;
 
         const textY = pageTop + line.y + baselineOffset + shiftY;
-
-        const background = run.background;
-
-        if (background) {
-          const paddingX = 2;
-          ctx.fillStyle = background;
-          ctx.fillRect(cursorX - paddingX, pageTop + line.y, width + paddingX * 2, lineHeight);
-        }
+        const markDrawContext = {
+          ctx,
+          run,
+          line,
+          pageX,
+          pageTop,
+          layout,
+          x: cursorX,
+          y: pageTop + line.y,
+          width,
+          lineHeight,
+          textY,
+          font,
+          fontSize,
+          color,
+        };
+        drawRunMarkInstructions(run, "beforeBackground", markDrawContext);
+        drawRunBackground(ctx, run, cursorX, pageTop + line.y, width, lineHeight);
+        drawRunMarkInstructions(run, "afterBackground", markDrawContext);
 
         ctx.font = font;
 
         ctx.fillStyle = color;
 
+        drawRunMarkInstructions(run, "beforeText", markDrawContext);
         ctx.fillText(run.text, cursorX, textY);
-
-        if (run.underline && run.text.length > 0) {
-          const underlineY = textY + fontSize - 2;
-
-          ctx.strokeStyle = color;
-
-          ctx.lineWidth = 1;
-
-          ctx.beginPath();
-
-          ctx.moveTo(cursorX, underlineY);
-
-          ctx.lineTo(cursorX + width, underlineY);
-
-          ctx.stroke();
-        }
-
-        if (run.strike && run.text.length > 0) {
-          const strikeY = textY + fontSize * 0.6;
-
-          ctx.strokeStyle = color;
-
-          ctx.lineWidth = 1;
-
-          ctx.beginPath();
-
-          ctx.moveTo(cursorX, strikeY);
-
-          ctx.lineTo(cursorX + width, strikeY);
-
-          ctx.stroke();
-        }
+        drawRunMarkInstructions(run, "afterText", markDrawContext);
+        drawRunUnderline(ctx, { ...run, color }, cursorX, textY, width, fontSize);
+        drawRunStrike(ctx, { ...run, color }, cursorX, textY, width, fontSize);
 
         cursorX += width;
       }

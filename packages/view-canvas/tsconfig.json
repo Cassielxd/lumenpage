@@ -9,6 +9,7 @@
     "baseUrl": ".",
     "paths": {
       "lumenpage-layout-engine": ["../layout-engine/src/index.ts"],
+      "lumenpage-render-engine": ["../render-engine/src/index.ts"],
       "lumenpage-view-runtime": ["../view-runtime/src/index.ts"]
     }
   },

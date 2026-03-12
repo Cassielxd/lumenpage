@@ -1,4 +1,5 @@
-﻿import { breakLines, textblockToRuns } from "../core/index";
+﻿import { breakLines } from "../lineBreaker";
+import { textblockToRuns } from "../textRuns";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -57,7 +58,7 @@ const measureLinesHeight = (lines: any[], fallbackLineHeight: number) => {
 
 export const codeBlockRenderer = {
   allowSplit: true,
-  layoutBlock({ node, settings }: { node: any; settings: any }) {
+  layoutBlock({ node, settings, registry }: { node: any; settings: any; registry?: any }) {
     const metrics = resolveMetrics(settings);
     const codeSettings = {
       ...settings,
@@ -75,7 +76,8 @@ export const codeBlockRenderer = {
       "codeBlock",
       node.attrs?.id ?? null,
       blockAttrs,
-      0
+      0,
+      registry
     );
     const maxWidth =
       settings.pageWidth -
@@ -149,5 +151,3 @@ export const codeBlockRenderer = {
     }
   },
 };
-
-

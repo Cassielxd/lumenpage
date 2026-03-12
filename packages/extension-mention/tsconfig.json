@@ -10,13 +10,15 @@
     "paths": {
       "lumenpage-core": ["../core/src/index.ts"],
       "lumenpage-state": ["../lp/state/src/index.ts"],
-      "lumenpage-extension-popup": ["../extension-popup/src/index.ts"]
+      "lumenpage-extension-popup": ["../extension-popup/src/index.ts"],
+      "lumenpage-suggestion": ["../suggestion/src/index.ts"]
     }
   },
   "include": ["src"],
   "references": [
     { "path": "../core" },
     { "path": "../extension-popup" },
+    { "path": "../suggestion" },
     { "path": "../lp/state" }
   ]
 }

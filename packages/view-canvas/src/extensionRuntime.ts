@@ -1,4 +1,4 @@
-import { NodeRendererRegistry, type NodeRenderer } from "./layout-pagination/index";
+﻿import { NodeRendererRegistry, type NodeRenderer } from "lumenpage-render-engine";
 import { getDefaultNodeRenderer } from "./defaultRenderers/index";
 
 type SelectionGeometry = {
@@ -22,6 +22,8 @@ type ResolvedExtensionRuntime = {
   };
   canvas: {
     nodeViews?: Record<string, any>;
+    markAdapters?: Record<string, any>;
+    markAnnotationResolvers?: Record<string, any>;
     selectionGeometries: SelectionGeometry[];
     nodeSelectionTypes: string[];
   };
@@ -58,6 +60,8 @@ export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
   const layoutMap = resolved.layout?.byNodeName || new Map();
   const presetMap = resolved.layout?.renderPresetsByNodeName || new Map();
   const nodeViews = resolved.canvas?.nodeViews || {};
+  const markAdapters = resolved.canvas?.markAdapters || {};
+  const markAnnotationResolvers = resolved.canvas?.markAnnotationResolvers || {};
   const nodeNames = new Set<string>([
     ...Object.keys(resolved.schema?.nodes || {}),
     ...layoutMap.keys(),
@@ -89,5 +93,18 @@ export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
     registry.register(nodeName, mergedRenderer);
   }
 
+  for (const [markName, adapter] of Object.entries(markAdapters)) {
+    if (adapter != null) {
+      registry.registerMarkAdapter(markName, adapter);
+    }
+  }
+
+  for (const [markName, resolver] of Object.entries(markAnnotationResolvers)) {
+    if (resolver != null) {
+      registry.registerMarkAnnotationResolver(markName, resolver);
+    }
+  }
+
   return registry;
 };
+

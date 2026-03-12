@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
 
 export { paragraphNodeSpec } from "./paragraph";
-export { defaultParagraphRenderer as paragraphRenderer } from "lumenpage-view-canvas";
+export { defaultParagraphRenderer as paragraphRenderer } from "lumenpage-render-engine";
 
 export const Paragraph = Node.create({
   name: "paragraph",

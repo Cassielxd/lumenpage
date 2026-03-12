@@ -2,7 +2,7 @@ import { Node } from "lumenpage-core";
 import { horizontalRuleNodeSpec } from "./horizontalRule";
 
 export { horizontalRuleNodeSpec };
-export { defaultHorizontalRuleRenderer as horizontalRuleRenderer } from "lumenpage-view-canvas";
+export { defaultHorizontalRuleRenderer as horizontalRuleRenderer } from "lumenpage-render-engine";
 
 export const HorizontalRule = Node.create({
   name: "horizontalRule",

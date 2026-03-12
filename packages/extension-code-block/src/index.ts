@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
 
 export { codeBlockNodeSpec } from "./codeBlock";
-export { defaultCodeBlockRenderer as codeBlockRenderer } from "lumenpage-view-canvas";
+export { defaultCodeBlockRenderer as codeBlockRenderer } from "lumenpage-render-engine";
 
 export const CodeBlock = Node.create({
   name: "codeBlock",

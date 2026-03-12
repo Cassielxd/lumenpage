@@ -1,14 +1,17 @@
-import { Plugin, PluginKey, TextSelection } from "lumenpage-state";
+import { PluginKey, TextSelection } from "lumenpage-state";
 import {
-  createTippyPopupController,
+  createPopupController,
   type PopupController,
   type PopupControllerOptions,
   type PopupRect,
-  toPopupRect,
-  toViewportPopupRect,
-  createPopupRenderRuntime,
-  type PopupRenderLifecycle,
 } from "lumenpage-extension-popup";
+import {
+  Suggestion,
+  exitSuggestion,
+  type SuggestionOptions,
+  type SuggestionPluginState,
+  type SuggestionProps,
+} from "lumenpage-suggestion";
 
 export type MentionItem = {
   id: string;
@@ -18,7 +21,7 @@ export type MentionItem = {
 
 type MentionItemsSource =
   | MentionItem[]
-  | ((args: { query: string; state: any }) => MentionItem[]);
+  | ((args: { query: string; state: any; editor: any }) => MentionItem[] | Promise<MentionItem[]>);
 
 export type MentionPluginOptions = {
   items: MentionItemsSource;
@@ -27,6 +30,10 @@ export type MentionPluginOptions = {
   appendSpace?: boolean;
   emptyLabel?: string;
   popupOptions?: PopupControllerOptions;
+  suggestion?: Omit<
+    SuggestionOptions<MentionItem, MentionItem>,
+    "editor" | "pluginKey" | "char" | "items" | "command" | "render"
+  >;
   render?: () => MentionRenderLifecycle;
   onSelect?: (args: {
     view: any;
@@ -36,7 +43,7 @@ export type MentionPluginOptions = {
   }) => void;
 };
 
-type MentionPluginState = {
+type MentionRenderState = {
   active: boolean;
   from: number;
   to: number;
@@ -45,25 +52,25 @@ type MentionPluginState = {
   selectedIndex: number;
 };
 
-export type MentionRenderProps = {
+export type MentionRenderProps = SuggestionProps<MentionItem, MentionItem> & {
   view: any;
-  state: MentionPluginState;
+  state: MentionRenderState;
   trigger: string;
-  rect: PopupRect;
+  rect: PopupRect | null;
   ownerDocument: Document;
   popup: PopupController;
   select: (index?: number) => boolean;
+  setSelectedIndex: (index: number) => void;
   close: () => boolean;
 };
 
-export type MentionRenderLifecycle = PopupRenderLifecycle<MentionRenderProps>;
-type MentionRenderRuntime = ReturnType<typeof createPopupRenderRuntime<MentionRenderProps>>;
-
-type MentionMetaAction =
-  | { type: "open"; from: number; to: number; query: string }
-  | { type: "sync"; from: number; to: number; query: string }
-  | { type: "close" }
-  | { type: "select-index"; index: number };
+export type MentionRenderLifecycle = {
+  onStart?: (props: MentionRenderProps) => void;
+  onUpdate?: (props: MentionRenderProps) => void;
+  onExit?: (props: MentionRenderProps) => void;
+  onKeyDown?: (props: MentionRenderProps & { event: KeyboardEvent }) => boolean;
+  isEventInside?: (event: Event) => boolean;
+};
 
 const DEFAULT_TRIGGER = "@";
 const DEFAULT_MAX_ITEMS = 8;
@@ -74,16 +81,7 @@ const DEFAULT_POPUP_OPTIONS: PopupControllerOptions = {
   interactive: true,
 };
 
-const EMPTY_STATE: MentionPluginState = {
-  active: false,
-  from: 0,
-  to: 0,
-  query: "",
-  items: [],
-  selectedIndex: 0,
-};
-
-export const mentionPluginKey = new PluginKey<MentionPluginState>("lumen-mention");
+export const mentionPluginKey = new PluginKey<SuggestionPluginState>("lumen-mention");
 
 const clampIndex = (value: number, length: number) => {
   if (!Number.isFinite(value) || length <= 0) {
@@ -95,8 +93,6 @@ const clampIndex = (value: number, length: number) => {
   }
   return normalized % length;
 };
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const normalizeMentionItem = (value: any): MentionItem | null => {
   if (!value) {
@@ -121,14 +117,14 @@ const normalizeMentionItem = (value: any): MentionItem | null => {
   };
 };
 
-const resolveMentionItems = (
+const resolveMentionItems = async (
   source: MentionItemsSource,
   query: string,
-  state: any,
+  editor: any,
   maxItems: number
 ) => {
-  const raw = Array.isArray(source) ? source : source({ query, state }) || [];
-  const normalized = raw
+  const raw = Array.isArray(source) ? source : await Promise.resolve(source({ query, state: editor?.state, editor }));
+  const normalized = (Array.isArray(raw) ? raw : [])
     .map((item) => normalizeMentionItem(item))
     .filter((item): item is MentionItem => !!item);
   const keyword = String(query || "")
@@ -145,107 +141,65 @@ const resolveMentionItems = (
   return filtered.slice(0, Math.max(1, maxItems));
 };
 
-const readMentionMatchFromSelection = (state: any, trigger: string) => {
-  const selection = state?.selection;
-  if (!selection?.empty || !selection.$from) {
+const toPopupRectFromClientRect = (value: DOMRect | null | undefined): PopupRect | null => {
+  if (!value) {
     return null;
   }
-  const $from = selection.$from;
-  const parent = $from.parent;
-  if (!parent?.isTextblock) {
+  const left = Number(value.left);
+  const top = Number(value.top);
+  const right = Number(value.right);
+  const bottom = Number(value.bottom);
+  if (![left, top, right, bottom].every(Number.isFinite)) {
     return null;
   }
-  const textBefore = parent.textBetween(0, $from.parentOffset, undefined, "\ufffc");
-  const matcher = new RegExp(`(?:^|\\s)${escapeRegExp(trigger)}([\\w\\u4e00-\\u9fa5-]{0,32})$`);
-  const match = matcher.exec(textBefore);
-  if (!match) {
-    return null;
-  }
-  const query = match[1] || "";
-  const from = selection.from - query.length - trigger.length;
-  const to = selection.from;
-  if (!Number.isFinite(from) || from < 0 || to < from) {
-    return null;
-  }
-  return { from, to, query };
+  return { left, top, right, bottom };
 };
 
-const createStateForQuery = (
-  nextState: any,
-  options: MentionPluginOptions,
-  args: { from: number; to: number; query: string },
-  previousIndex = 0
-): MentionPluginState => {
-  const maxItems = Number.isFinite(options.maxItems)
-    ? Math.max(1, Math.trunc(Number(options.maxItems)))
-    : DEFAULT_MAX_ITEMS;
-  const items = resolveMentionItems(options.items, args.query, nextState, maxItems);
-  return {
-    active: true,
-    from: args.from,
-    to: args.to,
-    query: args.query,
-    items,
-    selectedIndex: clampIndex(previousIndex, items.length),
-  };
-};
-
-const closeMentionPopup = (view: any) => {
-  if (!view?.state?.tr || typeof view?.dispatch !== "function") {
+const closeMentionPopup = (editor: any) => {
+  if (!editor?.view) {
     return false;
   }
-  view.dispatch(view.state.tr.setMeta(mentionPluginKey, { type: "close" } as MentionMetaAction));
+  exitSuggestion(editor.view, mentionPluginKey);
   return true;
 };
 
-const applyMentionSelection = (view: any, options: MentionPluginOptions, explicitIndex?: number) => {
-  if (!view?.state?.tr || typeof view?.dispatch !== "function") {
+const applyMentionSelection = (
+  editor: any,
+  options: MentionPluginOptions,
+  selected: MentionItem,
+  range: { from: number; to: number },
+  trigger: string
+) => {
+  if (!editor?.view?.state?.tr || typeof editor.view.dispatch !== "function") {
     return false;
   }
-  const mentionState = mentionPluginKey.getState(view.state);
-  if (!mentionState?.active || mentionState.items.length === 0) {
-    return closeMentionPopup(view);
-  }
-  const selectedIndex = clampIndex(
-    Number.isFinite(explicitIndex as number) ? Number(explicitIndex) : mentionState.selectedIndex,
-    mentionState.items.length
-  );
-  const selected = mentionState.items[selectedIndex];
-  if (!selected) {
-    return closeMentionPopup(view);
-  }
-  const trigger = options.trigger || DEFAULT_TRIGGER;
+
+  const mentionState = mentionPluginKey.getState(editor.view.state);
   const mentionText = `${trigger}${String(selected.value || selected.label || "").trim()}`;
   const appendSpace = options.appendSpace !== false;
   const insertedText = appendSpace ? `${mentionText} ` : mentionText;
-  const from = mentionState.from;
-  const to = mentionState.to;
-  const tr = view.state.tr.insertText(insertedText, from, to);
-  const cursorPos = from + insertedText.length;
+  const tr = editor.view.state.tr.insertText(insertedText, range.from, range.to);
+  const cursorPos = range.from + insertedText.length;
+
   tr.setSelection(TextSelection.create(tr.doc, cursorPos));
-  tr.setMeta(mentionPluginKey, { type: "close" } as MentionMetaAction);
-  view.dispatch(tr.scrollIntoView());
+  editor.view.dispatch(tr.scrollIntoView());
+
   options.onSelect?.({
-    view,
+    view: editor.view,
     item: selected,
-    query: mentionState.query,
-    range: { from, to },
+    query: mentionState?.query || "",
+    range,
   });
+
   return true;
 };
 
 const createDefaultMentionRenderer = ({
   ownerDocument,
-  trigger,
   emptyLabel,
-  popup,
-  select,
 }: {
   ownerDocument: Document;
-  trigger: string;
   emptyLabel?: string;
-  popup: PopupController;
-  select: (index?: number) => boolean;
 }): MentionRenderLifecycle => {
   const menuEl = ownerDocument.createElement("div");
   menuEl.className = "lumen-mention-menu";
@@ -262,66 +216,296 @@ const createDefaultMentionRenderer = ({
   menuEl.style.lineHeight = "1.4";
   menuEl.style.color = "#0f172a";
 
-  const renderMenu = (mentionState: MentionPluginState) => {
-    menuEl.innerHTML = "";
-    if (mentionState.items.length === 0) {
-      const emptyText = String(emptyLabel || "").trim();
-      if (emptyText) {
-        const emptyEl = ownerDocument.createElement("div");
-        emptyEl.textContent = emptyText;
-        emptyEl.style.padding = "8px 10px";
-        emptyEl.style.color = "#64748b";
-        menuEl.appendChild(emptyEl);
-      }
+  let pointerDownHandler: ((event: Event) => void) | null = null;
+  let scrollHandler: (() => void) | null = null;
+  let resizeHandler: (() => void) | null = null;
+  let refreshFrameId: number | null = null;
+  let currentProps: MentionRenderProps | null = null;
+
+  const ensurePointerDownHandler = (props: MentionRenderProps) => {
+    if (pointerDownHandler) {
       return;
     }
-
-    mentionState.items.forEach((item, index) => {
-      const row = ownerDocument.createElement("button");
-      row.type = "button";
-      row.textContent = `${trigger}${item.label}`;
-      row.style.display = "block";
-      row.style.width = "100%";
-      row.style.border = "none";
-      row.style.textAlign = "left";
-      row.style.padding = "8px 10px";
-      row.style.borderRadius = "6px";
-      row.style.background = index === mentionState.selectedIndex ? "#e0f2fe" : "transparent";
-      row.style.color = "#0f172a";
-      row.style.cursor = "pointer";
-      row.style.font = "inherit";
-      row.addEventListener("mousedown", (event) => {
-        event.preventDefault();
-      });
-      row.addEventListener("click", (event) => {
-        event.preventDefault();
-        select(index);
-      });
-      menuEl.appendChild(row);
-    });
+    pointerDownHandler = (event: Event) => {
+      const target = event.target as Node | null;
+      if (target && menuEl.contains(target)) {
+        return;
+      }
+      props.close();
+    };
+    ownerDocument.addEventListener("pointerdown", pointerDownHandler, true);
   };
 
-  const render = (props: MentionRenderProps) => {
-    renderMenu(props.state);
-    popup.show(props.rect, menuEl);
+  const ensureRepositionHandlers = () => {
+    if (!scrollHandler) {
+      scrollHandler = () => {
+        if (currentProps) {
+          renderMenu(currentProps);
+        }
+      };
+      ownerDocument.addEventListener("scroll", scrollHandler, true);
+    }
+    if (!resizeHandler) {
+      resizeHandler = () => {
+        if (currentProps) {
+          renderMenu(currentProps);
+        }
+      };
+      ownerDocument.defaultView?.addEventListener("resize", resizeHandler, { passive: true });
+    }
+  };
+
+  const removePointerDownHandler = () => {
+    if (!pointerDownHandler) {
+    } else {
+      ownerDocument.removeEventListener("pointerdown", pointerDownHandler, true);
+      pointerDownHandler = null;
+    }
+    if (scrollHandler) {
+      ownerDocument.removeEventListener("scroll", scrollHandler, true);
+      scrollHandler = null;
+    }
+    if (resizeHandler) {
+      ownerDocument.defaultView?.removeEventListener("resize", resizeHandler);
+      resizeHandler = null;
+    }
+    if (refreshFrameId != null && ownerDocument.defaultView) {
+      ownerDocument.defaultView.cancelAnimationFrame(refreshFrameId);
+      refreshFrameId = null;
+    }
+  };
+
+  const scheduleDeferredRefresh = () => {
+    const defaultView = ownerDocument.defaultView;
+    if (!defaultView) {
+      return;
+    }
+    if (refreshFrameId != null) {
+      defaultView.cancelAnimationFrame(refreshFrameId);
+      refreshFrameId = null;
+    }
+
+    let remainingPasses = 2;
+    const tick = () => {
+      if (!currentProps) {
+        refreshFrameId = null;
+        return;
+      }
+      renderMenu(currentProps);
+      remainingPasses -= 1;
+      if (remainingPasses <= 0) {
+        refreshFrameId = null;
+        return;
+      }
+      refreshFrameId = defaultView.requestAnimationFrame(tick);
+    };
+
+    refreshFrameId = defaultView.requestAnimationFrame(tick);
+  };
+
+  const renderMenu = (props: MentionRenderProps) => {
+    currentProps = props;
+    menuEl.innerHTML = "";
+
+    if (props.state.items.length === 0) {
+      const emptyText = String(emptyLabel || "").trim();
+      if (!emptyText) {
+        props.popup.hide();
+        return;
+      }
+      const emptyEl = ownerDocument.createElement("div");
+      emptyEl.textContent = emptyText;
+      emptyEl.style.padding = "8px 10px";
+      emptyEl.style.color = "#64748b";
+      menuEl.appendChild(emptyEl);
+    } else {
+      props.state.items.forEach((item, index) => {
+        const row = ownerDocument.createElement("button");
+        row.type = "button";
+        row.textContent = `${props.trigger}${item.label}`;
+        row.style.display = "block";
+        row.style.width = "100%";
+        row.style.border = "none";
+        row.style.textAlign = "left";
+        row.style.padding = "8px 10px";
+        row.style.borderRadius = "6px";
+        row.style.background = index === props.state.selectedIndex ? "#e0f2fe" : "transparent";
+        row.style.color = "#0f172a";
+        row.style.cursor = "pointer";
+        row.style.font = "inherit";
+        row.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+        });
+        row.addEventListener("click", (event) => {
+          event.preventDefault();
+          props.select(index);
+        });
+        menuEl.appendChild(row);
+      });
+    }
+
+    props.popup.show(props.clientRect || props.rect, menuEl);
   };
 
   return {
-    onStart: render,
-    onUpdate: render,
-    onExit: () => {
-      popup.hide();
+    onStart(props) {
+      ensurePointerDownHandler(props);
+      ensureRepositionHandlers();
+      renderMenu(props);
+      scheduleDeferredRefresh();
     },
-    isEventInside: (event: Event) => {
+    onUpdate: renderMenu,
+    onExit(props) {
+      removePointerDownHandler();
+      props.popup.hide();
+      currentProps = null;
+    },
+    onKeyDown(props) {
+      if (props.event.key === "ArrowDown") {
+        props.event.preventDefault();
+        props.setSelectedIndex(props.state.selectedIndex + 1);
+        return true;
+      }
+      if (props.event.key === "ArrowUp") {
+        props.event.preventDefault();
+        props.setSelectedIndex(props.state.selectedIndex - 1);
+        return true;
+      }
+      if (props.event.key === "Enter" || props.event.key === "Tab") {
+        props.event.preventDefault();
+        return props.select();
+      }
+      if (props.event.key === "Escape" || props.event.key === "Esc") {
+        props.event.preventDefault();
+        return props.close();
+      }
+      return false;
+    },
+    isEventInside(event: Event) {
       const target = event.target as Node | null;
       return !!(target && menuEl.contains(target));
     },
   };
 };
 
-const resolvePopupRect = (view: any, mentionState: MentionPluginState) => {
-  const localRect = toPopupRect(view?.coordsAtPos?.(mentionState.to) || view?.coordsAtPos?.(mentionState.from));
-  return toViewportPopupRect(view, localRect);
+const createMentionRenderer = (
+  editor: any,
+  options: MentionPluginOptions,
+  trigger: string
+): SuggestionOptions<MentionItem, MentionItem>["render"] => {
+  const ownerDocument = editor?.view?.dom?.ownerDocument || document;
+  let popup: PopupController | null = null;
+  let selectedIndex = 0;
+  let currentSuggestionProps: SuggestionProps<MentionItem, MentionItem> | null = null;
+  let currentMentionProps: MentionRenderProps | null = null;
+
+  const ensurePopup = () => {
+    if (popup) {
+      return popup;
+    }
+    popup = createPopupController(ownerDocument, {
+      ...DEFAULT_POPUP_OPTIONS,
+      ...(options.popupOptions || {}),
+    });
+    return popup;
+  };
+
+  const close = () => closeMentionPopup(editor);
+
+  const buildMentionProps = (
+    suggestionProps: SuggestionProps<MentionItem, MentionItem>
+  ): MentionRenderProps => {
+    currentSuggestionProps = suggestionProps;
+
+    const items = Array.isArray(suggestionProps.items) ? suggestionProps.items : [];
+    selectedIndex = clampIndex(selectedIndex, items.length);
+
+    const setSelectedIndex = (nextIndex: number) => {
+      selectedIndex = clampIndex(nextIndex, currentSuggestionProps?.items?.length || 0);
+      if (!currentSuggestionProps || !currentMentionProps) {
+        return;
+      }
+      currentMentionProps = buildMentionProps(currentSuggestionProps);
+      renderer.onUpdate?.(currentMentionProps);
+    };
+
+    const select = (index?: number) => {
+      if (!currentSuggestionProps) {
+        return false;
+      }
+      const availableItems = Array.isArray(currentSuggestionProps.items)
+        ? currentSuggestionProps.items
+        : [];
+      if (availableItems.length === 0) {
+        return close();
+      }
+      const resolvedIndex = clampIndex(
+        Number.isFinite(index as number) ? Number(index) : selectedIndex,
+        availableItems.length
+      );
+      const item = availableItems[resolvedIndex];
+      if (!item) {
+        return close();
+      }
+      return currentSuggestionProps.command(item) !== false;
+    };
+
+    return {
+      ...suggestionProps,
+      view: editor?.view || null,
+      state: {
+        active: true,
+        from: suggestionProps.range.from,
+        to: suggestionProps.range.to,
+        query: suggestionProps.query,
+        items,
+        selectedIndex,
+      },
+      trigger,
+      rect: toPopupRectFromClientRect(suggestionProps.clientRect?.() || null),
+      ownerDocument,
+      popup: ensurePopup(),
+      select,
+      setSelectedIndex,
+      close,
+    };
+  };
+
+  const renderer = options.render?.() || createDefaultMentionRenderer({
+    ownerDocument,
+    emptyLabel: options.emptyLabel,
+  });
+
+  return () => ({
+    onStart(props) {
+      selectedIndex = 0;
+      currentMentionProps = buildMentionProps(props);
+      renderer.onStart?.(currentMentionProps);
+    },
+    onUpdate(props) {
+      currentMentionProps = buildMentionProps(props);
+      renderer.onUpdate?.(currentMentionProps);
+    },
+    onExit() {
+      if (currentMentionProps) {
+        renderer.onExit?.(currentMentionProps);
+      }
+      popup?.destroy();
+      popup = null;
+      currentSuggestionProps = null;
+      currentMentionProps = null;
+      selectedIndex = 0;
+    },
+    onKeyDown({ event }) {
+      if (!currentMentionProps) {
+        return false;
+      }
+      return renderer.onKeyDown?.({
+        ...currentMentionProps,
+        event,
+      }) === true;
+    },
+  });
 };
 
 export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
@@ -334,228 +518,25 @@ export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
   const tr = view.state.tr.insertText(trigger, from, to);
   const cursorPos = from + trigger.length;
   tr.setSelection(TextSelection.create(tr.doc, cursorPos));
-  tr.setMeta(mentionPluginKey, {
-    type: "open",
-    from,
-    to: cursorPos,
-    query: "",
-  } as MentionMetaAction);
   view.dispatch(tr.scrollIntoView());
   return true;
 };
 
-export const createMentionPlugin = (options: MentionPluginOptions) => {
+export const createMentionPlugin = (editor: any, options: MentionPluginOptions) => {
   const trigger = options.trigger || DEFAULT_TRIGGER;
-  const renderRuntimeByView = new WeakMap<any, MentionRenderRuntime>();
+  const maxItems = Number.isFinite(options.maxItems)
+    ? Math.max(1, Math.trunc(Number(options.maxItems)))
+    : DEFAULT_MAX_ITEMS;
 
-  return new Plugin<MentionPluginState>({
-    key: mentionPluginKey,
-    state: {
-      init: () => EMPTY_STATE,
-      apply: (tr, value, _oldState, newState) => {
-        const meta = tr.getMeta(mentionPluginKey) as MentionMetaAction | null;
-        if (meta) {
-          if (meta.type === "close") {
-            return EMPTY_STATE;
-          }
-          if (meta.type === "select-index") {
-            if (!value.active) {
-              return value;
-            }
-            return {
-              ...value,
-              selectedIndex: clampIndex(meta.index, value.items.length),
-            };
-          }
-          if (meta.type === "open" || meta.type === "sync") {
-            const previousIndex =
-              value.active && value.query === meta.query ? value.selectedIndex : 0;
-            return createStateForQuery(newState, options, meta, previousIndex);
-          }
-        }
-
-        if (!value.active) {
-          return value;
-        }
-        if (!tr.docChanged && !tr.selectionSet) {
-          return value;
-        }
-        const matched = readMentionMatchFromSelection(newState, trigger);
-        if (!matched) {
-          return EMPTY_STATE;
-        }
-        return createStateForQuery(newState, options, matched, value.selectedIndex);
-      },
-    },
-    props: {
-      handleTextInput: (view, _from, _to, text, deflt) => {
-        const mentionState = mentionPluginKey.getState(view.state as any) || EMPTY_STATE;
-        const typedText = String(text || "");
-        const shouldIntercept = mentionState.active || typedText.includes(trigger);
-        if (!shouldIntercept) {
-          return false;
-        }
-
-        if (typeof deflt === "function") {
-          deflt();
-        }
-
-        const matched = readMentionMatchFromSelection(view.state as any, trigger);
-        if (!matched) {
-          if (mentionState.active) {
-            closeMentionPopup(view);
-          }
-          return true;
-        }
-        const action: MentionMetaAction = {
-          type: mentionState.active ? "sync" : "open",
-          from: matched.from,
-          to: matched.to,
-          query: matched.query,
-        };
-        view.dispatch((view.state as any).tr.setMeta(mentionPluginKey, action));
-        return true;
-      },
-      handleKeyDown: (view, event) => {
-        const mentionState = mentionPluginKey.getState(view.state as any) || EMPTY_STATE;
-        if (!mentionState.active) {
-          return false;
-        }
-
-        const runtime = renderRuntimeByView.get(view);
-        if (runtime?.handleKeyDown(event)) {
-          return true;
-        }
-
-        if (event.key === "ArrowDown") {
-          event.preventDefault();
-          const nextIndex = mentionState.selectedIndex + 1;
-          view.dispatch(
-            (view.state as any).tr.setMeta(mentionPluginKey, {
-              type: "select-index",
-              index: nextIndex,
-            } as MentionMetaAction)
-          );
-          return true;
-        }
-
-        if (event.key === "ArrowUp") {
-          event.preventDefault();
-          const nextIndex = mentionState.selectedIndex - 1;
-          view.dispatch(
-            (view.state as any).tr.setMeta(mentionPluginKey, {
-              type: "select-index",
-              index: nextIndex,
-            } as MentionMetaAction)
-          );
-          return true;
-        }
-
-        if (event.key === "Enter" || event.key === "Tab") {
-          event.preventDefault();
-          return applyMentionSelection(view, options);
-        }
-
-        if (event.key === "Escape") {
-          event.preventDefault();
-          return closeMentionPopup(view);
-        }
-
-        return false;
-      },
-    },
-    view: (view) => {
-      let currentView = view;
-      const ownerDocument = currentView?.dom?.ownerDocument || document;
-      const popup = createTippyPopupController(ownerDocument, {
-        ...DEFAULT_POPUP_OPTIONS,
-        ...(options.popupOptions || {}),
-      });
-
-      const select = (index?: number) => applyMentionSelection(currentView, options, index);
-      const close = () => closeMentionPopup(currentView);
-
-      const renderer =
-        options.render?.() ||
-        createDefaultMentionRenderer({
-          ownerDocument,
-          trigger,
-          emptyLabel: options.emptyLabel,
-          popup,
-          select,
-        });
-      const renderRuntime = createPopupRenderRuntime(renderer, () => {
-        popup.hide();
-      });
-      renderRuntimeByView.set(currentView, renderRuntime);
-
-      const exitRenderer = () => {
-        renderRuntime.clear();
-      };
-
-      const syncPopup = () => {
-        const mentionState = mentionPluginKey.getState(currentView.state as any) || EMPTY_STATE;
-        if (!mentionState.active) {
-          exitRenderer();
-          return;
-        }
-        const rect = resolvePopupRect(currentView, mentionState);
-        if (!rect) {
-          exitRenderer();
-          return;
-        }
-        const nextRenderProps: MentionRenderProps = {
-          view: currentView,
-          state: mentionState,
-          trigger,
-          rect,
-          ownerDocument,
-          popup,
-          select,
-          close,
-        };
-        renderRuntime.update(nextRenderProps);
-      };
-
-      const onDocumentPointerDown = (event: Event) => {
-        const mentionState = mentionPluginKey.getState(currentView.state as any) || EMPTY_STATE;
-        if (!mentionState.active) {
-          return;
-        }
-        if (renderRuntime.isEventInside(event)) {
-          return;
-        }
-        const target = event.target as Node | null;
-        if (!target) {
-          close();
-          return;
-        }
-        const path = (event as any).composedPath?.() as EventTarget[] | undefined;
-        if (Array.isArray(path) && path.includes(currentView.dom)) {
-          return;
-        }
-        close();
-      };
-
-      ownerDocument.addEventListener("pointerdown", onDocumentPointerDown, true);
-      syncPopup();
-
-      return {
-        update(nextView: any) {
-          if (nextView !== currentView) {
-            renderRuntimeByView.delete(currentView);
-            renderRuntimeByView.set(nextView, renderRuntime);
-          }
-          currentView = nextView;
-          syncPopup();
-        },
-        destroy() {
-          ownerDocument.removeEventListener("pointerdown", onDocumentPointerDown, true);
-          exitRenderer();
-          popup.destroy();
-          renderRuntimeByView.delete(currentView);
-        },
-      };
-    },
+  return Suggestion<MentionItem, MentionItem>({
+    pluginKey: mentionPluginKey,
+    editor,
+    char: trigger,
+    items: ({ query, editor: currentEditor }) =>
+      resolveMentionItems(options.items, query, currentEditor, maxItems),
+    command: ({ editor: currentEditor, range, props }) =>
+      applyMentionSelection(currentEditor, options, props, range, trigger),
+    render: createMentionRenderer(editor, options, trigger),
+    ...(options.suggestion || {}),
   });
 };

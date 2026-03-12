@@ -6,10 +6,16 @@ export const MentionExtension = Extension.create<MentionPluginOptions>({
   name: "mention",
   priority: 180,
   addOptions() {
-    return {} as MentionPluginOptions;
+    return {
+      items: [],
+      trigger: "@",
+      maxItems: 8,
+      appendSpace: true,
+      emptyLabel: "",
+    } as MentionPluginOptions;
   },
   addPlugins() {
-    return [createMentionPlugin(this.options)];
+    return this.editor ? [createMentionPlugin(this.editor, this.options)] : [];
   },
 });
 

@@ -10,6 +10,9 @@
     "paths": {
       "lumenpage-core": [
         "../core/src/index.ts"
+      ],
+      "lumenpage-render-engine": [
+        "../render-engine/src/index.ts"
       ]
     }
   },
@@ -19,6 +22,9 @@
   "references": [
     {
       "path": "../core"
+    },
+    {
+      "path": "../render-engine"
     }
   ]
 }

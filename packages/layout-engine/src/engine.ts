@@ -409,7 +409,7 @@ const getBlockLayoutSignature = (block, settings, indent, renderer, registry) =>
   return hash >>> 0;
 };
 
-const PAGE_REUSE_SIGNATURE_VERSION = 3;
+const PAGE_REUSE_SIGNATURE_VERSION = 5;
 const ENABLE_CROSS_PAGE_CANDIDATE_REUSE = false;
 const ENABLE_SAME_INDEX_TAIL_REUSE = false;
 const ENABLE_RESUME_FROM_ANCHOR_REUSE = false;
@@ -469,8 +469,22 @@ const getLineVisualSignature = (line, objectSignatureCache = new WeakMap()) => {
       hash = hashString(hash, run?.color || "");
       hash = hashNumber(hash, run?.width);
       hash = hashNumber(hash, run?.underline ? 1 : 0);
+      hash = hashString(hash, run?.underlineStyle || "");
+      hash = hashString(hash, run?.underlineColor || "");
       hash = hashNumber(hash, run?.strike ? 1 : 0);
+      hash = hashString(hash, run?.strikeColor || "");
       hash = hashNumber(hash, run?.shiftY);
+      hash = hashNumber(hash, run?.backgroundRadius);
+      hash = hashNumber(hash, run?.backgroundPaddingX);
+      hash = hashString(hash, run?.linkHref || "");
+      hash = hashString(hash, run?.annotationKey || "");
+      hash = hashNumber(hash, getObjectSignature(run?.annotations || null, objectSignatureCache));
+      hash = hashString(hash, run?.styleKey || "");
+      hash = hashNumber(hash, getObjectSignature(run?.extras || null, objectSignatureCache));
+      hash = hashNumber(
+        hash,
+        getObjectSignature(run?.drawInstructions || null, objectSignatureCache)
+      );
       hash =
         typeof run?.background === "string"
           ? hashString(hash, run.background)
@@ -583,8 +597,22 @@ const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) 
         hash = hashString(hash, run.color || "");
         hash = hashNumber(hash, run.width);
         hash = hashNumber(hash, run.underline ? 1 : 0);
+        hash = hashString(hash, run.underlineStyle || "");
+        hash = hashString(hash, run.underlineColor || "");
         hash = hashNumber(hash, run.strike ? 1 : 0);
+        hash = hashString(hash, run.strikeColor || "");
         hash = hashNumber(hash, run.shiftY);
+        hash = hashNumber(hash, run.backgroundRadius);
+        hash = hashNumber(hash, run.backgroundPaddingX);
+        hash = hashString(hash, run.linkHref || "");
+        hash = hashString(hash, run.annotationKey || "");
+        hash = hashNumber(hash, getObjectSignature(run.annotations || null, objectSignatureCache));
+        hash = hashString(hash, run.styleKey || "");
+        hash = hashNumber(hash, getObjectSignature(run.extras || null, objectSignatureCache));
+        hash = hashNumber(
+          hash,
+          getObjectSignature(run.drawInstructions || null, objectSignatureCache)
+        );
         hash =
           typeof run.background === "string"
             ? hashString(hash, run.background)
@@ -1820,7 +1848,15 @@ export class LayoutPipeline {
           const runsResult = renderer?.toRuns
             ? renderer.toRuns(block, blockSettings, this.registry)
             : block.isTextblock
-              ? textblockToRuns(block, blockSettings, block.type.name, blockId, block.attrs, 0)
+              ? textblockToRuns(
+                  block,
+                  blockSettings,
+                  block.type.name,
+                  blockId,
+                  block.attrs,
+                  0,
+                  this.registry
+                )
               : docToRuns(block, blockSettings, this.registry);
 
           const { runs, length } = runsResult;

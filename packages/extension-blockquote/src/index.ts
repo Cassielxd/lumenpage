@@ -2,7 +2,7 @@ import { Node } from "lumenpage-core";
 import { blockquoteNodeSpec } from "./blockquote";
 
 export { blockquoteNodeSpec };
-export { defaultBlockquoteRenderer as blockquoteRenderer } from "lumenpage-view-canvas";
+export { defaultBlockquoteRenderer as blockquoteRenderer } from "lumenpage-render-engine";
 
 export const Blockquote = Node.create({
   name: "blockquote",

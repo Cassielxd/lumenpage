@@ -101,6 +101,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-suggestion": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-view-runtime": {
       "layer": "engine",
       "visibility": "internal",

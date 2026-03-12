@@ -14,8 +14,8 @@
       "lumenpage-model": [
         "../lp/model/src/index.ts"
       ],
-      "lumenpage-view-canvas": [
-        "../view-canvas/src/index.ts"
+      "lumenpage-render-engine": [
+        "../render-engine/src/index.ts"
       ]
     }
   },
@@ -30,7 +30,7 @@
       "path": "../lp/model"
     },
     {
-      "path": "../view-canvas"
+      "path": "../render-engine"
     }
   ]
 }

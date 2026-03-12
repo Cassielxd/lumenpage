@@ -23,7 +23,8 @@
   },
   "dependencies": {
     "lumenpage-core": "workspace:*",
-    "lumenpage-link": "workspace:*"
+    "lumenpage-link": "workspace:*",
+    "lumenpage-render-engine": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

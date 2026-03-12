@@ -3,7 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true
+    "declaration": true,
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-render-engine": ["../render-engine/src/index.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

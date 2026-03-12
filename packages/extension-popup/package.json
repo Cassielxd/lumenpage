@@ -22,7 +22,7 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
   },
   "dependencies": {
-    "tippy.js": "^6.3.7"
+    "@floating-ui/dom": "1.7.4"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

@@ -1,9 +1,10 @@
 export {
-  createTippyPopupController,
+  createPopupController,
   type PopupControllerOptions,
   type PopupController,
+  type PopupReference,
   type PopupRect,
-} from "./tippyPopup";
+} from "./popupController";
 export {
   createPopupRenderRuntime,
   type PopupRenderLifecycle,

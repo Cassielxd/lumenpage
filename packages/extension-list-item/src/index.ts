@@ -7,7 +7,7 @@ export {
   defaultBulletListRenderer as bulletListRenderer,
   defaultOrderedListRenderer as orderedListRenderer,
   defaultTaskListRenderer as taskListRenderer,
-} from "lumenpage-view-canvas";
+} from "lumenpage-render-engine";
 export { listNodeSpecs } from "./list/specs";
 export { backspaceEmptyListItem, splitListItem, toggleTaskItemChecked } from "./list/commands";
 

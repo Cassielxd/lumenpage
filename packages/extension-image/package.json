@@ -25,7 +25,8 @@
     "lumenpage-core": "workspace:*",
     "lumenpage-link": "workspace:*",
     "lumenpage-model": "workspace:*",
-    "lumenpage-view-canvas": "workspace:*"
+    "lumenpage-view-canvas": "workspace:*",
+    "lumenpage-render-engine": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

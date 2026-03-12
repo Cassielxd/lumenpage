@@ -1,4 +1,4 @@
-﻿import { textblockToRuns } from "../core/index";
+﻿import { textblockToRuns } from "../textRuns";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -49,12 +49,18 @@ export const paragraphNodeSpec: any = {
 
 export const paragraphRenderer = {
   allowSplit: true,
-  toRuns(node: any, settings: any) {
-    return textblockToRuns(node, settings, node.type.name, node.attrs?.id ?? null, node.attrs);
+  toRuns(node: any, settings: any, registry: any) {
+    return textblockToRuns(
+      node,
+      settings,
+      node.type.name,
+      node.attrs?.id ?? null,
+      node.attrs,
+      0,
+      registry
+    );
   },
   renderLine({ defaultRender, line, pageX, pageTop, layout }: any) {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
-
-

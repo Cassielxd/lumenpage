@@ -1,4 +1,5 @@
 import { Mark } from "lumenpage-core";
+import { getDefaultMarkRenderAdapter } from "lumenpage-render-engine";
 
 const normalizeStyleColor = (value) => {
   const text = typeof value === "string" ? value.trim() : "";
@@ -41,6 +42,9 @@ const normalizeTextStyleAttrs = (attrs) => {
 export const TextStyle = Mark.create({
   name: "textStyle",
   priority: 100,
+  addMarkAdapter() {
+    return getDefaultMarkRenderAdapter("textStyle");
+  },
   addAttributes() {
     return {
       color: {

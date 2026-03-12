@@ -438,6 +438,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -461,6 +464,9 @@ importers:
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -497,9 +503,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
-      lumenpage-view-canvas:
+      lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -583,9 +589,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
-      lumenpage-view-canvas:
+      lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -599,6 +605,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -615,6 +624,12 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -638,6 +653,9 @@ importers:
       lumenpage-link:
         specifier: workspace:*
         version: link:../link
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -651,15 +669,15 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
       lumenpage-state:
         specifier: workspace:*
         version: link:../lp/state
       lumenpage-transform:
         specifier: workspace:*
         version: link:../lp/transform
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -689,6 +707,9 @@ importers:
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -715,9 +736,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
-      lumenpage-view-canvas:
+      lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -725,6 +746,9 @@ importers:
 
   packages/extension-popup:
     dependencies:
+      '@floating-ui/dom':
+        specifier: 1.7.4
+        version: 1.7.4
       tippy.js:
         specifier: ^6.3.7
         version: 6.3.7
@@ -800,6 +824,9 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
       lumenpage-state:
         specifier: workspace:*
         version: link:../lp/state
@@ -832,6 +859,9 @@ importers:
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -852,6 +882,9 @@ importers:
       lumenpage-core:
         specifier: workspace:*
         version: link:../core
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -891,12 +924,22 @@ importers:
       lumenpage-model:
         specifier: workspace:*
         version: link:../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
   packages/layout-engine:
+    dependencies:
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -1052,6 +1095,12 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/render-engine:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/starter-kit:
     dependencies:
       lumenpage-core:
@@ -1130,6 +1179,9 @@ importers:
       lumenpage-link:
         specifier: workspace:*
         version: link:../link
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
       lumenpage-view-runtime:
         specifier: workspace:*
         version: link:../view-runtime
@@ -2140,6 +2192,15 @@ packages:
   '@eslint/js@8.57.1':
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@floating-ui/core@1.7.5':
+    resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
+
+  '@floating-ui/dom@1.7.4':
+    resolution: {integrity: sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA==}
+
+  '@floating-ui/utils@0.2.11':
+    resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -5920,6 +5981,17 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.1': {}
+
+  '@floating-ui/core@1.7.5':
+    dependencies:
+      '@floating-ui/utils': 0.2.11
+
+  '@floating-ui/dom@1.7.4':
+    dependencies:
+      '@floating-ui/core': 1.7.5
+      '@floating-ui/utils': 0.2.11
+
+  '@floating-ui/utils@0.2.11': {}
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:

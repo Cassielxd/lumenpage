@@ -13,6 +13,9 @@
       ],
       "lumenpage-link": [
         "../link/src/index.ts"
+      ],
+      "lumenpage-render-engine": [
+        "../render-engine/src/index.ts"
       ]
     }
   },
@@ -25,6 +28,9 @@
     },
     {
       "path": "../link"
+    },
+    {
+      "path": "../render-engine"
     }
   ]
 }

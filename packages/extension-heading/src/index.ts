@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
 
 export { headingNodeSpec } from "./heading";
-export { defaultHeadingRenderer as headingRenderer } from "lumenpage-view-canvas";
+export { defaultHeadingRenderer as headingRenderer } from "lumenpage-render-engine";
 
 export const Heading = Node.create({
   name: "heading",

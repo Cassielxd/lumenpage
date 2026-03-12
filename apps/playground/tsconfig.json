@@ -18,6 +18,8 @@
       "lumenpage-starter-kit": ["../../packages/starter-kit/src/index.ts"],
       "lumenpage-link": ["../../packages/link/src/index.ts"],
       "lumenpage-layout-engine": ["../../packages/layout-engine/src/index.ts"],
+      "lumenpage-render-engine": ["../../packages/render-engine/src/index.ts"],
+      "lumenpage-suggestion": ["../../packages/suggestion/src/index.ts"],
       "lumenpage-view-runtime": ["../../packages/view-runtime/src/index.ts"],
       "lumenpage-markdown": ["../../packages/markdown/src/index.ts"],
       "lumenpage-model": ["../../packages/lp/model/src/index.ts"],

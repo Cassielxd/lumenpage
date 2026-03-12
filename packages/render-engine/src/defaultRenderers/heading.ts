@@ -1,4 +1,4 @@
-﻿import { textblockToRuns } from "../core/index";
+﻿import { textblockToRuns } from "../textRuns";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -78,7 +78,7 @@ const getHeadingStyle = (level: number, baseFont: string) => {
 
 export const headingRenderer = {
   allowSplit: true,
-  toRuns(node: any, settings: any) {
+  toRuns(node: any, settings: any, registry: any) {
     const level = Math.max(1, Math.min(3, Number(node.attrs?.level) || 1));
     const { font, lineHeight } = getHeadingStyle(level, settings.font);
     const runs = textblockToRuns(
@@ -86,7 +86,9 @@ export const headingRenderer = {
       { ...settings, font },
       node.type.name,
       node.attrs?.id ?? null,
-      node.attrs
+      node.attrs,
+      0,
+      registry
     );
     return { ...runs, blockAttrs: { ...node.attrs, lineHeight } };
   },
@@ -94,5 +96,3 @@ export const headingRenderer = {
     defaultRender(line, pageX, pageTop, layout);
   },
 };
-
-
