@@ -448,6 +448,8 @@ export class ExtensionManager {
       ["transaction", "onTransaction"],
       ["focus", "onFocus"],
       ["blur", "onBlur"],
+      ["paste", "onPaste"],
+      ["drop", "onDrop"],
       ["destroy", "onDestroy"],
     ] as const;
 

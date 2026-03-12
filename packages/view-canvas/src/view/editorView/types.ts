@@ -59,6 +59,7 @@ export type CanvasEditorViewProps = {
   handleCompositionUpdate?: (view: any, event: CompositionEvent) => boolean;
   handleCompositionEnd?: (view: any, event: CompositionEvent) => boolean;
   handlePaste?: (view: any, event: ClipboardEvent, slice: any) => boolean;
+  handleDrop?: (view: any, event: DragEvent, slice: any, moved: boolean) => boolean;
   handleCopy?: (view: any, event: ClipboardEvent) => boolean;
   handleCut?: (view: any, event: ClipboardEvent) => boolean;
   handleClickOn?: (
@@ -109,6 +110,7 @@ export type CanvasBooleanHandlerKey =
   | "handleCompositionUpdate"
   | "handleCompositionEnd"
   | "handlePaste"
+  | "handleDrop"
   | "handleCopy"
   | "handleCut"
   | "handleClickOn"

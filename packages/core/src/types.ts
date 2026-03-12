@@ -80,6 +80,19 @@ export type EditorFocusEvent = EditorBaseEvent & {
   view?: any;
 };
 
+export type EditorPasteEvent = EditorBaseEvent & {
+  event: ClipboardEvent;
+  slice: any;
+  view?: any;
+};
+
+export type EditorDropEvent = EditorBaseEvent & {
+  event: DragEvent;
+  slice: any;
+  moved: boolean;
+  view?: any;
+};
+
 export type EditorEvents = {
   mount: EditorBaseEvent;
   unmount: EditorBaseEvent;
@@ -90,6 +103,8 @@ export type EditorEvents = {
   transaction: EditorTransactionEvent;
   focus: EditorFocusEvent;
   blur: EditorFocusEvent;
+  paste: EditorPasteEvent;
+  drop: EditorDropEvent;
   destroy: EditorBaseEvent;
 };
 
@@ -184,6 +199,12 @@ export interface ExtendableConfig<
   onBlur?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onBlur"];
   }, event: EditorFocusEvent) => void;
+  onPaste?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onPaste"];
+  }, event: EditorPasteEvent) => void;
+  onDrop?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onDrop"];
+  }, event: EditorDropEvent) => void;
   onDestroy?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onDestroy"];
   }, event: EditorBaseEvent) => void;

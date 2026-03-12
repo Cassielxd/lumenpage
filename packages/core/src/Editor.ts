@@ -20,8 +20,10 @@ import type {
   AnyExtensionInput,
   EnableRules,
   EditorBaseEvent,
+  EditorDropEvent,
   EditorEvents,
   EditorFocusEvent,
+  EditorPasteEvent,
   EditorTransactionEvent,
   ResolvedExtensions,
   ResolvedStructure,
@@ -62,6 +64,8 @@ export type EditorOptions = {
   onTransaction?: ((args: EditorTransactionEvent) => void) | null;
   onFocus?: ((args: EditorFocusEvent) => void) | null;
   onBlur?: ((args: EditorFocusEvent) => void) | null;
+  onPaste?: ((args: EditorPasteEvent) => void) | null;
+  onDrop?: ((args: EditorDropEvent) => void) | null;
   onDestroy?: ((args: EditorBaseEvent) => void) | null;
 };
 
@@ -83,6 +87,8 @@ const defaultOptions: EditorOptions = {
   onTransaction: null,
   onFocus: null,
   onBlur: null,
+  onPaste: null,
+  onDrop: null,
   onDestroy: null,
 };
 
@@ -178,6 +184,61 @@ export class Editor extends EventEmitter<EditorEvents> {
     return this.commandManager.can();
   }
 
+  dispatchTransaction(transaction: any) {
+    if (!transaction) {
+      return this;
+    }
+
+    if (typeof this.view?.dispatchTransaction === "function") {
+      this.view.dispatchTransaction(transaction);
+      return this;
+    }
+
+    const oldState = this.state;
+    if (!oldState) {
+      throw new Error("Cannot dispatch transaction without an editor state.");
+    }
+
+    const applied =
+      typeof oldState.applyTransaction === "function"
+        ? oldState.applyTransaction(transaction)
+        : { state: oldState.apply(transaction), transactions: [transaction] };
+    const nextState = applied?.state ?? oldState;
+    const transactions = Array.isArray(applied?.transactions) ? applied.transactions : [transaction];
+
+    if (!transactions.length) {
+      return this;
+    }
+
+    this.state = nextState;
+
+    const payload = {
+      editor: this,
+      transaction,
+      state: nextState,
+      oldState,
+      appendedTransactions: transactions.slice(1),
+    };
+
+    this.emit("transaction", payload);
+
+    const selectionChanged =
+      oldState?.selection?.from !== nextState?.selection?.from ||
+      oldState?.selection?.to !== nextState?.selection?.to ||
+      oldState?.selection?.anchor !== nextState?.selection?.anchor ||
+      oldState?.selection?.head !== nextState?.selection?.head;
+
+    if (selectionChanged) {
+      this.emit("selectionUpdate", payload);
+    }
+
+    if (transactions.some((tr: any) => tr?.docChanged === true)) {
+      this.emit("update", payload);
+    }
+
+    return this;
+  }
+
   get isEditable() {
     return this.options.editable !== false && !!this.view?.editable;
   }
@@ -252,6 +313,10 @@ export class Editor extends EventEmitter<EditorEvents> {
     const editorProps = this.options.editorProps || {};
     const baseOnChange = typeof editorProps.onChange === "function" ? editorProps.onChange : null;
     const baseHandleDOMEvents = editorProps.handleDOMEvents || {};
+    const baseHandlePaste =
+      typeof editorProps.handlePaste === "function" ? editorProps.handlePaste : null;
+    const baseHandleDrop =
+      typeof editorProps.handleDrop === "function" ? editorProps.handleDrop : null;
     const baseTransformCopied =
       typeof editorProps.transformCopied === "function"
         ? (slice: any, view?: any) => editorProps.transformCopied?.(view, slice) ?? slice
@@ -368,6 +433,16 @@ export class Editor extends EventEmitter<EditorEvents> {
         clipboardTextParser(text, context, plain, view),
       clipboardParser,
       clipboardSerializer,
+      handlePaste: (view, event, slice) => {
+        const handled = baseHandlePaste?.(view, event, slice) === true;
+        this.emit("paste", { editor: this, event, slice, view });
+        return handled;
+      },
+      handleDrop: (view, event, slice, moved) => {
+        const handled = baseHandleDrop?.(view, event, slice, moved) === true;
+        this.emit("drop", { editor: this, event, slice, moved, view });
+        return handled;
+      },
     };
 
     this.view = new CanvasEditorView(element, viewProps);
@@ -454,6 +529,8 @@ export class Editor extends EventEmitter<EditorEvents> {
       ["transaction", this.options.onTransaction],
       ["focus", this.options.onFocus],
       ["blur", this.options.onBlur],
+      ["paste", this.options.onPaste],
+      ["drop", this.options.onDrop],
       ["destroy", this.options.onDestroy],
     ];
 
