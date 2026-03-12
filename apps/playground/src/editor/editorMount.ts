@@ -1,4 +1,4 @@
-import { Editor } from "lumenpage-core";
+import { Editor, Extension } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 import {
   normalizeNavigableHref,
@@ -162,11 +162,17 @@ export const mountPlaygroundEditor = ({
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
 
-  const plugins: any[] = [];
   const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
-  if (permissionPlugin) {
-    plugins.push(permissionPlugin);
-  }
+  const runtimeExtensions = permissionPlugin
+    ? [
+        Extension.create({
+          name: "playgroundPermission",
+          addPlugins() {
+            return [permissionPlugin];
+          },
+        }),
+      ]
+    : [];
 
   const initialDoc = flags.usePerfDoc
     ? initialDocPerfJson
@@ -270,9 +276,8 @@ export const mountPlaygroundEditor = ({
 
   const editor = new Editor({
     element: host,
-    extensions,
+    extensions: [...extensions, ...runtimeExtensions],
     content: initialDoc,
-    plugins,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,

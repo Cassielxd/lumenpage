@@ -1,4 +1,4 @@
-import { Editor } from "lumenpage-core";
+import { Editor, Extension } from "lumenpage-core";
 import {
   normalizeNavigableHref,
   resolveLinkHrefAtPos,
@@ -103,14 +103,25 @@ export const mountPlaygroundEditor = ({
     emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "无标题",
     initialEnabled: tocOutlineEnabled !== false,
   });
-  const plugins: any[] = [
-    tocOutlineController.plugin,
-  ];
-
   const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
-  if (permissionPlugin) {
-    plugins.push(permissionPlugin);
-  }
+  const runtimeExtensions = [
+    Extension.create({
+      name: "tocOutline",
+      addPlugins() {
+        return [tocOutlineController.plugin];
+      },
+    }),
+    ...(permissionPlugin
+      ? [
+          Extension.create({
+            name: "lumenPermission",
+            addPlugins() {
+              return [permissionPlugin];
+            },
+          }),
+        ]
+      : []),
+  ];
 
   const isInNodeTypeAtPos = (state: any, pos: number, typeName: string) => {
     if (!state?.doc || !Number.isFinite(pos) || !typeName) {
@@ -232,9 +243,8 @@ export const mountPlaygroundEditor = ({
 
   const editor = new Editor({
     element: host,
-    extensions,
+    extensions: [...extensions, ...runtimeExtensions],
     content: initialDocJson,
-    plugins,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,

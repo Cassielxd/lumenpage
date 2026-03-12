@@ -48,8 +48,6 @@ export type EditorOptions = {
   extensions: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput;
   element?: HTMLElement | null;
   content?: any;
-  state?: any | null;
-  plugins?: any[];
   editorProps?: Partial<CanvasEditorViewProps>;
   enableInputRules?: EnableRules;
   enablePasteRules?: EnableRules;
@@ -69,8 +67,6 @@ const defaultOptions: EditorOptions = {
   extensions: [],
   element: null,
   content: "",
-  state: null,
-  plugins: [],
   editorProps: {},
   enableInputRules: true,
   enablePasteRules: true,
@@ -387,7 +383,6 @@ export class Editor extends EventEmitter<EditorEvents> {
 
   private buildPlugins() {
     return [
-      ...(this.options.plugins || []),
       ...this.resolvedExtensions.state.plugins,
       ...createShortcutPlugins(this.resolvedExtensions),
       ...createInputRulePlugins(this.resolvedExtensions),
@@ -396,9 +391,6 @@ export class Editor extends EventEmitter<EditorEvents> {
   }
 
   private initializeState() {
-    if (this.options.state) {
-      return this.options.state;
-    }
     if (!this.schema) {
       return null;
     }
