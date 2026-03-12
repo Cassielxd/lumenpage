@@ -1,5 +1,5 @@
 import { Node } from "lumenpage-core";
-import { tableNodeSpecs } from "../table/implementation";
+import { tableNodeSpecs } from "../table/specs";
 
 export const tableHeaderNodeSpec = tableNodeSpecs.tableHeader;
 

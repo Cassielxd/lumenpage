@@ -4,12 +4,10 @@ import {
   addTableColumnBefore,
   addTableRowAfter,
   addTableRowBefore,
-  CellSelection,
   deleteTableCellSelection,
   deleteTableColumn,
   deleteTableRow,
   enterTableCellSelection,
-  getTableTextLength,
   goToNextTableCell,
   goToPreviousTableCell,
   mergeSelectedTableCells,
@@ -18,10 +16,10 @@ import {
   preventDeleteForwardAtTableCellBoundary,
   selectCurrentAndBelowTableCell,
   selectCurrentAndNextTableCell,
-  serializeTableToText,
   splitTableCell,
-  tableNodeSpecs,
-} from "./implementation";
+} from "./commands";
+import { CellSelection } from "./cellSelection";
+import { getTableTextLength, serializeTableToText, tableNodeSpecs } from "./specs";
 import {
   createDefaultTableSelectionGeometry as createTableSelectionGeometry,
   defaultTableRenderer as tableRenderer,
