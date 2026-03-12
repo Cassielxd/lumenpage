@@ -185,8 +185,8 @@
   <t-dialog
     :visible="colorDialogVisible"
     :header="colorDialogTitle"
-    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '??'"
-    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '??'"
+    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '\u786e\u5b9a'"
+    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '\u53d6\u6d88'"
     :close-on-overlay-click="false"
     :close-on-esc-keydown="true"
     width="440"
@@ -635,7 +635,8 @@ const syncInlineFontControls = () => {
 };
 
 const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel = localeKey.value === "en-US" ? "Clear font family" : "????";
+  const clearLabel =
+    localeKey.value === "en-US" ? "Clear font family" : "\u6e05\u9664\u5b57\u4f53";
   const values = new Map<string, string>();
   const append = (family: string) => {
     const value = String(family || "").trim();
@@ -662,7 +663,8 @@ const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
 });
 
 const fontSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel = localeKey.value === "en-US" ? "Clear font size" : "????";
+  const clearLabel =
+    localeKey.value === "en-US" ? "Clear font size" : "\u6e05\u9664\u5b57\u53f7";
   const current = Number(fontSizeValue.value);
   const set = new Set<number>([
     ...TOOLBAR_FONT_SIZE_PRESETS,
@@ -687,7 +689,11 @@ const handleInlineFontFamilyChange = (value: unknown) => {
   const ok = !next ? run("clearTextFontFamily") : run("setTextFontFamily", next);
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(localeKey.value === "en-US" ? "Unable to apply font family" : "????????");
+    window.alert(
+      localeKey.value === "en-US"
+        ? "Unable to apply font family"
+        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u4f53"
+    );
   }
   syncInlineFontControls();
 };
@@ -704,21 +710,31 @@ const handleInlineFontSizeChange = (value: unknown) => {
     const ok = run("clearTextFontSize");
     pendingInlineStyleSelection.value = null;
     if (!ok) {
-      window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "????????");
+      window.alert(
+        localeKey.value === "en-US"
+          ? "Unable to apply font size"
+          : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7"
+      );
     }
     syncInlineFontControls();
     return;
   }
   const size = Number(next);
   if (!Number.isFinite(size) || size <= 0) {
-    window.alert(localeKey.value === "en-US" ? "Invalid font size" : "????");
+    window.alert(
+      localeKey.value === "en-US" ? "Invalid font size" : "\u5b57\u53f7\u65e0\u6548"
+    );
     syncInlineFontControls();
     return;
   }
   const ok = run("setTextFontSize", Math.round(size));
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(localeKey.value === "en-US" ? "Unable to apply font size" : "????????");
+    window.alert(
+      localeKey.value === "en-US"
+        ? "Unable to apply font size"
+        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7"
+    );
   }
   syncInlineFontControls();
 };
@@ -901,6 +917,7 @@ const quickInsertActions = createQuickInsertActions({
 });
 const insertAdvancedActions = createInsertAdvancedActions({
   getView,
+  run,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
 });
@@ -1121,7 +1138,9 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (!item.implemented) {
-    MessagePlugin.warning(localeKey.value === "en-US" ? "In development" : "???");
+    MessagePlugin.warning(
+      localeKey.value === "en-US" ? "In development" : "\u5f00\u53d1\u4e2d"
+    );
     return;
   }
   if (isToolbarColorAction(item.action)) {

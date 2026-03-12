@@ -98,6 +98,9 @@
       "path": "packages/extension-table"
     },
     {
+      "path": "packages/extension-tag"
+    },
+    {
       "path": "packages/extension-task-item"
     },
     {

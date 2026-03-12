@@ -8,6 +8,7 @@ import { Superscript } from "lumenpage-extension-superscript";
 import { Table, TableCell, TableHeader, TableRow } from "lumenpage-extension-table";
 import { TaskItem } from "lumenpage-extension-task-item";
 import { TaskList } from "lumenpage-extension-task-list";
+import { Tag } from "lumenpage-extension-tag";
 import { TextStyle } from "lumenpage-extension-text-style";
 import { Underline } from "lumenpage-extension-underline";
 import { Video } from "lumenpage-extension-video";
@@ -17,6 +18,7 @@ export const lumenDocumentExtensions = [
   BlockIdExtension,
   Underline,
   Link,
+  Tag,
   TextStyle,
   Subscript,
   Superscript,

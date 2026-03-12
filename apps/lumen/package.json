@@ -34,6 +34,7 @@
     "lumenpage-extension-subscript": "workspace:*",
     "lumenpage-extension-superscript": "workspace:*",
     "lumenpage-extension-table": "workspace:*",
+    "lumenpage-extension-tag": "workspace:*",
     "lumenpage-extension-task-item": "workspace:*",
     "lumenpage-extension-task-list": "workspace:*",
     "lumenpage-extension-text-style": "workspace:*",

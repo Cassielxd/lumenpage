@@ -47,46 +47,88 @@ type InsertAdvancedTexts = {
   labelColumn: string;
 };
 
-const resolveTexts = (_locale: PlaygroundLocale): InsertAdvancedTexts => ({
-  promptAudioUrl: "Audio URL",
-  promptAudioTitle: "Audio title",
-  promptFileUrl: "File URL",
-  promptFileName: "File name",
-  promptMathExpr: "Math expression",
-  promptColumnsCount: "Column count (2-4)",
-  promptTagText: "Tag text",
-  promptCalloutText: "Callout text",
-  promptBookmarkUrl: "Bookmark URL",
-  promptBookmarkTitle: "Bookmark title",
-  promptOptionText: "Option items (comma/new line separated)",
-  promptTextBoxText: "Text box content",
-  promptWebPageUrl: "Web page URL",
-  promptWebPageTitle: "Web page title",
-  promptTemplateTitle: "Template title",
-  promptTemplateSummary: "Template summary",
-  promptTemplateItems: "Template bullet items (comma separated)",
-  insertBookmarkPrefix: "Bookmark",
-  insertWebPagePrefix: "WebPage",
-  insertAudioPrefix: "Audio",
-  insertFilePrefix: "File",
-  insertCalloutPrefix: "Callout",
-  insertTextBoxPrefix: "TextBox",
-  insertTemplatePrefix: "Template",
-  defaultCallout: "Important note",
-  defaultTextBox: "Editable text box",
-  defaultBookmarkTitle: "Reference",
-  defaultWebPageTitle: "Embedded page",
-  defaultAudioTitle: "Audio clip",
-  defaultFileName: "Attachment",
-  defaultMathExpr: "E = mc^2",
-  defaultTag: "tag",
-  defaultOptionText: "Option A,Option B",
-  defaultColumnsCount: "2",
-  defaultTemplateTitle: "Project Plan",
-  defaultTemplateSummary: "Scope, milestones, and owners.",
-  defaultTemplateItems: "Milestone,Owner,Risk",
-  labelColumn: "Column",
-});
+const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
+  locale === "en-US"
+    ? {
+        promptAudioUrl: "Audio URL",
+        promptAudioTitle: "Audio title",
+        promptFileUrl: "File URL",
+        promptFileName: "File name",
+        promptMathExpr: "Math expression",
+        promptColumnsCount: "Column count (2-4)",
+        promptTagText: "Tag text",
+        promptCalloutText: "Callout text",
+        promptBookmarkUrl: "Bookmark URL",
+        promptBookmarkTitle: "Bookmark title",
+        promptOptionText: "Option items (comma/new line separated)",
+        promptTextBoxText: "Text box content",
+        promptWebPageUrl: "Web page URL",
+        promptWebPageTitle: "Web page title",
+        promptTemplateTitle: "Template title",
+        promptTemplateSummary: "Template summary",
+        promptTemplateItems: "Template bullet items (comma separated)",
+        insertBookmarkPrefix: "Bookmark",
+        insertWebPagePrefix: "WebPage",
+        insertAudioPrefix: "Audio",
+        insertFilePrefix: "File",
+        insertCalloutPrefix: "Callout",
+        insertTextBoxPrefix: "TextBox",
+        insertTemplatePrefix: "Template",
+        defaultCallout: "Important note",
+        defaultTextBox: "Editable text box",
+        defaultBookmarkTitle: "Reference",
+        defaultWebPageTitle: "Embedded page",
+        defaultAudioTitle: "Audio clip",
+        defaultFileName: "Attachment",
+        defaultMathExpr: "E = mc^2",
+        defaultTag: "tag",
+        defaultOptionText: "Option A,Option B",
+        defaultColumnsCount: "2",
+        defaultTemplateTitle: "Project Plan",
+        defaultTemplateSummary: "Scope, milestones, and owners.",
+        defaultTemplateItems: "Milestone,Owner,Risk",
+        labelColumn: "Column",
+      }
+    : {
+        promptAudioUrl: "\u97f3\u9891\u5730\u5740",
+        promptAudioTitle: "\u97f3\u9891\u6807\u9898",
+        promptFileUrl: "\u6587\u4ef6\u5730\u5740",
+        promptFileName: "\u6587\u4ef6\u540d",
+        promptMathExpr: "\u6570\u5b66\u516c\u5f0f",
+        promptColumnsCount: "\u5217\u6570\uff082-4\uff09",
+        promptTagText: "\u6807\u7b7e\u6587\u672c",
+        promptCalloutText: "\u63d0\u793a\u6587\u672c",
+        promptBookmarkUrl: "\u4e66\u7b7e\u5730\u5740",
+        promptBookmarkTitle: "\u4e66\u7b7e\u6807\u9898",
+        promptOptionText: "\u9009\u9879\u5217\u8868\uff08\u9017\u53f7\u6216\u6362\u884c\u5206\u9694\uff09",
+        promptTextBoxText: "\u6587\u672c\u6846\u5185\u5bb9",
+        promptWebPageUrl: "\u7f51\u9875\u5730\u5740",
+        promptWebPageTitle: "\u7f51\u9875\u6807\u9898",
+        promptTemplateTitle: "\u6a21\u677f\u6807\u9898",
+        promptTemplateSummary: "\u6a21\u677f\u6458\u8981",
+        promptTemplateItems: "\u6a21\u677f\u6761\u76ee\uff08\u9017\u53f7\u5206\u9694\uff09",
+        insertBookmarkPrefix: "\u4e66\u7b7e",
+        insertWebPagePrefix: "\u7f51\u9875",
+        insertAudioPrefix: "\u97f3\u9891",
+        insertFilePrefix: "\u6587\u4ef6",
+        insertCalloutPrefix: "\u63d0\u793a",
+        insertTextBoxPrefix: "\u6587\u672c\u6846",
+        insertTemplatePrefix: "\u6a21\u677f",
+        defaultCallout: "\u91cd\u8981\u63d0\u793a",
+        defaultTextBox: "\u53ef\u7f16\u8f91\u6587\u672c\u6846",
+        defaultBookmarkTitle: "\u53c2\u8003\u8d44\u6599",
+        defaultWebPageTitle: "\u5d4c\u5165\u9875\u9762",
+        defaultAudioTitle: "\u97f3\u9891\u7247\u6bb5",
+        defaultFileName: "\u9644\u4ef6",
+        defaultMathExpr: "E = mc^2",
+        defaultTag: "\u6807\u7b7e",
+        defaultOptionText: "\u9009\u9879 A,\u9009\u9879 B",
+        defaultColumnsCount: "2",
+        defaultTemplateTitle: "\u9879\u76ee\u8ba1\u5212",
+        defaultTemplateSummary: "\u8303\u56f4\u3001\u91cc\u7a0b\u7891\u548c\u8d1f\u8d23\u4eba\u3002",
+        defaultTemplateItems: "\u91cc\u7a0b\u7891,\u8d1f\u8d23\u4eba,\u98ce\u9669",
+        labelColumn: "\u5217",
+      };
 
 const getViewState = (getView: GetView) => {
   const view = getView();
@@ -371,10 +413,12 @@ const parseListItemsInput = (raw: string) =>
 
 export const createInsertAdvancedActions = ({
   getView,
+  run,
   getLocaleKey,
   requestInputDialog,
 }: {
   getView: GetView;
+  run: (name: string, ...args: unknown[]) => boolean;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
@@ -529,6 +573,9 @@ export const createInsertAdvancedActions = ({
     const tag = raw.replace(/^#+/, "").trim();
     if (!tag) {
       return false;
+    }
+    if (run("insertTag", { label: tag })) {
+      return true;
     }
     return insertText(getView, `#${tag}`);
   };
