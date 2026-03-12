@@ -10,9 +10,9 @@ import {
   type CanvasEditorViewProps,
 } from "lumenpage-view-canvas";
 import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
+import BubbleMenu, { DEFAULT_BUBBLE_MENU_ACTIONS } from "lumenpage-extension-bubble-menu";
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { MentionExtension } from "lumenpage-extension-mention";
-import { SelectionBubbleExtension } from "lumenpage-extension-selection-bubble";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
@@ -91,11 +91,16 @@ export const mountPlaygroundEditor = ({
     };
   }
 
+  const bubbleMenuElement = host.ownerDocument.createElement("div");
+
   const extensions = [
     ...lumenDocumentExtensions,
     ActiveBlockSelectionExtension,
     MentionExtension.configure(createMentionPluginOptions()),
-    SelectionBubbleExtension,
+    BubbleMenu.configure({
+      element: bubbleMenuElement,
+      actions: DEFAULT_BUBBLE_MENU_ACTIONS,
+    }),
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
   const tocOutlineController = createTocOutlinePlugin({

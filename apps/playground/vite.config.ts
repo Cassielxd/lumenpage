@@ -51,6 +51,27 @@ export default defineConfig(({ mode }) => {
         { find: /^lumenpage-link$/, replacement: entry("link") },
         { find: /^lumenpage-view-runtime$/, replacement: entry("view-runtime") },
         { find: /^lumenpage-markdown$/, replacement: entry("markdown") },
+        {
+          find: /^orderedmap$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "packages/lp/model/node_modules/.ignored/orderedmap/dist/index.js"
+          ),
+        },
+        {
+          find: /^rope-sequence$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "node_modules/.pnpm/rope-sequence@1.3.4/node_modules/rope-sequence/index.js"
+          ),
+        },
+        {
+          find: /^w3c-keyname$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "node_modules/.pnpm/w3c-keyname@2.2.8/node_modules/w3c-keyname/index.js"
+          ),
+        },
         // markdown-it depends on `punycode.js`; some local pnpm states miss its runtime files.
         // Alias to the equivalent `punycode` package to keep build/dev stable.
         { find: /^punycode\.js$/, replacement: "punycode" },

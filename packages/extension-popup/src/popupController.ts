@@ -20,6 +20,7 @@ export type PopupControllerOptions = {
   maxWidth?: number;
   interactive?: boolean;
   offset?: [number, number];
+  appendTo?: HTMLElement | (() => HTMLElement | null | undefined) | null;
 };
 
 const toFinite = (value: unknown, fallback = 0) => {
@@ -80,6 +81,7 @@ export const createPopupController = (
   const maxWidth = Number.isFinite(options.maxWidth) ? Number(options.maxWidth) : 320;
   const interactive = options.interactive !== false;
   const [skid, distance] = normalizeOffset(options.offset);
+  const appendTo = options.appendTo;
 
   const floatingEl = ownerDocument.createElement("div");
   floatingEl.style.position = "fixed";
@@ -90,7 +92,14 @@ export const createPopupController = (
   floatingEl.style.pointerEvents = interactive ? "auto" : "none";
   floatingEl.style.maxWidth = `${maxWidth}px`;
 
-  ownerDocument.body.appendChild(floatingEl);
+  const resolveAppendTarget = () => {
+    if (typeof appendTo === "function") {
+      return appendTo() || ownerDocument.body;
+    }
+    return appendTo || ownerDocument.body;
+  };
+
+  resolveAppendTarget().appendChild(floatingEl);
 
   let destroyed = false;
   let currentReference: PopupReference = null;
@@ -165,6 +174,10 @@ export const createPopupController = (
     show(reference, content) {
       if (destroyed) {
         return;
+      }
+      const appendTarget = resolveAppendTarget();
+      if (floatingEl.parentNode !== appendTarget) {
+        appendTarget.appendChild(floatingEl);
       }
       currentReference = reference;
       if (content.parentNode !== floatingEl) {

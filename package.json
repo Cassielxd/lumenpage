@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
+    "orderedmap": "2.1.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   }

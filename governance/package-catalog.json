@@ -241,7 +241,7 @@
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-extension-selection-bubble": {
+    "lumenpage-extension-bubble-menu": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"

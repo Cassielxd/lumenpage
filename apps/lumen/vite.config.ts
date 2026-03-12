@@ -46,13 +46,34 @@ export default defineConfig(({ mode }) => {
           replacement: path.resolve(workspaceRoot, "packages/extension-$1/src/index.ts"),
         },
         { find: /^lumenpage-extension-active-block$/, replacement: entry("extension-active-block") },
+        { find: /^lumenpage-extension-bubble-menu$/, replacement: entry("extension-bubble-menu") },
         { find: /^lumenpage-extension-block-id$/, replacement: entry("extension-block-id") },
         { find: /^lumenpage-extension-drag-handle$/, replacement: entry("extension-drag-handle") },
         { find: /^lumenpage-extension-mention$/, replacement: entry("extension-mention") },
-        { find: /^lumenpage-extension-selection-bubble$/, replacement: entry("extension-selection-bubble") },
         { find: /^lumenpage-link$/, replacement: entry("link") },
         { find: /^lumenpage-view-runtime$/, replacement: entry("view-runtime") },
         { find: /^lumenpage-markdown$/, replacement: entry("markdown") },
+        {
+          find: /^orderedmap$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "packages/lp/model/node_modules/.ignored/orderedmap/dist/index.js"
+          ),
+        },
+        {
+          find: /^rope-sequence$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "node_modules/.pnpm/rope-sequence@1.3.4/node_modules/rope-sequence/index.js"
+          ),
+        },
+        {
+          find: /^w3c-keyname$/,
+          replacement: path.resolve(
+            workspaceRoot,
+            "node_modules/.pnpm/w3c-keyname@2.2.8/node_modules/w3c-keyname/index.js"
+          ),
+        },
         // markdown-it depends on `punycode.js`; some local pnpm states miss its runtime files.
         // Alias to the equivalent `punycode` package to keep build/dev stable.
         { find: /^punycode\.js$/, replacement: "punycode" },
@@ -81,10 +102,10 @@ export default defineConfig(({ mode }) => {
         "lumenpage-inputrules",
         "lumenpage-collab",
         "lumenpage-extension-active-block",
+        "lumenpage-extension-bubble-menu",
         "lumenpage-extension-block-id",
         "lumenpage-extension-drag-handle",
         "lumenpage-extension-mention",
-        "lumenpage-extension-selection-bubble",
         "lumenpage-link",
         "lumenpage-view-runtime",
         "lumenpage-markdown",

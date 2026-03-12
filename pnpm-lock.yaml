@@ -11,6 +11,9 @@ importers:
       '@changesets/cli':
         specifier: ^2.29.7
         version: 2.29.8
+      orderedmap:
+        specifier: 2.1.1
+        version: 2.1.1
       prettier:
         specifier: ^3.3.3
         version: 3.8.1
@@ -32,6 +35,9 @@ importers:
       lumenpage-extension-block-id:
         specifier: workspace:*
         version: link:../../packages/extension-block-id
+      lumenpage-extension-bubble-menu:
+        specifier: workspace:*
+        version: link:../../packages/extension-bubble-menu
       lumenpage-extension-drag-handle:
         specifier: workspace:*
         version: link:../../packages/extension-drag-handle
@@ -47,9 +53,6 @@ importers:
       lumenpage-extension-page-break:
         specifier: workspace:*
         version: link:../../packages/extension-page-break
-      lumenpage-extension-selection-bubble:
-        specifier: workspace:*
-        version: link:../../packages/extension-selection-bubble
       lumenpage-extension-subscript:
         specifier: workspace:*
         version: link:../../packages/extension-subscript
@@ -456,6 +459,22 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/extension-bubble-menu:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-extension-popup:
+        specifier: workspace:*
+        version: link:../extension-popup
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../lp/state
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/extension-bullet-list:
     dependencies:
       lumenpage-core:
@@ -694,6 +713,9 @@ importers:
       lumenpage-state:
         specifier: workspace:*
         version: link:../lp/state
+      lumenpage-suggestion:
+        specifier: workspace:*
+        version: link:../suggestion
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -749,25 +771,6 @@ importers:
       '@floating-ui/dom':
         specifier: 1.7.4
         version: 1.7.4
-      tippy.js:
-        specifier: ^6.3.7
-        version: 6.3.7
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/extension-selection-bubble:
-    dependencies:
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../core
-      lumenpage-extension-popup:
-        specifier: workspace:*
-        version: link:../extension-popup
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../lp/state
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -1024,7 +1027,7 @@ importers:
   packages/lp/model:
     dependencies:
       orderedmap:
-        specifier: ^2.0.0
+        specifier: ^2.1.1
         version: 2.1.1
     devDependencies:
       jsdom:
@@ -1166,6 +1169,22 @@ importers:
       lumenpage-extension-undo-redo:
         specifier: workspace:*
         version: link:../extension-undo-redo
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/suggestion:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -4555,9 +4574,6 @@ packages:
   tinyglobby@0.2.15:
     resolution: {integrity: sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==}
     engines: {node: '>=12.0.0'}
-
-  tippy.js@6.3.7:
-    resolution: {integrity: sha512-E1d3oP2emgJ9dRQZdf3Kkn0qJgI6ZLpyS5z6ZkY1DF3kaQaBsGZsndEpHwx+eC+tYM41HaSNvNtLx8tU57FzTQ==}
 
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
@@ -8668,10 +8684,6 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
-
-  tippy.js@6.3.7:
-    dependencies:
-      '@popperjs/core': 2.11.8
 
   to-regex-range@5.0.1:
     dependencies:

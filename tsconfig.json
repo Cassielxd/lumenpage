@@ -80,7 +80,7 @@
       "path": "packages/extension-popup"
     },
     {
-      "path": "packages/extension-selection-bubble"
+      "path": "packages/extension-bubble-menu"
     },
     {
       "path": "packages/extension-smart-input-rules"
