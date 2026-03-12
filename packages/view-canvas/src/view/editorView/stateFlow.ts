@@ -17,12 +17,7 @@ export const createStateFlow = ({
   debugLog,
   strictLegacy = false,
 }) => {
-  const dispatchTransaction = (tr) => {
-    try {
-      if (getEditorProps()?.dispatchTransaction) {
-        getEditorProps().dispatchTransaction(tr);
-        return;
-      }
+  const applyDispatchedTransaction = (tr) => {
       const prevState = view.state;
       const applied =
         typeof prevState?.applyTransaction === "function"
@@ -81,6 +76,11 @@ export const createStateFlow = ({
           view.scrollIntoView(targetPos);
         }
       }
+  };
+
+  const dispatchTransactionBase = (tr) => {
+    try {
+      applyDispatchedTransaction(tr);
     } catch (error) {
       console.error("[state-flow] dispatchTransaction fatal", error);
       try {
@@ -89,6 +89,16 @@ export const createStateFlow = ({
         // ignore
       }
     }
+  };
+
+  const dispatchTransaction = (tr) => {
+    const externalDispatch = getEditorProps()?.dispatchTransaction;
+    if (typeof externalDispatch === "function") {
+      externalDispatch(tr);
+      return;
+    }
+
+    dispatchTransactionBase(tr);
   };
 
   const setSelectionOffsets = (anchorOffset, headOffset, updatePreferred, forceText = false) => {
@@ -134,6 +144,7 @@ export const createStateFlow = ({
 
   return {
     dispatchTransaction,
+    dispatchTransactionBase,
     setSelectionOffsets,
   };
 };

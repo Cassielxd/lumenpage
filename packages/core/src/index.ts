@@ -26,6 +26,7 @@ export type {
   AnyExtensionInput,
   CanvasHooks,
   CanvasSelectionGeometry,
+  DispatchTransactionProps,
   EnableRules,
   EditorBaseEvent,
   EditorDropEvent,

@@ -93,6 +93,11 @@ export type EditorDropEvent = EditorBaseEvent & {
   view?: any;
 };
 
+export type DispatchTransactionProps = {
+  transaction: any;
+  next: (transaction: any) => void;
+};
+
 export type EditorEvents = {
   mount: EditorBaseEvent;
   unmount: EditorBaseEvent;
@@ -208,6 +213,9 @@ export interface ExtendableConfig<
   onDestroy?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onDestroy"];
   }, event: EditorBaseEvent) => void;
+  dispatchTransaction?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["dispatchTransaction"];
+  }, props: DispatchTransactionProps) => void;
   addPlugins?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addPlugins"];
   }) => any[];

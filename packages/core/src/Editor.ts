@@ -127,6 +127,7 @@ export class Editor extends EventEmitter<EditorEvents> {
   isFocused: boolean;
 
   private readonly commandManager: CommandManager;
+  private customDispatchTransaction: ((transaction: any) => void) | null;
 
   constructor(options: Partial<EditorOptions> = {}) {
     super();
@@ -155,6 +156,7 @@ export class Editor extends EventEmitter<EditorEvents> {
     this.state = this.initializeState();
     this.view = null;
     this.isFocused = false;
+    this.customDispatchTransaction = null;
     this.commandManager = new CommandManager(this, this.rawCommands);
     this.bindOptionEvents();
     this.extensionManager.bindEditorEvents(this);
@@ -199,8 +201,10 @@ export class Editor extends EventEmitter<EditorEvents> {
       ...options,
     };
     if (this.view) {
+      const editorProps = this.options.editorProps || {};
       this.view.setProps({
-        ...(this.options.editorProps || {}),
+        ...editorProps,
+        dispatchTransaction: this.createViewDispatchTransaction(editorProps),
         editable: this.options.editable,
       });
     }
@@ -255,7 +259,13 @@ export class Editor extends EventEmitter<EditorEvents> {
       return this.view;
     }
 
+    return this.createView(element);
+  }
+
+  private createView(element: HTMLElement) {
     const editorProps = this.options.editorProps || {};
+    const dispatchTransaction = this.createViewDispatchTransaction(editorProps);
+
     const baseOnChange = typeof editorProps.onChange === "function" ? editorProps.onChange : null;
     const baseHandleDOMEvents = editorProps.handleDOMEvents || {};
     const baseHandlePaste =
@@ -316,6 +326,7 @@ export class Editor extends EventEmitter<EditorEvents> {
       state: this.state,
       editable: this.options.editable,
       canvasViewConfig: resolvedCanvasViewConfig,
+      dispatchTransaction,
       commands: this.createResolvedCommands(editorProps.commands || null),
       onChange: (view, event) => {
         const oldState = event?.oldState ?? this.state;
@@ -393,6 +404,31 @@ export class Editor extends EventEmitter<EditorEvents> {
     this.view = new CanvasEditorView(element, viewProps);
     this.emit("mount", { editor: this });
     return this.view;
+  }
+
+  private createViewDispatchTransaction(editorProps: Partial<CanvasEditorViewProps>) {
+    this.customDispatchTransaction =
+      typeof editorProps.dispatchTransaction === "function" ? editorProps.dispatchTransaction : null;
+
+    return this.extensionManager.dispatchTransaction(this.dispatchTransaction.bind(this));
+  }
+
+  private dispatchTransaction(transaction: any) {
+    if (!transaction) {
+      return;
+    }
+
+    if (this.customDispatchTransaction) {
+      this.customDispatchTransaction(transaction);
+      return;
+    }
+
+    const baseDispatch = this.view?._internals?.dispatchTransactionBase;
+    if (typeof baseDispatch !== "function") {
+      throw new Error("Editor view dispatch pipeline is not initialized.");
+    }
+
+    baseDispatch(transaction);
   }
 
   unmount() {

@@ -237,6 +237,25 @@ export class ExtensionManager {
     };
   }
 
+  dispatchTransaction(baseDispatch: (transaction: any) => void) {
+    const extensions = sortByPriority([...this.extensions]);
+
+    return extensions.reduceRight((next, extension) => {
+      const ctx = this.createDetachedContext(extension);
+      const dispatchTransaction = getExtensionField<
+        ((props: { transaction: any; next: (transaction: any) => void }) => void) | undefined
+      >(extension, "dispatchTransaction", ctx);
+
+      if (!dispatchTransaction) {
+        return next;
+      }
+
+      return (transaction: any) => {
+        dispatchTransaction.call(ctx, { transaction, next });
+      };
+    }, baseDispatch);
+  }
+
   transformPastedHTML(baseTransform?: (html: string, view?: any) => string) {
     const extensions = sortByPriority([...this.extensions]);
 

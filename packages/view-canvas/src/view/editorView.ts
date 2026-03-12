@@ -320,7 +320,11 @@ export class CanvasEditorView {
     } =
       renderSync;
 
-    const { dispatchTransaction: applyDispatchTransaction, setSelectionOffsets } = createStateFlow({
+    const {
+      dispatchTransaction: applyDispatchTransaction,
+      dispatchTransactionBase,
+      setSelectionOffsets,
+    } = createStateFlow({
       view: this,
       getEditorProps: () => editorProps,
       getEditorPropsList,
@@ -564,13 +568,14 @@ export class CanvasEditorView {
           editorProps = value ?? {};
         },
         commands,
-        runCommand,
-        basicCommands,
-        runKeymap,
-        setPendingChangeSummary: (value) => {
-          setPendingChangeSummaryValue(value);
-        },
+      runCommand,
+      basicCommands,
+      runKeymap,
+      setPendingChangeSummary: (value) => {
+        setPendingChangeSummaryValue(value);
+      },
       dispatchTransaction: dispatchViaView,
+      dispatchTransactionBase,
       updateLayout,
       scheduleLayout,
       updatePluginViews,
