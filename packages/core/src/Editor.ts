@@ -184,61 +184,6 @@ export class Editor extends EventEmitter<EditorEvents> {
     return this.commandManager.can();
   }
 
-  dispatchTransaction(transaction: any) {
-    if (!transaction) {
-      return this;
-    }
-
-    if (typeof this.view?.dispatchTransaction === "function") {
-      this.view.dispatchTransaction(transaction);
-      return this;
-    }
-
-    const oldState = this.state;
-    if (!oldState) {
-      throw new Error("Cannot dispatch transaction without an editor state.");
-    }
-
-    const applied =
-      typeof oldState.applyTransaction === "function"
-        ? oldState.applyTransaction(transaction)
-        : { state: oldState.apply(transaction), transactions: [transaction] };
-    const nextState = applied?.state ?? oldState;
-    const transactions = Array.isArray(applied?.transactions) ? applied.transactions : [transaction];
-
-    if (!transactions.length) {
-      return this;
-    }
-
-    this.state = nextState;
-
-    const payload = {
-      editor: this,
-      transaction,
-      state: nextState,
-      oldState,
-      appendedTransactions: transactions.slice(1),
-    };
-
-    this.emit("transaction", payload);
-
-    const selectionChanged =
-      oldState?.selection?.from !== nextState?.selection?.from ||
-      oldState?.selection?.to !== nextState?.selection?.to ||
-      oldState?.selection?.anchor !== nextState?.selection?.anchor ||
-      oldState?.selection?.head !== nextState?.selection?.head;
-
-    if (selectionChanged) {
-      this.emit("selectionUpdate", payload);
-    }
-
-    if (transactions.some((tr: any) => tr?.docChanged === true)) {
-      this.emit("update", payload);
-    }
-
-    return this;
-  }
-
   get isEditable() {
     return this.options.editable !== false && !!this.view?.editable;
   }
