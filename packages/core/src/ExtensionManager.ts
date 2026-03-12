@@ -439,6 +439,8 @@ export class ExtensionManager {
 
     this.boundEditor = editor;
     const eventMap = [
+      ["mount", "onMount"],
+      ["unmount", "onUnmount"],
       ["beforeCreate", "onBeforeCreate"],
       ["create", "onCreate"],
       ["update", "onUpdate"],

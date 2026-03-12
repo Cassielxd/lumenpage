@@ -54,6 +54,8 @@ export type EditorOptions = {
   autofocus?: boolean | "start" | "end" | number;
   editable?: boolean;
   onBeforeCreate?: ((args: EditorBaseEvent) => void) | null;
+  onMount?: ((args: EditorBaseEvent) => void) | null;
+  onUnmount?: ((args: EditorBaseEvent) => void) | null;
   onCreate?: ((args: EditorBaseEvent) => void) | null;
   onUpdate?: ((args: EditorTransactionEvent) => void) | null;
   onSelectionUpdate?: ((args: EditorTransactionEvent) => void) | null;
@@ -73,6 +75,8 @@ const defaultOptions: EditorOptions = {
   autofocus: false,
   editable: true,
   onBeforeCreate: null,
+  onMount: null,
+  onUnmount: null,
   onCreate: null,
   onUpdate: null,
   onSelectionUpdate: null,
@@ -367,12 +371,17 @@ export class Editor extends EventEmitter<EditorEvents> {
     };
 
     this.view = new CanvasEditorView(element, viewProps);
+    this.emit("mount", { editor: this });
     return this.view;
   }
 
   unmount() {
+    if (!this.view) {
+      return;
+    }
     this.view?.destroy();
     this.view = null;
+    this.emit("unmount", { editor: this });
   }
 
   destroy() {
@@ -436,6 +445,8 @@ export class Editor extends EventEmitter<EditorEvents> {
 
   private bindOptionEvents() {
     const events: Array<[keyof EditorEvents, ((payload: any) => void) | null | undefined]> = [
+      ["mount", this.options.onMount],
+      ["unmount", this.options.onUnmount],
       ["beforeCreate", this.options.onBeforeCreate],
       ["create", this.options.onCreate],
       ["update", this.options.onUpdate],

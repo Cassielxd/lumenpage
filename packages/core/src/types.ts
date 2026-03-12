@@ -81,6 +81,8 @@ export type EditorFocusEvent = EditorBaseEvent & {
 };
 
 export type EditorEvents = {
+  mount: EditorBaseEvent;
+  unmount: EditorBaseEvent;
   beforeCreate: EditorBaseEvent;
   create: EditorBaseEvent;
   update: EditorTransactionEvent;
@@ -157,6 +159,12 @@ export interface ExtendableConfig<
   }, html: string) => string | null | undefined;
   onBeforeCreate?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onBeforeCreate"];
+  }, event: EditorBaseEvent) => void;
+  onMount?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onMount"];
+  }, event: EditorBaseEvent) => void;
+  onUnmount?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["onUnmount"];
   }, event: EditorBaseEvent) => void;
   onCreate?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["onCreate"];
