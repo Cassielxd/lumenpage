@@ -3,15 +3,16 @@ import { keymap } from "lumenpage-keymap";
 import { EditorState, Selection } from "lumenpage-state";
 import {
   CanvasEditorView,
-  collectLumenNodeSelectionTypes,
-  createLumenCompatNodeRegistry,
-  createLumenCompatSelectionGeometry,
-  type CanvasCommandConfig,
+  collectNodeSelectionTypes,
+  createNodeRegistry,
+  createSelectionGeometry,
+  type CanvasCommands,
   type CanvasEditorViewProps,
 } from "lumenpage-view-canvas";
 
 import { CommandManager } from "./CommandManager";
-import { createDocument, type ContentParser } from "./createDocument";
+import { createDocument } from "./createDocument";
+import { EventEmitter } from "./EventEmitter";
 import { createSchema } from "./createSchema";
 import { ExtensionManager } from "./ExtensionManager";
 import { pasteRulesPlugin } from "./PasteRule";
@@ -19,6 +20,7 @@ import type {
   AnyExtensionInput,
   EnableRules,
   EditorBaseEvent,
+  EditorEvents,
   EditorFocusEvent,
   EditorTransactionEvent,
   ResolvedExtensions,
@@ -42,24 +44,14 @@ const BASIC_COMMAND_KEYS = [
   "redo",
 ] as const;
 
-export type EditorStateFactoryContext = {
-  editor: Editor;
-  schema: ReturnType<typeof createSchema>;
-  plugins: any[];
-  createState: (overrides?: CreateStateOptions) => any;
-};
-
 export type EditorOptions = {
   extensions: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput;
   element?: HTMLElement | null;
   content?: any;
   state?: any | null;
-  parseContent?: ContentParser | null;
   plugins?: any[];
   editorProps?: Partial<CanvasEditorViewProps>;
   canvas?: Record<string, any> | null;
-  commandConfig?: CanvasCommandConfig | null;
-  stateFactory?: ((ctx: EditorStateFactoryContext) => any) | null;
   enableInputRules?: EnableRules;
   enablePasteRules?: EnableRules;
   autofocus?: boolean | "start" | "end" | number;
@@ -79,12 +71,9 @@ const defaultOptions: EditorOptions = {
   element: null,
   content: "",
   state: null,
-  parseContent: null,
   plugins: [],
   editorProps: {},
   canvas: null,
-  commandConfig: null,
-  stateFactory: null,
   enableInputRules: true,
   enablePasteRules: true,
   autofocus: false,
@@ -117,7 +106,7 @@ const createPasteRulePlugins = (editor: Editor, resolved: ResolvedExtensions) =>
   return rules.length ? pasteRulesPlugin({ editor, rules }) : [];
 };
 
-export class Editor {
+export class Editor extends EventEmitter<EditorEvents> {
   options: EditorOptions;
   readonly extensionManager: ExtensionManager;
   readonly schema: ReturnType<typeof createSchema> | null;
@@ -134,19 +123,19 @@ export class Editor {
   isFocused: boolean;
 
   private readonly commandManager: CommandManager;
-  private readonly listeners = new Map<string, Set<(payload: any) => void>>();
 
   constructor(options: Partial<EditorOptions> = {}) {
+    super();
     this.options = { ...defaultOptions, ...options };
     this.extensionManager = new ExtensionManager(this.options.extensions, this);
 
     const structure = this.extensionManager.resolveStructure(this);
     this.schema = hasSchemaSpec(structure) ? createSchema(structure) : null;
-    this.nodeRegistry = this.schema ? createLumenCompatNodeRegistry(structure) : null;
+    this.nodeRegistry = this.schema ? createNodeRegistry(structure) : null;
     this.extensionManager.setRuntime({ schema: this.schema, nodeRegistry: this.nodeRegistry });
 
-    this.selectionGeometry = createLumenCompatSelectionGeometry(structure);
-    this.nodeSelectionTypes = collectLumenNodeSelectionTypes(structure);
+    this.selectionGeometry = createSelectionGeometry(structure);
+    this.nodeSelectionTypes = collectNodeSelectionTypes(structure);
 
     const state = this.extensionManager.resolveState(structure, this);
     this.resolvedExtensions = {
@@ -189,30 +178,6 @@ export class Editor {
 
   can() {
     return this.commandManager.can();
-  }
-
-  on(event: string, listener: (payload: any) => void) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)?.add(listener);
-    return this;
-  }
-
-  off(event: string, listener: (payload: any) => void) {
-    this.listeners.get(event)?.delete(listener);
-    return this;
-  }
-
-  emit(event: string, payload: any) {
-    const listeners = this.listeners.get(event);
-    if (!listeners?.size) {
-      return this;
-    }
-    for (const listener of listeners) {
-      listener(payload);
-    }
-    return this;
   }
 
   get isEditable() {
@@ -260,7 +225,6 @@ export class Editor {
     const doc = createDocument({
       content: overrides.content ?? this.options.content,
       schema: this.schema,
-      parseContent: this.options.parseContent,
     });
 
     return this.applyStateTransforms(
@@ -345,9 +309,7 @@ export class Editor {
       state: this.state,
       editable: this.options.editable,
       canvasViewConfig: resolvedCanvasViewConfig,
-      commandConfig: this.createResolvedCommandConfig(
-        this.options.commandConfig || editorProps.commandConfig || null
-      ),
+      commands: this.createResolvedCommands(editorProps.commands || null),
       onChange: (view, event) => {
         const oldState = event?.oldState ?? this.state;
         const nextState = event?.state ?? view?.state ?? oldState;
@@ -423,6 +385,7 @@ export class Editor {
   destroy() {
     this.unmount();
     this.emit("destroy", { editor: this });
+    this.removeAllListeners();
   }
 
   private buildPlugins() {
@@ -443,27 +406,18 @@ export class Editor {
       return null;
     }
 
-    if (this.options.stateFactory) {
-      return this.options.stateFactory({
-        editor: this,
-        schema: this.schema,
-        plugins: this.plugins,
-        createState: (overrides = {}) => this.createState(overrides),
-      });
-    }
-
     return this.createState();
   }
 
   private applyStateTransforms(state: any) {
-    return this.resolvedExtensions.state.stateTransforms.reduce((currentState, transform) => {
+    return this.resolvedExtensions.state.stateExtenders.reduce((currentState, transform) => {
       const nextState = transform(currentState);
       return nextState ?? currentState;
     }, state);
   }
 
-  private createResolvedCommandConfig(override: CanvasCommandConfig | null) {
-    const base = this.createDefaultCommandConfig();
+  private createResolvedCommands(override: CanvasCommands | null) {
+    const base = this.createDefaultCommands();
     if (!override) {
       return base;
     }
@@ -481,7 +435,7 @@ export class Editor {
     };
   }
 
-  private createDefaultCommandConfig(): CanvasCommandConfig {
+  private createDefaultCommands(): CanvasCommands {
     const basicCommands = Object.fromEntries(
       BASIC_COMMAND_KEYS.map((key) => [key, this.rawCommands[key]]).filter(([, value]) => typeof value === "function")
     );
@@ -492,7 +446,7 @@ export class Editor {
   }
 
   private bindOptionEvents() {
-    const events: Array<[string, ((payload: any) => void) | null | undefined]> = [
+    const events: Array<[keyof EditorEvents, ((payload: any) => void) | null | undefined]> = [
       ["beforeCreate", this.options.onBeforeCreate],
       ["create", this.options.onCreate],
       ["update", this.options.onUpdate],

@@ -1,8 +1,6 @@
 import { DOMParser as PMDOMParser } from "lumenpage-model";
 import { sanitizeDocJson } from "lumenpage-link";
 
-export type ContentParser = (content: string, schema: any) => any;
-
 const isNodeContent = (content: any) =>
   !!content &&
   typeof content === "object" &&
@@ -26,11 +24,9 @@ const createEmptyDocument = (schema: any) => {
 export const createDocument = ({
   content,
   schema,
-  parseContent,
 }: {
   content?: any;
   schema: any;
-  parseContent?: ContentParser | null;
 }) => {
   if (!schema) {
     throw new Error("schema is required to create a document.");
@@ -45,12 +41,9 @@ export const createDocument = ({
   }
 
   if (typeof content === "string") {
-    if (parseContent) {
-      return parseContent(content, schema);
-    }
     const domParser = typeof window !== "undefined" ? window.DOMParser : null;
     if (!domParser) {
-      throw new Error("String content requires DOMParser or editor.parseContent(content, schema).");
+      throw new Error("String content requires DOMParser in the current runtime.");
     }
     const parsed = new domParser().parseFromString(content, "text/html");
     return PMDOMParser.fromSchema(schema).parse(parsed.body);
@@ -64,5 +57,5 @@ export const createDocument = ({
     return schema.nodeFromJSON(normalized);
   }
 
-  throw new Error("Unsupported editor content. Expected a ProseMirror node, JSON, or string.");
+  throw new Error("Unsupported editor content. Expected a document node, JSON, or string.");
 };

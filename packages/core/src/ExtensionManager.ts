@@ -34,7 +34,7 @@ const createResolvedState = (): ResolvedState => ({
   inputRules: [],
   pasteRules: [],
   commands: {},
-  stateTransforms: [],
+  stateExtenders: [],
 });
 
 const createResolvedCanvas = (): ResolvedStructure["canvas"] => ({
@@ -210,18 +210,18 @@ export class ExtensionManager {
         };
       }
 
-      const stateTransforms = callConfigValue(
+      const stateExtenders = callConfigValue(
         getExtensionField<() => Array<(state: any) => any> | ((state: any) => any) | null>(
           instance.extension,
-          "addStateTransforms",
+          "extendState",
           ctx
         ),
         null
       );
-      if (Array.isArray(stateTransforms) && stateTransforms.length) {
-        state.stateTransforms.push(...stateTransforms.filter((transform) => typeof transform === "function"));
-      } else if (typeof stateTransforms === "function") {
-        state.stateTransforms.push(stateTransforms);
+      if (Array.isArray(stateExtenders) && stateExtenders.length) {
+        state.stateExtenders.push(...stateExtenders.filter((transform) => typeof transform === "function"));
+      } else if (typeof stateExtenders === "function") {
+        state.stateExtenders.push(stateExtenders);
       }
     }
 

@@ -140,7 +140,7 @@ const getBasicCommand = (editorView: any, name: string) =>
   getCommandRuntime(editorView)?.basicCommands?.[name] ?? null;
 
 const getKeymapCommand = (editorView: any, name: string) =>
-  getCommandRuntime(editorView)?.commandConfig?.keymap?.[name] ?? null;
+  getCommandRuntime(editorView)?.commands?.keymap?.[name] ?? null;
 
 const runViewCommand = (editorView: any, command: any) => {
   if (typeof command !== "function") {
@@ -368,7 +368,7 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
 
 export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
   const commands = editorView?.commands;
-  const keymap = (getCommandRuntime(editorView)?.commandConfig?.keymap ?? {}) as Record<string, any>;
+  const keymap = (getCommandRuntime(editorView)?.commands?.keymap ?? {}) as Record<string, any>;
   if (!commands || !keymap) {
     return;
   }

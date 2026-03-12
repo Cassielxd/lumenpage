@@ -1,25 +1,24 @@
 import { setupViewCommands } from "./commands";
 import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
-import type { CanvasCommandConfig } from "./types";
+import type { CanvasCommands } from "./types";
 
 // 命令运行时初始化：整理 commands 配置并挂载到 view.commands。
 export const createCommandRuntime = ({
   view,
   schema,
   resolveCanvasConfig,
-  commandConfigFromProps,
+  commandsFromProps,
 }: {
   view: any;
   schema: any;
   resolveCanvasConfig: (key: string, fallback?: any) => any;
-  commandConfigFromProps?: CanvasCommandConfig | null;
+  commandsFromProps?: CanvasCommands | null;
 }) => {
   const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
-  const legacyCommandConfig = resolveCanvasConfig("commands", {});
-  const hasPropCommandConfig =
-    commandConfigFromProps && typeof commandConfigFromProps === "object";
-  const commandConfig = hasPropCommandConfig ? commandConfigFromProps : legacyCommandConfig;
-  if (!hasPropCommandConfig && legacyCommandConfig && Object.keys(legacyCommandConfig).length > 0) {
+  const legacyCommands = resolveCanvasConfig("commands", {});
+  const hasPropCommands = commandsFromProps && typeof commandsFromProps === "object";
+  const commands = hasPropCommands ? commandsFromProps : legacyCommands;
+  if (!hasPropCommands && legacyCommands && Object.keys(legacyCommands).length > 0) {
     warnLegacyCanvasConfigUsage(
       "commands",
       "EditorProps.handleKeyDown + keymap plugin + explicit commands wiring",
@@ -28,22 +27,22 @@ export const createCommandRuntime = ({
   }
   const noopCommand = () => false;
   const runCommand =
-    commandConfig.runCommand ??
+    commands.runCommand ??
     ((command, state, dispatch) => (typeof command === "function" ? command(state, dispatch) : false));
   const basicCommands = {
-    deleteSelection: commandConfig.basicCommands?.deleteSelection ?? noopCommand,
-    joinBackward: commandConfig.basicCommands?.joinBackward ?? noopCommand,
-    selectNodeBackward: commandConfig.basicCommands?.selectNodeBackward ?? noopCommand,
-    joinForward: commandConfig.basicCommands?.joinForward ?? noopCommand,
-    selectNodeForward: commandConfig.basicCommands?.selectNodeForward ?? noopCommand,
-    splitBlock: commandConfig.basicCommands?.splitBlock ?? noopCommand,
-    enter: commandConfig.basicCommands?.enter ?? noopCommand,
-    undo: commandConfig.basicCommands?.undo ?? noopCommand,
-    redo: commandConfig.basicCommands?.redo ?? noopCommand,
+    deleteSelection: commands.basicCommands?.deleteSelection ?? noopCommand,
+    joinBackward: commands.basicCommands?.joinBackward ?? noopCommand,
+    selectNodeBackward: commands.basicCommands?.selectNodeBackward ?? noopCommand,
+    joinForward: commands.basicCommands?.joinForward ?? noopCommand,
+    selectNodeForward: commands.basicCommands?.selectNodeForward ?? noopCommand,
+    splitBlock: commands.basicCommands?.splitBlock ?? noopCommand,
+    enter: commands.basicCommands?.enter ?? noopCommand,
+    undo: commands.basicCommands?.undo ?? noopCommand,
+    redo: commands.basicCommands?.redo ?? noopCommand,
   };
-  const setBlockAlign = commandConfig.setBlockAlign ?? (() => noopCommand);
-  const keymap = commandConfig.keymap ?? null;
-  const enableBuiltInKeyFallback = commandConfig.fallbackKeyHandling !== false;
+  const setBlockAlign = commands.setBlockAlign ?? (() => noopCommand);
+  const keymap = commands.keymap ?? null;
+  const enableBuiltInKeyFallback = commands.fallbackKeyHandling !== false;
   const keyAliasMap = {
     ArrowLeft: "Left",
     ArrowRight: "Right",
@@ -180,12 +179,12 @@ export const createCommandRuntime = ({
     schema,
     basicCommands,
     setBlockAlign,
-    viewCommandConfig: commandConfig.viewCommands,
+    viewCommandConfig: commands.viewCommands,
     runCommand,
   });
 
   return {
-    commandConfig,
+    commands,
     runCommand,
     basicCommands,
     runKeymap,

@@ -1,7 +1,7 @@
 import { ExtensionManager, createSchema } from "lumenpage-core";
 import { LayoutPipeline } from "lumenpage-layout-engine";
 import { createLinebreakSegmentText } from "lumenpage-view-runtime";
-import { createLumenCompatNodeRegistry, docPosToTextOffset } from "lumenpage-view-canvas";
+import { createNodeRegistry, docPosToTextOffset } from "lumenpage-view-canvas";
 import { playgroundDocumentExtensions } from "./documentExtensions";
 
 type PaginationDocWorkerRequest = {
@@ -49,7 +49,7 @@ const createMeasureTextWidth = () => {
 const extensionManager = new ExtensionManager([...playgroundDocumentExtensions]);
 const resolvedStructure = extensionManager.resolveStructure();
 const schema = createSchema(resolvedStructure);
-const registry = createLumenCompatNodeRegistry(resolvedStructure);
+const registry = createNodeRegistry(resolvedStructure);
 let pipeline: LayoutPipeline | null = null;
 let previousLayoutState: any = null;
 

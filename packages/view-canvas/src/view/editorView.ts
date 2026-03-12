@@ -118,12 +118,12 @@ export class CanvasEditorView {
     };
     const onChange = resolveCanvasConfig("onChange", null);
     const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
-    const { commandConfig, runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } =
+    const { commands, runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } =
       createCommandRuntime({
         view: this,
         schema,
         resolveCanvasConfig,
-        commandConfigFromProps: viewProps?.commandConfig ?? null,
+        commandsFromProps: viewProps?.commands ?? null,
       });
 
     // NodeView 管理能力由独立模块提供，editorView 只做装配。
@@ -563,7 +563,7 @@ export class CanvasEditorView {
         setEditorProps: (value) => {
           editorProps = value ?? {};
         },
-        commandConfig,
+        commands,
         runCommand,
         basicCommands,
         runKeymap,

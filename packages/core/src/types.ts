@@ -80,6 +80,17 @@ export type EditorFocusEvent = EditorBaseEvent & {
   view?: any;
 };
 
+export type EditorEvents = {
+  beforeCreate: EditorBaseEvent;
+  create: EditorBaseEvent;
+  update: EditorTransactionEvent;
+  selectionUpdate: EditorTransactionEvent;
+  transaction: EditorTransactionEvent;
+  focus: EditorFocusEvent;
+  blur: EditorFocusEvent;
+  destroy: EditorBaseEvent;
+};
+
 export interface ExtendableConfig<
   Options = any,
   Storage = any,
@@ -171,8 +182,8 @@ export interface ExtendableConfig<
   addPlugins?: (this: ExtensionContext<Options, Storage> & {
     parent: ParentConfig<Config>["addPlugins"];
   }) => any[];
-  addStateTransforms?: (this: ExtensionContext<Options, Storage> & {
-    parent: ParentConfig<Config>["addStateTransforms"];
+  extendState?: (this: ExtensionContext<Options, Storage> & {
+    parent: ParentConfig<Config>["extendState"];
   }) => Array<(state: any) => any> | ((state: any) => any) | null;
 }
 
@@ -348,7 +359,7 @@ export type ResolvedState = {
   inputRules: any[];
   pasteRules: PasteRule[];
   commands: Record<string, any>;
-  stateTransforms: Array<(state: any) => any>;
+  stateExtenders: Array<(state: any) => any>;
 };
 
 export type ResolvedStructure = {

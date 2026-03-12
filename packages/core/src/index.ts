@@ -1,9 +1,9 @@
 export { Editor } from "./Editor";
-export type { EditorOptions, EditorStateFactoryContext } from "./Editor";
+export type { EditorOptions } from "./Editor";
 export { CommandManager } from "./CommandManager";
 export { createChainableState } from "./createChainableState";
 export { createDocument } from "./createDocument";
-export type { ContentParser } from "./createDocument";
+export { EventEmitter } from "./EventEmitter";
 export { Extension } from "./Extension";
 export { ExtensionManager } from "./ExtensionManager";
 export { Mark } from "./Mark";
@@ -28,6 +28,7 @@ export type {
   CanvasSelectionGeometry,
   EnableRules,
   EditorBaseEvent,
+  EditorEvents,
   EditorFocusEvent,
   EditorTransactionEvent,
   ExtensionConfig,

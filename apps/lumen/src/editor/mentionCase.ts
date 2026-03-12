@@ -9,7 +9,7 @@ const LUMEN_MENTION_ITEMS: MentionItem[] = [
   { id: "u-olivia", label: "Olivia" },
 ];
 
-export const createLumenMentionPluginOptions = (): MentionPluginOptions => ({
+export const createMentionPluginOptions = (): MentionPluginOptions => ({
   items: ({ query }) => {
     const keyword = String(query || "")
       .trim()

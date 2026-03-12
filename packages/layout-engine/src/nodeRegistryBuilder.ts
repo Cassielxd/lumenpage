@@ -1,6 +1,6 @@
 import { NodeRendererRegistry, type NodeRenderer } from "./nodeRegistry";
 
-type CompatResolvedExtensions = {
+type ResolvedExtensionRuntime = {
   layout: {
     byNodeName: Map<
       string,
@@ -15,7 +15,7 @@ type CompatResolvedExtensions = {
   };
 };
 
-export const createLumenCompatNodeRegistry = (resolved: CompatResolvedExtensions) => {
+export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
   const registry = new NodeRendererRegistry();
 
   for (const [nodeName, layoutHooks] of resolved.layout.byNodeName.entries()) {

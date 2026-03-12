@@ -43,7 +43,7 @@ export const BlockIdExtension = Extension.create({
   addPlugins() {
     return [createBlockIdPlugin()];
   },
-  addStateTransforms() {
+  extendState() {
     return [
       (state: any) => {
         const tr = createBlockIdTransaction(state);

@@ -20,7 +20,7 @@ import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
-import { createLumenMentionPluginOptions } from "./mentionCase";
+import { createMentionPluginOptions } from "./mentionCase";
 import { createTocOutlinePlugin, type TocOutlineSnapshot } from "./tocOutlinePlugin";
 import { lumenDocumentExtensions } from "./documentExtensions";
 import {
@@ -94,7 +94,7 @@ export const mountPlaygroundEditor = ({
   const extensions = [
     ...lumenDocumentExtensions,
     ActiveBlockSelectionExtension,
-    MentionExtension.configure(createLumenMentionPluginOptions()),
+    MentionExtension.configure(createMentionPluginOptions()),
     SelectionBubbleExtension,
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];

@@ -21,7 +21,7 @@ export {
   getLegacyCanvasConfigHits,
 } from "./editorView/legacyConfigWarnings";
 export type {
-  CanvasCommandConfig,
+  CanvasCommands,
   CanvasEditorViewProps,
   NodeSelectionTargetArgs,
 } from "./editorView/types";

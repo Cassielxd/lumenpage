@@ -27,7 +27,7 @@ export const initEditorViewEnvironment = ({
 }) => {
   const editorState = viewProps?.state;
   if (!editorState) {
-    throw new Error("CanvasEditorView requires a state, matching ProseMirror EditorView.");
+    throw new Error("CanvasEditorView requires a resolved editor state.");
   }
 
   const canvasConfig = getCanvasConfig(editorState) ?? {};

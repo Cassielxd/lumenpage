@@ -1,6 +1,6 @@
 import type { CanvasViewConfig } from "../canvasConfig";
 
-export type CanvasCommandConfig = {
+export type CanvasCommands = {
   basicCommands?: Record<string, any>;
   runCommand?: (command: any, state: any, dispatch: any, view?: any) => boolean;
   setBlockAlign?: (...args: any[]) => any;
@@ -22,7 +22,7 @@ export type HookReturn<T> = T extends (...args: any[]) => infer R ? R : T;
 export type CanvasEditorViewProps = {
   state: any;
   canvasViewConfig?: CanvasViewConfig;
-  commandConfig?: CanvasCommandConfig | null;
+  commands?: CanvasCommands | null;
   dispatchTransaction?: (tr: any) => void;
   editable?: boolean | ((view: any) => boolean);
   attributes?: Record<string, any> | ((state: any) => Record<string, any>);

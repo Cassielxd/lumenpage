@@ -1,12 +1,12 @@
 import { NodeRendererRegistry, type NodeRenderer } from "./layout-pagination/index";
 import { getDefaultNodeRenderer } from "./defaultRenderers/index";
 
-type CompatSelectionGeometry = {
+type SelectionGeometry = {
   shouldComputeSelectionRects?: (ctx: any) => boolean;
   shouldRenderBorderOnly?: (ctx: any) => boolean;
 };
 
-type CompatResolvedExtensions = {
+type ResolvedExtensionRuntime = {
   schema?: {
     nodes?: Record<string, any>;
   };
@@ -22,13 +22,13 @@ type CompatResolvedExtensions = {
   };
   canvas: {
     nodeViews?: Record<string, any>;
-    selectionGeometries: CompatSelectionGeometry[];
+    selectionGeometries: SelectionGeometry[];
     nodeSelectionTypes: string[];
   };
 };
 
 const hasGeometryHandler = (
-  geometry: CompatSelectionGeometry,
+  geometry: SelectionGeometry,
   key: "shouldComputeSelectionRects" | "shouldRenderBorderOnly",
   ctx: any
 ) => {
@@ -36,7 +36,7 @@ const hasGeometryHandler = (
   return typeof handler === "function" ? handler(ctx) === true : false;
 };
 
-export const createLumenCompatSelectionGeometry = (resolved: CompatResolvedExtensions) => {
+export const createSelectionGeometry = (resolved: ResolvedExtensionRuntime) => {
   const geometries = resolved.canvas.selectionGeometries;
   if (!geometries.length) {
     return null;
@@ -50,10 +50,10 @@ export const createLumenCompatSelectionGeometry = (resolved: CompatResolvedExten
   });
 };
 
-export const collectLumenNodeSelectionTypes = (resolved: CompatResolvedExtensions) =>
+export const collectNodeSelectionTypes = (resolved: ResolvedExtensionRuntime) =>
   Array.from(new Set(resolved.canvas.nodeSelectionTypes));
 
-export const createLumenCompatNodeRegistry = (resolved: CompatResolvedExtensions) => {
+export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
   const registry = new NodeRendererRegistry();
   const layoutMap = resolved.layout?.byNodeName || new Map();
   const presetMap = resolved.layout?.renderPresetsByNodeName || new Map();

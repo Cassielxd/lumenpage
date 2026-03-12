@@ -1,4 +1,4 @@
-// 文本偏移量 <-> ProseMirror 位置映射
+// Text offset <-> document position mapping.
 const docTopLevelTextIndexCache = new WeakMap();
 
 const serializeContainerToText = (node) => {
