@@ -3,9 +3,9 @@ import {
   BorderStyle,
   Document,
   ExternalHyperlink,
-  HeadingLevel,
   ImageRun,
   LevelFormat,
+  LineRuleType,
   Packer,
   Paragraph,
   Table,
@@ -17,8 +17,47 @@ import {
   WidthType,
 } from "docx";
 
+export type RenderedWordPage = {
+  dataUrl: string;
+  widthPx: number;
+  heightPx: number;
+};
+
 type ExportContext = {
   quoteDepth: number;
+  defaultFontFamily: string | null;
+  defaultFontSize: number | null;
+  defaultLineHeight: number | null;
+  blockSpacing: number | null;
+  paragraphSpacingBefore: number | null;
+  paragraphSpacingAfter: number | null;
+};
+
+type ParagraphLayoutDefaults = {
+  spacingBefore?: number | null;
+  spacingAfter?: number | null;
+  lineHeight?: number | null;
+};
+
+type WordExportSettings = {
+  pageWidthPx?: number | null;
+  pageHeightPx?: number | null;
+  margin?: {
+    top?: number | null;
+    right?: number | null;
+    bottom?: number | null;
+    left?: number | null;
+  } | null;
+  font?: string | null;
+  lineHeight?: number | null;
+  blockSpacing?: number | null;
+  paragraphSpacingBefore?: number | null;
+  paragraphSpacingAfter?: number | null;
+};
+
+type WordExportHtmlOptions = {
+  pageBreakBeforeRootIndices?: number[];
+  settings?: WordExportSettings | null;
 };
 
 type InlineStyleState = {
@@ -71,6 +110,22 @@ const BLOCK_TAGS = new Set([
 ]);
 
 const normalizeText = (value: unknown) => String(value ?? "");
+
+const parseFontSpec = (fontSpec: string | null | undefined) => {
+  const source = String(fontSpec || "").trim();
+  const match = /(\d+(?:\.\d+)?)px\s+(.+)/.exec(source);
+  if (!match) {
+    return {
+      size: 16,
+      family: "Arial",
+    };
+  }
+  const size = Number.parseFloat(match[1]);
+  return {
+    size: Number.isFinite(size) && size > 0 ? Math.round(size) : 16,
+    family: String(match[2] || "").trim() || "Arial",
+  };
+};
 
 const pxToTwip = (value: unknown) => {
   const next = Number(value);
@@ -127,13 +182,16 @@ const mapAlignment = (value: string | null | undefined) => {
   return AlignmentType.LEFT;
 };
 
-const mapHeadingLevel = (level: number) => {
-  if (level <= 1) return HeadingLevel.HEADING_1;
-  if (level === 2) return HeadingLevel.HEADING_2;
-  if (level === 3) return HeadingLevel.HEADING_3;
-  if (level === 4) return HeadingLevel.HEADING_4;
-  if (level === 5) return HeadingLevel.HEADING_5;
-  return HeadingLevel.HEADING_6;
+const getHeadingStyle = (level: number, baseFontSize: number, baseFontFamily: string | null) => {
+  const normalizedLevel = Math.max(1, Math.min(6, Number(level) || 1));
+  const scaleMap = [1.6, 1.35, 1.2, 1.1, 1.0, 0.95];
+  const scale = scaleMap[normalizedLevel - 1] || 1;
+  const size = Math.max(12, Math.round(baseFontSize * scale));
+  return {
+    bold: true,
+    fontSize: size,
+    fontFamily: baseFontFamily || null,
+  };
 };
 
 const hasBlockChildren = (element: Element) =>
@@ -320,20 +378,32 @@ const collectInlineChildren = async (
   return children;
 };
 
-const buildParagraphOptions = (element: Element, context: ExportContext, extra: Record<string, unknown> = {}) => {
+const buildParagraphOptions = (
+  element: Element,
+  context: ExportContext,
+  extra: Record<string, unknown> = {},
+  defaults: ParagraphLayoutDefaults = {}
+) => {
   const html = element as HTMLElement;
   const spacingBefore = parseCssPixel(html.style?.marginTop);
   const spacingAfter = parseCssPixel(html.style?.marginBottom);
   const firstLineIndent = parseCssPixel(html.style?.textIndent);
   const baseIndent = context.quoteDepth > 0 ? context.quoteDepth * 360 : 0;
+  const resolvedSpacingBefore =
+    spacingBefore ?? (defaults.spacingBefore ?? context.paragraphSpacingBefore);
+  const resolvedSpacingAfter =
+    spacingAfter ?? (defaults.spacingAfter ?? context.paragraphSpacingAfter);
+  const resolvedLineHeight = defaults.lineHeight ?? context.defaultLineHeight;
 
   return {
     alignment: mapAlignment(html.style?.textAlign || element.getAttribute("align")),
     spacing:
-      spacingBefore != null || spacingAfter != null
+      resolvedSpacingBefore != null || resolvedSpacingAfter != null || resolvedLineHeight != null
         ? {
-            before: pxToTwip(spacingBefore ?? 0),
-            after: pxToTwip(spacingAfter ?? 0),
+            before: pxToTwip(resolvedSpacingBefore ?? 0),
+            after: pxToTwip(resolvedSpacingAfter ?? 0),
+            line: pxToTwip(resolvedLineHeight ?? 0),
+            lineRule: resolvedLineHeight != null ? LineRuleType.EXACT : undefined,
           }
         : undefined,
     indent:
@@ -361,11 +431,20 @@ const buildParagraphOptions = (element: Element, context: ExportContext, extra: 
 const createParagraphFromElement = async (
   element: Element,
   context: ExportContext,
-  extra: Record<string, unknown> = {}
+  extra: Record<string, unknown> = {},
+  baseStyle: InlineStyleState = {},
+  defaults: ParagraphLayoutDefaults = {}
 ) => {
-  const children = await collectInlineChildren(Array.from(element.childNodes));
+  const mergedBaseStyle = mergeInlineStyles(
+    {
+      fontSize: context.defaultFontSize,
+      fontFamily: context.defaultFontFamily,
+    },
+    baseStyle
+  );
+  const children = await collectInlineChildren(Array.from(element.childNodes), mergedBaseStyle);
   return new Paragraph({
-    ...buildParagraphOptions(element, context, extra),
+    ...buildParagraphOptions(element, context, extra, defaults),
     children: children.length > 0 ? children : [new TextRun("")],
   });
 };
@@ -382,6 +461,7 @@ const createCodeParagraph = (element: Element, context: ExportContext) => {
       createTextRun(line, {
         code: true,
         background: "#F3F4F6",
+        fontSize: context.defaultFontSize,
       })
     );
   });
@@ -389,7 +469,10 @@ const createCodeParagraph = (element: Element, context: ExportContext) => {
     children.push(createTextRun("", { code: true }));
   }
   return new Paragraph({
-    ...buildParagraphOptions(element, context),
+    ...buildParagraphOptions(element, context, {}, {
+      spacingBefore: context.blockSpacing,
+      spacingAfter: context.blockSpacing,
+    }),
     shading: { fill: "F3F4F6" },
     children,
   });
@@ -422,13 +505,29 @@ const createImageParagraph = async (element: Element, context: ExportContext) =>
       normalizeText(element.textContent) ||
       "[Image]";
     return new Paragraph({
-      ...buildParagraphOptions(element, context),
-      children: [new TextRun(text)],
+      ...buildParagraphOptions(element, context, {}, {
+        spacingBefore: context.blockSpacing,
+        spacingAfter: context.blockSpacing,
+      }),
+      children: [
+        createTextRun(text, {
+          fontSize: context.defaultFontSize,
+          fontFamily: context.defaultFontFamily,
+        }),
+      ],
     });
   }
   const { width, height } = getImageDimensions(element);
   return new Paragraph({
-    ...buildParagraphOptions(element, context, { alignment: AlignmentType.CENTER }),
+    ...buildParagraphOptions(
+      element,
+      context,
+      { alignment: AlignmentType.CENTER },
+      {
+        spacingBefore: context.blockSpacing,
+        spacingAfter: context.blockSpacing,
+      }
+    ),
     children: [
       new ImageRun({
         type: inferImageType(src),
@@ -440,10 +539,16 @@ const createImageParagraph = async (element: Element, context: ExportContext) =>
 };
 
 const createGenericParagraph = async (element: Element, context: ExportContext) => {
-  const children = await collectInlineChildren(Array.from(element.childNodes));
+  const children = await collectInlineChildren(Array.from(element.childNodes), {
+    fontSize: context.defaultFontSize,
+    fontFamily: context.defaultFontFamily,
+  });
   const fallbackText = normalizeText(element.textContent);
   return new Paragraph({
-    ...buildParagraphOptions(element, context),
+    ...buildParagraphOptions(element, context, {}, {
+      spacingBefore: 0,
+      spacingAfter: 0,
+    }),
     children: children.length > 0 ? children : [new TextRun(fallbackText)],
   });
 };
@@ -460,37 +565,68 @@ const createListParagraphFromItem = async (
     );
   });
 
-  const inlineChildren = await collectInlineChildren(contentNodes);
+  const inlineChildren = await collectInlineChildren(contentNodes, {
+    fontSize: context.defaultFontSize,
+    fontFamily: context.defaultFontFamily,
+  });
+  const normalizedChildren =
+    inlineChildren.length > 0
+      ? inlineChildren
+      : [
+          createTextRun("", {
+            fontSize: context.defaultFontSize,
+            fontFamily: context.defaultFontFamily,
+          }),
+        ];
   const prefixChildren =
     listContext.kind === "task"
-      ? [new TextRun(listContext.checked === true ? "[x] " : "[ ] ")]
+      ? [
+          createTextRun(listContext.checked === true ? "[x] " : "[ ] ", {
+            fontSize: context.defaultFontSize,
+            fontFamily: context.defaultFontFamily,
+          }),
+        ]
       : [];
 
   return new Paragraph({
-    ...buildParagraphOptions(itemElement, context, {
-      indent:
-        listContext.kind === "task"
-          ? {
-              left: (Math.min(listContext.depth, MAX_LIST_DEPTH) + 1) * 360,
-            }
-          : undefined,
-      numbering:
-        listContext.kind === "bullet"
-          ? {
-              reference: "lumen-bullet",
-              level: Math.min(listContext.depth, MAX_LIST_DEPTH),
-            }
-          : listContext.kind === "ordered"
+    ...buildParagraphOptions(
+      itemElement,
+      context,
+      {
+        indent:
+          listContext.kind === "task"
             ? {
-                reference: "lumen-ordered",
-                level: Math.min(listContext.depth, MAX_LIST_DEPTH),
+                left: (Math.min(listContext.depth, MAX_LIST_DEPTH) + 1) * 360,
               }
             : undefined,
-    }),
+        numbering:
+          listContext.kind === "bullet"
+            ? {
+                reference: "lumen-bullet",
+                level: Math.min(listContext.depth, MAX_LIST_DEPTH),
+              }
+            : listContext.kind === "ordered"
+              ? {
+                  reference: "lumen-ordered",
+                  level: Math.min(listContext.depth, MAX_LIST_DEPTH),
+                }
+              : undefined,
+      },
+      {
+        spacingBefore: 0,
+        spacingAfter: 0,
+      }
+    ),
     children:
-      prefixChildren.length > 0 || inlineChildren.length > 0
-        ? [...prefixChildren, ...inlineChildren]
-        : [...prefixChildren, new TextRun("")],
+      prefixChildren.length > 0 || normalizedChildren.length > 0
+        ? [...prefixChildren, ...normalizedChildren]
+        : [
+            ...prefixChildren,
+            createTextRun("", {
+              fontSize: context.defaultFontSize,
+              fontFamily: context.defaultFontFamily,
+            }),
+          ],
   });
 };
 
@@ -571,16 +707,28 @@ const convertBlockNode = async (node: ChildNode, context: ExportContext): Promis
   const element = node as Element;
   const tagName = element.tagName.toLowerCase();
 
+  if (element.getAttribute("data-word-page-break") === "true") {
+    return [
+      new Paragraph({
+        pageBreakBefore: true,
+        children: [new TextRun("")],
+      }),
+    ];
+  }
+
   if (tagName === "p") {
     return [await createParagraphFromElement(element, context)];
   }
 
   if (/^h[1-6]$/.test(tagName)) {
     const level = Math.max(1, Math.min(6, Number(tagName.slice(1)) || 1));
+    const headingStyle = getHeadingStyle(
+      level,
+      context.defaultFontSize || 16,
+      context.defaultFontFamily
+    );
     return [
-      await createParagraphFromElement(element, context, {
-        heading: mapHeadingLevel(level),
-      }),
+      await createParagraphFromElement(element, context, {}, headingStyle),
     ];
   }
 
@@ -632,7 +780,19 @@ const convertContainerChildren = async (container: Element, context: ExportConte
     if (inlineChildren.length > 0 || hasVisibleText) {
       blocks.push(
         new Paragraph({
-          children: inlineChildren.length > 0 ? inlineChildren : [new TextRun(normalizeText(container.textContent))],
+          ...buildParagraphOptions(container, context, {}, {
+            spacingBefore: 0,
+            spacingAfter: 0,
+          }),
+          children:
+            inlineChildren.length > 0
+              ? inlineChildren
+              : [
+                  createTextRun(normalizeText(container.textContent), {
+                    fontSize: context.defaultFontSize,
+                    fontFamily: context.defaultFontFamily,
+                  }),
+                ],
         })
       );
     }
@@ -691,7 +851,34 @@ const createNumberingConfig = () => {
   ];
 };
 
-export const buildWordDocxBlobFromHtml = async (html: string) => {
+const injectPageBreakMarkers = (container: Element, pageBreakBeforeRootIndices: number[]) => {
+  if (!Array.isArray(pageBreakBeforeRootIndices) || pageBreakBeforeRootIndices.length === 0) {
+    return;
+  }
+
+  const targets = Array.from(
+    new Set(
+      pageBreakBeforeRootIndices
+        .map((value) => Math.floor(Number(value)))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    )
+  ).sort((a, b) => b - a);
+
+  for (const index of targets) {
+    const child = container.children.item(index);
+    if (!child || child.previousElementSibling?.getAttribute("data-word-page-break") === "true") {
+      continue;
+    }
+    const marker = container.ownerDocument.createElement("div");
+    marker.setAttribute("data-word-page-break", "true");
+    container.insertBefore(marker, child);
+  }
+};
+
+export const buildWordDocxBlobFromHtml = async (
+  html: string,
+  options: WordExportHtmlOptions = {}
+) => {
   if (!html || typeof DOMParser === "undefined") {
     return null;
   }
@@ -702,16 +889,150 @@ export const buildWordDocxBlobFromHtml = async (html: string) => {
     return null;
   }
 
-  const children = await convertContainerChildren(container, { quoteDepth: 0 });
+  const fontSpec = parseFontSpec(options.settings?.font);
+  injectPageBreakMarkers(container, options.pageBreakBeforeRootIndices || []);
+
+  const context: ExportContext = {
+    quoteDepth: 0,
+    defaultFontFamily: fontSpec.family || null,
+    defaultFontSize: fontSpec.size || null,
+    defaultLineHeight: Number.isFinite(options.settings?.lineHeight)
+      ? Math.round(Number(options.settings?.lineHeight))
+      : null,
+    blockSpacing: Number.isFinite(options.settings?.blockSpacing)
+      ? Math.round(Number(options.settings?.blockSpacing))
+      : 8,
+    paragraphSpacingBefore: Number.isFinite(options.settings?.paragraphSpacingBefore)
+      ? Math.round(Number(options.settings?.paragraphSpacingBefore))
+      : 0,
+    paragraphSpacingAfter: Number.isFinite(options.settings?.paragraphSpacingAfter)
+      ? Math.round(Number(options.settings?.paragraphSpacingAfter))
+      : 8,
+  };
+
+  const children = await convertContainerChildren(container, context);
+  const margin = options.settings?.margin || null;
+  const pageWidthPx = Number(options.settings?.pageWidthPx);
+  const pageHeightPx = Number(options.settings?.pageHeightPx);
+  const page = {
+    size:
+      Number.isFinite(pageWidthPx) && pageWidthPx > 0 && Number.isFinite(pageHeightPx) && pageHeightPx > 0
+        ? {
+            width: pxToTwip(pageWidthPx),
+            height: pxToTwip(pageHeightPx),
+          }
+        : undefined,
+    margin: margin
+      ? {
+          top: pxToTwip(margin?.top ?? 0),
+          right: pxToTwip(margin?.right ?? 0),
+          bottom: pxToTwip(margin?.bottom ?? 0),
+          left: pxToTwip(margin?.left ?? 0),
+        }
+      : undefined,
+  };
   const doc = new Document({
     numbering: {
       config: createNumberingConfig(),
     },
     sections: [
       {
+        properties: {
+          page:
+            page.size || page.margin
+              ? {
+                  size: page.size,
+                  margin: page.margin,
+                }
+              : undefined,
+        },
         children: children.length > 0 ? children : [new Paragraph("")],
       },
     ],
+  });
+
+  return Packer.toBlob(doc);
+};
+
+export const buildWordDocxBlobFromRenderedPages = async (
+  pages: RenderedWordPage[],
+  options: {
+    pageWidthPx?: number;
+    pageHeightPx?: number;
+  } = {}
+) => {
+  if (!Array.isArray(pages) || pages.length === 0) {
+    return null;
+  }
+
+  const normalizedPages = pages
+    .map((page) => {
+      const widthPx = Math.max(1, Math.round(Number(page?.widthPx) || 0));
+      const heightPx = Math.max(1, Math.round(Number(page?.heightPx) || 0));
+      const data = dataUrlToUint8Array(String(page?.dataUrl || ""));
+      if (!data || widthPx <= 0 || heightPx <= 0) {
+        return null;
+      }
+      return {
+        data,
+        widthPx,
+        heightPx,
+      };
+    })
+    .filter(Boolean) as Array<{
+    data: Uint8Array;
+    widthPx: number;
+    heightPx: number;
+  }>;
+
+  if (normalizedPages.length === 0) {
+    return null;
+  }
+
+  const pageWidthPx = Math.max(
+    1,
+    Math.round(Number(options.pageWidthPx) || normalizedPages[0].widthPx)
+  );
+  const pageHeightPx = Math.max(
+    1,
+    Math.round(Number(options.pageHeightPx) || normalizedPages[0].heightPx)
+  );
+
+  const doc = new Document({
+    sections: normalizedPages.map((page) => ({
+      properties: {
+        page: {
+          size: {
+            width: pxToTwip(pageWidthPx),
+            height: pxToTwip(pageHeightPx),
+          },
+          margin: {
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+          },
+        },
+      },
+      children: [
+        new Paragraph({
+          spacing: {
+            before: 0,
+            after: 0,
+          },
+          children: [
+            new ImageRun({
+              type: "png",
+              data: page.data,
+              transformation: {
+                width: page.widthPx,
+                height: page.heightPx,
+              },
+            }),
+          ],
+        }),
+      ],
+    })),
   });
 
   return Packer.toBlob(doc);

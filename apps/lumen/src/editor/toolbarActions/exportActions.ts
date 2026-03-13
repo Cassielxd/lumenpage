@@ -4,7 +4,11 @@ import {
   downloadDataUrlAsFile,
   downloadTextAsFile,
 } from "./export/downloadHelpers";
-import { buildHtmlPreviewDocument, serializeViewDocToHtml } from "./export/htmlExportHelpers";
+import {
+  buildHtmlPreviewDocument,
+  serializeViewDocToHtml,
+  serializeViewDocToHtmlForWord,
+} from "./export/htmlExportHelpers";
 import { openPrintPreviewDialog } from "./export/printPreviewDialog";
 import { buildPdfFromCanvasPages } from "./export/pdfBuilder";
 import {
@@ -12,12 +16,44 @@ import {
   collectRenderedPageCanvases,
 } from "./export/renderedPagesHelpers";
 import { createShareClipboardActions } from "./export/shareClipboardActions";
-import { buildWordDocxBlobFromHtml } from "./export/wordDocxExport";
+import {
+  buildWordDocxBlobFromHtml,
+  buildWordDocxBlobFromRenderedPages,
+} from "./export/wordDocxExport";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 const EXPORT_PREVIEW_HTML_FILENAME = "lumen-print-preview.html";
 const EXPORT_WORD_FILENAME = "lumen-document.docx";
+
+const collectWordPageBreakRootIndices = (view: any) => {
+  const layout = view?._internals?.getLayout?.();
+  const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+  if (pages.length <= 1) {
+    return [];
+  }
+
+  const breaks = new Set<number>();
+  for (let pageIndex = 1; pageIndex < pages.length; pageIndex += 1) {
+    const firstLine = Array.isArray(pages[pageIndex]?.lines) ? pages[pageIndex].lines[0] : null;
+    if (!firstLine) {
+      continue;
+    }
+    const attrs = firstLine?.blockAttrs || {};
+    const tableMeta = firstLine?.tableMeta || {};
+    const fromPrev =
+      !!attrs.sliceFromPrev || !!attrs.tableSliceFromPrev || !!tableMeta.continuedFromPrev;
+    if (fromPrev) {
+      continue;
+    }
+    const rootIndex = Number(firstLine?.rootIndex);
+    if (Number.isFinite(rootIndex) && rootIndex > 0) {
+      breaks.add(Math.floor(rootIndex));
+    }
+  }
+
+  return Array.from(breaks).sort((a, b) => a - b);
+};
 
 export const createExportActions = ({
   getView,
@@ -66,12 +102,60 @@ export const createExportActions = ({
   };
 
   const exportWordDocument = async () => {
-    const html = serializeCurrentDocToHtml();
+    const view = getView();
+    const html = serializeViewDocToHtmlForWord(view) ?? serializeCurrentDocToHtml();
     if (typeof html !== "string") {
+      const renderedPages = collectRenderedPageCanvases(view);
+      if (renderedPages) {
+        const blob = await buildWordDocxBlobFromRenderedPages(
+          renderedPages.pages.map((page) => ({
+            dataUrl: page.toDataURL("image/png"),
+            widthPx: renderedPages.pageWidthPx,
+            heightPx: renderedPages.pageHeightPx,
+          })),
+          {
+            pageWidthPx: renderedPages.pageWidthPx,
+            pageHeightPx: renderedPages.pageHeightPx,
+          }
+        );
+        if (blob) {
+          return downloadBlobAsFile(EXPORT_WORD_FILENAME, blob);
+        }
+      }
       return false;
     }
-    const blob = await buildWordDocxBlobFromHtml(html);
+    const settings = view?._internals?.settings;
+    const blob = await buildWordDocxBlobFromHtml(html, {
+      pageBreakBeforeRootIndices: collectWordPageBreakRootIndices(view),
+      settings: {
+        pageWidthPx: Number(settings?.pageWidth) || undefined,
+        pageHeightPx: Number(settings?.pageHeight) || undefined,
+        margin: settings?.margin || undefined,
+        font: settings?.font || undefined,
+        lineHeight: Number(settings?.lineHeight) || undefined,
+        blockSpacing: Number(settings?.blockSpacing) || 8,
+        paragraphSpacingBefore: Number(settings?.paragraphSpacingBefore) || 0,
+        paragraphSpacingAfter: Number(settings?.paragraphSpacingAfter) || 8,
+      },
+    });
     if (!blob) {
+      const renderedPages = collectRenderedPageCanvases(view);
+      if (renderedPages) {
+        const renderedBlob = await buildWordDocxBlobFromRenderedPages(
+          renderedPages.pages.map((page) => ({
+            dataUrl: page.toDataURL("image/png"),
+            widthPx: renderedPages.pageWidthPx,
+            heightPx: renderedPages.pageHeightPx,
+          })),
+          {
+            pageWidthPx: renderedPages.pageWidthPx,
+            pageHeightPx: renderedPages.pageHeightPx,
+          }
+        );
+        if (renderedBlob) {
+          return downloadBlobAsFile(EXPORT_WORD_FILENAME, renderedBlob);
+        }
+      }
       return false;
     }
     return downloadBlobAsFile(EXPORT_WORD_FILENAME, blob);
