@@ -2,3 +2,9 @@ node_modules
 /node_modules
 dist
 umo-editor
+.codex-tmp/
+*.tsbuildinfo
+packages/**/src/**/*.d.ts
+packages/**/src/**/*.d.ts.map
+packages/**/src/**/*.js
+packages/**/src/**/*.js.map
