@@ -8,6 +8,7 @@
       "lumenpage-collab": ["../../packages/lp/collab/src/index.ts"],
       "lumenpage-commands": ["../../packages/lp/commands/src/index.ts"],
       "lumenpage-core": ["../../packages/core/src/index.ts"],
+      "lumenpage-dev-tools": ["../../packages/dev-tools/src/index.ts"],
       "lumenpage-extension-*": ["../../packages/extension-*/src/index.ts"],
       "lumenpage-extension-embed-panel/browser": [
         "../../packages/extension-embed-panel/src/browser.ts"

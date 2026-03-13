@@ -4,6 +4,7 @@ import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
 export type PlaygroundDebugFlags = {
   locale: PlaygroundLocale;
   highContrast: boolean;
+  enableDevTools: boolean;
   permissionMode: "full" | "comment" | "readonly";
   debugAllSmoke: boolean;
   debugP0Smoke: boolean;
@@ -111,6 +112,7 @@ const resolveWorkerEnabled = () => {
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   locale: resolvePlaygroundLocale(),
   highContrast: resolveHighContrast(),
+  enableDevTools: resolveDebugFlag("devTools"),
   permissionMode: resolvePermissionMode(),
   debugAllSmoke: resolveDebugFlag("allSmoke"),
   debugP0Smoke: resolveDebugFlag("p0Smoke"),

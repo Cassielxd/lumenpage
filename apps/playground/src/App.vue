@@ -32,6 +32,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
+import { applyLumenDevTools } from "lumenpage-dev-tools";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
@@ -57,6 +58,7 @@ const permissionLabel = computed(() => {
   return i18n.app.permissionEdit;
 });
 let detachEditor: null | (() => void) = null;
+let detachDevTools: null | (() => void) = null;
 
 onMounted(async () => {
   if (!editorHost.value) {
@@ -70,10 +72,17 @@ onMounted(async () => {
     flags: debugFlags,
   });
   view.value = mounted.view;
+  if (debugFlags.enableDevTools && mounted.view) {
+    detachDevTools = applyLumenDevTools(mounted.view, {
+      defaultOpen: true,
+    });
+  }
   detachEditor = mounted.destroy;
 });
 
 onBeforeUnmount(() => {
+  detachDevTools?.();
+  detachDevTools = null;
   detachEditor?.();
   detachEditor = null;
   view.value = null;

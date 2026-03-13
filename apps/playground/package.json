@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "lumenpage-core": "workspace:*",
+    "lumenpage-dev-tools": "workspace:*",
     "lumenpage-starter-kit": "workspace:*",
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-layout-engine": "workspace:*",
@@ -32,8 +33,6 @@
     "lumenpage-extension-underline": "workspace:*",
     "lumenpage-extension-video": "workspace:*",
     "lumenpage-markdown": "workspace:*",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
     "vue": "^3.5.0",
     "tdesign-vue-next": "^1.8.0",
     "tdesign-icons-vue-next": "^0.3.4"

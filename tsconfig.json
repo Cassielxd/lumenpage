@@ -5,6 +5,9 @@
       "path": "packages/core"
     },
     {
+      "path": "packages/dev-tools"
+    },
+    {
       "path": "packages/extension-active-block"
     },
     {
