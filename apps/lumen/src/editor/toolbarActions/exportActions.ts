@@ -12,12 +12,12 @@ import {
   collectRenderedPageCanvases,
 } from "./export/renderedPagesHelpers";
 import { createShareClipboardActions } from "./export/shareClipboardActions";
-import { buildWordHtmlDocument } from "./export/wordExportHelpers";
+import { buildWordDocxBlobFromHtml } from "./export/wordDocxExport";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
 const EXPORT_PREVIEW_HTML_FILENAME = "lumen-print-preview.html";
-const EXPORT_WORD_FILENAME = "lumen-document.doc";
+const EXPORT_WORD_FILENAME = "lumen-document.docx";
 
 export const createExportActions = ({
   getView,
@@ -65,13 +65,16 @@ export const createExportActions = ({
     return downloadTextAsFile(EXPORT_PREVIEW_HTML_FILENAME, previewHtml, "text/html;charset=utf-8");
   };
 
-  const exportWordDocument = () => {
+  const exportWordDocument = async () => {
     const html = serializeCurrentDocToHtml();
     if (typeof html !== "string") {
       return false;
     }
-    const wordHtml = buildWordHtmlDocument(html);
-    return downloadTextAsFile(EXPORT_WORD_FILENAME, wordHtml, "application/msword;charset=utf-8");
+    const blob = await buildWordDocxBlobFromHtml(html);
+    if (!blob) {
+      return false;
+    }
+    return downloadBlobAsFile(EXPORT_WORD_FILENAME, blob);
   };
 
   const exportImageDocument = () => {

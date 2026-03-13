@@ -1,9 +1,11 @@
 import { Node } from "lumenpage-core";
 import { signatureRenderer } from "./renderer";
-import { signatureNodeSpec } from "./signature";
+import { serializeSignatureToText, signatureNodeSpec } from "./signature";
+import { createDefaultSignatureNodeView } from "./nodeView";
 
 export { signatureNodeSpec, serializeSignatureToText } from "./signature";
 export { signatureRenderer } from "./renderer";
+export { createDefaultSignatureNodeView };
 
 const insertSignatureCommand =
   (attrs: Record<string, unknown> | null | undefined = {}) =>
@@ -12,14 +14,27 @@ const insertSignatureCommand =
     if (!type) {
       return false;
     }
-    const signer = String(attrs?.signer || attrs?.name || "").trim();
-    if (!signer) {
+    const signer = String(attrs?.signer || attrs?.name || "").trim() || "Signer";
+    const signedAt = String(attrs?.signedAt || new Date().toISOString().slice(0, 10)).trim();
+    const src = String(attrs?.src || "").trim();
+    if (!src) {
       return false;
     }
+    const width = Number(attrs?.width) || undefined;
+    const height = Number(attrs?.height) || undefined;
     const node = type.create({
       signer,
-      signedAt: String(attrs?.signedAt || "").trim(),
+      signedAt,
+      src,
+      width,
+      height,
+      strokeWidth: Number(attrs?.strokeWidth) || undefined,
+      strokeColor: String(attrs?.strokeColor || "#0f172a"),
+      backgroundColor: String(attrs?.backgroundColor || "#ffffff"),
     });
+    if (!node) {
+      return false;
+    }
     if (!dispatch) {
       return true;
     }
@@ -40,6 +55,9 @@ export const Signature = Node.create({
     return {
       insertSignature: (attrs?: Record<string, unknown>) => insertSignatureCommand(attrs),
     };
+  },
+  addNodeView() {
+    return createDefaultSignatureNodeView;
   },
   canvas() {
     return {

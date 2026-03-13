@@ -107,7 +107,6 @@ export type ToolsActions = {
   insertQrCode: () => ToolbarActionResult;
   insertBarcode: () => ToolbarActionResult;
   insertSignature: () => ToolbarActionResult;
-  insertSeal: () => ToolbarActionResult;
   insertDiagrams: () => ToolbarActionResult;
   insertEcharts: () => ToolbarActionResult;
   insertMermaid: () => ToolbarActionResult;

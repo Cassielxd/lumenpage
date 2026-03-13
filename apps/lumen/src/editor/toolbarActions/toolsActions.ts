@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import type { RequestToolbarSignatureDialog } from "./ui/signatureDialog";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -10,7 +11,6 @@ type ToolsTexts = {
   promptQrCodeContent: string;
   promptBarcodeContent: string;
   promptSignatureName: string;
-  promptSealText: string;
   promptDiagramsCode: string;
   promptEchartsCode: string;
   promptMermaidCode: string;
@@ -18,12 +18,10 @@ type ToolsTexts = {
   promptChineseCaseInput: string;
   promptChineseCaseMode: string;
   alertChineseCaseInvalidNumber: string;
-  labelSeal: string;
   labelSignature: string;
   defaultQrCodeContent: string;
   defaultBarcodeContent: string;
   defaultSignatureName: string;
-  defaultSealText: string;
   defaultDiagramCode: string;
   defaultEchartsCode: string;
   defaultMermaidCode: string;
@@ -36,7 +34,6 @@ const resolveTexts = (locale: PlaygroundLocale): ToolsTexts =>
         promptQrCodeContent: "QR code content",
         promptBarcodeContent: "Barcode content",
         promptSignatureName: "Signer name",
-        promptSealText: "Seal text",
         promptDiagramsCode: "Diagram source code",
         promptEchartsCode: "ECharts option JSON",
         promptMermaidCode: "Mermaid source code",
@@ -44,12 +41,10 @@ const resolveTexts = (locale: PlaygroundLocale): ToolsTexts =>
         promptChineseCaseInput: "Input number to convert into Chinese case",
         promptChineseCaseMode: "Case mode",
         alertChineseCaseInvalidNumber: "Input must be a valid number",
-        labelSeal: "Seal",
         labelSignature: "Signature",
         defaultQrCodeContent: "https://example.com",
         defaultBarcodeContent: "1234567890",
         defaultSignatureName: "Signer",
-        defaultSealText: "APPROVED",
         defaultDiagramCode: "flowchart LR\nA[Start] --> B[Done]",
         defaultEchartsCode:
           "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"Mon\", \"Tue\", \"Wed\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
@@ -60,7 +55,6 @@ const resolveTexts = (locale: PlaygroundLocale): ToolsTexts =>
         promptQrCodeContent: "\u4e8c\u7ef4\u7801\u5185\u5bb9",
         promptBarcodeContent: "\u6761\u5f62\u7801\u5185\u5bb9",
         promptSignatureName: "\u7b7e\u540d\u4eba\u59d3\u540d",
-        promptSealText: "\u5370\u7ae0\u6587\u5b57",
         promptDiagramsCode: "\u56fe\u8868\u6e90\u7801",
         promptEchartsCode: "ECharts \u914d\u7f6e JSON",
         promptMermaidCode: "Mermaid \u6e90\u7801",
@@ -68,12 +62,10 @@ const resolveTexts = (locale: PlaygroundLocale): ToolsTexts =>
         promptChineseCaseInput: "\u8f93\u5165\u9700\u8981\u8f6c\u6362\u7684\u6570\u5b57",
         promptChineseCaseMode: "\u5927\u5c0f\u5199\u6a21\u5f0f",
         alertChineseCaseInvalidNumber: "\u8f93\u5165\u5185\u5bb9\u5fc5\u987b\u662f\u6709\u6548\u6570\u5b57",
-        labelSeal: "\u5370\u7ae0",
         labelSignature: "\u7b7e\u540d",
         defaultQrCodeContent: "https://example.com",
         defaultBarcodeContent: "1234567890",
         defaultSignatureName: "\u7b7e\u7f72\u4eba",
-        defaultSealText: "\u5df2\u6279\u51c6",
         defaultDiagramCode:
           "flowchart LR\nA[\u5f00\u59cb] --> B[\u5b8c\u6210]",
         defaultEchartsCode:
@@ -295,11 +287,13 @@ export const createToolsActions = ({
   run,
   getLocaleKey,
   requestInputDialog,
+  requestSignatureDialog,
 }: {
   getView: GetView;
   run: RunCommand;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
+  requestSignatureDialog: RequestToolbarSignatureDialog;
 }) => {
   const dialogTitle = (en: string, zh: string) => (getLocaleKey() === "en-US" ? en : zh);
 
@@ -376,37 +370,16 @@ export const createToolsActions = ({
 
   const insertSignature = async () => {
     const texts = resolveTexts(getLocaleKey());
-    const name = await readInput({
-      title: dialogTitle("Insert Signature", "\u63d2\u5165\u7b7e\u540d"),
-      label: texts.promptSignatureName,
-      defaultValue: texts.defaultSignatureName,
-      required: true,
+    const result = await requestSignatureDialog({
+      defaultSigner: texts.defaultSignatureName,
     });
-    if (!name) {
+    if (!result) {
       return false;
     }
-    const signedAt = new Date().toISOString().slice(0, 10);
-    if (run("insertSignature", { signer: name, signedAt })) {
+    if (run("insertSignature", result)) {
       return true;
     }
-    return insertText(getView, `[${texts.labelSignature}] ${name} (${signedAt})`);
-  };
-
-  const insertSeal = async () => {
-    const texts = resolveTexts(getLocaleKey());
-    const raw = await readInput({
-      title: dialogTitle("Insert Seal", "\u63d2\u5165\u5370\u7ae0"),
-      label: texts.promptSealText,
-      defaultValue: texts.defaultSealText,
-      required: true,
-    });
-    if (!raw) {
-      return false;
-    }
-    if (run("insertSeal", { text: raw })) {
-      return true;
-    }
-    return insertText(getView, `\u3010${texts.labelSeal}\u3011 ${raw}`);
+    return insertText(getView, `[${texts.labelSignature}] ${result.signer} (${result.signedAt})`);
   };
 
   const insertDiagrams = async () => {
@@ -533,7 +506,6 @@ export const createToolsActions = ({
     insertQrCode,
     insertBarcode,
     insertSignature,
-    insertSeal,
     insertDiagrams,
     insertEcharts,
     insertMermaid,
@@ -541,3 +513,5 @@ export const createToolsActions = ({
     convertChineseCase,
   };
 };
+
+

@@ -8,7 +8,7 @@ type ImportTexts = {
   alertNoFile: string;
   alertReadFailed: string;
   alertParseFailed: string;
-  alertDocxUnsupported: string;
+  alertWordUnsupported: string;
 };
 
 const resolveTexts = (locale: PlaygroundLocale): ImportTexts =>
@@ -17,14 +17,13 @@ const resolveTexts = (locale: PlaygroundLocale): ImportTexts =>
         alertNoFile: "No file selected",
         alertReadFailed: "Failed to read file",
         alertParseFailed: "Failed to parse file content",
-        alertDocxUnsupported:
-          "Current version does not parse .docx directly. Please export as HTML or TXT first.",
+        alertWordUnsupported: "Legacy .doc files are not supported yet. Please use .docx, HTML, or TXT.",
       }
     : {
         alertNoFile: "未选择文件",
         alertReadFailed: "读取文件失败",
         alertParseFailed: "解析文件内容失败",
-        alertDocxUnsupported: "当前版本暂不直接解析 .docx，请先另存为 HTML 或 TXT 后导入。",
+        alertWordUnsupported: "暂不支持旧版 .doc 文件，请使用 .docx、HTML 或 TXT。",
       };
 
 const getFileExtension = (name: string) => {
@@ -39,6 +38,20 @@ const readFileAsText = (file: File) =>
     reader.onerror = () => reject(new Error("read-failed"));
     reader.onload = () => resolve(String(reader.result || ""));
     reader.readAsText(file);
+  });
+
+const readFileAsArrayBuffer = (file: File) =>
+  new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read-failed"));
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(reader.result);
+        return;
+      }
+      reject(new Error("read-failed"));
+    };
+    reader.readAsArrayBuffer(file);
   });
 
 const parseHtmlToDoc = (schema: any, html: string) => {
@@ -71,6 +84,19 @@ const parseTextToDoc = (schema: any, text: string) => {
   } catch (_error) {
     return null;
   }
+};
+
+const parseDocxToDoc = async (schema: any, file: File) => {
+  const [mammothModule, arrayBuffer] = await Promise.all([import("mammoth"), readFileAsArrayBuffer(file)]);
+  const convertToHtml =
+    mammothModule.convertToHtml ||
+    (typeof mammothModule.default === "object" ? mammothModule.default.convertToHtml : null);
+  if (typeof convertToHtml !== "function") {
+    throw new Error("mammoth-convert-missing");
+  }
+  const result = await convertToHtml({ arrayBuffer });
+  const html = String(result?.value || "").trim();
+  return parseHtmlToDoc(schema, html) || parseTextToDoc(schema, html);
 };
 
 const buildImportInput = () => {
@@ -115,23 +141,26 @@ export const createImportActions = ({
       }
 
       const ext = getFileExtension(file.name);
-      if (ext === "docx") {
-        window.alert(texts.alertDocxUnsupported);
+      if (ext === "doc") {
+        window.alert(texts.alertWordUnsupported);
         return false;
       }
 
-      let text = "";
+      let nextDoc = null;
       try {
-        text = await readFileAsText(file);
+        if (ext === "docx") {
+          nextDoc = await parseDocxToDoc(state.schema, file);
+        } else {
+          const text = await readFileAsText(file);
+          nextDoc =
+            ext === "txt"
+              ? parseTextToDoc(state.schema, text)
+              : parseHtmlToDoc(state.schema, text) || parseTextToDoc(state.schema, text);
+        }
       } catch (_error) {
         window.alert(texts.alertReadFailed);
         return false;
       }
-
-      const nextDoc =
-        ext === "txt"
-          ? parseTextToDoc(state.schema, text)
-          : parseHtmlToDoc(state.schema, text) || parseTextToDoc(state.schema, text);
 
       if (!nextDoc) {
         window.alert(texts.alertParseFailed);

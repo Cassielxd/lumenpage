@@ -7,7 +7,6 @@ import { EmbedPanel } from "lumenpage-extension-embed-panel";
 import { File } from "lumenpage-extension-file";
 import { Math } from "lumenpage-extension-math";
 import { OptionBox } from "lumenpage-extension-option-box";
-import { Seal } from "lumenpage-extension-seal";
 import { Signature } from "lumenpage-extension-signature";
 import { StarterKit } from "lumenpage-starter-kit";
 import { Image } from "lumenpage-extension-image";
@@ -38,7 +37,6 @@ export const lumenDocumentExtensions = [
   Math,
   OptionBox,
   Signature,
-  Seal,
   Underline,
   Link,
   Tag,

@@ -10,9 +10,6 @@ export const createToolsActionHandlers = ({ toolsActions }: ToolbarActionContext
   signature: () => {
     toolsActions.insertSignature();
   },
-  seal: () => {
-    toolsActions.insertSeal();
-  },
   diagrams: () => {
     toolsActions.insertDiagrams();
   },

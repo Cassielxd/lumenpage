@@ -267,6 +267,12 @@
       </p>
     </div>
   </t-dialog>
+  <SignatureDialog
+    v-model:visible="signatureDialogVisible"
+    :default-signer="signatureDialogDefaultSigner"
+    @confirm="handleSignatureDialogConfirm"
+    @cancel="handleSignatureDialogCancel"
+  />
 </template>
 
 <script setup lang="ts">
@@ -276,6 +282,7 @@ import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { redoDepth, undoDepth } from "lumenpage-history";
 import { TextSelection } from "lumenpage-state";
 import LumenIcon from "./LumenIcon.vue";
+import SignatureDialog from "./SignatureDialog.vue";
 import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 import {
   normalizeEditorSessionMode,
@@ -859,6 +866,39 @@ const handleInputDialogVisibleChange = (visible: boolean) => {
   }
 };
 
+const signatureDialogVisible = ref(false);
+const signatureDialogDefaultSigner = ref("");
+let signatureDialogResolver: ((result: SignatureDialogResult | null) => void) | null = null;
+
+const requestSignatureDialog: RequestToolbarSignatureDialog = (request) => {
+  if (signatureDialogResolver) {
+    signatureDialogResolver(null);
+    signatureDialogResolver = null;
+  }
+  signatureDialogDefaultSigner.value = request?.defaultSigner || "";
+  signatureDialogVisible.value = true;
+  return new Promise((resolve) => {
+    signatureDialogResolver = resolve;
+  });
+};
+
+const handleSignatureDialogConfirm = (result: SignatureDialogResult) => {
+  if (!signatureDialogResolver) {
+    return;
+  }
+  signatureDialogResolver(result);
+  signatureDialogResolver = null;
+  signatureDialogVisible.value = false;
+};
+
+const handleSignatureDialogCancel = () => {
+  if (signatureDialogResolver) {
+    signatureDialogResolver(null);
+    signatureDialogResolver = null;
+  }
+  signatureDialogVisible.value = false;
+};
+
 const layoutActions = createLayoutActions({
   getView,
   run,
@@ -926,6 +966,7 @@ const toolsActions = createToolsActions({
   run,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
+  requestSignatureDialog,
 });
 
 const colorDialogVisible = ref(false);
@@ -1779,3 +1820,5 @@ defineExpose({ statusEl });
   color: #dc2626;
 }
 </style>
+
+

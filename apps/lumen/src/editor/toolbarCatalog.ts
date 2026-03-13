@@ -42,7 +42,7 @@ const item = (
 ): ToolbarItemConfig => ({ id, icon, label: text(zh, en), action, implemented, command });
 
 export const TOOLBAR_MENU_TABS: ToolbarMenuTab[] = [
-  { value: "base", label: text("开始", "Home") },
+  { value: "base", label: text("首页", "Home") },
   { value: "insert", label: text("插入", "Insert") },
   { value: "table", label: text("表格", "Table") },
   { value: "tools", label: text("工具", "Tools") },
@@ -89,7 +89,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item(
           "background-color",
           "background-color",
-          "背景色",
+          "背景颜色",
           "Background Color",
           "background-color",
           true
@@ -106,7 +106,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("indent", "indent", "增加缩进", "Indent", "indent", true),
         item("outdent", "outdent", "减少缩进", "Outdent", "outdent", true),
         item("line-height", "line-height", "行高", "Line Height", "line-height", true),
-        item("margin", "margin", "段间距", "Paragraph Spacing", "margin", true),
+        item("margin", "margin", "段落间距", "Paragraph Spacing", "margin", true),
         item("align-left", "align-left", "左对齐", "Align Left", "align-left", true),
         item("align-center", "align-center", "居中", "Align Center", "align-center", true),
         item("align-right", "align-right", "右对齐", "Align Right", "align-right", true),
@@ -168,7 +168,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
       items: [
         item("columns", "columns", "分栏", "Columns", "columns", true),
         item("tag", "tag", "标签", "Tag", "tag", true),
-        item("callout", "callout", "提示块", "Callout", "callout", true),
+        item("callout", "callout", "气泡", "Callout", "callout", true),
         item("mention", "mention", "提及", "Mention", "mention", true),
         item("bookmark", "bookmark", "书签", "Bookmark", "bookmark", true),
         item("option-box", "option-box", "选项框", "Option Box", "option-box", true),
@@ -177,8 +177,8 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "insert-layout",
       items: [
-        item("hard-break", "hard-break", "硬换行", "Hard Break", "hard-break", true),
-        item("hr", "hr", "分割线", "Horizontal Rule", "hr", true),
+        item("hard-break", "hard-break", "硬回车", "Hard Break", "hard-break", true),
+        item("hr", "hr", "水平线", "Horizontal Rule", "hr", true),
         item("toc", "toc", "目录", "Table of Contents", "toc", true),
         item("text-box", "text-box", "文本框", "Text Box", "text-box", true),
       ],
@@ -369,10 +369,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     },
     {
       id: "tools-sign",
-      items: [
-        item("signature", "signature", "签名", "Signature", "signature", true),
-        item("seal", "seal", "印章", "Seal", "seal", true),
-      ],
+      items: [item("signature", "signature", "签名", "Signature", "signature", true)],
     },
     {
       id: "tools-chart",
@@ -385,7 +382,9 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     },
     {
       id: "tools-text",
-      items: [item("chinese-case", "chinese-case", "中文大小写", "Chinese Case", "chinese-case", true)],
+      items: [
+        item("chinese-case", "chinese-case", "中文大小写", "Chinese Case", "chinese-case", true),
+      ],
     },
   ],
   page: [
@@ -396,7 +395,7 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "page-layout",
       items: [
-        item("page-margin", "margin", "页边距", "Page Margin", "page-margin", true),
+        item("page-margin", "margin", "页面边距", "Page Margin", "page-margin", true),
         item("page-size", "size", "纸张大小", "Page Size", "page-size", true),
         item(
           "page-orientation",
