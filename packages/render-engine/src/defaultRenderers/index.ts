@@ -1,6 +1,5 @@
 export { blockquoteRenderer } from "./blockquote";
 export { codeBlockRenderer } from "./codeBlock";
-export { fileRenderer } from "./file";
 export { headingRenderer } from "./heading";
 export { horizontalRuleRenderer } from "./horizontalRule";
 export { imageRenderer } from "./image";
@@ -11,7 +10,6 @@ export { bulletListRenderer, orderedListRenderer, taskListRenderer } from "./lis
 
 export { blockquoteRenderer as defaultBlockquoteRenderer } from "./blockquote";
 export { codeBlockRenderer as defaultCodeBlockRenderer } from "./codeBlock";
-export { fileRenderer as defaultFileRenderer } from "./file";
 export { headingRenderer as defaultHeadingRenderer } from "./heading";
 export { horizontalRuleRenderer as defaultHorizontalRuleRenderer } from "./horizontalRule";
 export { imageRenderer as defaultImageRenderer } from "./image";
