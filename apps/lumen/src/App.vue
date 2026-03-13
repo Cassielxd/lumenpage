@@ -71,6 +71,10 @@
         <span class="doc-footer-divider">·</span>
         <span class="doc-footer-stat">{{ footerPluginLabel }}</span>
       </div>
+      <div class="doc-footer-contact">
+        <span class="doc-footer-contact-label">{{ footerContactLabel }}</span>
+        <a class="doc-footer-contact-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
+      </div>
     </t-footer>
   </t-layout>
 </template>
@@ -200,6 +204,9 @@ const footerPluginLabel = computed(() =>
   debugFlags.locale === "en-US"
     ? `Plugins ${footerStats.value.pluginCount}`
     : `插件数 ${footerStats.value.pluginCount}`
+);
+const footerContactLabel = computed(() =>
+  debugFlags.locale === "en-US" ? "Contact" : "联系方式"
 );
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
@@ -399,7 +406,8 @@ onBeforeUnmount(() => {
 .doc-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   min-height: 34px;
   padding: 0 16px;
   background: #ffffff;
@@ -422,6 +430,26 @@ onBeforeUnmount(() => {
 
 .doc-footer-divider {
   color: #c0c4cc;
+}
+
+.doc-footer-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.doc-footer-contact-link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.doc-footer-contact-link:hover {
+  text-decoration: underline;
 }
 
 .doc-outline {
@@ -586,7 +614,9 @@ onBeforeUnmount(() => {
 }
 
 .doc-shell.is-high-contrast .doc-footer-stats,
-.doc-shell.is-high-contrast .doc-footer-divider {
+.doc-shell.is-high-contrast .doc-footer-divider,
+.doc-shell.is-high-contrast .doc-footer-contact,
+.doc-shell.is-high-contrast .doc-footer-contact-link {
   color: #fff;
 }
 
@@ -621,6 +651,10 @@ onBeforeUnmount(() => {
 
   .doc-footer {
     padding: 0 10px;
+  }
+
+  .doc-footer-contact-label {
+    display: none;
   }
 
   .doc-outline {
