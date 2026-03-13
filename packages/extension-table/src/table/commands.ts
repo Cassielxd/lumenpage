@@ -619,6 +619,111 @@ export const preventDeleteForwardAtTableCellBoundary = (state) => {
 
 export const mergeTableCellRight = (state, dispatch) =>
   updateRows(state, dispatch, (rows, cols, context) => {
+    const rect = getSelectionRect(state, context);
+    if (rect) {
+      const anchors = collectSelectionAnchors(context, rect);
+      if (anchors.length <= 1) {
+        return null;
+      }
+
+      const topLeft = findAnchorCoveringCol(context.grid, rect.top, rect.left);
+      if (!topLeft || topLeft.row !== rect.top || topLeft.col !== rect.left) {
+        return null;
+      }
+
+      const coveredAnchors = new Set<number>();
+      for (let r = rect.top; r <= rect.bottom; r += 1) {
+        for (let c = rect.left; c <= rect.right; c += 1) {
+          const entry = findAnchorCoveringCol(context.grid, r, c);
+          if (!entry) {
+            return null;
+          }
+          if (
+            entry.row < rect.top ||
+            entry.col < rect.left ||
+            entry.row + entry.rowspan - 1 > rect.bottom ||
+            entry.col + entry.colspan - 1 > rect.right
+          ) {
+            return null;
+          }
+          coveredAnchors.add(entry.pos);
+        }
+      }
+
+      if (coveredAnchors.size !== anchors.length) {
+        return null;
+      }
+
+      const topLeftRow = rows[topLeft.row];
+      if (!topLeftRow) {
+        return null;
+      }
+      const topLeftCell = topLeftRow.child(topLeft.colIndex);
+      if (!topLeftCell) {
+        return null;
+      }
+
+      const sortedAnchors = anchors
+        .slice()
+        .sort((a, b) => (a.row === b.row ? a.col - b.col : a.row - b.row));
+      if (sortedAnchors.some((entry) => rows[entry.row]?.child(entry.colIndex)?.type !== topLeftCell.type)) {
+        return null;
+      }
+
+      let mergedContent = topLeftCell.content;
+      for (let index = 1; index < sortedAnchors.length; index += 1) {
+        const entry = sortedAnchors[index];
+        const rowNode = rows[entry.row];
+        const cell = rowNode?.child(entry.colIndex);
+        if (!cell) {
+          return null;
+        }
+        mergedContent = mergedContent.append(cell.content);
+      }
+
+      const merged = createCellWithAttrs(
+        topLeftCell,
+        {
+          colspan: rect.right - rect.left + 1,
+          rowspan: rect.bottom - rect.top + 1,
+        },
+        mergedContent
+      );
+
+      const anchorsByRow = new Map();
+      for (const entry of anchors) {
+        if (!anchorsByRow.has(entry.row)) {
+          anchorsByRow.set(entry.row, new Set());
+        }
+        anchorsByRow.get(entry.row).add(entry.colIndex);
+      }
+
+      const nextRows = rows.slice();
+      for (let rowIndex = rect.top; rowIndex <= rect.bottom; rowIndex += 1) {
+        const rowNode = rows[rowIndex];
+        const selectedCols = anchorsByRow.get(rowIndex);
+        if (!rowNode || !selectedCols || selectedCols.size === 0) {
+          continue;
+        }
+
+        const cells = [];
+        for (let c = 0; c < rowNode.childCount; c += 1) {
+          if (rowIndex === topLeft.row && c === topLeft.colIndex) {
+            cells.push(merged);
+            continue;
+          }
+          if (selectedCols.has(c)) {
+            continue;
+          }
+          cells.push(rowNode.child(c));
+        }
+
+        nextRows[rowIndex] = state.schema.nodes.tableRow.create(rowNode.attrs, cells, rowNode.marks);
+      }
+
+      return nextRows;
+    }
+
     const anchor = context.currentAnchor;
     if (!anchor) {
       return null;
@@ -650,7 +755,9 @@ export const mergeTableCellRight = (state, dispatch) =>
     );
 
     const cells = [];
-    for (let c = 0; c < cols; c += 1) {
+    // Merge operates on the actual row children, not the logical column grid.
+    // Using `cols` here can overrun rows that contain colspans.
+    for (let c = 0; c < row.childCount; c += 1) {
       if (c === currentIndex) {
         cells.push(merged);
         continue;

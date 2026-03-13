@@ -21,11 +21,19 @@ const withoutLegacyHeaderAttr = (attrs: Record<string, unknown> | null | undefin
   return Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== "header"));
 };
 
-const resolveTexts = (_locale: PlaygroundLocale): TableTexts => ({
-  promptCellAlign: "Cell alignment: left / center / right / justify",
-  alertCellRequired: "Place the caret inside a table cell first",
-  alertInvalidCellAlign: "Invalid cell alignment value",
-});
+const resolveTexts = (locale: PlaygroundLocale): TableTexts =>
+  locale === "en-US"
+    ? {
+        promptCellAlign: "Cell alignment: left / center / right / justify",
+        alertCellRequired: "Place the caret inside a table cell first",
+        alertInvalidCellAlign: "Invalid cell alignment value",
+      }
+    : {
+        promptCellAlign:
+          "\u5355\u5143\u683c\u5bf9\u9f50\u65b9\u5f0f\uff1aleft / center / right / justify",
+        alertCellRequired: "\u8bf7\u5148\u5c06\u5149\u6807\u653e\u5728\u8868\u683c\u5355\u5143\u683c\u5185",
+        alertInvalidCellAlign: "\u5355\u5143\u683c\u5bf9\u9f50\u503c\u65e0\u6548",
+      };
 
 const parseTableSize = (raw: string | null) => {
   if (!raw || !raw.trim()) {
