@@ -1,27 +1,41 @@
-# prosemirror-history
+﻿# lumenpage-history
 
-[ [**WEBSITE**](https://prosemirror.net) | [**ISSUES**](https://github.com/prosemirror/prosemirror/issues) | [**FORUM**](https://discuss.prosemirror.net) | [**CHANGELOG**](https://github.com/ProseMirror/prosemirror-history/blob/master/CHANGELOG.md) ]
+> 目录：`packages/lp/history`
 
-This is a [core module](https://prosemirror.net/docs/ref/#history) of [ProseMirror](https://prosemirror.net).
-ProseMirror is a well-behaved rich semantic content editor based on
-contentEditable, with support for collaborative editing and custom
-document schemas.
+## 包定位
+底层撤销重做层，对应 ProseMirror history 包。
 
-This [module](https://prosemirror.net/docs/ref/#history) implements an
-undo/redo history plugin for ProseMirror.
+## 当前职责
+- 维护撤销/重做栈。
+- 处理事务分组、映射和历史回放。
+- 为上层 undo/redo 扩展提供能力。
 
-The [project page](https://prosemirror.net) has more information, a
-number of [examples](https://prosemirror.net/examples/) and the
-[documentation](https://prosemirror.net/docs/).
+## 入口与结构
+- 包名：`lumenpage-history`
+- 主要入口：`src/index.ts`
+- 构建方式：以 workspace 包形式被其他包或应用引用
 
-This code is released under an
-[MIT license](https://github.com/prosemirror/prosemirror/tree/master/LICENSE).
-There's a [forum](http://discuss.prosemirror.net) for general
-discussion and support requests, and the
-[Github bug tracker](https://github.com/prosemirror/prosemirror/issues)
-is the place to report issues.
+## 对外导出
+- `export * from "./history";`
 
-We aim to be an inclusive, welcoming community. To make that explicit,
-we have a [code of
-conduct](http://contributor-covenant.org/version/1/1/0/) that applies
-to communication around the project.
+## 依赖关系
+### Workspace 依赖
+- `lumenpage-state`
+- `lumenpage-transform`
+
+### 第三方依赖
+- `prosemirror-view`: `^1.31.0`
+- `rope-sequence`: `^1.3.0`
+
+## 典型用法
+```ts
+import { history, undo, redo } from "lumenpage-history";
+```
+
+## 适用场景
+- 需要在当前 monorepo 中复用这部分能力时直接引用该包。
+- 需要做二次封装时，可以把它作为更高层扩展或应用包的基础依赖。
+- 如果该包属于扩展层，通常会和 `lumenpage-core` 的 `Editor` 一起使用。
+
+## 备注
+- 无额外备注。

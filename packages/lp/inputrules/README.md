@@ -1,29 +1,44 @@
-# prosemirror-inputrules
+﻿# lumenpage-inputrules
 
-[ [**WEBSITE**](https://prosemirror.net) | [**ISSUES**](https://github.com/prosemirror/prosemirror/issues) | [**FORUM**](https://discuss.prosemirror.net) | [**CHANGELOG**](https://github.com/ProseMirror/prosemirror-inputrules/blob/master/CHANGELOG.md) ]
+> 目录：`packages/lp/inputrules`
 
-This is a [core module](https://prosemirror.net/docs/ref/#inputrules) of [ProseMirror](https://prosemirror.net).
-ProseMirror is a well-behaved rich semantic content editor based on
-contentEditable, with support for collaborative editing and custom
-document schemas.
+## 包定位
+底层输入规则层，对应 ProseMirror inputrules 包。
 
-This [module](https://prosemirror.net/docs/ref/#inputrules) exports a
-plugin that can be used to define _input rules_, things that should
-happen when input matching a given pattern is typed, along with a
-number of predefined rules.
+## 当前职责
+- 监听输入文本并匹配规则。
+- 把文本模式转换成节点、mark 或结构变换。
+- 为上层智能输入扩展提供基础。
 
-The [project page](https://prosemirror.net) has more information, a
-number of [examples](https://prosemirror.net/examples/) and the
-[documentation](https://prosemirror.net/docs/).
+## 入口与结构
+- 包名：`lumenpage-inputrules`
+- 主要入口：`src/index.ts`
+- 构建方式：以 workspace 包形式被其他包或应用引用
 
-This code is released under an
-[MIT license](https://github.com/prosemirror/prosemirror/tree/master/LICENSE).
-There's a [forum](http://discuss.prosemirror.net) for general
-discussion and support requests, and the
-[Github bug tracker](https://github.com/prosemirror/prosemirror/issues)
-is the place to report issues.
+## 对外导出
+- `export {InputRule, inputRules, undoInputRule} from "./inputrules"`
+- `export {emDash, ellipsis, openDoubleQuote, closeDoubleQuote, openSingleQuote, closeSingleQuote,`
+- `export {wrappingInputRule, textblockTypeInputRule} from "./rulebuilders"`
 
-We aim to be an inclusive, welcoming community. To make that explicit,
-we have a [code of
-conduct](http://contributor-covenant.org/version/1/1/0/) that applies
-to communication around the project.
+## 依赖关系
+### Workspace 依赖
+- `lumenpage-state`
+- `lumenpage-transform`
+- `lumenpage-view-types`
+- `lumenpage-model`
+
+### 第三方依赖
+- 无第三方运行时依赖。
+
+## 典型用法
+```ts
+import { inputRules, textblockTypeInputRule } from "lumenpage-inputrules";
+```
+
+## 适用场景
+- 需要在当前 monorepo 中复用这部分能力时直接引用该包。
+- 需要做二次封装时，可以把它作为更高层扩展或应用包的基础依赖。
+- 如果该包属于扩展层，通常会和 `lumenpage-core` 的 `Editor` 一起使用。
+
+## 备注
+- 无额外备注。

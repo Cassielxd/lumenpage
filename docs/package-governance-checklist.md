@@ -1,68 +1,59 @@
-﻿# LumenPage 包治理清单（2026-03-10）
+# LumenPage 包治理清单（2026-03-13）
 
 ## 目标
 
-在不破坏现有编辑能力的前提下，收敛包边界、降低依赖复杂度、建立可持续演进机制。
+在不破坏现有编辑能力的前提下，收敛包边界、降低依赖复杂度、保持 API 与目录结构可理解，并尽量向 tiptap 的扩展组织方式对齐。
 
 ## 当前进度
 
-- [X] 完成目录平铺迁移：`packages/*` 直接平铺，`packages/lp/*` 保留底层内核分组
-- [X] 同步 workspace 与应用侧路径解析（`pnpm-workspace.yaml`、`tsconfig`、`vite alias`）
-- [X] 完成包标签登记：`governance/package-catalog.json`
-- [X] 完成依赖层级校验脚本：`scripts/check-package-governance.mjs`
-- [X] 完成 node 包模板校验脚本：`scripts/check-node-package-template.mjs`
-- [X] 创建插件聚合包：`packages/editor-plugins`
-- [X] 创建分页引擎包骨架：`packages/layout-engine`
-- [X] 创建视图运行时包骨架：`packages/view-runtime`
-- [X] 完成 `view-canvas` 到 `layout-engine/view-runtime` 的核心接线
-- [X] 创建基础节点聚合包：`packages/node-basic`
-- [X] 创建媒体节点聚合包：`packages/node-media`
-- [X] 完成 `node-basic` / `node-media` 聚合迁移
-- [X] 输出保留/合并/拆分清单：`docs/package-governance-inventory.md`
-- [X] 修复平铺后 `packages/lp/*` 缺失 `tsconfig.json` 的包内阻塞
-- [X] 当前治理校验通过：`node scripts/check-package-governance.mjs`
+- [x] 完成目录平铺迁移：`packages/*` 直接平铺，`packages/lp/*` 保留底层内核分组
+- [x] 同步 workspace、`tsconfig`、Vite alias 到当前目录结构
+- [x] 完成 `layout-engine`、`render-engine`、`view-runtime` 的引擎分层
+- [x] 完成 `view-canvas` 到上述引擎层的接线
+- [x] 完成 `starter-kit` 重构，使其只负责聚合装配
+- [x] 完成交互扩展拆分：`bubble-menu`、`mention`、`drag-handle`、`popup` 等改为独立 `extension-*`
+- [x] 完成历史兼容目录清理：`mark-engine`、`extension-schema-basic`、`extension-selection-bubble`
+- [x] 为现有库目录补齐 `README.md`
+- [x] 输出并更新包治理清单：`docs/package-governance-inventory.md`
 
 ## 当前分层
 
-- `lp`
-  - 底层编辑内核，只向上提供基础能力
-- `core`
-  - `LumenEditor` 与扩展系统门面
-- `engine`
-  - 分页、几何、Canvas 运行时
-- `extensions`
-  - 节点扩展、插件扩展、StarterKit
-- `apps`
-  - 产品壳
-
-## 关键策略
-
-- `packages/lp/*` 只放底层编辑内核，不再承载分页和渲染引擎
-- `packages/core` 作为 Lumen 对外门面，负责 `Editor` 与扩展系统
-- `packages/layout-engine` / `packages/view-runtime` / `packages/view-canvas` 与 `core` 平级
-- app 侧优先变薄，只保留产品差异和业务壳逻辑
+- `packages/lp/*`
+  - ProseMirror 风格底层内核：model、state、transform、commands、history、keymap、inputrules、collab
+- `packages/core`
+  - `Editor`、扩展系统、schema 装配、命令与事件门面
+- `packages/layout-engine`
+  - 布局、断行、分页、片段清理
+- `packages/render-engine`
+  - Node/Mark 默认渲染与适配器注册
+- `packages/view-runtime`
+  - 光标、命中测试、定位、虚拟化、选区移动
+- `packages/view-canvas`
+  - Canvas 视图装配、输入事件、绘制与 overlay 驱动
+- `packages/extension-*`
+  - 功能扩展
+- `packages/starter-kit`
+  - 默认扩展集合
+- `apps/*`
+  - 产品壳与示例应用
 
 ## 当前可验证状态
 
-- `node scripts/check-package-governance.mjs` 通过
-- 内部包 typecheck 已通过：
-  - `packages/node-basic`
-  - `packages/node-list`
-  - `packages/node-table`
-  - `packages/schema-basic`
+- 包结构已与当前目录一致，不再依赖旧的 `node-*` / `editor-plugins` / `schema-basic`
+- `starter-kit` 已作为唯一默认装配入口
+- `render-engine` 已承接默认 Node/Mark 渲染实现
+- `dev-tools` 已切为 Vue 3 实现并接入 `playground`
 
-## 当前已知剩余阻塞
+## 当前已知剩余工作
 
-当前内部路径和包治理已经打通。剩余 typecheck 阻塞主要是环境缺外部依赖，不是这轮包结构错误：
-
-- `w3c-keyname`
-- `orderedmap`
-- `vue`
-- `tdesign-vue-next`
-- `tippy.js`
+- 清理历史文档中残留的旧路径与旧包名
+- 清理构建产物误入源码目录的问题：`src/*.js`、`src/*.d.ts`、`tsconfig.tsbuildinfo`
+- 继续降低 `view-canvas` 中剩余的总装复杂度
+- 为关键包补内部 `src/README.md` 时序说明（如后续需要）
 
 ## 下一阶段
 
-1. 把 `history / keymap / inputRules / basicCommands` 收回 `LumenStarterKit` 与 `LumenEditor`
-2. 把 `mention / selection bubble` 等插件迁成扩展
-3. 继续压大文档分页、滚动、overlay 的同步成本
+1. 继续清理历史治理文档与 handoff 文档中的旧路径引用
+2. 规范生成产物输出路径，避免污染源码目录
+3. 继续压缩 `view-canvas` 与 app 侧耦合
+4. 补充架构图与包依赖图，统一项目认知

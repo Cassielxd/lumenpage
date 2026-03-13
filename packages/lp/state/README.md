@@ -1,28 +1,48 @@
-# prosemirror-state
+﻿# lumenpage-state
 
-[ [**WEBSITE**](https://prosemirror.net) | [**ISSUES**](https://github.com/prosemirror/prosemirror/issues) | [**FORUM**](https://discuss.prosemirror.net) | [**CHANGELOG**](https://github.com/ProseMirror/prosemirror-state/blob/master/CHANGELOG.md) ]
+> 目录：`packages/lp/state`
 
-This is a [core module](https://prosemirror.net/docs/ref/#state) of [ProseMirror](https://prosemirror.net).
-ProseMirror is a well-behaved rich semantic content editor based on
-contentEditable, with support for collaborative editing and custom
-document schemas.
+## 包定位
+底层编辑器状态层，对应 ProseMirror state 包。
 
-This [module](https://prosemirror.net/docs/ref/#state) implements the
-editor state, which tracks the current document and selection, and
-managed plugins.
+## 当前职责
+- 维护 EditorState、Selection、Transaction。
+- 管理插件状态与事务元信息。
+- 为上层命令和视图提供统一状态读写模型。
 
-The [project page](https://prosemirror.net) has more information, a
-number of [examples](https://prosemirror.net/examples/) and the
-[documentation](https://prosemirror.net/docs/).
+## 入口与结构
+- 包名：`lumenpage-state`
+- 主要入口：`src/index.ts`
+- 构建方式：以 workspace 包形式被其他包或应用引用
 
-This code is released under an
-[MIT license](https://github.com/prosemirror/prosemirror/tree/master/LICENSE).
-There's a [forum](http://discuss.prosemirror.net) for general
-discussion and support requests, and the
-[Github bug tracker](https://github.com/prosemirror/prosemirror/issues)
-is the place to report issues.
+## 对外导出
+- `export {Selection, SelectionRange, TextSelection, NodeSelection, AllSelection} from "./selection"`
+- `export type {SelectionBookmark} from "./selection"`
+- `export {Transaction} from "./transaction"`
+- `export type {Command} from "./transaction"`
+- `export {EditorState} from "./state"`
+- `export type {EditorStateConfig} from "./state"`
+- `export {Plugin, PluginKey} from "./plugin"`
+- `export type {PluginSpec, StateField, PluginView} from "./plugin"`
 
-We aim to be an inclusive, welcoming community. To make that explicit,
-we have a [code of
-conduct](http://contributor-covenant.org/version/1/1/0/) that applies
-to communication around the project.
+## 依赖关系
+### Workspace 依赖
+- `lumenpage-model`
+- `lumenpage-transform`
+- `lumenpage-view-types`
+
+### 第三方依赖
+- 无第三方运行时依赖。
+
+## 典型用法
+```ts
+import { EditorState, Plugin, TextSelection } from "lumenpage-state";
+```
+
+## 适用场景
+- 需要在当前 monorepo 中复用这部分能力时直接引用该包。
+- 需要做二次封装时，可以把它作为更高层扩展或应用包的基础依赖。
+- 如果该包属于扩展层，通常会和 `lumenpage-core` 的 `Editor` 一起使用。
+
+## 备注
+- 无额外备注。

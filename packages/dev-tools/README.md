@@ -1,118 +1,49 @@
-![prosemirror-dev-tools](/docs/assets/logo.png)
+﻿# lumenpage-dev-tools
 
-<p align="center">
-  <a href="https://npmjs.org/package/prosemirror-dev-tools">
-    <img src="https://img.shields.io/npm/v/prosemirror-dev-tools.svg" alt="NPM Version">
-  </a>
+> 目录：`packages/dev-tools`
 
-  <a href="http://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/npm/l/prosemirror-dev-tools.svg" alt="License">
-  </a>
+## 包定位
+编辑器调试工具面板，用于观察文档、历史、插件、分页和结构状态。
 
-  <a href="https://github.com/d4rkr00t/prosemirror-dev-tools/issues">
-    <img src="https://img.shields.io/github/issues/d4rkr00t/prosemirror-dev-tools.svg" alt="Github Issues">
-  </a>
+## 当前职责
+- 展示 State、History、Plugins、Schema、Structure、Pages、Snapshots。
+- 支持调试 JSON 状态、历史回滚和分页信息排查。
+- 为开发阶段排查布局、渲染、命令链和插件状态提供辅助。
 
-  <a href="https://travis-ci.org/d4rkr00t/prosemirror-dev-tools">
-    <img src="https://img.shields.io/travis/d4rkr00t/prosemirror-dev-tools.svg" alt="Travis Status">
-  </a>
+## 入口与结构
+- 包名：`lumenpage-dev-tools`
+- 主要入口：`src/index.ts`
+- 构建方式：以 workspace 包形式被其他包或应用引用
 
-  <a href="http://commitizen.github.io/cz-cli/">
-    <img src="https://img.shields.io/badge/commitizen-friendly-brightgreen.svg" alt="Commitizen Friendly">
-  </a>
-</p>
+## 对外导出
+- `export function applyDevTools(`
+- `export function applyLumenDevTools(`
+- `export default applyDevTools;`
 
-## Table of Content
+## 依赖关系
+### Workspace 依赖
+- `lumenpage-model`
+- `lumenpage-state`
+- `lumenpage-view-types`
 
-- [Table of Content](#table-of-content)
-- [Quick Start](#quick-start)
-  - [NPM Way](#npm-way)
-- [Features](#features)
-  - [State](#state)
-  - [History](#history)
-  - [Plugins](#plugins)
-  - [Schema](#schema)
-  - [Structure](#structure)
-  - [Snapshots](#snapshots)
-- [Demo](#demo)
-- [Contributing](#contributing)
-- [License](#license)
+### 第三方依赖
+- `html`: `^1.0.0`
+- `jsondiffpatch`: `^0.7.3`
+- `nanoid`: `^5.1.6`
+- `vue`: `^3.5.0`
+- `vue-json-pretty`: `^2.6.0`
 
-## Quick Start
+## 典型用法
+```ts
+import { applyLumenDevTools } from "lumenpage-dev-tools";
 
-### NPM Way
-
-Install `prosemirror-dev-tools` package from npm:
-
-```sh
-npm install --save-dev prosemirror-dev-tools
+const dispose = applyLumenDevTools(editor.view);
 ```
 
-Wrap `EditorView` instance in applyDevTools method:
+## 适用场景
+- 需要在当前 monorepo 中复用这部分能力时直接引用该包。
+- 需要做二次封装时，可以把它作为更高层扩展或应用包的基础依赖。
+- 如果该包属于扩展层，通常会和 `lumenpage-core` 的 `Editor` 一起使用。
 
-```js
-import applyDevTools from "prosemirror-dev-tools";
-
-const view = new EditorView /*...*/();
-
-applyDevTools(view);
-```
-
-## Features
-
-### State
-
-- Inspect document – all nodes and marks
-- Inspect selection – position, head, anchor and etc.
-- Inspect active marks
-- See document stats – size, child count
-
-![prosemirror-dev-tools state tab](/docs/assets/state-tab.png)
-
-### History
-
-- Inspect document changes over time
-- Time travel between states
-- See selection content for particular state in time
-- See selection diff
-
-![prosemirror-dev-tools history tab](/docs/assets/history-tab.png)
-
-### Plugins
-
-Inspect state of each plugin inside prosemirror.
-
-![prosemirror-dev-tools plugins tab](/docs/assets/plugins-tab.png)
-
-### Schema
-
-Inspect current document schema with nodes and marks.
-
-![prosemirror-dev-tools schema tab](/docs/assets/schema-tab.png)
-
-### Structure
-
-Visual representation of current document tree with positions at the beginning
-and the end of every node.
-
-![prosemirror-dev-tools structure tab](/docs/assets/structure-tab.png)
-
-### Snapshots
-
-Snapshots allow you to save current editor state and restore it later. State is
-stored in local storage.
-
-![prosemirror-dev-tools snapshots tab](/docs/assets/snapshots-tab.png)
-
-## Demo
-
-- [Demo & Example Setup](https://codesandbox.io/s/l9n6667ooz)
-
-## Contributing
-
-Contributions are highly welcome! This repo is commitizen friendly — please read
-about it [here](http://commitizen.github.io/cz-cli/).
-
-## License
-
-- **MIT** : http://opensource.org/licenses/MIT
+## 备注
+- 无额外备注。

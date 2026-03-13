@@ -94,9 +94,9 @@
 
 关键文件：
 
-- `packages/engine/view-canvas/src/mapping/offsetMapping.ts`
-- `packages/engine/view-canvas/src/core/editor/editorOps.ts`
-- `packages/engine/view-canvas/src/view/renderer.ts`
+- `packages/view-canvas/src/mapping/offsetMapping.ts`
+- `packages/view-canvas/src/core/editor/editorOps.ts`
+- `packages/view-canvas/src/view/renderer.ts`
 
 ### layoutIndex / selection / decorations
 
@@ -105,9 +105,9 @@
 
 关键文件：
 
-- `packages/engine/view-runtime/src/layoutIndex.ts`
-- `packages/engine/view-canvas/src/view/render/selection.ts`
-- `packages/engine/view-canvas/src/view/render/decorations.ts`
+- `packages/view-runtime/src/layoutIndex.ts`
+- `packages/view-canvas/src/view/render/selection.ts`
+- `packages/view-canvas/src/view/render/decorations.ts`
 
 ### 布局与 worker
 
@@ -122,8 +122,8 @@
 - `apps/playground/src/editor/paginationDoc.worker.ts`
 - `apps/lumen/src/editor/paginationDocWorkerClient.ts`
 - `apps/lumen/src/editor/paginationDoc.worker.ts`
-- `packages/engine/view-canvas/src/view/renderSync.ts`
-- `packages/engine/layout-engine/src/engine.ts`
+- `packages/view-canvas/src/view/renderSync.ts`
+- `packages/layout-engine/src/engine.ts`
 
 ### 节点分页能力声明
 
@@ -139,9 +139,9 @@
 
 关键文件：
 
-- `packages/engine/layout-engine/src/nodeRegistry.ts`
-- `packages/extensions/node-table/src/index.ts`
-- `packages/extensions/node-list/src/renderer.ts`
+- `packages/layout-engine/src/nodeRegistry.ts`
+- `packages/view-canvas/src/defaultRenderers/table.ts`
+- `packages/render-engine/src/defaultRenderers/list.ts`
 
 ## 当前调试入口
 
@@ -252,5 +252,5 @@
 1. 本文档
 2. `docs/pagination-layout.md`
 3. `docs/architecture-analysis.md`
-4. `packages/engine/layout-engine/src/engine.ts`
-5. `packages/engine/view-canvas/src/view/renderSync.ts`
+4. `packages/layout-engine/src/engine.ts`
+5. `packages/view-canvas/src/view/renderSync.ts`

@@ -1,56 +1,120 @@
-﻿# 包治理清单（保留 / 合并 / 拆分）
+# 包治理清单（2026-03-13）
 
 ## 说明
 
-- 数据来源：`governance/package-catalog.json`
-- 判断标准：体量、复用范围、生命周期独立性、独立版本价值
+- 本文档描述当前仓库实际采用的包分层与治理策略。
+- 以 `packages/*` 与 `packages/lp/*` 当前目录为准，不再描述已删除的 `node-*`、`editor-plugins`、`schema-basic` 兼容层。
 
 ## 保留（Keep）
 
 | 包名 | 层级 | 说明 |
-|---|---|---|
+| --- | --- | --- |
 | `lumenpage-model` | core | 文档模型底座 |
-| `lumenpage-state` | core | 状态与事务核心 |
-| `lumenpage-transform` | core | 变换核心 |
-| `lumenpage-view-types` | core | 类型公共层 |
-| `lumenpage-commands` | core | 命令基础设施 |
-| `lumenpage-keymap` | core | 键盘映射基础设施 |
-| `lumenpage-history` | core | 历史栈能力 |
-| `lumenpage-inputrules` | core | 输入规则能力 |
-| `lumenpage-link` | core | 链接与 URL 策略 |
-| `lumenpage-collab` | core | 协作能力（internal） |
-| `lumenpage-view-canvas` | engine | 当前视图运行时总入口（待拆分） |
-| `lumenpage-layout-engine` | engine | 新增：分页/映射纯引擎骨架 |
-| `lumenpage-view-runtime` | engine | 新增：视图输入/渲染/事件运行时骨架 |
-| `lumenpage-schema-basic` | extensions | 基础 schema |
-| `lumenpage-starter-kit` | extensions | 默认能力装配入口 |
-| `lumenpage-node-basic` | extensions | 基础文本节点聚合入口 |
-| `lumenpage-node-media` | extensions | 媒体节点聚合入口 |
-| `lumenpage-node-list` | extensions | 列表行为复杂，暂独立 |
-| `lumenpage-node-table` | extensions | 表格复杂度高，暂独立 |
-| `lumenpage-markdown` | extensions | 导入导出能力，先 internal |
-| `lumenpage-dev-tools` | tooling | 开发调试能力（app-only） |
+| `lumenpage-state` | core | 状态、Selection、Transaction |
+| `lumenpage-transform` | core | Step、Mapping、Transform |
+| `lumenpage-view-types` | core | 视图层公共类型 |
+| `lumenpage-commands` | core | 基础命令能力 |
+| `lumenpage-keymap` | core | 键盘映射 |
+| `lumenpage-history` | core | 撤销重做历史栈 |
+| `lumenpage-inputrules` | core | 输入规则 |
+| `lumenpage-collab` | core | 协作能力，当前偏 internal |
+| `lumenpage-link` | core | URL 与链接策略 |
+| `lumenpage-core` | facade | Editor、Extension、Starter 对外门面 |
+| `lumenpage-layout-engine` | engine | 分页、断行、布局、片段清理 |
+| `lumenpage-render-engine` | engine | Node/Mark 渲染适配与默认渲染器 |
+| `lumenpage-view-runtime` | engine | 几何、定位、虚拟化、选区移动 |
+| `lumenpage-view-canvas` | engine | Canvas 视图总入口，整合输入与绘制 |
+| `lumenpage-starter-kit` | extensions | 默认扩展装配入口 |
+| `lumenpage-markdown` | extensions | Markdown 导入导出 |
+| `lumenpage-suggestion` | extensions | suggestion 基础设施 |
+| `lumenpage-dev-tools` | tooling | 调试面板，仅开发期使用 |
 
-## 合并（Merge）
+## 扩展包策略
 
-| 当前包 | 目标聚合 | 原因 |
-|---|---|---|
-| `lumenpage-node-paragraph` | `node-basic` | 体量小，独立版本价值低 |
-| `lumenpage-node-heading` | `node-basic` | 体量小，独立版本价值低 |
-| `lumenpage-node-blockquote` | `node-basic` | 体量小，独立版本价值低 |
-| `lumenpage-node-code-block` | `node-basic` | 可与基础文本节点统一模板 |
-| `lumenpage-node-hard-break` | `node-basic` | 体量极小 |
-| `lumenpage-node-horizontal-rule` | `node-basic` | 体量小 |
-| `lumenpage-node-image` | `node-media` | 与视频同类，接口可统一 |
-| `lumenpage-node-video` | `node-media` | 与图片同类，接口可统一 |
+当前扩展统一采用 `extension-*` 平铺命名，不再保留聚合兼容层。
 
-已完成（2026-03-11）：交互扩展已拆成独立 `extension-*` 包，不再保留 `editor-plugins` 聚合兼容层。
-已完成（2026-02-24）：`node-paragraph` / `node-heading` / `node-blockquote` / `node-code-block` / `node-hard-break` / `node-horizontal-rule` 实现迁入 `node-basic`，旧包仅保留兼容转发。
-已完成（2026-02-24）：`node-image` / `node-video` 实现迁入 `node-media`，旧包仅保留兼容转发。
-已完成（2026-02-25）：上述兼容转发包已删除，不再保留兼容层。
+### 文档结构类
+
+- `extension-document`
+- `extension-paragraph`
+- `extension-text`
+- `extension-heading`
+- `extension-blockquote`
+- `extension-code-block`
+- `extension-hard-break`
+- `extension-horizontal-rule`
+- `extension-page-break`
+
+### 文本样式类
+
+- `extension-bold`
+- `extension-italic`
+- `extension-underline`
+- `extension-strike`
+- `extension-code`
+- `extension-text-style`
+- `extension-subscript`
+- `extension-superscript`
+
+### 列表与表格类
+
+- `extension-bullet-list`
+- `extension-ordered-list`
+- `extension-list-item`
+- `extension-task-list`
+- `extension-task-item`
+- `extension-table`
+
+### 媒体与工具类
+
+- `extension-image`
+- `extension-video`
+- `extension-audio`
+- `extension-file`
+- `extension-bookmark`
+- `extension-web-page`
+- `extension-math`
+- `extension-tag`
+- `extension-template`
+- `extension-text-box`
+- `extension-option-box`
+- `extension-columns`
+- `extension-callout`
+- `extension-signature`
+- `extension-seal`
+- `extension-embed-panel`
+
+### 编辑行为类
+
+- `extension-base-keymap`
+- `extension-canvas-keymap`
+- `extension-editing-commands`
+- `extension-smart-input-rules`
+- `extension-undo-redo`
+- `extension-link`
+- `extension-mention`
+- `extension-bubble-menu`
+- `extension-popup`
+- `extension-drag-handle`
+- `extension-active-block`
+- `extension-block-id`
+
+## 已完成治理项
+
+- 已完成（2026-03-11）：交互能力全部迁入独立 `extension-*` 包，不再保留 `editor-plugins` 聚合层。
+- 已完成（2026-03-11）：`starter-kit` 改为聚合装配入口，不再承载底层节点实现代码。
+- 已完成（2026-03-12）：`node-*` 聚合设计废弃，统一回到 `extension-*` 平铺结构。
+- 已完成（2026-03-13）：空壳目录 `mark-engine`、`extension-schema-basic`、`extension-selection-bubble` 已删除。
 
 ## 拆分（Split）
 
 | 当前包 | 拆分目标 | 原因 |
-|---|---|---|
-| `lumenpage-view-canvas` | `layout-engine` + `view-runtime` | 责任过载，影响维护与性能定位 |
+| --- | --- | --- |
+| `lumenpage-view-canvas` | `layout-engine` + `render-engine` + `view-runtime` | 当前已形成分层，但 view-canvas 仍承担总装入口职责 |
+
+## 当前结论
+
+- 底层编辑模型保持 `packages/lp/*` 分层。
+- 对外门面集中在 `packages/core`。
+- 渲染链路拆为 `layout-engine`、`render-engine`、`view-runtime`、`view-canvas`。
+- 功能扩展统一采用 `extension-*` 平铺目录，尽量向 tiptap 的认知模型靠拢。

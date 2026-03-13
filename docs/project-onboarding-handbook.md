@@ -1,14 +1,14 @@
-# LumenPage 项目接手总手册（2026-02-27）
+# LumenPage 项目接手手册（2026-03-13）
 
 ## 1. 文档目标
 
-这份文档用于下次快速接手，覆盖：
+本文档用于快速接手当前仓库，覆盖：
 
-- 项目分层与包职责
-- 编辑器核心运行链路
-- 插件与渲染扩展边界
-- Lumen 应用壳接线现状
-- 常用命令与排查入口
+- 仓库分层与包职责
+- 编辑器主运行链路
+- 扩展与渲染的边界
+- app 侧入口
+- 常用排查入口
 
 ## 2. 仓库总览
 
@@ -17,159 +17,135 @@
 - 包管理：`pnpm workspace`
 - 根配置：`package.json`、`pnpm-workspace.yaml`、`tsconfig.base.json`
 - 应用：
-  - `apps/lumen`（主产品壳）
-  - `apps/playground`（集成与 smoke 场景）
+  - `apps/lumen`：主产品壳
+  - `apps/playground`：示例与调试壳
 
-### 分层包结构
+### 当前包结构
 
 - `packages/core`
-  - `model/state/transform/commands/keymap/history/inputrules/link/collab/view-types`
-  - 职责：文档模型、事务、命令基础、规则基础
-- `packages/engine`
-  - `layout-engine`
-  - `view-canvas`
-  - `view-runtime`
-  - 职责：排版、渲染、命中映射、输入桥接运行时
-- `packages/extensions`
-  - `schema-basic`、`kit-basic`
-  - `node-basic`、`node-list`、`node-media`、`node-table`
-  - `editor-plugins`、`markdown`
-  - 职责：节点能力、插件能力、默认装配
-- `packages/tooling`
-  - `dev-tools`
+  - `Editor`、扩展系统、schema 装配门面
+- `packages/lp/*`
+  - `model`、`state`、`transform`、`commands`、`keymap`、`history`、`inputrules`、`collab`、`view-types`
+  - 职责：底层编辑模型和事务能力
+- `packages/layout-engine`
+  - 断行、分页、片段清理、布局复用
+- `packages/render-engine`
+  - Node/Mark 渲染适配器与默认渲染实现
+- `packages/view-runtime`
+  - 几何、定位、虚拟化、选区移动
+- `packages/view-canvas`
+  - Canvas 视图装配、输入桥接、绘制与 overlay
+- `packages/extension-*`
+  - 功能扩展
+- `packages/starter-kit`
+  - 默认扩展集合
+- `packages/dev-tools`
+  - 调试面板
 
-治理约束：`core -> engine -> extensions -> apps`（由 `pnpm governance:check` 系列脚本守护）。
+治理约束：
 
-## 3. 关键启动链路（Lumen）
+- `lp/* -> core -> engine -> extension-* -> apps`
+- 底层包不反向依赖 app 或高层扩展
+
+## 3. 关键启动链路
 
 1. `apps/lumen/src/App.vue`
-   - 负责页面壳、目录侧栏、编辑器挂载生命周期。
+   - 页面壳与编辑器挂载
 2. `apps/lumen/src/editor/editorMount.ts`
-   - 组装 schema、plugins、Canvas settings、permission、worker provider、TOC 插件。
-3. `CanvasEditorView`（`lumenpage-view-canvas`）
-   - 建立输入管线、事务流、布局渲染同步、NodeView 生命周期。
-4. `layout-engine`
-   - 从 doc 生成分页布局结果（支持增量与复杂节点分页协议）。
-5. `renderer/renderSync`
-   - 页面 canvas 绘制 + overlay（选区/光标/装饰/NodeView）同步。
+   - 装配扩展、canvas settings、worker、toolbar 等
+3. `packages/core`
+   - 创建 `Editor`、扩展管理器、schema
+4. `packages/view-canvas`
+   - 建立输入管线、事务流、布局渲染同步、NodeView 生命周期
+5. `packages/layout-engine`
+   - 从 doc 计算分页布局
+6. `packages/render-engine`
+   - 根据 Node/Mark 渲染契约输出 canvas 绘制结果
+7. `packages/view-runtime`
+   - 命中测试、选区几何、坐标映射、虚拟化
 
 ## 4. 编辑器运行主链路
 
 ### 输入到渲染闭环
 
-1. 输入桥接：`view/input/bridge.ts`、`view/input/handlers.ts`
-2. 事务派发：`editorView/stateFlow.ts`
-3. 变更摘要：`core/editor/changeSummary.ts`
-4. 布局计算：`packages/engine/layout-engine/src/engine.ts`
-5. 渲染同步：`view/renderSync.ts` + `view/renderer.ts`
-6. 映射闭环：`offset <-> pos <-> coords`（`view-runtime` + `view-canvas`）
+1. 输入桥接：`packages/view-canvas/src/view/input/*`
+2. 事务派发：`packages/view-canvas/src/view/editorView/stateFlow.ts`
+3. 变更摘要：`packages/view-canvas/src/core/editor/changeSummary.ts`
+4. 布局计算：`packages/layout-engine/src/engine.ts`
+5. 渲染同步：`packages/view-canvas/src/view/renderSync.ts`
+6. 页面绘制：`packages/view-canvas/src/view/renderer.ts`
+7. 坐标与选区：`packages/view-runtime/*`
 
-### 分页与缓存要点
+### 分页与缓存
 
-- 复杂节点（如 table）通过 `layoutBlock/splitBlock/allowSplit` 协议分页。
-- 块缓存依赖签名（`blockId + signature`），避免重复布局。
-- Worker 策略：优先正确性，复杂场景可回退主线程。
+- 复杂节点通过 `splitBlock / allowSplit / pagination` 协议参与分页
+- 布局层做 block cache、fragment continuation、page reuse
+- 渲染层做 render cache、visible page 绘制与 overlay 同步
 
-## 5. Hook 与扩展边界
+## 5. 扩展与渲染边界
 
-### EditorProps/Plugin props 调度
+### 扩展负责
 
-- 收集顺序：`CanvasEditorViewProps` -> `Plugin.props`
-- 两种语义：
-  - `dispatchEditorProp`：布尔短路（第一个 `true` 生效）
-  - `queryEditorProp`：查询短路（第一个非空值生效）
+- schema 定义
+- commands / shortcuts / input rules
+- plugin props
+- suggestion、bubble-menu、drag-handle 等行为
+- 业务策略判断
 
-### 插件负责什么
+### 渲染负责
 
-- 输入/键盘/鼠标拦截策略
-- 弹层生命周期与交互（mention、selectionBubble、dragHandle）
-- 业务行为判定（何时显示、何时接管）
+- layout 计算
+- canvas 绘制
+- overlay 与 node view 同步
+- 消费扩展提供的 rect、decorations、node view
 
-### 渲染层负责什么
+详见：
 
-- 几何计算、分页结果消费、页面绘制
-- overlay 合成与 NodeView 同步
-- 不承载业务规则（业务规则通过 Hook 注入）
+- `docs/core-hook-boundary-analysis.md`
+- `docs/plugin-popup-lifecycle-guide.md`
 
-详情见：`docs/core-hook-boundary-analysis.md`
+## 6. app 侧现状
 
-## 6. Lumen 产品壳现状
+### Lumen
 
-### 菜单与功能基线
+- 工具栏目录：`apps/lumen/src/editor/toolbarCatalog.ts`
+- 动作实现：`apps/lumen/src/editor/toolbarActions/*`
+- 编辑器挂载：`apps/lumen/src/editor/editorMount.ts`
+- 文档扩展清单：`apps/lumen/src/editor/documentExtensions.ts`
 
-- 数据源：`apps/lumen/src/editor/toolbarCatalog.ts`
-- 当前统计：`103` 项，`99` 已接线，`4` 未接线
-- 未接线项：
-  - `diagrams`
-  - `echarts`
-  - `mermaid`
-  - `mind-map`
-- `export` 顶部 Tab 默认隐藏，但导出动作仍在 base 区域可用
+### Playground
 
-### 关键应用侧模块
+- 主要用于 smoke、性能和 dev-tools 联调
+- 当前可通过 `?devTools=1` 打开调试面板
 
-- `editorMount.ts`：编辑器总装配
-- `toolbarCatalog.ts`：菜单信息架构与实现标记
-- `toolbarActions/*`：按功能域拆分动作实现
-- `tocOutlinePlugin.ts`：目录采集与 active heading 同步
-- `config.ts`：调试参数与分页 worker 开关
-
-## 7. 调试与开发命令
-
-### 常用命令
+## 7. 常用命令
 
 - 安装：`pnpm install`
+- 开发：`pnpm dev`
 - Lumen 开发：`pnpm dev:lumen`
-- Playground 开发：`pnpm dev`
 - 全量构建：`pnpm build`
-- Lumen 构建：`pnpm build:lumen`
-- 全量类型检查：`pnpm typecheck`
-- Lumen 类型检查：`pnpm -C apps/lumen typecheck`
-- 治理检查：`pnpm governance:check`
+- 类型检查：`pnpm typecheck`
 
-### 常用 URL 参数（来自 `apps/lumen/src/editor/config.ts`）
+## 8. 常用排查入口
 
-- `permissionMode=full|comment|readonly`
-- `paginationWorker=true|false`
-- `paginationWorkerForce=true|false`
-- `paginationIncremental=true|false`
-- `paginationMaxPages=<number>`
-- `paginationSettleMs=<number>`
-- `debugPerf=true|false`
-- `inputRules=true|false`
-- `contrast=high|normal`
+1. 表格分页、合并、续接问题
+   - `packages/extension-table/src/*`
+   - `packages/layout-engine/src/engine.ts`
+2. 浮层、mention、bubble-menu 问题
+   - `packages/extension-popup/src/*`
+   - `packages/extension-mention/src/*`
+   - `packages/extension-bubble-menu/src/*`
+3. 默认 canvas 渲染问题
+   - `packages/render-engine/src/*`
+   - `packages/view-canvas/src/view/renderer.ts`
+4. 工具栏接线问题
+   - `apps/lumen/src/editor/toolbarCatalog.ts`
+   - `apps/lumen/src/editor/toolbarActions/*`
 
-## 8. 已知风险与排查入口
+## 9. 继续接手建议
 
-1. 表格分页问题优先看：
-   - `packages/engine/layout-engine/src/engine.ts`
-   - `packages/extensions/node-table/src/*`
-2. 弹层问题优先看：
-   - `packages/extensions/editor-plugins/src/popup/*`
-   - `mention.ts` / `selectionBubble.ts`
-3. 菜单接线问题优先看：
-   - `toolbarCatalog.ts` 的 `implemented`
-   - `toolbarActions/*` 与 `actionHandlers.ts`
-4. 若出现“文档状态与代码不一致”，以 `toolbarCatalog.ts` 和本手册为准，旧文档需同步修正。
-
-## 9. 下次接手建议流程（10 分钟）
-
-1. 读 `docs/session-handoff.md`（入口）
-2. 读本手册第 3-8 章（架构和现状）
-3. 运行：
-   - `pnpm -C apps/lumen typecheck`
-   - `pnpm governance:check`
-4. 确认要做的功能所在层级（core/engine/extensions/apps）
-5. 改完后同步更新：
-   - `docs/lumen-menu-feature-checklist.md`
-   - `docs/lumen-product-completion-plan.md`
-
-## 10. 相关文档索引
-
-- `docs/session-handoff.md`：会话入口（短版）
-- `docs/core-hook-boundary-analysis.md`：Hook 边界详解
-- `docs/lumen-menu-feature-checklist.md`：菜单接线清单
-- `docs/lumen-product-completion-plan.md`：产品收口计划
-- `docs/fix-log-2026-02-24.md`：历史修复记录
-- `docs/package-governance-checklist.md`：分层治理清单
-- `docs/plugin-popup-lifecycle-guide.md`：弹层插件规范
+1. 先读 `docs/session-handoff.md`
+2. 再读本手册第 3-8 节
+3. 跑 `pnpm typecheck`
+4. 明确要改的是 `lp/core/engine/extension/app` 哪一层
+5. 修改后同步更新相关 README 与架构文档
