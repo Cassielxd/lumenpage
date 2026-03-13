@@ -14,6 +14,7 @@ import BubbleMenu, { DEFAULT_BUBBLE_MENU_ACTIONS } from "lumenpage-extension-bub
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
+import { SlashCommandExtension } from "lumenpage-extension-slash-command";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
@@ -22,6 +23,7 @@ import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { createMentionPluginOptions } from "./mentionCase";
+import { createSlashCommandOptions } from "./slashCommandCase";
 import { createTocOutlinePlugin, type TocOutlineSnapshot } from "./tocOutlinePlugin";
 import { lumenDocumentExtensions } from "./documentExtensions";
 import {
@@ -99,6 +101,7 @@ export const mountPlaygroundEditor = ({
     EmbedPanelBrowserViewExtension,
     ActiveBlockSelectionExtension,
     MentionExtension.configure(createMentionPluginOptions()),
+    SlashCommandExtension.configure(createSlashCommandOptions(flags.locale)),
     BubbleMenu.configure({
       element: bubbleMenuElement,
       actions: DEFAULT_BUBBLE_MENU_ACTIONS,
