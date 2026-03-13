@@ -1,4 +1,14 @@
+import { Bookmark } from "lumenpage-extension-bookmark";
 import { BlockIdExtension } from "lumenpage-extension-block-id";
+import { Callout } from "lumenpage-extension-callout";
+import { Columns } from "lumenpage-extension-columns";
+import { Audio } from "lumenpage-extension-audio";
+import { EmbedPanel } from "lumenpage-extension-embed-panel";
+import { File } from "lumenpage-extension-file";
+import { Math } from "lumenpage-extension-math";
+import { OptionBox } from "lumenpage-extension-option-box";
+import { Seal } from "lumenpage-extension-seal";
+import { Signature } from "lumenpage-extension-signature";
 import { StarterKit } from "lumenpage-starter-kit";
 import { Image } from "lumenpage-extension-image";
 import { Link } from "lumenpage-extension-link";
@@ -9,21 +19,37 @@ import { Table, TableCell, TableHeader, TableRow } from "lumenpage-extension-tab
 import { TaskItem } from "lumenpage-extension-task-item";
 import { TaskList } from "lumenpage-extension-task-list";
 import { Tag } from "lumenpage-extension-tag";
+import { Template } from "lumenpage-extension-template";
+import { TextBox } from "lumenpage-extension-text-box";
 import { TextStyle } from "lumenpage-extension-text-style";
 import { Underline } from "lumenpage-extension-underline";
 import { Video } from "lumenpage-extension-video";
+import { WebPage } from "lumenpage-extension-web-page";
 
 export const lumenDocumentExtensions = [
   StarterKit,
   BlockIdExtension,
+  Audio,
+  EmbedPanel,
+  File,
+  Bookmark,
+  Callout,
+  Columns,
+  Math,
+  OptionBox,
+  Signature,
+  Seal,
   Underline,
   Link,
   Tag,
+  Template,
+  TextBox,
   TextStyle,
   Subscript,
   Superscript,
   Image,
   Video,
+  WebPage,
   PageBreak,
   Table,
   TableRow,

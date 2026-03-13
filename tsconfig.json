@@ -8,10 +8,19 @@
       "path": "packages/extension-active-block"
     },
     {
+      "path": "packages/extension-audio"
+    },
+    {
+      "path": "packages/extension-bookmark"
+    },
+    {
       "path": "packages/extension-base-keymap"
     },
     {
       "path": "packages/extension-block-id"
+    },
+    {
+      "path": "packages/extension-callout"
     },
     {
       "path": "packages/extension-blockquote"
@@ -32,13 +41,22 @@
       "path": "packages/extension-code"
     },
     {
+      "path": "packages/extension-columns"
+    },
+    {
       "path": "packages/extension-document"
     },
     {
       "path": "packages/extension-editing-commands"
     },
     {
+      "path": "packages/extension-embed-panel"
+    },
+    {
       "path": "packages/extension-drag-handle"
+    },
+    {
+      "path": "packages/extension-file"
     },
     {
       "path": "packages/extension-heading"
@@ -65,10 +83,16 @@
       "path": "packages/extension-list-item"
     },
     {
+      "path": "packages/extension-math"
+    },
+    {
       "path": "packages/extension-mention"
     },
     {
       "path": "packages/extension-ordered-list"
+    },
+    {
+      "path": "packages/extension-option-box"
     },
     {
       "path": "packages/extension-page-break"
@@ -84,6 +108,12 @@
     },
     {
       "path": "packages/extension-smart-input-rules"
+    },
+    {
+      "path": "packages/extension-seal"
+    },
+    {
+      "path": "packages/extension-signature"
     },
     {
       "path": "packages/extension-strike"
@@ -107,7 +137,13 @@
       "path": "packages/extension-task-list"
     },
     {
+      "path": "packages/extension-template"
+    },
+    {
       "path": "packages/extension-text"
+    },
+    {
+      "path": "packages/extension-text-box"
     },
     {
       "path": "packages/extension-text-style"
@@ -117,6 +153,9 @@
     },
     {
       "path": "packages/extension-video"
+    },
+    {
+      "path": "packages/extension-web-page"
     },
     {
       "path": "packages/lp/model"

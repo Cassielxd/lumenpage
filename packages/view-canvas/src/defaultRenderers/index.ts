@@ -1,4 +1,4 @@
-﻿import {
+import {
   blockquoteRenderer,
   bulletListRenderer,
   codeBlockRenderer,
@@ -9,10 +9,7 @@
   taskListRenderer,
 } from "lumenpage-render-engine";
 import { createDefaultImageNodeView, imageRenderer } from "./image";
-import {
-  createTableSelectionGeometry,
-  tableRenderer,
-} from "./table";
+import { createTableSelectionGeometry, tableRenderer } from "./table";
 import { createDefaultVideoNodeView, videoRenderer } from "./video";
 
 const defaultNodeRenderers: Record<string, any> = {
@@ -28,6 +25,7 @@ const defaultNodeRenderers: Record<string, any> = {
   video: videoRenderer,
   table: tableRenderer,
 };
+
 export const createDefaultTableSelectionGeometry = createTableSelectionGeometry;
 
 export const getDefaultNodeRenderer = (nodeName?: string | null) => {
@@ -37,4 +35,8 @@ export const getDefaultNodeRenderer = (nodeName?: string | null) => {
 
   return defaultNodeRenderers[nodeName] || null;
 };
-export { createDefaultImageNodeView, createDefaultVideoNodeView };
+
+export {
+  createDefaultImageNodeView,
+  createDefaultVideoNodeView,
+};

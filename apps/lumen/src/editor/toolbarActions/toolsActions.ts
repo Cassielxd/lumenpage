@@ -30,30 +30,58 @@ type ToolsTexts = {
   defaultMindMapCode: string;
 };
 
-const resolveTexts = (_locale: PlaygroundLocale): ToolsTexts => ({
-  promptQrCodeContent: "QR code content",
-  promptBarcodeContent: "Barcode content",
-  promptSignatureName: "Signer name",
-  promptSealText: "Seal text",
-  promptDiagramsCode: "Diagram source code",
-  promptEchartsCode: "ECharts option JSON",
-  promptMermaidCode: "Mermaid source code",
-  promptMindMapCode: "Mind map source code",
-  promptChineseCaseInput: "Input number to convert into Chinese case",
-  promptChineseCaseMode: "Case mode: upper / lower",
-  alertChineseCaseInvalidNumber: "Input must be a valid number",
-  labelSeal: "Seal",
-  labelSignature: "Signature",
-  defaultQrCodeContent: "https://example.com",
-  defaultBarcodeContent: "1234567890",
-  defaultSignatureName: "Signer",
-  defaultSealText: "APPROVED",
-  defaultDiagramCode: "flowchart LR\nA[Start] --> B[Done]",
-  defaultEchartsCode:
-    "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"Mon\", \"Tue\", \"Wed\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
-  defaultMermaidCode: "graph TD\nA[Start] --> B[End]",
-  defaultMindMapCode: "mindmap\n  root((Root))\n    Branch A\n    Branch B",
-});
+const resolveTexts = (locale: PlaygroundLocale): ToolsTexts =>
+  locale === "en-US"
+    ? {
+        promptQrCodeContent: "QR code content",
+        promptBarcodeContent: "Barcode content",
+        promptSignatureName: "Signer name",
+        promptSealText: "Seal text",
+        promptDiagramsCode: "Diagram source code",
+        promptEchartsCode: "ECharts option JSON",
+        promptMermaidCode: "Mermaid source code",
+        promptMindMapCode: "Mind map source code",
+        promptChineseCaseInput: "Input number to convert into Chinese case",
+        promptChineseCaseMode: "Case mode",
+        alertChineseCaseInvalidNumber: "Input must be a valid number",
+        labelSeal: "Seal",
+        labelSignature: "Signature",
+        defaultQrCodeContent: "https://example.com",
+        defaultBarcodeContent: "1234567890",
+        defaultSignatureName: "Signer",
+        defaultSealText: "APPROVED",
+        defaultDiagramCode: "flowchart LR\nA[Start] --> B[Done]",
+        defaultEchartsCode:
+          "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"Mon\", \"Tue\", \"Wed\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
+        defaultMermaidCode: "graph TD\nA[Start] --> B[End]",
+        defaultMindMapCode: "mindmap\n  root((Root))\n    Branch A\n    Branch B",
+      }
+    : {
+        promptQrCodeContent: "\u4e8c\u7ef4\u7801\u5185\u5bb9",
+        promptBarcodeContent: "\u6761\u5f62\u7801\u5185\u5bb9",
+        promptSignatureName: "\u7b7e\u540d\u4eba\u59d3\u540d",
+        promptSealText: "\u5370\u7ae0\u6587\u5b57",
+        promptDiagramsCode: "\u56fe\u8868\u6e90\u7801",
+        promptEchartsCode: "ECharts \u914d\u7f6e JSON",
+        promptMermaidCode: "Mermaid \u6e90\u7801",
+        promptMindMapCode: "\u601d\u7ef4\u5bfc\u56fe\u6e90\u7801",
+        promptChineseCaseInput: "\u8f93\u5165\u9700\u8981\u8f6c\u6362\u7684\u6570\u5b57",
+        promptChineseCaseMode: "\u5927\u5c0f\u5199\u6a21\u5f0f",
+        alertChineseCaseInvalidNumber: "\u8f93\u5165\u5185\u5bb9\u5fc5\u987b\u662f\u6709\u6548\u6570\u5b57",
+        labelSeal: "\u5370\u7ae0",
+        labelSignature: "\u7b7e\u540d",
+        defaultQrCodeContent: "https://example.com",
+        defaultBarcodeContent: "1234567890",
+        defaultSignatureName: "\u7b7e\u7f72\u4eba",
+        defaultSealText: "\u5df2\u6279\u51c6",
+        defaultDiagramCode:
+          "flowchart LR\nA[\u5f00\u59cb] --> B[\u5b8c\u6210]",
+        defaultEchartsCode:
+          "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"\u5468\u4e00\", \"\u5468\u4e8c\", \"\u5468\u4e09\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
+        defaultMermaidCode: "graph TD\nA[\u5f00\u59cb] --> B[\u7ed3\u675f]",
+        defaultMindMapCode:
+          "mindmap\n  root((\u4e3b\u9898))\n    \u5206\u652f A\n    \u5206\u652f B",
+      };
 
 const getViewState = (getView: GetView) => {
   const view = getView();
@@ -309,7 +337,7 @@ export const createToolsActions = ({
   const insertQrCode = async () => {
     const texts = resolveTexts(getLocaleKey());
     const content = await readInput({
-      title: dialogTitle("Insert QR Code", "?????"),
+      title: dialogTitle("Insert QR Code", "\u63d2\u5165\u4e8c\u7ef4\u7801"),
       label: texts.promptQrCodeContent,
       defaultValue: texts.defaultQrCodeContent,
       required: true,
@@ -330,7 +358,7 @@ export const createToolsActions = ({
   const insertBarcode = async () => {
     const texts = resolveTexts(getLocaleKey());
     const content = await readInput({
-      title: dialogTitle("Insert Barcode", "?????"),
+      title: dialogTitle("Insert Barcode", "\u63d2\u5165\u6761\u5f62\u7801"),
       label: texts.promptBarcodeContent,
       defaultValue: texts.defaultBarcodeContent,
       required: true,
@@ -349,7 +377,7 @@ export const createToolsActions = ({
   const insertSignature = async () => {
     const texts = resolveTexts(getLocaleKey());
     const name = await readInput({
-      title: dialogTitle("Insert Signature", "????"),
+      title: dialogTitle("Insert Signature", "\u63d2\u5165\u7b7e\u540d"),
       label: texts.promptSignatureName,
       defaultValue: texts.defaultSignatureName,
       required: true,
@@ -358,13 +386,16 @@ export const createToolsActions = ({
       return false;
     }
     const signedAt = new Date().toISOString().slice(0, 10);
+    if (run("insertSignature", { signer: name, signedAt })) {
+      return true;
+    }
     return insertText(getView, `[${texts.labelSignature}] ${name} (${signedAt})`);
   };
 
   const insertSeal = async () => {
     const texts = resolveTexts(getLocaleKey());
     const raw = await readInput({
-      title: dialogTitle("Insert Seal", "????"),
+      title: dialogTitle("Insert Seal", "\u63d2\u5165\u5370\u7ae0"),
       label: texts.promptSealText,
       defaultValue: texts.defaultSealText,
       required: true,
@@ -372,13 +403,16 @@ export const createToolsActions = ({
     if (!raw) {
       return false;
     }
+    if (run("insertSeal", { text: raw })) {
+      return true;
+    }
     return insertText(getView, `\u3010${texts.labelSeal}\u3011 ${raw}`);
   };
 
   const insertDiagrams = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Diagram", "?????"),
+      title: dialogTitle("Insert Diagram", "\u63d2\u5165\u56fe\u8868"),
       label: texts.promptDiagramsCode,
       defaultValue: texts.defaultDiagramCode,
       type: "textarea",
@@ -387,13 +421,16 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
+    if (run("insertEmbedPanel", { kind: "diagram", title: "Diagram", source })) {
+      return true;
+    }
     return insertCodeBlock(getView, source);
   };
 
   const insertEcharts = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert ECharts", "????"),
+      title: dialogTitle("Insert ECharts", "\u63d2\u5165 ECharts"),
       label: texts.promptEchartsCode,
       defaultValue: texts.defaultEchartsCode,
       type: "textarea",
@@ -402,13 +439,16 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
+    if (run("insertEmbedPanel", { kind: "echarts", title: "ECharts", source })) {
+      return true;
+    }
     return insertCodeBlock(getView, source);
   };
 
   const insertMermaid = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Mermaid", "?? Mermaid"),
+      title: dialogTitle("Insert Mermaid", "\u63d2\u5165 Mermaid"),
       label: texts.promptMermaidCode,
       defaultValue: texts.defaultMermaidCode,
       type: "textarea",
@@ -417,13 +457,16 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
+    if (run("insertEmbedPanel", { kind: "mermaid", title: "Mermaid", source })) {
+      return true;
+    }
     return insertCodeBlock(getView, source);
   };
 
   const insertMindMap = async () => {
     const texts = resolveTexts(getLocaleKey());
     const source = await readInput({
-      title: dialogTitle("Insert Mind Map", "??????"),
+      title: dialogTitle("Insert Mind Map", "\u63d2\u5165\u601d\u7ef4\u5bfc\u56fe"),
       label: texts.promptMindMapCode,
       defaultValue: texts.defaultMindMapCode,
       type: "textarea",
@@ -432,6 +475,9 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
+    if (run("insertEmbedPanel", { kind: "mindMap", title: "Mind Map", source })) {
+      return true;
+    }
     return insertCodeBlock(getView, source);
   };
 
@@ -439,7 +485,7 @@ export const createToolsActions = ({
     const texts = resolveTexts(getLocaleKey());
     const selected = getSelectionText(getView).trim();
     const result = await requestInputDialog({
-      title: dialogTitle("Chinese Case", "???????"),
+      title: dialogTitle("Chinese Case", "\u4e2d\u6587\u6570\u5b57\u5927\u5c0f\u5199"),
       width: 560,
       fields: [
         {
@@ -455,8 +501,8 @@ export const createToolsActions = ({
           options:
             getLocaleKey() === "en-US"
               ? [
-                  { label: "??", value: "upper" },
-                  { label: "??", value: "lower" },
+                  { label: "Upper", value: "upper" },
+                  { label: "Lower", value: "lower" },
                 ]
               : [
                   { label: "大写", value: "upper" },

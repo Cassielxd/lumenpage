@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "lumenpage-view-canvas",
   "version": "0.0.2",
   "type": "module",
@@ -47,10 +47,9 @@
     "lumenpage-transform": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",
-    "lumenpage-transform": "workspace:*"
+    "lumenpage-transform": "workspace:*",
+    "typescript": "^5.5.4"
   }
 }
-

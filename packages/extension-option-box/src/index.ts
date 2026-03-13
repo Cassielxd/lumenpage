@@ -1,0 +1,56 @@
+import { Node } from "lumenpage-core";
+import { optionBoxRenderer } from "./renderer";
+import { optionBoxNodeSpec } from "./optionBox";
+
+export { optionBoxNodeSpec, serializeOptionBoxToText } from "./optionBox";
+export { optionBoxRenderer } from "./renderer";
+
+const normalizeItemsText = (value: unknown) =>
+  Array.isArray(value)
+    ? value.map((item) => String(item || "").trim()).filter(Boolean).join("\n")
+    : String(value || "").trim();
+
+const insertOptionBoxCommand =
+  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (state: any, dispatch?: (tr: any) => void) => {
+    const type = state?.schema?.nodes?.optionBox;
+    if (!type) {
+      return false;
+    }
+    const itemsText = normalizeItemsText(attrs?.items || attrs?.itemsText);
+    if (!itemsText) {
+      return false;
+    }
+    const node = type.create({
+      title: String(attrs?.title || "").trim(),
+      itemsText,
+    });
+    if (!dispatch) {
+      return true;
+    }
+    dispatch(state.tr.replaceSelectionWith(node).scrollIntoView());
+    return true;
+  };
+
+export const OptionBox = Node.create({
+  name: "optionBox",
+  priority: 100,
+  schema: optionBoxNodeSpec,
+  layout() {
+    return {
+      renderer: optionBoxRenderer,
+    };
+  },
+  addCommands() {
+    return {
+      insertOptionBox: (attrs?: Record<string, unknown>) => insertOptionBoxCommand(attrs),
+    };
+  },
+  canvas() {
+    return {
+      nodeSelectionTypes: ["optionBox"],
+    };
+  },
+});
+
+export default OptionBox;

@@ -377,10 +377,10 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "tools-chart",
       items: [
-        item("diagrams", "diagrams", "流程图", "Diagrams", "diagrams", false),
-        item("echarts", "echarts", "图表", "ECharts", "echarts", false),
-        item("mermaid", "mermaid", "Mermaid", "Mermaid", "mermaid", false),
-        item("mind-map", "mind-map", "思维导图", "Mind Map", "mind-map", false),
+        item("diagrams", "diagrams", "流程图", "Diagrams", "diagrams", true),
+        item("echarts", "echarts", "图表", "ECharts", "echarts", true),
+        item("mermaid", "mermaid", "Mermaid", "Mermaid", "mermaid", true),
+        item("mind-map", "mind-map", "思维导图", "Mind Map", "mind-map", true),
       ],
     },
     {

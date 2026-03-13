@@ -333,6 +333,21 @@ export const sanitizeVideoSrc = (value: unknown, options?: string | UrlSanitizeO
   );
 };
 
+export const sanitizeAudioSrc = (value: unknown, options?: string | UrlSanitizeOptions) => {
+  const resolvedOptions = resolveUrlOptions(options);
+  const policy = resolveSecurityPolicy(resolvedOptions.policy);
+  return (
+    sanitizeUrlWithProtocols(value, new Set(policy.mediaProtocols), {
+      allowRelative: policy.allowRelativeMedia,
+      allowDataImage: false,
+      baseUrl: resolvedOptions.baseUrl || policy.baseUrl,
+      source: resolvedOptions.source,
+      policy,
+      target: "video",
+    }) || ""
+  );
+};
+
 export const sanitizePosterSrc = (value: unknown, options?: string | UrlSanitizeOptions) => {
   const resolvedOptions = resolveUrlOptions(options);
   const policy = resolveSecurityPolicy(resolvedOptions.policy);

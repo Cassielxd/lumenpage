@@ -482,6 +482,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultAudioTitle;
+    if (run("insertAudio", { src: href, title })) {
+      return true;
+    }
     return insertReference(getView, texts.insertAudioPrefix, title, href);
   };
 
@@ -512,6 +515,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const name = String(result.name || "").trim() || texts.defaultFileName;
+    if (run("insertFile", { href, name })) {
+      return true;
+    }
     return insertReference(getView, texts.insertFilePrefix, name, href);
   };
 
@@ -525,6 +531,9 @@ export const createInsertAdvancedActions = ({
     });
     if (!expr) {
       return false;
+    }
+    if (run("insertMath", { source: expr })) {
+      return true;
     }
     return insertText(getView, `$$ ${expr} $$`);
   };
@@ -550,6 +559,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const safeCount = Math.max(2, Math.min(4, count));
+    if (run("insertColumns", { count: safeCount })) {
+      return true;
+    }
     const tableNode = createTableNode(payload.state.schema, 1, safeCount, (_rowIndex, colIndex) => {
       return `${texts.labelColumn} ${colIndex + 1}`;
     });
@@ -596,6 +608,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const content = raw || texts.defaultCallout;
+    if (run("insertCallout", { title: texts.insertCalloutPrefix, text: content, tone: "info" })) {
+      return true;
+    }
     const schema = payload.state.schema;
     const blockquoteType = schema?.nodes?.blockquote;
     if (!blockquoteType) {
@@ -639,6 +654,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultBookmarkTitle;
+    if (run("insertBookmark", { href, title })) {
+      return true;
+    }
     return insertReference(getView, texts.insertBookmarkPrefix, title, href);
   };
 
@@ -659,6 +677,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const items = parseListItemsInput(raw);
+    if (run("insertOptionBox", { title: "Options", items })) {
+      return true;
+    }
     const taskListNode = createTaskListNode(payload.state.schema, items);
     if (!taskListNode) {
       return false;
@@ -682,6 +703,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const content = raw || texts.defaultTextBox;
+    if (run("insertTextBox", { title: texts.insertTextBoxPrefix, text: content })) {
+      return true;
+    }
     const tableNode = createTableNode(payload.state.schema, 1, 1, () => content);
     if (!tableNode) {
       return false;
@@ -716,6 +740,9 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultWebPageTitle;
+    if (run("insertWebPage", { href, title })) {
+      return true;
+    }
     return insertReference(getView, texts.insertWebPagePrefix, title, href);
   };
 
@@ -765,6 +792,9 @@ export const createInsertAdvancedActions = ({
     const title = String(result.title || "").trim() || texts.defaultTemplateTitle;
     const summary = String(result.summary || "").trim() || texts.defaultTemplateSummary;
     const items = parseListItemsInput(String(result.items || ""));
+    if (run("insertTemplate", { title, summary, items })) {
+      return true;
+    }
     const headingNode = createHeadingNode(payload.state.schema, title, 2);
     const summaryNode = createParagraphNode(payload.state.schema, summary);
     const bulletNode = createBulletListNode(payload.state.schema, items);

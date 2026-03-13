@@ -42,6 +42,10 @@ export default defineConfig(({ mode }) => {
         { find: /^lumenpage-inputrules$/, replacement: entry("inputrules") },
         { find: /^lumenpage-collab$/, replacement: entry("collab") },
         {
+          find: /^lumenpage-extension-embed-panel\/browser$/,
+          replacement: path.resolve(workspaceRoot, "packages/extension-embed-panel/src/browser.ts"),
+        },
+        {
           find: /^lumenpage-extension-(.+)$/,
           replacement: path.resolve(workspaceRoot, "packages/extension-$1/src/index.ts"),
         },

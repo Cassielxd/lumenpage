@@ -12,6 +12,7 @@ import {
 import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
 import BubbleMenu, { DEFAULT_BUBBLE_MENU_ACTIONS } from "lumenpage-extension-bubble-menu";
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
+import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
 
 import type { PlaygroundDebugFlags } from "./config";
@@ -95,6 +96,7 @@ export const mountPlaygroundEditor = ({
 
   const extensions = [
     ...lumenDocumentExtensions,
+    EmbedPanelBrowserViewExtension,
     ActiveBlockSelectionExtension,
     MentionExtension.configure(createMentionPluginOptions()),
     BubbleMenu.configure({
