@@ -55,6 +55,23 @@
         <div ref="editorHost" class="editor-host"></div>
       </div>
     </t-content>
+    <t-footer class="doc-footer">
+      <div class="doc-footer-stats">
+        <span class="doc-footer-stat">{{ footerCurrentPageLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerPageLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerWordLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerSelectionWordLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerBlockTypeLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerNodeLabel }}</span>
+        <span class="doc-footer-divider">·</span>
+        <span class="doc-footer-stat">{{ footerPluginLabel }}</span>
+      </div>
+    </t-footer>
   </t-layout>
 </template>
 
@@ -92,6 +109,15 @@ type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const view = shallowRef<CanvasEditorView | null>(null);
+const footerStats = ref({
+  pageCount: 0,
+  currentPage: 0,
+  nodeCount: 0,
+  pluginCount: 0,
+  wordCount: 0,
+  selectedWordCount: 0,
+  blockType: "",
+});
 const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
 const tocPanelOpen = ref(false);
@@ -118,6 +144,63 @@ const permissionLabel = computed(() => {
   }
   return i18n.app.permissionEdit;
 });
+const footerPageLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Pages ${footerStats.value.pageCount}`
+    : `页数 ${footerStats.value.pageCount}`
+);
+const footerCurrentPageLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Page ${footerStats.value.currentPage || 0}`
+    : `当前页 ${footerStats.value.currentPage || 0}`
+);
+const footerWordLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Words ${footerStats.value.wordCount}`
+    : `字数 ${footerStats.value.wordCount}`
+);
+const footerSelectionWordLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Selected ${footerStats.value.selectedWordCount}`
+    : `选中 ${footerStats.value.selectedWordCount}`
+);
+const resolveBlockTypeLabel = (value: string) => {
+  if (debugFlags.locale === "en-US") {
+    if (value === "paragraph") return "Paragraph";
+    if (value === "heading") return "Heading";
+    if (value === "blockquote") return "Blockquote";
+    if (value === "codeBlock") return "Code Block";
+    if (value === "bulletList") return "Bullet List";
+    if (value === "orderedList") return "Ordered List";
+    if (value === "taskList") return "Task List";
+    if (value === "table") return "Table";
+    return value || "Unknown";
+  }
+  if (value === "paragraph") return "正文";
+  if (value === "heading") return "标题";
+  if (value === "blockquote") return "引用";
+  if (value === "codeBlock") return "代码块";
+  if (value === "bulletList") return "无序列表";
+  if (value === "orderedList") return "有序列表";
+  if (value === "taskList") return "任务列表";
+  if (value === "table") return "表格";
+  return value || "未知";
+};
+const footerBlockTypeLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Block ${resolveBlockTypeLabel(footerStats.value.blockType)}`
+    : `块 ${resolveBlockTypeLabel(footerStats.value.blockType)}`
+);
+const footerNodeLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Nodes ${footerStats.value.nodeCount}`
+    : `节点数 ${footerStats.value.nodeCount}`
+);
+const footerPluginLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? `Plugins ${footerStats.value.pluginCount}`
+    : `插件数 ${footerStats.value.pluginCount}`
+);
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 
@@ -156,6 +239,26 @@ const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
   activeTocId.value = snapshot?.activeId || null;
 };
 
+const handleStatsChange = (stats: {
+  pageCount: number;
+  currentPage: number;
+  nodeCount: number;
+  pluginCount: number;
+  wordCount: number;
+  selectedWordCount: number;
+  blockType: string;
+}) => {
+  footerStats.value = {
+    pageCount: Math.max(0, Number(stats?.pageCount) || 0),
+    currentPage: Math.max(0, Number(stats?.currentPage) || 0),
+    nodeCount: Math.max(0, Number(stats?.nodeCount) || 0),
+    pluginCount: Math.max(0, Number(stats?.pluginCount) || 0),
+    wordCount: Math.max(0, Number(stats?.wordCount) || 0),
+    selectedWordCount: Math.max(0, Number(stats?.selectedWordCount) || 0),
+    blockType: String(stats?.blockType || ""),
+  };
+};
+
 const handleTocItemClick = (item: TocOutlineItem) => {
   const currentView = view.value;
   if (!currentView?.state?.doc || !currentView?.state?.tr || !item?.id) {
@@ -185,6 +288,7 @@ onMounted(async () => {
     flags: debugFlags,
     onTocOutlineChange: handleTocOutlineChange,
     tocOutlineEnabled: tocPanelOpen.value,
+    onStatsChange: handleStatsChange,
   });
   view.value = mounted.view;
   setTocOutlineEnabled = mounted.setTocOutlineEnabled;
@@ -206,6 +310,15 @@ onBeforeUnmount(() => {
   view.value = null;
   tocItems.value = [];
   activeTocId.value = null;
+  footerStats.value = {
+    pageCount: 0,
+    currentPage: 0,
+    nodeCount: 0,
+    pluginCount: 0,
+    wordCount: 0,
+    selectedWordCount: 0,
+    blockType: "",
+  };
 });
 </script>
 
@@ -215,6 +328,8 @@ onBeforeUnmount(() => {
   width: 100%;
   background: #f5f6f8;
   color: #1f2329;
+  display: flex;
+  flex-direction: column;
 }
 
 .topbar {
@@ -279,6 +394,34 @@ onBeforeUnmount(() => {
   padding: 0;
   overflow: hidden;
   background: #f5f6f8;
+}
+
+.doc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 34px;
+  padding: 0 16px;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+}
+
+.doc-footer-stats {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1;
+  color: #6b7280;
+}
+
+.doc-footer-stat {
+  white-space: nowrap;
+}
+
+.doc-footer-divider {
+  color: #c0c4cc;
 }
 
 .doc-outline {
@@ -429,6 +572,7 @@ onBeforeUnmount(() => {
 }
 
 .doc-shell.is-high-contrast .topbar,
+.doc-shell.is-high-contrast .doc-footer,
 .doc-shell.is-high-contrast .doc-stage,
 .doc-shell.is-high-contrast :deep(.menu-bar),
 .doc-shell.is-high-contrast :deep(.toolbar) {
@@ -439,6 +583,11 @@ onBeforeUnmount(() => {
 .doc-shell.is-high-contrast .logo {
   background: #fff;
   color: #000;
+}
+
+.doc-shell.is-high-contrast .doc-footer-stats,
+.doc-shell.is-high-contrast .doc-footer-divider {
+  color: #fff;
 }
 
 .doc-shell.is-high-contrast .title-input-native {
@@ -468,6 +617,10 @@ onBeforeUnmount(() => {
 
   .doc-content {
     padding: 0;
+  }
+
+  .doc-footer {
+    padding: 0 10px;
   }
 
   .doc-outline {
