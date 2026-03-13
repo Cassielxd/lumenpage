@@ -4,6 +4,7 @@ dist
 umo-editor
 .codex-tmp/
 *.tsbuildinfo
+apps/docs/.vitepress/cache/
 packages/**/src/**/*.d.ts
 packages/**/src/**/*.d.ts.map
 packages/**/src/**/*.js

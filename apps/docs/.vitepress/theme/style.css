@@ -1,0 +1,122 @@
+:root {
+  --vp-c-brand-1: #145b63;
+  --vp-c-brand-2: #0f4c53;
+  --vp-c-brand-3: #0b3940;
+  --vp-c-brand-soft: rgba(20, 91, 99, 0.12);
+}
+
+.VPHome {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(14, 109, 118, 0.12), transparent 24%),
+    radial-gradient(circle at 100% 10%, rgba(184, 116, 42, 0.1), transparent 20%),
+    linear-gradient(180deg, #fbfbf8 0%, #f5f7f2 100%);
+}
+
+.VPHomeHero .container,
+.VPHomeFeatures .container {
+  max-width: 1200px;
+}
+
+.VPHomeHero .main {
+  max-width: 760px;
+}
+
+.VPHomeFeatures .items {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.VPFeature {
+  border: 1px solid rgba(16, 46, 49, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 38px rgba(29, 43, 40, 0.05);
+}
+
+.VPHome .vp-doc {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 24px 72px;
+}
+
+.VPHome .vp-doc h2 {
+  margin-top: 36px;
+}
+
+.lp-arch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.lp-arch-card {
+  padding: 16px 18px;
+  border: 1px solid rgba(16, 46, 49, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 38px rgba(29, 43, 40, 0.05);
+}
+
+.lp-arch-card strong {
+  display: block;
+  color: #18373c;
+}
+
+.lp-arch-card span {
+  display: block;
+  margin-top: 6px;
+  color: #556769;
+}
+
+.lp-capability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.lp-capability-card {
+  padding: 16px 18px;
+  border: 1px solid rgba(16, 46, 49, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 38px rgba(29, 43, 40, 0.05);
+}
+
+.lp-capability-card strong {
+  display: block;
+  color: #18373c;
+}
+
+.lp-capability-card span {
+  display: block;
+  margin-top: 6px;
+  color: #556769;
+}
+
+.VPHome .vp-doc pre {
+  border: 1px solid rgba(16, 46, 49, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 14px 38px rgba(29, 43, 40, 0.05);
+}
+
+.lp-arch-card--wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 960px) {
+  .VPHomeFeatures .items {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-arch-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-capability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lp-arch-card--wide {
+    grid-column: auto;
+  }
+}

@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "pnpm -C apps/playground dev",
     "dev:lumen": "pnpm -C apps/lumen dev",
+    "docs:dev": "pnpm -C apps/docs dev",
+    "docs:build": "pnpm -C apps/docs build",
+    "docs:preview": "pnpm -C apps/docs preview",
     "build": "pnpm -r build",
     "build:app": "pnpm -C apps/playground build",
     "build:lumen": "pnpm -C apps/lumen build",
