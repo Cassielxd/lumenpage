@@ -331,6 +331,108 @@ const pickLineAtPoint = (lines, x, pageX) => {
   return best || lines[0];
 };
 
+const isBoundaryOwnerRole = (role) => role === "list-item" || role === "table-cell";
+
+const getSharedBoundaryOwnerKey = (prevLine, nextLine) => {
+  const prevOwners = Array.isArray(prevLine?.fragmentOwners) ? prevLine.fragmentOwners : [];
+  const nextOwners = Array.isArray(nextLine?.fragmentOwners) ? nextLine.fragmentOwners : [];
+  const limit = Math.min(prevOwners.length, nextOwners.length);
+  let sharedKey = null;
+
+  for (let index = 0; index < limit; index += 1) {
+    const prevOwner = prevOwners[index];
+    const nextOwner = nextOwners[index];
+    if (!prevOwner?.key || prevOwner.key !== nextOwner?.key) {
+      break;
+    }
+    if (isBoundaryOwnerRole(prevOwner.role)) {
+      sharedKey = prevOwner.key;
+    }
+  }
+
+  return sharedKey;
+};
+
+const isDistinctBlockBoundary = (prevLine, nextLine) => {
+  if (!prevLine || !nextLine || prevLine === nextLine) {
+    return false;
+  }
+
+  if (prevLine.blockId != null && nextLine.blockId != null) {
+    return prevLine.blockId !== nextLine.blockId;
+  }
+
+  if (Number.isFinite(prevLine.blockStart) && Number.isFinite(nextLine.blockStart)) {
+    return (
+      Number(prevLine.blockStart) !== Number(nextLine.blockStart) ||
+      String(prevLine.blockType || "") !== String(nextLine.blockType || "")
+    );
+  }
+
+  return (
+    Number(prevLine.start) !== Number(nextLine.start) ||
+    Number(prevLine.end) !== Number(nextLine.end) ||
+    String(prevLine.blockType || "") !== String(nextLine.blockType || "")
+  );
+};
+
+const resolveBlockGapHit = (page, pageIndex, localY, x, pageX, layout) => {
+  if (!page?.lines?.length) {
+    return null;
+  }
+
+  let previous = null;
+  let next = null;
+
+  for (let index = 0; index < page.lines.length; index += 1) {
+    const line = page.lines[index];
+    const top = Number.isFinite(line?.y) ? Number(line.y) : 0;
+    const bottom = top + getLineHeight(line, layout);
+
+    if (bottom <= localY) {
+      previous = { line, index, top, bottom };
+      continue;
+    }
+
+    if (top > localY) {
+      next = { line, index, top, bottom };
+      break;
+    }
+  }
+
+  if (!previous || !next || localY < previous.bottom || localY >= next.top) {
+    return null;
+  }
+
+  if (!getSharedBoundaryOwnerKey(previous.line, next.line)) {
+    return null;
+  }
+
+  if (!isDistinctBlockBoundary(previous.line, next.line)) {
+    return null;
+  }
+
+  const gapMid = previous.bottom + (next.top - previous.bottom) / 2;
+  const usePrevious = localY < gapMid;
+  const target = usePrevious ? previous : next;
+  const fallbackOffset = Number.isFinite(target.line?.start) ? Number(target.line.start) : 0;
+  const offset = usePrevious
+    ? Number.isFinite(previous.line?.end)
+      ? Number(previous.line.end)
+      : fallbackOffset
+    : Number.isFinite(next.line?.start)
+      ? Number(next.line.start)
+      : fallbackOffset;
+
+  return {
+    offset,
+    localX: Math.max(0, x - pageX - (Number(target.line?.x) || 0)),
+    pageIndex,
+    lineIndex: target.index,
+    line: target.line,
+  };
+};
+
 /* 鍛戒腑娴嬭瘯锛氭牴鎹潗鏍囬€夋嫨鏈€杩戣骞跺弽绠楀亸绉?*/
 
 export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength) {
@@ -361,6 +463,10 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
   let line = pickLineAtPoint(linesAtY, x, pageX);
 
   if (!line) {
+    const gapHit = resolveBlockGapHit(page, pageIndex, localY, x, pageX, layout);
+    if (gapHit) {
+      return gapHit;
+    }
     line = page.lines.reduce((closest, candidate) => {
       const lineHeight = getLineHeight(candidate, layout);
 

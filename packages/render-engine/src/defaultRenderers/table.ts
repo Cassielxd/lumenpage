@@ -1,5 +1,6 @@
 import { breakLines } from "../lineBreaker";
 import { docToRuns, textblockToRuns } from "../textRuns";
+import { shiftFragmentOwners } from "./fragmentOwners";
 
 const normalizeTableCellBackground = (value) => {
   const text = String(value || "").trim();
@@ -81,6 +82,7 @@ const createTableRootOwner = ({ node, tableKey, settings, tableWidth, colWidth, 
   role: "table",
   nodeId: node?.attrs?.id ?? null,
   x: settings.margin.left,
+  y: 0,
   width: tableWidth,
   fixedBounds: false,
   meta: {
@@ -273,7 +275,16 @@ const layoutLeafInCell = ({
         tableXOffset: (lineCopy.tableMeta.tableXOffset ?? 0) + cellBaseX,
       };
     }
+    if (Number.isFinite(lineCopy?.blockAttrs?.codeBlockOuterX) && Number.isFinite(cellBaseX)) {
+      lineCopy.blockAttrs = {
+        ...(lineCopy.blockAttrs || {}),
+        codeBlockOuterX: Number(lineCopy.blockAttrs.codeBlockOuterX) + cellBaseX,
+      };
+    }
     applyContainerStack(lineCopy, context.containerStack);
+    if (Array.isArray(lineCopy.fragmentOwners) && lineCopy.fragmentOwners.length > 0) {
+      lineCopy.fragmentOwners = shiftFragmentOwners(lineCopy.fragmentOwners, 0, baseY);
+    }
     return lineCopy;
   });
 
@@ -702,6 +713,11 @@ export const tableRenderer = {
 
           const cellBaseX =
             settings.margin.left + (cell.colStart ?? cell.colIndex) * colWidth + padding;
+          const shiftedCellOwners = shiftFragmentOwners(
+            cellLine.fragmentOwners,
+            cellBaseX,
+            tableTop + rowInset
+          );
           const cellWidthWithSpan = Math.max(0, colWidth * (cell.colspan ?? 1) - padding * 2);
           const line = {
             ...cellLine,
@@ -737,7 +753,11 @@ export const tableRenderer = {
             cellWidth: cellWidthWithSpan,
             cellPadding: padding,
             cellPaddingY: paddingY,
-            fragmentOwners: [tableRootOwner, cellOwner, ...(cellLine.fragmentOwners || [])],
+            fragmentOwners: [
+              tableRootOwner,
+              { ...cellOwner, y: tableTop + rowInset },
+              ...(shiftedCellOwners || []),
+            ],
             tableOwnerMeta,
           };
 

@@ -1,5 +1,6 @@
 import { getFontSize, measureTextWidth } from "../measure";
 import { selectionToRects } from "./selection";
+import { resolveEmptyLineWidth, resolveLineVisualBox } from "./geometry";
 import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
 import { getLinesInRange } from "../caret";
 import { resolveListMarker } from "lumenpage-render-engine";
@@ -365,8 +366,12 @@ export const buildDecorationDrawData = (
         const pageTop = item.pageIndex * pageSpan - scrollTop;
         const lineHeight = getLineHeight(line, layout);
 
-        const lineLeft = pageX + (line.x || 0);
-        const lineWidth = Math.max(1, Number(line.width) || 0);
+        const visualBox = resolveLineVisualBox(line, layout);
+        const lineLeft = pageX + visualBox.lineX;
+        const lineWidth = Math.max(
+          1,
+          visualBox.lineWidth || (isEmptyLine ? resolveEmptyLineWidth(line, layout) : 0)
+        );
         let left = lineLeft;
         let right = lineLeft + lineWidth;
         const marker = resolveListMarker(line, layout);
@@ -385,11 +390,8 @@ export const buildDecorationDrawData = (
           line?.blockType === "codeBlock" ||
           Number.isFinite(Number(line?.blockAttrs?.codeBlockPadding));
         if (isCodeBlock) {
-          const codePadding = Math.max(0, Number(line?.blockAttrs?.codeBlockPadding) || 0);
-          const codeLeft = lineLeft - codePadding;
-          const codeWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
-          left = Math.min(left, codeLeft);
-          right = Math.max(right, codeLeft + codeWidth);
+          left = Math.min(left, pageX + visualBox.outerX);
+          right = Math.max(right, pageX + visualBox.outerX + visualBox.outerWidth);
         }
         const top = pageTop + line.y;
         const bottom = top + lineHeight;

@@ -1,5 +1,6 @@
 import { breakLines } from "../lineBreaker";
 import { docToRuns, textblockToRuns } from "../textRuns";
+import { shiftFragmentOwners } from "./fragmentOwners";
 
 type ListMode = "bullet" | "ordered" | "task";
 
@@ -213,6 +214,9 @@ const layoutLeafInList = ({
       };
     }
     applyContainerStack(lineCopy, context.containerStack);
+    if (Array.isArray(lineCopy.fragmentOwners) && lineCopy.fragmentOwners.length > 0) {
+      lineCopy.fragmentOwners = shiftFragmentOwners(lineCopy.fragmentOwners, 0, baseY);
+    }
     return lineCopy;
   });
 
@@ -371,6 +375,7 @@ const createListItemOwner = ({
   index,
   offset,
   contentX,
+  contentWidth,
   markerGap,
   markerWidth,
   markerFont,
@@ -384,6 +389,7 @@ const createListItemOwner = ({
   role: "list-item",
   nodeId: node?.attrs?.id ?? null,
   x: contentX,
+  width: contentWidth,
   anchorOffset: offset,
   fixedBounds: false,
   meta: {
@@ -505,6 +511,7 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
     const markerWidth = settings.measureTextWidth ? settings.measureTextWidth(markerFont, markerText) : 0;
     const contentIndent = listIndent + markerGap + markerWidth;
     const contentX = settings.margin.left + contentIndent;
+    const contentWidth = Math.max(0, settings.pageWidth - contentX - settings.margin.right);
     const listMeta = createListOwnerMeta({
       mode,
       node,
@@ -541,6 +548,7 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
         index,
         offset,
         contentX,
+        contentWidth,
         markerGap,
         markerWidth,
         markerFont,
@@ -1001,34 +1009,11 @@ const createListRenderer = (mode: ListMode) => ({
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, mode);
   },
-  renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-    const hasListFragmentOwner = Array.isArray(line?.fragmentOwners)
-      ? line.fragmentOwners.some((owner) => owner?.role === "list-item")
-      : false;
-    if (!hasListFragmentOwner) {
-      renderListMarker({ ctx, line, pageX, pageTop, layout });
-    }
+  renderLine({ defaultRender, line, pageX, pageTop, layout }) {
     defaultRender(line, pageX, pageTop, layout);
   },
   renderFragment({ ctx, fragment, pageX, pageTop, layout }) {
-    if (fragment?.role !== "list-item" || fragment?.meta?.anchorVisible !== true) {
-      return;
-    }
-    const marker = {
-      text: fragment.meta?.markerText,
-      width: fragment.meta?.markerWidth,
-      gap: fragment.meta?.markerGap,
-      font: fragment.meta?.markerFont || layout.font,
-      color: fragment.meta?.markerColor || "#111827",
-    };
-    drawResolvedListMarker({
-      ctx,
-      marker,
-      contentX: pageX + (Number(fragment.x) || 0),
-      lineY: pageTop + (Number(fragment.y) || 0),
-      lineHeight: Number(fragment.meta?.lineHeight) || layout.lineHeight,
-      fallbackFont: layout.font,
-    });
+    return;
   },
 });
 

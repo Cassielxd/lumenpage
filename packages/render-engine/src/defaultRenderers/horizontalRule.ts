@@ -58,8 +58,8 @@ export const horizontalRuleRenderer = {
     };
   },
   renderLine({ ctx, line, pageX, pageTop, layout }: any) {
-    const width = layout.pageWidth - layout.margin.left - layout.margin.right;
-    const x = pageX + layout.margin.left;
+    const width = Math.max(0, Number.isFinite(line?.width) ? Number(line.width) : 0);
+    const x = pageX + (Number.isFinite(line?.x) ? Number(line.x) : layout.margin.left);
     const height = line.lineHeight ?? layout.lineHeight;
     const y = pageTop + line.y + height / 2;
     ctx.strokeStyle = "#d1d5db";

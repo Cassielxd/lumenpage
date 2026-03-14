@@ -1,5 +1,6 @@
 import { findLineForOffset, offsetAtX, getLinesInRange } from "../caret";
 import { measureTextWidth } from "../measure";
+import { resolveEmptyLineWidth, resolveLineVisualBox } from "./geometry";
 
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
@@ -354,13 +355,12 @@ export function selectionToRects(
 
       const isImage = isImageLine(line);
 
-      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
       const xStart = isImage ? 0 : offsetToX(line, start, layout);
       let xEnd = isImage
         ? Math.max(xStart, line.width || 0)
         : offsetToX(line, end, layout);
       if (isEmptyLine) {
-        xEnd = Math.max(xEnd, line.width || availableWidth);
+        xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout));
       }
 
       const width = Math.max(0, xEnd - xStart);
@@ -407,13 +407,12 @@ export function selectionToRects(
 
       const isImage = isImageLine(line);
 
-      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
       const xStart = isImage ? 0 : offsetToX(line, start, layout);
       let xEnd = isImage
         ? Math.max(xStart, line.width || 0)
         : offsetToX(line, end, layout);
       if (isEmptyLine) {
-        xEnd = Math.max(xEnd, line.width || availableWidth);
+        xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout));
       }
 
       const width = Math.max(0, xEnd - xStart);
@@ -463,13 +462,12 @@ export function selectionToRects(
 
       const isImage = isImageLine(line);
 
-      const availableWidth = layout.pageWidth - layout.margin.left - layout.margin.right;
       const xStart = isImage ? 0 : offsetToX(line, start, layout);
       let xEnd = isImage
         ? Math.max(xStart, line.width || 0)
         : offsetToX(line, end, layout);
       if (isEmptyLine) {
-        xEnd = Math.max(xEnd, line.width || availableWidth);
+        xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout));
       }
 
       const width = Math.max(0, xEnd - xStart);
@@ -820,7 +818,8 @@ export function activeBlockToRects(
         return;
       }
 
-      const width = Math.max(0, line.width || 0);
+      const visualBox = resolveLineVisualBox(line, layout);
+      const width = Math.max(0, visualBox.outerWidth || 0);
       const minWidth = blockType === "paragraph" || blockType === "heading" ? 1 : 0;
       const resolvedWidth = Math.max(width, minWidth);
 
@@ -829,7 +828,7 @@ export function activeBlockToRects(
       }
 
       rects.push({
-        x: pageX + (line.x || 0),
+        x: pageX + visualBox.outerX,
 
         y: item.pageIndex * pageSpan - scrollTop + line.y,
 
@@ -862,7 +861,8 @@ export function activeBlockToRects(
         continue;
       }
 
-      const width = Math.max(0, line.width || 0);
+      const visualBox = resolveLineVisualBox(line, layout);
+      const width = Math.max(0, visualBox.outerWidth || 0);
       const minWidth = blockType === "paragraph" || blockType === "heading" ? 1 : 0;
       const resolvedWidth = Math.max(width, minWidth);
 
@@ -871,7 +871,7 @@ export function activeBlockToRects(
       }
 
       rects.push({
-        x: pageX + (line.x || 0),
+        x: pageX + visualBox.outerX,
 
         y: pageTop + line.y,
 

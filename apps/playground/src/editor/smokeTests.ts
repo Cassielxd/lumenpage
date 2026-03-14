@@ -960,6 +960,16 @@ export const runListNestedTableSmoke = async (
     }
     return false;
   };
+  const hasLineLevelListMarker = (lines: any[]) =>
+    Array.isArray(lines)
+      ? lines.some((line: any) => {
+          if (line?.listMarker?.text) {
+            return true;
+          }
+          const attrs = line?.blockAttrs || {};
+          return !!attrs.listOwnerMarkerText || !!attrs.markerText;
+        })
+      : false;
 
   try {
     applied = setJSON(nestedDoc) === true;
@@ -981,7 +991,8 @@ export const runListNestedTableSmoke = async (
       nestedTablePages.push(pageIndex + 1);
       nestedTableLineCount += pageLines.length;
       if (nestedTablePages.length === 1) {
-        firstTableLineHasMarker = hasVisibleListMarker(pageFragments);
+        firstTableLineHasMarker =
+          hasVisibleListMarker(pageFragments) || hasLineLevelListMarker(pageLines);
       }
       if (!pageLines.some((line: any) => !!(line?.tableOwnerMeta || line?.tableMeta))) {
         issues.push({

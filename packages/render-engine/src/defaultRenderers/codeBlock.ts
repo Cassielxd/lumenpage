@@ -69,6 +69,8 @@ export const codeBlockRenderer = {
       codeBlockPadding: metrics.padding,
       codeBlockBackground: metrics.background,
       codeBlockBorderColor: metrics.borderColor,
+      codeBlockOuterX: settings.margin.left,
+      codeBlockOuterWidth: settings.pageWidth - settings.margin.left - settings.margin.right,
     };
     const runsResult = textblockToRuns(
       node,
@@ -115,8 +117,17 @@ export const codeBlockRenderer = {
   renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }: any) {
     const background = line.blockAttrs?.codeBlockBackground ?? "#f3f4f6";
     const borderColor = line.blockAttrs?.codeBlockBorderColor ?? "#e5e7eb";
-    const width = layout.pageWidth - layout.margin.left - layout.margin.right;
-    const x = pageX + layout.margin.left;
+    const width = Math.max(
+      0,
+      Number.isFinite(line.blockAttrs?.codeBlockOuterWidth)
+        ? Number(line.blockAttrs.codeBlockOuterWidth)
+        : layout.pageWidth - layout.margin.left - layout.margin.right
+    );
+    const x =
+      pageX +
+      (Number.isFinite(line.blockAttrs?.codeBlockOuterX)
+        ? Number(line.blockAttrs.codeBlockOuterX)
+        : layout.margin.left);
     const y = pageTop + line.y;
     const height = line.lineHeight ?? layout.lineHeight;
     const lineIndex = Number.isFinite(line.blockAttrs?.codeBlockLineIndex)

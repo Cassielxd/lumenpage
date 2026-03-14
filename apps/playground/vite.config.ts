@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => {
           find: /^orderedmap$/,
           replacement: path.resolve(
             workspaceRoot,
-            "packages/lp/model/node_modules/.ignored/orderedmap/dist/index.js"
+            "node_modules/orderedmap/dist/index.js"
           ),
         },
         {
