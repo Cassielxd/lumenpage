@@ -1,5 +1,7 @@
 import { buildSplitResultWithFragments } from "./splitResult";
 
+const getTableSliceMeta = (line) => line?.tableOwnerMeta || line?.tableMeta || null;
+
 const sumHeights = (rows, count?: number) => {
   const limit = Math.min(count ?? rows.length, rows.length);
   let total = 0;
@@ -27,8 +29,8 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
   if (fullRowHeights.length === 0 && Array.isArray(blockAttrs?.rowHeights)) {
     fullRowHeights = blockAttrs.rowHeights;
   }
-  if (fullRowHeights.length === 0 && Array.isArray(lines[0]?.tableMeta?.rowHeights)) {
-    fullRowHeights = lines[0].tableMeta.rowHeights;
+  if (fullRowHeights.length === 0 && Array.isArray(getTableSliceMeta(lines[0])?.rowHeights)) {
+    fullRowHeights = getTableSliceMeta(lines[0]).rowHeights;
   }
 
   if (fullRowHeights.length === 0) {
@@ -55,9 +57,9 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
     resolvedRowOffset > 0 ? fullRowHeights.slice(resolvedRowOffset) : fullRowHeights;
   const baseOffsetY = resolvedRowOffset > 0 ? sumHeights(fullRowHeights, resolvedRowOffset) : 0;
 
-  const sourceMetaLine = lines.find((line) => Array.isArray(line?.tableMeta?.cells));
-  const sourceCells = Array.isArray(sourceMetaLine?.tableMeta?.cells)
-    ? sourceMetaLine.tableMeta.cells
+  const sourceMetaLine = lines.find((line) => Array.isArray(getTableSliceMeta(line)?.cells));
+  const sourceCells = Array.isArray(getTableSliceMeta(sourceMetaLine)?.cells)
+    ? getTableSliceMeta(sourceMetaLine).cells
     : [];
 
   // Remap source lines into current slice coordinate space.
@@ -71,7 +73,7 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
     rowSplitFlag = false
   ) =>
     sourceLines.map((line) => {
-      const { tableMeta: _tableMeta, ...lineCopy } = line;
+      const { tableOwnerMeta: _tableOwnerMeta, ...lineCopy } = line;
       const attrs = lineCopy.blockAttrs ? { ...lineCopy.blockAttrs } : {};
       const originalRowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : 0;
 
@@ -146,7 +148,7 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
     }
 
     const tableHeight = rowHeights.reduce((sum, h) => sum + h, 0);
-    sliceLines[0].tableMeta = {
+    const tableOwnerMeta = {
       rows: rowHeights.length,
       cols,
       rowHeights,
@@ -162,6 +164,32 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
       rowSplit: !!rowSplit,
       sliceBreak: !!sliceBreak,
     };
+    for (const line of sliceLines) {
+      line.tableOwnerMeta = tableOwnerMeta;
+      if (Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0) {
+        let updatedRootOwner = false;
+        line.fragmentOwners = line.fragmentOwners.map((owner) => {
+          if (!owner || typeof owner !== "object") {
+            return owner;
+          }
+          const nextOwner = {
+            ...owner,
+            meta:
+              owner?.meta && typeof owner.meta === "object"
+                ? { ...owner.meta }
+                : owner?.meta ?? null,
+          };
+          if (!updatedRootOwner && nextOwner.role === "table") {
+            nextOwner.meta = {
+              ...(nextOwner.meta || {}),
+              ...tableOwnerMeta,
+            };
+            updatedRootOwner = true;
+          }
+          return nextOwner;
+        });
+      }
+    }
   };
 
   // Compute visible rows in current page height.
@@ -181,13 +209,13 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
     (line) =>
       line?.blockAttrs?.sliceFromPrev ||
       line?.blockAttrs?.tableSliceFromPrev ||
-      line?.tableMeta?.continuedFromPrev
+      getTableSliceMeta(line)?.continuedFromPrev
   );
   const inheritedRowSplit = lines.some(
     (line) =>
       line?.blockAttrs?.sliceRowSplit ||
       line?.blockAttrs?.tableRowSplit ||
-      line?.tableMeta?.rowSplit
+      getTableSliceMeta(line)?.rowSplit
   );
 
   if (visibleRowCount === 0) {
@@ -394,8 +422,8 @@ export const splitTableBlock = ({ lines, length, availableHeight, blockAttrs, se
         line.blockAttrs.tableSliceHasNext = false;
       }
     }
-    if (visibleLines[0]?.tableMeta) {
-      visibleLines[0].tableMeta.continuesAfter = false;
+    if (visibleLines[0]?.tableOwnerMeta) {
+      visibleLines[0].tableOwnerMeta.continuesAfter = false;
     }
   }
 

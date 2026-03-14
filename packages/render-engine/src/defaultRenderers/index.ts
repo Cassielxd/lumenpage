@@ -1,23 +1,71 @@
-export { blockquoteRenderer } from "./blockquote";
-export { codeBlockRenderer } from "./codeBlock";
-export { headingRenderer } from "./heading";
-export { horizontalRuleRenderer } from "./horizontalRule";
-export { imageRenderer } from "./image";
-export { paragraphRenderer } from "./paragraph";
-export { tableRenderer } from "./table";
-export { videoRenderer } from "./video";
-export { bulletListRenderer, orderedListRenderer, taskListRenderer } from "./list";
+import { blockquoteRenderer } from "./blockquote";
+import { codeBlockRenderer } from "./codeBlock";
+import { headingRenderer } from "./heading";
+import { horizontalRuleRenderer } from "./horizontalRule";
+import { imageRenderer } from "./image";
+import { paragraphRenderer } from "./paragraph";
+import { tableRenderer } from "./table";
+import { videoRenderer } from "./video";
+import {
+  bulletListRenderer,
+  orderedListRenderer,
+  renderListMarker,
+  resolveListMarker,
+  taskListRenderer,
+} from "./list";
 
-export { blockquoteRenderer as defaultBlockquoteRenderer } from "./blockquote";
-export { codeBlockRenderer as defaultCodeBlockRenderer } from "./codeBlock";
-export { headingRenderer as defaultHeadingRenderer } from "./heading";
-export { horizontalRuleRenderer as defaultHorizontalRuleRenderer } from "./horizontalRule";
-export { imageRenderer as defaultImageRenderer } from "./image";
-export { paragraphRenderer as defaultParagraphRenderer } from "./paragraph";
-export { tableRenderer as defaultTableRenderer } from "./table";
-export { videoRenderer as defaultVideoRenderer } from "./video";
+export { blockquoteRenderer };
+export { codeBlockRenderer };
+export { headingRenderer };
+export { horizontalRuleRenderer };
+export { imageRenderer };
+export { paragraphRenderer };
+export { tableRenderer };
+export { videoRenderer };
+export {
+  bulletListRenderer,
+  orderedListRenderer,
+  renderListMarker,
+  resolveListMarker,
+  taskListRenderer,
+};
+
+export { blockquoteRenderer as defaultBlockquoteRenderer };
+export { codeBlockRenderer as defaultCodeBlockRenderer };
+export { headingRenderer as defaultHeadingRenderer };
+export { horizontalRuleRenderer as defaultHorizontalRuleRenderer };
+export { imageRenderer as defaultImageRenderer };
+export { paragraphRenderer as defaultParagraphRenderer };
+export { tableRenderer as defaultTableRenderer };
+export { videoRenderer as defaultVideoRenderer };
 export {
   bulletListRenderer as defaultBulletListRenderer,
   orderedListRenderer as defaultOrderedListRenderer,
+  renderListMarker as defaultRenderListMarker,
+  resolveListMarker as defaultResolveListMarker,
   taskListRenderer as defaultTaskListRenderer,
-} from "./list";
+};
+
+const defaultNodeRenderers: Record<string, any> = {
+  paragraph: paragraphRenderer,
+  heading: headingRenderer,
+  blockquote: blockquoteRenderer,
+  codeBlock: codeBlockRenderer,
+  horizontalRule: horizontalRuleRenderer,
+  bulletList: bulletListRenderer,
+  orderedList: orderedListRenderer,
+  taskList: taskListRenderer,
+  image: imageRenderer,
+  video: videoRenderer,
+  table: tableRenderer,
+};
+
+export const getDefaultNodeRenderer = (nodeName?: string | null) => {
+  if (!nodeName) {
+    return null;
+  }
+
+  return defaultNodeRenderers[nodeName] || null;
+};
+
+export { defaultNodeRenderers };

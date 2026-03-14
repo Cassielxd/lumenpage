@@ -7,11 +7,13 @@ import { getVisiblePages } from "./virtualization";
 
 import { measureTextWidth, getFontSize } from "./measure";
 import { type DecorationDrawData } from "./render/decorations";
+import { buildPageFragmentsFromLines } from "lumenpage-layout-engine";
 import {
   drawRunBackground,
   drawRunMarkInstructions,
   drawRunStrike,
   drawRunUnderline,
+  renderListMarker,
   drawWavyLine as drawMarkWavyLine,
 } from "lumenpage-render-engine";
 
@@ -268,11 +270,18 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
     // 以 blockStart / blockId 为 key 聚合同一张表格在该页的切片信息
     const groups = new Map();
     for (const line of page.lines) {
-      if (line?.blockType !== "table") {
+      const attrs = line?.blockAttrs || {};
+      const tableMeta = line?.tableOwnerMeta || line?.tableMeta;
+      if (attrs?.sliceGroup !== "table" && !tableMeta) {
         continue;
       }
+      const tableOwnerKey = Array.isArray(line?.fragmentOwners)
+        ? line.fragmentOwners.find((owner) => owner?.role === "table")?.key
+        : null;
       const key =
-        line.blockId ?? (Number.isFinite(line.blockStart) ? line.blockStart : (line.start ?? 0));
+        tableOwnerKey ??
+        line.blockId ??
+        (Number.isFinite(line.blockStart) ? line.blockStart : (line.start ?? 0));
       if (!groups.has(key)) {
         groups.set(key, {
           blockStart: Number.isFinite(line.blockStart)
@@ -289,7 +298,6 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
         });
       }
       const entry = groups.get(key);
-      const attrs = line.blockAttrs || {};
       const rowIndex = Number.isFinite(attrs.rowIndex) ? attrs.rowIndex : 0;
       entry.minRow = Math.min(entry.minRow, rowIndex);
       entry.maxRow = Math.max(entry.maxRow, rowIndex);
@@ -303,14 +311,14 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
       if (attrs.tableSliceHasNext) {
         entry.sliceHasNext = true;
       }
-      if (line.tableMeta?.continuedFromPrev) {
+      if (tableMeta?.continuedFromPrev) {
         entry.sliceFromPrev = true;
       }
-      if (line.tableMeta?.continuesAfter) {
+      if (tableMeta?.continuesAfter) {
         entry.sliceHasNext = true;
       }
-      if (Number.isFinite(line.tableMeta?.tableHeight)) {
-        entry.tableHeight = line.tableMeta.tableHeight;
+      if (Number.isFinite(tableMeta?.tableHeight)) {
+        entry.tableHeight = tableMeta.tableHeight;
       }
     }
     if (groups.size === 0) {
@@ -463,7 +471,9 @@ export class Renderer {
       hash = hashString(hash, line.text || "");
       hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.tableOwnerMeta || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
+      hash = hashObjectLike(hash, line.fragmentOwners || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.imageMeta || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.videoMeta || null, objectSignatureCache);
@@ -762,6 +772,48 @@ export class Renderer {
     const defaultRender = (line, pageX, pageTop, layoutRef) =>
       this.drawLine(ctx, line, pageX, pageTop, layoutRef);
 
+    const renderFragmentTree = (fragment) => {
+      if (!fragment) {
+        return;
+      }
+      const fragmentRenderer = fragment?.type ? this.registry?.get(fragment.type) : null;
+      if (fragmentRenderer?.renderFragment) {
+        fragmentRenderer.renderFragment({
+          ctx,
+          fragment,
+          pageTop: 0,
+          pageX: 0,
+          layout,
+          defaultRender,
+        });
+      }
+      if (Array.isArray(fragment?.children)) {
+        for (const child of fragment.children) {
+          renderFragmentTree(child);
+        }
+      }
+    };
+
+    const pageFragments =
+      Array.isArray(page?.fragments) && page.fragments.length > 0
+        ? page.fragments
+        : Array.isArray(page?.lines) &&
+            page.lines.some(
+              (line) =>
+                Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0
+            )
+          ? buildPageFragmentsFromLines(page.lines)
+          : [];
+    if (!Array.isArray(page?.fragments) && pageFragments.length > 0 && page) {
+      page.fragments = pageFragments;
+    }
+
+    if (pageFragments.length > 0) {
+      for (const fragment of pageFragments) {
+        renderFragmentTree(fragment);
+      }
+    }
+
     for (const line of page.lines) {
       const containers = line.containers;
 
@@ -781,6 +833,22 @@ export class Renderer {
           }
         }
       }
+
+      if (
+        line?.listMarker ||
+        line?.blockAttrs?.listOwnerMarkerText ||
+        line?.blockAttrs?.markerText
+      ) {
+        renderListMarker({
+          ctx,
+          line,
+          pageTop: 0,
+          pageX: 0,
+          layout,
+        });
+      }
+
+      let handled = false;
       const nodeView = this.nodeViewProvider?.(line);
       if (nodeView?.render) {
         nodeView.render({
@@ -791,27 +859,29 @@ export class Renderer {
           layout,
           defaultRender,
         });
-        continue;
+        handled = true;
       }
 
-      const renderer = this.registry?.get(line.blockType);
+      if (!handled) {
+        const renderer = this.registry?.get(line.blockType);
 
-      if (renderer?.renderLine) {
-        renderer.renderLine({
-          ctx,
+        if (renderer?.renderLine) {
+          renderer.renderLine({
+            ctx,
 
-          line,
+            line,
 
-          pageTop: 0,
+            pageTop: 0,
 
-          pageX: 0,
+            pageX: 0,
 
-          layout,
+            layout,
 
-          defaultRender,
-        });
-      } else {
-        defaultRender(line, 0, 0, layout);
+            defaultRender,
+          });
+        } else {
+          defaultRender(line, 0, 0, layout);
+        }
       }
     }
 

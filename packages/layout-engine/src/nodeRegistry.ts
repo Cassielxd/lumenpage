@@ -1,5 +1,7 @@
 ﻿export type {
   ContainerStyle,
+  LayoutFragment,
+  LayoutFragmentOwner,
   MarkRenderAdapter,
   NodeLayoutResult,
   NodeLayoutSplitFragment,

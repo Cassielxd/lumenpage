@@ -11,25 +11,37 @@ export const readSliceContinuation = (
   fromPrev:
     fallback.fromPrev === true ||
     sliceLines.some(
-      (line) =>
-        line?.blockAttrs?.sliceFromPrev ||
-        line?.blockAttrs?.tableSliceFromPrev ||
-        line?.tableMeta?.continuedFromPrev
+      (line) => {
+        const tableMeta = line?.tableOwnerMeta || line?.tableMeta;
+        return (
+          line?.blockAttrs?.sliceFromPrev ||
+          line?.blockAttrs?.tableSliceFromPrev ||
+          tableMeta?.continuedFromPrev
+        );
+      }
     ),
   hasNext:
     fallback.hasNext === true ||
     sliceLines.some(
-      (line) =>
-        line?.blockAttrs?.sliceHasNext ||
-        line?.blockAttrs?.tableSliceHasNext ||
-        line?.tableMeta?.continuesAfter
+      (line) => {
+        const tableMeta = line?.tableOwnerMeta || line?.tableMeta;
+        return (
+          line?.blockAttrs?.sliceHasNext ||
+          line?.blockAttrs?.tableSliceHasNext ||
+          tableMeta?.continuesAfter
+        );
+      }
     ),
   rowSplit:
     fallback.rowSplit === true ||
     sliceLines.some(
-      (line) =>
-        line?.blockAttrs?.sliceRowSplit ||
-        line?.blockAttrs?.tableRowSplit ||
-        line?.tableMeta?.rowSplit
+      (line) => {
+        const tableMeta = line?.tableOwnerMeta || line?.tableMeta;
+        return (
+          line?.blockAttrs?.sliceRowSplit ||
+          line?.blockAttrs?.tableRowSplit ||
+          tableMeta?.rowSplit
+        );
+      }
     ),
 });

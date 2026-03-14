@@ -2,6 +2,7 @@ import { getFontSize, measureTextWidth } from "../measure";
 import { selectionToRects } from "./selection";
 import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
 import { getLinesInRange } from "../caret";
+import { resolveListMarker } from "lumenpage-render-engine";
 
 // Cache for decoration draw data to avoid recomputing on every frame
 const decorationCache = new Map<
@@ -220,25 +221,6 @@ const collectTextSegments = ({
   }
 
   return segments;
-};
-
-const resolveListMarker = (line: any, layout: any) => {
-  if (line?.listMarker && Number.isFinite(line.listMarker.width) && line.listMarker.gap != null) {
-    return line.listMarker;
-  }
-  if (
-    line?.blockAttrs?.markerText &&
-    Number.isFinite(line?.blockAttrs?.markerWidth) &&
-    line?.blockAttrs?.markerGap != null
-  ) {
-    return {
-      text: line.blockAttrs.markerText,
-      width: line.blockAttrs.markerWidth,
-      gap: line.blockAttrs.markerGap,
-      font: line.blockAttrs.markerFont || layout.font,
-    };
-  }
-  return null;
 };
 
 const resolveContainerVisualLeft = (line: any, pageX: number, layout: any) => {

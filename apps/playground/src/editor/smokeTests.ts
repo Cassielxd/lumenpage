@@ -497,6 +497,19 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
     nextStart: number | null;
     nextY: number;
   }> = [];
+  const getOrderedListKey = (line: any) => {
+    const attrs = line?.blockAttrs || {};
+    const listType = attrs.listOwnerType ?? attrs.listType ?? null;
+    if (listType !== "ordered") {
+      return null;
+    }
+    const listBlockId = attrs.listOwnerBlockId ?? attrs.listBlockId ?? null;
+    const itemStart =
+      attrs.listOwnerItemStart ??
+      attrs.listItemStart ??
+      (Number.isFinite(line?.blockStart) ? Number(line.blockStart) : null);
+    return `${listType}:${listBlockId ?? "unknown"}:${itemStart ?? "na"}`;
+  };
 
   for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
     const page = layout.pages[pageIndex];
@@ -504,7 +517,8 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
     let i = 0;
     while (i < lines.length) {
       const line = lines[i];
-      if (line?.blockType !== "orderedList") {
+      const listKey = getOrderedListKey(line);
+      if (!listKey) {
         i += 1;
         continue;
       }
@@ -513,11 +527,7 @@ export const runOrderedListPaginationSmoke = (editorView: any, debugPanelEl: HTM
       let blockBottom = Number.NEGATIVE_INFINITY;
       while (j < lines.length) {
         const current = lines[j];
-        const sameBlock =
-          current?.blockType === "orderedList" &&
-          ((Number.isFinite(current.blockStart) && current.blockStart === blockStart) ||
-            (!Number.isFinite(current.blockStart) && blockStart === null));
-        if (!sameBlock) {
+        if (getOrderedListKey(current) !== listKey) {
           break;
         }
         const lineHeight = Number.isFinite(current.lineHeight)
@@ -842,6 +852,183 @@ export const runPaginationRegressionSmoke = async (
     restoreSettle?.timedOut !== true &&
     layoutInspection?.ok === true;
   const text = `[pagination-regression-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify(summary)}`;
+  if (ok) {
+    console.info(text);
+  } else {
+    console.error(text);
+  }
+  appendDebugLine(debugPanelEl, text);
+};
+
+const buildListNestedTableDoc = (rowCount = 32, colCount = 3) => ({
+  type: "doc",
+  content: [
+    {
+      type: "orderedList",
+      attrs: { order: 1 },
+      content: [
+        {
+          type: "listItem",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "ordered item with nested table" }],
+            },
+            {
+              type: "table",
+              content: Array.from({ length: Math.max(1, rowCount) }, (_row, rowIndex) => ({
+                type: "tableRow",
+                content: Array.from({ length: Math.max(1, colCount) }, (_cell, colIndex) => ({
+                  type: "tableCell",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        {
+                          type: "text",
+                          text: `r${rowIndex + 1} c${colIndex + 1}`,
+                        },
+                      ],
+                    },
+                  ],
+                })),
+              })),
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: "after nested list table" }],
+    },
+  ],
+});
+
+export const runListNestedTableSmoke = async (
+  editorView: any,
+  debugPanelEl: HTMLElement | null
+) => {
+  const getJSON = editorView?.getJSON?.bind(editorView);
+  const setJSON = editorView?.setJSON?.bind(editorView);
+  if (typeof getJSON !== "function" || typeof setJSON !== "function") {
+    const text = "[list-table-smoke] skipped: getJSON/setJSON unavailable.";
+    console.warn(text);
+    appendDebugLine(debugPanelEl, text);
+    return;
+  }
+
+  const original = getJSON();
+  const nestedDoc = buildListNestedTableDoc();
+  let applied = false;
+  let restored = false;
+  let settle: any = null;
+  let restoreSettle: any = null;
+  let nestedTablePages: number[] = [];
+  let nestedTableLineCount = 0;
+  let firstTableLineHasMarker = false;
+  const issues: Array<Record<string, unknown>> = [];
+  const hasFragmentRole = (fragments: any[], role: string) => {
+    const stack = Array.isArray(fragments) ? [...fragments] : [];
+    while (stack.length > 0) {
+      const fragment = stack.pop();
+      if (!fragment) {
+        continue;
+      }
+      if (fragment.role === role) {
+        return true;
+      }
+      if (Array.isArray(fragment.children) && fragment.children.length > 0) {
+        stack.push(...fragment.children);
+      }
+    }
+    return false;
+  };
+  const hasVisibleListMarker = (fragments: any[]) => {
+    const stack = Array.isArray(fragments) ? [...fragments] : [];
+    while (stack.length > 0) {
+      const fragment = stack.pop();
+      if (!fragment) {
+        continue;
+      }
+      if (fragment.role === "list-item" && fragment?.meta?.anchorVisible === true) {
+        return true;
+      }
+      if (Array.isArray(fragment.children) && fragment.children.length > 0) {
+        stack.push(...fragment.children);
+      }
+    }
+    return false;
+  };
+
+  try {
+    applied = setJSON(nestedDoc) === true;
+    settle = await waitForLayoutIdle(editorView);
+    const layout = editorView?._internals?.getLayout?.();
+    const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+      const page = pages[pageIndex];
+      const pageFragments = Array.isArray(page?.fragments) ? page.fragments : [];
+      const pageLines = (page?.lines || []).filter((line: any) => {
+        const attrs = line?.blockAttrs || {};
+        const listType = attrs.listOwnerType ?? attrs.listType ?? null;
+        return listType === "ordered" && (attrs?.sliceGroup === "table" || !!line?.tableOwnerMeta);
+      });
+      if (pageLines.length === 0) {
+        continue;
+      }
+      nestedTablePages.push(pageIndex + 1);
+      nestedTableLineCount += pageLines.length;
+      if (nestedTablePages.length === 1) {
+        firstTableLineHasMarker = hasVisibleListMarker(pageFragments);
+      }
+      if (!pageLines.some((line: any) => !!(line?.tableOwnerMeta || line?.tableMeta))) {
+        issues.push({
+          page: pageIndex + 1,
+          reason: "table-owner-meta-missing",
+        });
+      }
+      if (!pageLines.some((line: any) => Number.isFinite(line?.blockAttrs?.rowIndex))) {
+        issues.push({
+          page: pageIndex + 1,
+          reason: "table-rowIndex-metadata-missing",
+        });
+      }
+      if (!hasFragmentRole(pageFragments, "table")) {
+        issues.push({
+          page: pageIndex + 1,
+          reason: "table-fragment-missing",
+        });
+      }
+    }
+  } finally {
+    if (original) {
+      restored = setJSON(original) === true;
+      restoreSettle = await waitForLayoutIdle(editorView);
+    }
+  }
+
+  const ok =
+    applied &&
+    restored &&
+    settle?.timedOut !== true &&
+    restoreSettle?.timedOut !== true &&
+    nestedTablePages.length > 1 &&
+    nestedTableLineCount > 0 &&
+    firstTableLineHasMarker &&
+    issues.length === 0;
+
+  const text = `[list-table-smoke] ${ok ? "PASS" : "FAIL"} ${JSON.stringify({
+    applied,
+    restored,
+    settle,
+    restoreSettle,
+    nestedTablePages,
+    nestedTableLineCount,
+    firstTableLineHasMarker,
+    issues,
+  })}`;
   if (ok) {
     console.info(text);
   } else {

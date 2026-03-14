@@ -72,6 +72,59 @@
 
 状态：已具备可回归能力，后续以“防回退”为主，不再大规模加特性。
 
+### P0.x 列表项嵌套复杂块补齐（待完善，2026-03-14）
+
+问题定义：
+
+- 当前 schema/model 与 ProseMirror 规则基本对齐：`listItem` 是 `block+`，`table` 属于 `block`，因此 `list item -> table` 在文档模型上是合法结构。
+- 当前 Canvas 渲染链路没有把这条能力补齐。`list` renderer 会先递归布局 item 子树，但在回写布局结果时把子块 line 统一改写为 list 自己的渲染身份，导致 nested `table`、`codeBlock` 等依赖自身 `renderLine` / `splitBlock` 的块无法完整工作。
+- 当前可见表现预计为：文本内容可能仍能出现，但表格边框、背景、跨页续接、选择几何与命中行为都不可靠；当单个 item 自身过高时，还会与 list 自己的分页切分逻辑冲突。
+
+根因拆解：
+
+1. 当前绘制派发是单一的 `line.blockType -> renderer.renderLine`，不支持“父级列表 marker + 子级真实 renderer”组合绘制。
+2. `list` 目前是“复合叶子块”，分页由 `splitListBlock` 独占；当单个 item 高度超过可用页高时，会退化为按 line 高度切分，而不是向 nested `table` 委托 `splitBlock`。
+3. `table`、`codeBlock`、`image`、`video` 等复杂块都依赖各自的渲染契约；一旦 child identity 被 list 吞掉，子块的专有渲染与分页能力就无法自然生效。
+
+实施原则：
+
+- 不调整 ProseMirror 层 schema 合法性；问题只在 `layout/render` 层补齐。
+- 先修复“child renderer identity 丢失”，再补“父子块分页委托”。
+- 尽量沉淀成可复用协议，不把 `view-canvas` 核心写死成只为 `list -> table` 服务的临时分支。
+
+阶段 A：先恢复渲染正确性
+
+1. list 布局结果保留 child line 的真实 `blockType`、`blockId` 与专有 meta；list 只附加 `listMarker`、`listMeta`、`ownerList*` 之类的父级信息，不再覆盖 child renderer identity。
+2. 渲染阶段增加父级列表装饰绘制能力，使一条 line 可以同时拥有“父级 marker”与“子级真实渲染”。
+3. 阶段 A 的目标是先让 `listItem -> table/codeBlock/image/video/blockquote` 在单页内显示正确，不在本阶段重写整套 list 分页协议。
+
+阶段 B：补齐分页与续接
+
+1. `splitListBlock` 先按 item 边界切分，再按 child block 边界切分。
+2. 当 item 内某个 child block 自身过高且声明了 `splitBlock` 时，list 向 child renderer 委托切分，再把 visible/overflow 结果重新包回 item 级 fragment。
+3. continuation 策略单独定义：第一页保留 marker；续页是否显示 continuation marker 作为明确规则而不是副作用。
+4. table 进入 list 后仍需保留自己的 row-level continuation、续接 meta 与选择几何能力。
+
+影响评估：
+
+- 阶段 A 对分页算法影响有限，主要改 line identity 与绘制顺序，风险中等偏低。
+- 阶段 B 会实质修改 `splitListBlock` 行为，对分页、页复用、增量布局与回归面都有影响，风险中等偏高。
+- 本项完成后需要补专门回归：`list -> table` 单页渲染、`list -> table` 跨页分页、`list -> codeBlock`、nested list、拖拽、命中、选区与光标移动。
+
+建议落地顺序：
+
+1. 先做阶段 A，只解决 child renderer identity 被 list 吞掉的问题。
+2. 阶段 A 稳定后，再做阶段 B，把 nested complex block 的 split 委托机制补齐。
+3. 阶段 B 收口后，再评估是否把相邻问题一并纳入，如 `tableCell -> image/video/custom block`。
+
+相关实现位置：
+
+- `packages/render-engine/src/defaultRenderers/list.ts`
+- `packages/render-engine/src/defaultRenderers/table.ts`
+- `packages/render-engine/src/defaultRenderers/codeBlock.ts`
+- `packages/view-canvas/src/view/renderer.ts`
+- `packages/view-canvas/src/defaultRenderers/tablePagination/split.ts`
+
 ## P1（产品化）
 
 1. 粘贴/导入/导出保真。

@@ -1,6 +1,8 @@
 ﻿export {
   NodeRendererRegistry,
   type ContainerStyle,
+  type LayoutFragment,
+  type LayoutFragmentOwner,
   type NodeLayoutResult,
   type NodeLayoutSplitFragment,
   type NodeRenderer,

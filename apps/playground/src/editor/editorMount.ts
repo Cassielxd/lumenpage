@@ -41,6 +41,7 @@ import {
   runImeActionSmoke,
   runLinkInteractionSmoke,
   runListBehaviorSmoke,
+  runListNestedTableSmoke,
   runLegacyConfigSmoke,
   runMappingSmoke,
   runMarkdownIoSmoke,
@@ -331,6 +332,10 @@ export const mountPlaygroundEditor = ({
       () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null)
     );
     enqueueSmoke(
+      flags.debugListSmoke,
+      () => runListNestedTableSmoke(view, tableDebugPanelElement || null)
+    );
+    enqueueSmoke(
       flags.debugListBehaviorSmoke,
       () => runListBehaviorSmoke(view, tableDebugPanelElement || null)
     );
@@ -425,6 +430,7 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runListNestedTableSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));
@@ -454,6 +460,7 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runListNestedTableSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));

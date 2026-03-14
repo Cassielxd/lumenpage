@@ -7,6 +7,7 @@ import { breakLines } from "./lineBreaker";
 import { cleanupUnslicedDuplicateSlices } from "./fragments/cleanup";
 import { validateNormalizedSplitFragments } from "./fragments/invariants";
 import { createAutoSplitResult, normalizeSplitFragments } from "./fragments/normalize";
+import { buildPageFragmentsFromLines } from "./pageFragments";
 
 const now = () =>
   typeof performance !== "undefined" && typeof performance.now === "function"
@@ -50,7 +51,7 @@ type LayoutFromDocOptions = {
 
 // 閸掓稑缂撻弬鎵畱閸掑棝銆夌€圭懓娅掗妴?
 function newPage(index) {
-  return { index, lines: [], rootIndexMin: null, rootIndexMax: null };
+  return { index, lines: [], fragments: [], rootIndexMin: null, rootIndexMax: null };
 }
 
 // 閺嶅洩顔囨径宥囨暏妞ょ绱濆〒鍙夌厠闂冭埖顔岄崣顖濈儲鏉╁洨顒烽崥宥堫吀缁犳ぜ鈧?
@@ -70,6 +71,18 @@ const markReusedPages = (pages) => {
 const cloneLine = (line) => ({
   ...line,
   runs: line.runs,
+  containers: Array.isArray(line?.containers)
+    ? line.containers.map((container) => ({ ...container }))
+    : line.containers,
+  fragmentOwners: Array.isArray(line?.fragmentOwners)
+    ? line.fragmentOwners.map((owner) => ({
+        ...owner,
+        meta:
+          owner?.meta && typeof owner.meta === "object"
+            ? { ...owner.meta }
+            : owner?.meta ?? null,
+      }))
+    : line.fragmentOwners,
 });
 
 // 鐠侊紕鐣荤悰宀€娈戝鏉戦挬娴ｅ秶鐤嗛敍鍫濐嚠姒?+ 妫ｆ牞顢戠紓鈺勭箻閿涘鈧?
@@ -115,6 +128,38 @@ const adjustLineOffsets = (line, blockStart) => {
   }
 
   return line;
+};
+
+const adjustFragmentOwners = (owners, blockStart, blockY) => {
+  if (!Array.isArray(owners) || owners.length === 0) {
+    return owners;
+  }
+  return owners.map((owner) => {
+    if (!owner || typeof owner !== "object") {
+      return owner;
+    }
+    const next = {
+      ...owner,
+      meta:
+        owner?.meta && typeof owner.meta === "object" ? { ...owner.meta } : owner?.meta ?? null,
+    };
+    if (typeof next.key === "string" && next.key.length > 0) {
+      next.key = `${next.key}@${blockStart}`;
+    }
+    if (Number.isFinite(next.start)) {
+      next.start = Number(next.start) + blockStart;
+    }
+    if (Number.isFinite(next.end)) {
+      next.end = Number(next.end) + blockStart;
+    }
+    if (Number.isFinite(next.anchorOffset)) {
+      next.anchorOffset = Number(next.anchorOffset) + blockStart;
+    }
+    if (Number.isFinite(next.y)) {
+      next.y = Number(next.y) + blockY;
+    }
+    return next;
+  });
 };
 
 // 閺嶈宓佺紓鈺勭箻閻㈢喐鍨氶弬鎵畱鐢啫鐪拋鍓х枂閵?
@@ -458,7 +503,9 @@ const getLineVisualSignature = (line, objectSignatureCache = new WeakMap()) => {
   hash = hashString(hash, line?.text || "");
   hash = hashNumber(hash, getObjectSignature(line?.blockAttrs || null, objectSignatureCache));
   hash = hashNumber(hash, getObjectSignature(line?.tableMeta || null, objectSignatureCache));
+  hash = hashNumber(hash, getObjectSignature(line?.tableOwnerMeta || null, objectSignatureCache));
   hash = hashNumber(hash, getObjectSignature(line?.containers || null, objectSignatureCache));
+  hash = hashNumber(hash, getObjectSignature(line?.fragmentOwners || null, objectSignatureCache));
   hash = hashNumber(hash, getObjectSignature(line?.listMarker || null, objectSignatureCache));
   hash = hashNumber(hash, getObjectSignature(line?.imageMeta || null, objectSignatureCache));
   hash = hashNumber(hash, getObjectSignature(line?.videoMeta || null, objectSignatureCache));
@@ -576,7 +623,9 @@ const getPageSignature = (page, offsetDelta = 0, includeAbsoluteOffsets = true) 
     hash = hashString(hash, line.text || "");
     hash = hashNumber(hash, getObjectSignature(line.blockAttrs || null, objectSignatureCache));
     hash = hashNumber(hash, getObjectSignature(line.tableMeta || null, objectSignatureCache));
+    hash = hashNumber(hash, getObjectSignature(line.tableOwnerMeta || null, objectSignatureCache));
     hash = hashNumber(hash, getObjectSignature(line.containers || null, objectSignatureCache));
+    hash = hashNumber(hash, getObjectSignature(line.fragmentOwners || null, objectSignatureCache));
     hash = hashNumber(hash, getObjectSignature(line.listMarker || null, objectSignatureCache));
     hash = hashNumber(hash, getObjectSignature(line.imageMeta || null, objectSignatureCache));
     hash = hashNumber(hash, getObjectSignature(line.videoMeta || null, objectSignatureCache));
@@ -718,7 +767,7 @@ const addRootRangeCandidates = (pageReuseIndex, targetRootIndex, radius, addCand
 // 閸掋倖鏌囨い鐢告桨閺勵垰鎯佺粵澶夌幆閿涘牐顢戦弫?+ 缁涙儳鎮曢敍澶堚偓?
 const readLineContinuationState = (line) => {
   const attrs = line?.blockAttrs || {};
-  const tableMeta = line?.tableMeta || {};
+  const tableMeta = line?.tableOwnerMeta || line?.tableMeta || {};
   return {
     fromPrev:
       !!attrs.sliceFromPrev || !!attrs.tableSliceFromPrev || !!tableMeta.continuedFromPrev,
@@ -1658,6 +1707,7 @@ export class LayoutPipeline {
     // 閹稿娓剁痪褑浠堥崚鍡涖€夐敍姘秼閸撳秹銆夋妯哄娑撳骸澧犳稉鈧い鐢垫祲閸氬本妞傞敍灞戒粻濮濄垹鍨庢い?
     const finalizePage = () => {
       if (page.lines.length > 0) {
+        page.fragments = buildPageFragmentsFromLines(page.lines);
         pages.push(page);
 
         if (
@@ -1959,12 +2009,15 @@ export class LayoutPipeline {
           lineCopy.rootIndex = context.rootIndex;
           adjustLineOffsets(lineCopy, blockStart);
           // 閸氬奔绔撮崚妤勩€冪捄銊┿€夌紒顓☆攽閺冭绱濇稉宥夊櫢婢跺秶绮崚?marker
-          if (
-            lineCopy.blockAttrs &&
-            (lineCopy.blockType === "bulletList" || lineCopy.blockType === "orderedList")
-          ) {
-            const itemIndex = lineCopy.blockAttrs.itemIndex;
-            const key = `${lineCopy.blockStart ?? "0"}:${itemIndex ?? "0"}`;
+          if (lineCopy.blockAttrs?.listOwnerType || lineCopy.blockAttrs?.listType) {
+            const itemIndex =
+              lineCopy.blockAttrs?.listOwnerItemIndex ?? lineCopy.blockAttrs?.itemIndex ?? null;
+            const itemStart =
+              lineCopy.blockAttrs?.listOwnerItemStart ??
+              lineCopy.blockAttrs?.listItemStart ??
+              lineCopy.blockStart ??
+              null;
+            const key = `${lineCopy.blockAttrs?.listOwnerType ?? lineCopy.blockAttrs?.listType ?? "list"}:${itemStart ?? "0"}:${itemIndex ?? "0"}`;
             if (!seenListItems.has(key)) {
               seenListItems.add(key);
             } else {
@@ -1987,6 +2040,13 @@ export class LayoutPipeline {
           }
           if (containerStack.length) {
             lineCopy.containers = containerStack;
+          }
+          if (Array.isArray(lineCopy.fragmentOwners) && lineCopy.fragmentOwners.length > 0) {
+            lineCopy.fragmentOwners = adjustFragmentOwners(
+              lineCopy.fragmentOwners,
+              blockStart,
+              cursorY
+            );
           }
           appendPageReuseSignature(page, lineCopy);
           page.lines.push(lineCopy);
@@ -2301,6 +2361,7 @@ export class LayoutPipeline {
 
     if (!shouldStop) {
       if (page.lines.length > 0) {
+        page.fragments = buildPageFragmentsFromLines(page.lines);
         pages.push(page);
       }
       // 閺傚洦銆傜紒鎾存将娴ｅ棙鐥呴張澶幮曢崣鎴濆瀻妞ゅ灚妞傞敍灞肩瘍鐏忔繆鐦崷銊︽汞妞や絻绻樼悰灞筋槻閻劌鍨介弬?
@@ -2338,6 +2399,9 @@ export class LayoutPipeline {
     }
     // 缁夊娅庣粚娲€夐敍鍫濆讲閼崇晫鏁遍崚鍡涖€夐崚鍥ㄥ床閹存牕娼＄粔璇插З瀵洖鍙嗛敍?
     pages = pages.filter((pg) => pg?.lines?.length > 0);
+    for (const currentPage of pages) {
+      currentPage.fragments = buildPageFragmentsFromLines(currentPage.lines);
+    }
     // 鐠侊紕鐣婚幀濠氱彯鎼达妇鏁ゆ禍搴㈢泊閸斻劊鈧?
     const totalHeight = pages.length * pageHeight + Math.max(0, pages.length - 1) * pageGap;
 
@@ -2467,6 +2531,7 @@ export class LayoutPipeline {
     }
 
     if (page.lines.length > 0) {
+      page.fragments = buildPageFragmentsFromLines(page.lines);
       pages.push(page);
     }
     // 鐠侊紕鐣婚幀濠氱彯鎼达妇鏁ゆ禍搴㈢泊閸斻劊鈧?

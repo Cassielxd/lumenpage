@@ -200,6 +200,12 @@ const layoutLeafInList = ({
       lineCopy.x = computeLineX(lineCopy, blockSettings);
     }
     const indentOffset = blockSettings.margin.left - settings.margin.left;
+    if (lineCopy.tableOwnerMeta && Number.isFinite(indentOffset)) {
+      lineCopy.tableOwnerMeta = {
+        ...lineCopy.tableOwnerMeta,
+        tableXOffset: (lineCopy.tableOwnerMeta.tableXOffset ?? 0) + indentOffset,
+      };
+    }
     if (lineCopy.tableMeta && Number.isFinite(indentOffset)) {
       lineCopy.tableMeta = {
         ...lineCopy.tableMeta,
@@ -305,6 +311,164 @@ const getTaskMarkerText = (item) => (item?.attrs?.checked === true ? "\u2611" : 
 
 const getExpectedListItemType = (mode: ListMode) => (mode === "task" ? "taskItem" : "listItem");
 
+const getNodeFragmentKey = (node, fallbackPrefix: string) => {
+  if (node?.attrs?.id) {
+    return `${fallbackPrefix}:${node.attrs.id}`;
+  }
+  if (typeof node?.hashCode === "function") {
+    const hash = node.hashCode();
+    if (hash != null) {
+      return `${fallbackPrefix}:${String(hash)}`;
+    }
+  }
+  return `${fallbackPrefix}:${node?.type?.name || "node"}`;
+};
+
+const createListOwnerMeta = ({
+  mode,
+  node,
+  index,
+  offset,
+  listIndent,
+  markerGap,
+  markerWidth,
+  markerFont,
+  markerColor,
+  markerText,
+  taskChecked,
+}) => ({
+  listOwnerType: mode,
+  listOwnerNodeType: node?.type?.name || null,
+  listOwnerBlockId: node?.attrs?.id ?? null,
+  listOwnerIndent: listIndent,
+  listOwnerMarkerGap: markerGap,
+  listOwnerMarkerWidth: markerWidth,
+  listOwnerMarkerFont: markerFont,
+  listOwnerMarkerColor: markerColor,
+  listOwnerMarkerText: markerText,
+  listOwnerItemIndex: index,
+  listOwnerItemStart: offset,
+  listOwnerTaskChecked: taskChecked,
+});
+
+const createListRootOwner = ({ node, listKey, listIndent, settings, mode }) => ({
+  key: listKey,
+  type: node?.type?.name || "list",
+  role: "list",
+  nodeId: node?.attrs?.id ?? null,
+  x: settings.margin.left,
+  width: Math.max(0, settings.pageWidth - settings.margin.left - settings.margin.right),
+  fixedBounds: false,
+  meta: {
+    mode,
+    indent: listIndent,
+  },
+});
+
+const createListItemOwner = ({
+  node,
+  listKey,
+  index,
+  offset,
+  contentX,
+  markerGap,
+  markerWidth,
+  markerFont,
+  markerColor,
+  markerText,
+  lineHeight,
+  taskChecked,
+}) => ({
+  key: `${listKey}:item:${index}:${offset}`,
+  type: node?.type?.name || "list",
+  role: "list-item",
+  nodeId: node?.attrs?.id ?? null,
+  x: contentX,
+  anchorOffset: offset,
+  fixedBounds: false,
+  meta: {
+    markerGap,
+    markerWidth,
+    markerFont,
+    markerColor,
+    markerText,
+    lineHeight,
+    taskChecked,
+  },
+});
+
+const resolveListOwnerMeta = (line) => {
+  const attrs = line?.blockAttrs || {};
+  if (
+    attrs.listOwnerMarkerText &&
+    Number.isFinite(attrs.listOwnerMarkerWidth) &&
+    attrs.listOwnerMarkerGap != null
+  ) {
+    return {
+      type: attrs.listOwnerType,
+      nodeType: attrs.listOwnerNodeType || null,
+      blockId: attrs.listOwnerBlockId ?? null,
+      indent: Number.isFinite(attrs.listOwnerIndent) ? attrs.listOwnerIndent : null,
+      markerGap: attrs.listOwnerMarkerGap,
+      markerWidth: attrs.listOwnerMarkerWidth,
+      markerFont: attrs.listOwnerMarkerFont || null,
+      markerColor: attrs.listOwnerMarkerColor || null,
+      markerText: attrs.listOwnerMarkerText,
+      itemIndex: Number.isFinite(attrs.listOwnerItemIndex) ? attrs.listOwnerItemIndex : null,
+      itemStart: Number.isFinite(attrs.listOwnerItemStart) ? attrs.listOwnerItemStart : null,
+      taskChecked: attrs.listOwnerTaskChecked === true,
+    };
+  }
+  if (attrs.markerText && Number.isFinite(attrs.markerWidth) && attrs.markerGap != null) {
+    return {
+      type: attrs.listType,
+      nodeType: attrs.listNodeType || null,
+      blockId: attrs.listBlockId ?? null,
+      indent: Number.isFinite(attrs.listIndent) ? attrs.listIndent : null,
+      markerGap: attrs.markerGap,
+      markerWidth: attrs.markerWidth,
+      markerFont: attrs.markerFont || null,
+      markerColor: attrs.markerColor || null,
+      markerText: attrs.markerText,
+      itemIndex: Number.isFinite(attrs.itemIndex) ? attrs.itemIndex : null,
+      itemStart: Number.isFinite(attrs.listItemStart) ? attrs.listItemStart : null,
+      taskChecked: attrs.taskChecked === true,
+    };
+  }
+  return null;
+};
+
+const drawResolvedListMarker = ({
+  ctx,
+  marker,
+  contentX,
+  lineY,
+  lineHeight,
+  fallbackFont,
+}) => {
+  if (!marker) {
+    return;
+  }
+  const fontSpec = marker.font || fallbackFont;
+  const fontSize = getFontSize(fontSpec);
+  const resolvedLineHeight = Math.max(1, Number(lineHeight) || fontSize);
+  const baselineOffset = Math.max(0, (resolvedLineHeight - fontSize) / 2);
+  const markerX = contentX - marker.gap - marker.width;
+  const markerY = lineY + baselineOffset;
+
+  if (ctx.fillText) {
+    ctx.font = fontSpec;
+    ctx.fillStyle = marker.color || "#111827";
+    ctx.fillText(marker.text, markerX, markerY);
+    return;
+  }
+
+  if (ctx.fillRect) {
+    const size = Math.max(4, Math.round(fontSize * 0.35));
+    ctx.fillRect(markerX, markerY + (fontSize - size) / 2, size, size);
+  }
+};
+
 const layoutList = (node, settings, registry, mode: ListMode) => {
   const lines = [];
   let offset = 0;
@@ -315,6 +479,14 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
   const markerGap = settings.listMarkerGap ?? 8;
   const baseMarkerFont = settings.listMarkerFont || font;
   const blockSpacing = Number.isFinite(settings.blockSpacing) ? settings.blockSpacing : 0;
+  const listKey = getNodeFragmentKey(node, `${mode}-list`);
+  const listRootOwner = createListRootOwner({
+    node,
+    listKey,
+    listIndent,
+    settings,
+    mode,
+  });
 
   node.forEach((item, _pos, index) => {
     if (item.type.name !== getExpectedListItemType(mode)) {
@@ -332,17 +504,20 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
       mode === "task" ? (item?.attrs?.checked === true ? "#10b981" : "#64748b") : "#111827";
     const markerWidth = settings.measureTextWidth ? settings.measureTextWidth(markerFont, markerText) : 0;
     const contentIndent = listIndent + markerGap + markerWidth;
-    const listMeta = {
-      listType: mode,
+    const contentX = settings.margin.left + contentIndent;
+    const listMeta = createListOwnerMeta({
+      mode,
+      node,
+      index,
+      offset,
       listIndent,
       markerGap,
       markerWidth,
       markerFont,
       markerColor,
       markerText,
-      itemIndex: index,
       taskChecked: mode === "task" ? item?.attrs?.checked === true : undefined,
-    };
+    });
 
     const itemResult = layoutNodeInList({
       node: item,
@@ -356,11 +531,31 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
     });
 
     itemResult.lines.forEach((line, lineIndex) => {
+      const markerLineHeight =
+        Number.isFinite(line?.lineHeight) && Number(line.lineHeight) > 0
+          ? Number(line.lineHeight)
+          : settings.lineHeight;
+      const listItemOwner = createListItemOwner({
+        node,
+        listKey,
+        index,
+        offset,
+        contentX,
+        markerGap,
+        markerWidth,
+        markerFont,
+        markerColor,
+        markerText,
+        lineHeight: markerLineHeight,
+        taskChecked: mode === "task" ? item?.attrs?.checked === true : undefined,
+      });
       const lineCopy = {
         ...line,
         runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
-        blockType: node.type.name,
+        blockType: line.blockType || node.type.name,
+        blockId: line.blockId ?? null,
         blockAttrs: { ...(line.blockAttrs || {}), ...listMeta },
+        fragmentOwners: [listRootOwner, listItemOwner, ...(line.fragmentOwners || [])],
       };
       if (lineIndex === 0) {
         lineCopy.listMarker = {
@@ -387,55 +582,80 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
     height: Math.max(cursorY, lines.length * lineHeight),
     blockType: node.type.name,
     blockAttrs: {
-      listType: mode,
-      listIndent,
-      markerGap,
-      markerFont: baseMarkerFont,
+      listOwnerType: mode,
+      listOwnerNodeType: node.type.name,
+      listOwnerBlockId: node.attrs?.id ?? null,
+      listOwnerIndent: listIndent,
+      listOwnerMarkerGap: markerGap,
+      listOwnerMarkerFont: baseMarkerFont,
     },
   };
 };
 
-const renderListMarker = ({ ctx, line, pageX, pageTop, layout }) => {
-  let marker = line.listMarker;
-  if (
-    !marker &&
-    line?.blockAttrs?.markerText &&
-    Number.isFinite(line?.blockAttrs?.markerWidth) &&
-    line?.blockAttrs?.markerGap != null &&
-    (line?.blockStart == null || line?.start == null || line.blockStart === line.start)
-  ) {
-    marker = {
-      text: line.blockAttrs.markerText,
-      width: line.blockAttrs.markerWidth,
-      gap: line.blockAttrs.markerGap,
-      font: line.blockAttrs.markerFont || layout.font,
-      color: line.blockAttrs.markerColor || "#111827",
-    };
+export const resolveListMarker = (line, layout) => {
+  if (line?.listMarker) {
+    return line.listMarker;
   }
+  const meta = resolveListOwnerMeta(line);
+  if (!meta) {
+    return null;
+  }
+  if (Number.isFinite(meta.itemStart) && Number.isFinite(line?.start) && meta.itemStart !== line.start) {
+    return null;
+  }
+  if (
+    !Number.isFinite(meta.itemStart) &&
+    line?.blockStart != null &&
+    line?.start != null &&
+    line.blockStart !== line.start
+  ) {
+    return null;
+  }
+  return {
+    text: meta.markerText,
+    width: meta.markerWidth,
+    gap: meta.markerGap,
+    font: meta.markerFont || layout.font,
+    color: meta.markerColor || "#111827",
+  };
+};
+
+export const renderListMarker = ({ ctx, line, pageX, pageTop, layout }) => {
+  const marker = resolveListMarker(line, layout);
   if (!marker) {
     return;
   }
-  const fontSpec = marker.font || layout.font;
-  const fontSize = getFontSize(fontSpec);
-  const lineHeight = getLineHeight(line, layout);
-  const baselineOffset = Math.max(0, (lineHeight - fontSize) / 2);
-  const markerX = pageX + line.x - marker.gap - marker.width;
-  const markerY = pageTop + line.y + baselineOffset;
-
-  if (ctx.fillText) {
-    ctx.font = fontSpec;
-    ctx.fillStyle = marker.color || "#111827";
-    ctx.fillText(marker.text, markerX, markerY);
-    return;
-  }
-
-  if (ctx.fillRect) {
-    const size = Math.max(4, Math.round(fontSize * 0.35));
-    ctx.fillRect(markerX, markerY + (fontSize - size) / 2, size, size);
-  }
+  drawResolvedListMarker({
+    ctx,
+    marker,
+    contentX: pageX + line.x,
+    lineY: pageTop + line.y,
+    lineHeight: getLineHeight(line, layout),
+    fallbackFont: layout.font,
+  });
 };
 
-const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
+const inferLengthFromLines = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return 0;
+  }
+  let minStart = Number.POSITIVE_INFINITY;
+  let maxEnd = Number.NEGATIVE_INFINITY;
+  for (const line of lines) {
+    if (Number.isFinite(line?.start)) {
+      minStart = Math.min(minStart, Number(line.start));
+    }
+    if (Number.isFinite(line?.end)) {
+      maxEnd = Math.max(maxEnd, Number(line.end));
+    }
+  }
+  if (!Number.isFinite(minStart) || !Number.isFinite(maxEnd)) {
+    return 0;
+  }
+  return Math.max(0, maxEnd - minStart);
+};
+
+const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, registry }) => {
   if (!lines || lines.length === 0) {
     return null;
   }
@@ -443,14 +663,19 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
   const getLineHeightValue = (line) =>
     Number.isFinite(line?.lineHeight) ? line.lineHeight : Math.max(1, lineHeight || 1);
 
-  const normalized = [];
-  let fallbackY = 0;
-  for (const line of lines) {
-    const lh = getLineHeightValue(line);
-    const relY = Number.isFinite(line?.relativeY) ? line.relativeY : fallbackY;
-    normalized.push({ line, relY, lh, bottom: relY + lh });
-    fallbackY = relY + lh;
-  }
+  const normalizeLines = (sourceLines) => {
+    const normalized = [];
+    let fallbackY = 0;
+    for (const line of sourceLines || []) {
+      const lh = getLineHeightValue(line);
+      const relY = Number.isFinite(line?.relativeY) ? Number(line.relativeY) : fallbackY;
+      normalized.push({ line, relY, lh, bottom: relY + lh });
+      fallbackY = relY + lh;
+    }
+    return normalized;
+  };
+
+  const normalized = normalizeLines(lines);
 
   const cloneAndNormalize = (entries) => {
     if (!entries.length) {
@@ -469,13 +694,87 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
     };
   };
 
+  const buildSplitResult = ({
+    visibleLines,
+    overflowLines,
+    visibleHeight,
+    overflowHeight,
+    visibleContinuation,
+    overflowContinuation,
+  }) => {
+    const visibleLength = inferLengthFromLines(visibleLines);
+    const overflowLength = Math.max(0, length - visibleLength);
+    const result: any = {
+      lines: visibleLines,
+      length: visibleLength,
+      height: visibleHeight,
+      continuation: visibleContinuation,
+      fragments: [
+        {
+          kind: "visible" as const,
+          lines: visibleLines,
+          length: visibleLength,
+          height: visibleHeight,
+          continuation: visibleContinuation,
+        },
+      ],
+    };
+    if (overflowLines.length > 0) {
+      result.overflow = {
+        lines: overflowLines,
+        length: overflowLength,
+        height: overflowHeight,
+        continuation: overflowContinuation,
+      };
+      result.fragments.push({
+        kind: "overflow" as const,
+        lines: overflowLines,
+        length: overflowLength,
+        height: overflowHeight,
+        continuation: overflowContinuation,
+      });
+    }
+    return result;
+  };
+
+  const getListItemIndex = (line) => {
+    const meta = resolveListOwnerMeta(line);
+    return meta && Number.isFinite(meta.itemIndex) ? Number(meta.itemIndex) : 0;
+  };
+
+  const getBlockGroupKey = (entry, fallbackIndex) => {
+    const line = entry?.line;
+    if (Number.isFinite(line?.blockStart)) {
+      return `start:${Number(line.blockStart)}`;
+    }
+    if (line?.blockId) {
+      return `id:${line.blockId}`;
+    }
+    return `${line?.blockType || "unknown"}:${fallbackIndex}`;
+  };
+
+  const resolveContinuation = (splitResult, kind, fallback) => {
+    const fragment = Array.isArray(splitResult?.fragments)
+      ? splitResult.fragments.find((entry) => entry?.kind === kind)
+      : null;
+    const legacy =
+      kind === "visible"
+        ? splitResult?.continuation
+        : splitResult?.overflow?.continuation ?? splitResult?.continuation;
+    if (fragment?.continuation) {
+      return fragment.continuation;
+    }
+    if (legacy) {
+      return legacy;
+    }
+    return fallback;
+  };
+
   const groups = [];
   let currentIndex = null;
   let currentEntries = [];
   for (const entry of normalized) {
-    const index = Number.isFinite(entry?.line?.blockAttrs?.itemIndex)
-      ? entry.line.blockAttrs.itemIndex
-      : 0;
+    const index = getListItemIndex(entry?.line);
     if (currentIndex === null) {
       currentIndex = index;
     }
@@ -507,6 +806,130 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
   }
 
   if (cutIndex === 0) {
+    const firstGroup = groups[0];
+    if (firstGroup?.entries?.length) {
+      const blockGroups = [];
+      let currentBlockKey = null;
+      let currentBlockEntries = [];
+      for (let index = 0; index < firstGroup.entries.length; index += 1) {
+        const entry = firstGroup.entries[index];
+        const blockKey = getBlockGroupKey(entry, index);
+        if (currentBlockKey === null) {
+          currentBlockKey = blockKey;
+        }
+        if (blockKey !== currentBlockKey) {
+          blockGroups.push({
+            entries: currentBlockEntries,
+            top: currentBlockEntries[0].relY,
+            bottom: currentBlockEntries[currentBlockEntries.length - 1].bottom,
+          });
+          currentBlockEntries = [];
+          currentBlockKey = blockKey;
+        }
+        currentBlockEntries.push(entry);
+      }
+      if (currentBlockEntries.length) {
+        blockGroups.push({
+          entries: currentBlockEntries,
+          top: currentBlockEntries[0].relY,
+          bottom: currentBlockEntries[currentBlockEntries.length - 1].bottom,
+        });
+      }
+
+      let blockCutIndex = 0;
+      for (; blockCutIndex < blockGroups.length; blockCutIndex += 1) {
+        const nextHeight = blockGroups[blockCutIndex].bottom - blockGroups[0].top;
+        if (nextHeight > availableHeight) {
+          break;
+        }
+      }
+
+      if (blockCutIndex > 0 && blockCutIndex < blockGroups.length) {
+        const visibleEntries = blockGroups.slice(0, blockCutIndex).flatMap((group) => group.entries);
+        const overflowEntries = blockGroups.slice(blockCutIndex).flatMap((group) => group.entries);
+        const visible = cloneAndNormalize(visibleEntries);
+        const overflow = cloneAndNormalize(overflowEntries);
+        return buildSplitResult({
+          visibleLines: visible.lines,
+          overflowLines: overflow.lines,
+          visibleHeight: visible.height,
+          overflowHeight: overflow.height,
+          visibleContinuation: {
+            fromPrev: false,
+            hasNext: overflow.lines.length > 0,
+            rowSplit: false,
+          },
+          overflowContinuation: overflow.lines.length
+            ? {
+                fromPrev: true,
+                hasNext: false,
+                rowSplit: false,
+              }
+            : null,
+        });
+      }
+
+      const firstBlockGroup = blockGroups[0];
+      const firstBlockLines = firstBlockGroup?.entries?.map((entry) => entry.line) || [];
+      const firstBlockType = firstBlockLines[0]?.blockType;
+      const childRenderer = firstBlockType ? registry?.get(firstBlockType) : null;
+      if (childRenderer?.splitBlock && firstBlockLines.length > 0) {
+        const delegated = childRenderer.splitBlock({
+          lines: firstBlockLines,
+          length: inferLengthFromLines(firstBlockLines),
+          height: Math.max(0, firstBlockGroup.bottom - firstBlockGroup.top),
+          availableHeight,
+          lineHeight,
+          settings,
+          registry,
+          blockAttrs: firstBlockLines[0]?.blockAttrs || null,
+        });
+        if (delegated) {
+          const visibleSource = Array.isArray(delegated.lines) ? delegated.lines : [];
+          const visibleNormalized = cloneAndNormalize(normalizeLines(visibleSource));
+          const overflowSource = Array.isArray(delegated?.overflow?.lines)
+            ? delegated.overflow.lines
+            : [];
+          const overflowNormalized = cloneAndNormalize(normalizeLines(overflowSource));
+          const overflowLines = [...overflowNormalized.lines];
+          let overflowCursorY = overflowNormalized.height;
+
+          for (const group of blockGroups.slice(1)) {
+            const normalizedGroup = cloneAndNormalize(group.entries);
+            overflowLines.push(
+              ...normalizedGroup.lines.map((line) => ({
+                ...line,
+                runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
+                relativeY: (Number.isFinite(line.relativeY) ? line.relativeY : 0) + overflowCursorY,
+              }))
+            );
+            overflowCursorY += normalizedGroup.height;
+          }
+
+          return buildSplitResult({
+            visibleLines: visibleNormalized.lines,
+            overflowLines,
+            visibleHeight: Number.isFinite(delegated.height)
+              ? Math.max(0, Number(delegated.height))
+              : visibleNormalized.height,
+            overflowHeight: overflowCursorY,
+            visibleContinuation: resolveContinuation(delegated, "visible", {
+              fromPrev: false,
+              hasNext: overflowLines.length > 0,
+              rowSplit: false,
+            }),
+            overflowContinuation: overflowLines.length
+              ? resolveContinuation(delegated, "overflow", {
+                  fromPrev: true,
+                  hasNext: false,
+                  rowSplit: false,
+                })
+              : null,
+          });
+        }
+      }
+    }
+
     let visibleCount = 0;
     for (; visibleCount < normalized.length; visibleCount += 1) {
       const nextHeight = normalized[visibleCount].bottom - normalized[0].relY;
@@ -523,45 +946,49 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight }) => {
     const overflowEntries = normalized.slice(visibleCount);
     const visible = cloneAndNormalize(visibleEntries);
     const overflow = cloneAndNormalize(overflowEntries);
-    const firstLine = visible.lines[0];
-    const lastLine = visible.lines[visible.lines.length - 1];
-    const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
-    const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
-    const visibleLength = Math.max(0, endOffset - startOffset);
-    return {
-      lines: visible.lines,
-      length: visibleLength,
-      height: visible.height,
-      overflow: {
-        lines: overflow.lines,
-        length: Math.max(0, length - visibleLength),
-        height: overflow.height,
+    return buildSplitResult({
+      visibleLines: visible.lines,
+      overflowLines: overflow.lines,
+      visibleHeight: visible.height,
+      overflowHeight: overflow.height,
+      visibleContinuation: {
+        fromPrev: false,
+        hasNext: overflow.lines.length > 0,
+        rowSplit: false,
       },
-    };
+      overflowContinuation: overflow.lines.length
+        ? {
+            fromPrev: true,
+            hasNext: false,
+            rowSplit: false,
+          }
+        : null,
+    });
   }
 
   const visibleEntries = groups.slice(0, cutIndex).flatMap((group) => group.entries);
   const overflowEntries = groups.slice(cutIndex).flatMap((group) => group.entries);
   const visible = cloneAndNormalize(visibleEntries);
   const overflow = cloneAndNormalize(overflowEntries);
-  const firstLine = visible.lines[0];
-  const lastLine = visible.lines[visible.lines.length - 1];
-  const startOffset = typeof firstLine?.start === "number" ? firstLine.start : 0;
-  const endOffset = typeof lastLine?.end === "number" ? lastLine.end : startOffset;
-  const visibleLength = Math.max(0, endOffset - startOffset);
 
-  return {
-    lines: visible.lines,
-    length: visibleLength,
-    height: visible.height,
-    overflow: overflow.lines.length
+  return buildSplitResult({
+    visibleLines: visible.lines,
+    overflowLines: overflow.lines,
+    visibleHeight: visible.height,
+    overflowHeight: overflow.height,
+    visibleContinuation: {
+      fromPrev: false,
+      hasNext: overflow.lines.length > 0,
+      rowSplit: false,
+    },
+    overflowContinuation: overflow.lines.length
       ? {
-          lines: overflow.lines,
-          length: Math.max(0, length - visibleLength),
-          height: overflow.height,
+          fromPrev: true,
+          hasNext: false,
+          rowSplit: false,
         }
-      : undefined,
-  };
+      : null,
+  });
 };
 
 const createListRenderer = (mode: ListMode) => ({
@@ -575,8 +1002,33 @@ const createListRenderer = (mode: ListMode) => ({
     return layoutList(node, settings, registry, mode);
   },
   renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-    renderListMarker({ ctx, line, pageX, pageTop, layout });
+    const hasListFragmentOwner = Array.isArray(line?.fragmentOwners)
+      ? line.fragmentOwners.some((owner) => owner?.role === "list-item")
+      : false;
+    if (!hasListFragmentOwner) {
+      renderListMarker({ ctx, line, pageX, pageTop, layout });
+    }
     defaultRender(line, pageX, pageTop, layout);
+  },
+  renderFragment({ ctx, fragment, pageX, pageTop, layout }) {
+    if (fragment?.role !== "list-item" || fragment?.meta?.anchorVisible !== true) {
+      return;
+    }
+    const marker = {
+      text: fragment.meta?.markerText,
+      width: fragment.meta?.markerWidth,
+      gap: fragment.meta?.markerGap,
+      font: fragment.meta?.markerFont || layout.font,
+      color: fragment.meta?.markerColor || "#111827",
+    };
+    drawResolvedListMarker({
+      ctx,
+      marker,
+      contentX: pageX + (Number(fragment.x) || 0),
+      lineY: pageTop + (Number(fragment.y) || 0),
+      lineHeight: Number(fragment.meta?.lineHeight) || layout.lineHeight,
+      fallbackFont: layout.font,
+    });
   },
 });
 

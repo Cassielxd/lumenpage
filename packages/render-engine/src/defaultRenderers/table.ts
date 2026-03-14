@@ -43,62 +43,6 @@ const measureLinesHeight = (lines, fallbackLineHeight) => {
   return usedRelativeY ? maxBottom : cursor;
 };
 
-const getFontSize = (font) => {
-  const match = /(\d+(?:\.\d+)?)px/.exec(font || "");
-  if (!match) {
-    return 16;
-  }
-  const size = Number.parseFloat(match[1]);
-  return Number.isFinite(size) ? size : 16;
-};
-
-const resolveListMarker = (line, layout) => {
-  if (line.listMarker) {
-    return line.listMarker;
-  }
-  const attrs = line.blockAttrs || {};
-  if (!attrs.markerText || !Number.isFinite(attrs.markerWidth)) {
-    return null;
-  }
-  if (attrs.markerGap == null) {
-    return null;
-  }
-  if (line.blockStart != null && line.start != null && line.blockStart !== line.start) {
-    return null;
-  }
-  return {
-    text: attrs.markerText,
-    width: attrs.markerWidth,
-    gap: attrs.markerGap,
-    font: attrs.markerFont || layout.font,
-  };
-};
-
-const renderListMarker = ({ ctx, line, pageX, pageTop, layout }) => {
-  const marker = resolveListMarker(line, layout);
-  if (!marker) {
-    return;
-  }
-  const fontSpec = marker.font || layout.font;
-  const fontSize = getFontSize(fontSpec);
-  const lineHeight = getLineHeight(line, layout);
-  const baselineOffset = Math.max(0, (lineHeight - fontSize) / 2);
-  const markerX = pageX + line.x - marker.gap - marker.width;
-  const markerY = pageTop + line.y + baselineOffset;
-
-  if (ctx.fillText) {
-    ctx.font = fontSpec;
-    ctx.fillStyle = "#111827";
-    ctx.fillText(marker.text, markerX, markerY);
-    return;
-  }
-
-  if (ctx.fillRect) {
-    const size = Math.max(4, Math.round(fontSize * 0.35));
-    ctx.fillRect(markerX, markerY + (fontSize - size) / 2, size, size);
-  }
-};
-
 const getTableShape = (node) => {
   const rows = node.childCount;
   let cols = 0;
@@ -117,6 +61,52 @@ const getTableShape = (node) => {
     cols: Math.max(1, cols),
   };
 };
+
+const getNodeFragmentKey = (node, fallbackPrefix: string) => {
+  if (node?.attrs?.id) {
+    return `${fallbackPrefix}:${node.attrs.id}`;
+  }
+  if (typeof node?.hashCode === "function") {
+    const hash = node.hashCode();
+    if (hash != null) {
+      return `${fallbackPrefix}:${String(hash)}`;
+    }
+  }
+  return `${fallbackPrefix}:${node?.type?.name || "table"}`;
+};
+
+const createTableRootOwner = ({ node, tableKey, settings, tableWidth, colWidth, padding, paddingY }) => ({
+  key: tableKey,
+  type: "table",
+  role: "table",
+  nodeId: node?.attrs?.id ?? null,
+  x: settings.margin.left,
+  width: tableWidth,
+  fixedBounds: false,
+  meta: {
+    tableWidth,
+    colWidth,
+    padding,
+    paddingY,
+  },
+});
+
+const createTableCellOwner = ({ tableKey, cell, settings, colWidth, padding }) => ({
+  key: `${tableKey}:cell:${cell.rowIndex}:${cell.colStart ?? cell.colIndex}:${cell.startOffset}`,
+  type: cell.header ? "tableHeader" : "tableCell",
+  role: "table-cell",
+  x: settings.margin.left + (cell.colStart ?? cell.colIndex) * colWidth + padding,
+  width: Math.max(0, colWidth * (cell.colspan ?? 1) - padding * 2),
+  fixedBounds: false,
+  meta: {
+    rowIndex: cell.rowIndex,
+    colIndex: cell.colStart ?? cell.colIndex,
+    colspan: cell.colspan ?? 1,
+    rowspan: cell.rowspan ?? 1,
+    header: cell.header === true,
+    background: normalizeTableCellBackground(cell.background),
+  },
+});
 
 const offsetLine = (line, delta) => {
   if (typeof line.start === "number") {
@@ -271,6 +261,12 @@ const layoutLeafInCell = ({
     if (typeof lineCopy.x !== "number") {
       lineCopy.x = computeLineX(lineCopy, blockSettings);
     }
+    if (lineCopy.tableOwnerMeta && Number.isFinite(cellBaseX)) {
+      lineCopy.tableOwnerMeta = {
+        ...lineCopy.tableOwnerMeta,
+        tableXOffset: (lineCopy.tableOwnerMeta.tableXOffset ?? 0) + cellBaseX,
+      };
+    }
     if (lineCopy.tableMeta && Number.isFinite(cellBaseX)) {
       lineCopy.tableMeta = {
         ...lineCopy.tableMeta,
@@ -396,6 +392,148 @@ const layoutCell = (cell, settings, registry, maxWidth, cellBaseX) => {
   });
 };
 
+const hasTableFragmentOwner = (line) =>
+  Array.isArray(line?.fragmentOwners) ? line.fragmentOwners.some((owner) => owner?.role === "table") : false;
+
+const drawTableChrome = ({ ctx, tableX, tableY, tableMeta }) => {
+  if (!tableMeta || !Number.isFinite(tableMeta?.tableWidth) || !Number.isFinite(tableMeta?.tableHeight)) {
+    return;
+  }
+
+  const {
+    rows,
+    cols,
+    rowHeights,
+    tableWidth,
+    colWidth,
+    tableHeight,
+    continuedFromPrev,
+    continuesAfter,
+    rowSplit,
+    sliceBreak,
+    cells,
+  } = tableMeta;
+
+  const suppressTop = !!rowSplit && !!continuedFromPrev;
+  const suppressBottom = !!rowSplit && !!continuesAfter;
+  const forceTop = !rowSplit && !!sliceBreak && !!continuedFromPrev;
+  const forceBottom = !rowSplit && !!sliceBreak && !!continuesAfter;
+  const showTop = !suppressTop && (!continuedFromPrev || forceTop);
+  const showBottom = !suppressBottom && (!continuesAfter || forceBottom);
+
+  ctx.save();
+  if (Array.isArray(cells) && cells.length > 0) {
+    for (const cell of cells) {
+      const explicitBackground = normalizeTableCellBackground(cell?.background);
+      const fillColor = explicitBackground || (cell?.header === true ? "#f3f4f6" : null);
+      if (!fillColor) {
+        continue;
+      }
+      const x = tableX + (Number.isFinite(cell.x) ? Number(cell.x) : 0);
+      const y = tableY + (Number.isFinite(cell.y) ? Number(cell.y) : 0);
+      const width = Number.isFinite(cell.width) ? Number(cell.width) : 0;
+      const height = Number.isFinite(cell.height) ? Number(cell.height) : 0;
+      if (width > 0 && height > 0) {
+        ctx.fillStyle = fillColor;
+        ctx.fillRect(x, y, width, height);
+      }
+    }
+  }
+  ctx.strokeStyle = "#6b7280";
+  ctx.lineWidth = 1;
+
+  if (Array.isArray(cells) && cells.length > 0) {
+    const hSegments = new Map();
+    const vSegments = new Map();
+    const toKey = (value) => Number(value).toFixed(3);
+    const addH = (y, x1, x2) => {
+      const start = Math.min(x1, x2);
+      const end = Math.max(x1, x2);
+      const key = `${toKey(y)}:${toKey(start)}:${toKey(end)}`;
+      if (!hSegments.has(key)) {
+        hSegments.set(key, { y, x1: start, x2: end });
+      }
+    };
+    const addV = (x, y1, y2) => {
+      const start = Math.min(y1, y2);
+      const end = Math.max(y1, y2);
+      const key = `${toKey(x)}:${toKey(start)}:${toKey(end)}`;
+      if (!vSegments.has(key)) {
+        vSegments.set(key, { x, y1: start, y2: end });
+      }
+    };
+
+    for (const cell of cells) {
+      const x1 = tableX + (Number.isFinite(cell.x) ? Number(cell.x) : 0);
+      const y1 = tableY + (Number.isFinite(cell.y) ? Number(cell.y) : 0);
+      const x2 = x1 + (Number.isFinite(cell.width) ? Number(cell.width) : 0);
+      const y2 = y1 + (Number.isFinite(cell.height) ? Number(cell.height) : 0);
+      addH(y1, x1, x2);
+      addH(y2, x1, x2);
+      addV(x1, y1, y2);
+      addV(x2, y1, y2);
+    }
+
+    const topY = tableY;
+    const bottomY = tableY + tableHeight;
+    const epsilon = 0.5;
+    ctx.beginPath();
+    for (const segment of hSegments.values()) {
+      const isTopEdge = Math.abs(segment.y - topY) <= epsilon;
+      const isBottomEdge = Math.abs(segment.y - bottomY) <= epsilon;
+      if (isTopEdge && !showTop) {
+        continue;
+      }
+      if (isBottomEdge && !showBottom) {
+        continue;
+      }
+      ctx.moveTo(segment.x1, segment.y);
+      ctx.lineTo(segment.x2, segment.y);
+    }
+    for (const segment of vSegments.values()) {
+      ctx.moveTo(segment.x, segment.y1);
+      ctx.lineTo(segment.x, segment.y2);
+    }
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(tableX, tableY);
+  ctx.lineTo(tableX, tableY + tableHeight);
+  ctx.moveTo(tableX + tableWidth, tableY);
+  ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
+  if (showTop) {
+    ctx.moveTo(tableX, tableY);
+    ctx.lineTo(tableX + tableWidth, tableY);
+  }
+  if (showBottom) {
+    ctx.moveTo(tableX, tableY + tableHeight);
+    ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
+  }
+  ctx.stroke();
+
+  let rowY = tableY;
+  for (let r = 0; r < Number(rows) - 1; r += 1) {
+    rowY += Number(rowHeights?.[r]) || 0;
+    ctx.beginPath();
+    ctx.moveTo(tableX, rowY);
+    ctx.lineTo(tableX + tableWidth, rowY);
+    ctx.stroke();
+  }
+
+  for (let c = 1; c < Number(cols); c += 1) {
+    const x = tableX + c * Number(colWidth);
+    ctx.beginPath();
+    ctx.moveTo(x, tableY);
+    ctx.lineTo(x, tableY + tableHeight);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+};
+
 export const tableRenderer = {
   allowSplit: true,
   cacheLayout: true,
@@ -413,6 +551,16 @@ export const tableRenderer = {
     const rowContentHeights = [];
     const cellLayouts = [];
     const spanCarry = [];
+    const tableKey = getNodeFragmentKey(node, "table");
+    const tableRootOwner = createTableRootOwner({
+      node,
+      tableKey,
+      settings,
+      tableWidth,
+      colWidth,
+      padding,
+      paddingY,
+    });
     let tableOffset = 0;
 
     for (let r = 0; r < rows; r += 1) {
@@ -510,6 +658,19 @@ export const tableRenderer = {
         });
       }
     }
+    const tableOwnerMeta = {
+      rows,
+      cols,
+      rowHeights,
+      cells: tableCells,
+      colWidth,
+      tableWidth,
+      tableHeight,
+      padding,
+      paddingY,
+      tableTop: 0,
+    };
+    tableRootOwner.meta = tableOwnerMeta;
 
     for (let r = 0; r < rows; r += 1) {
       const rowCells = cellLayouts[r];
@@ -519,6 +680,13 @@ export const tableRenderer = {
         const cellLines = cell.layout.lines?.length
           ? cell.layout.lines
           : [{ text: "", start: 0, end: 0, width: 0, runs: [] }];
+        const cellOwner = createTableCellOwner({
+          tableKey,
+          cell,
+          settings,
+          colWidth,
+          padding,
+        });
         for (let lineIndex = 0; lineIndex < cellLines.length; lineIndex += 1) {
           const cellLine = cellLines[lineIndex];
           const cellLineStart = Number.isFinite(cellLine.start) ? cellLine.start : 0;
@@ -540,11 +708,13 @@ export const tableRenderer = {
             runs: adjustedRuns,
             start: cell.startOffset + cellLineStart,
             end: cell.startOffset + cellLineEnd,
-            blockStart: null,
-            blockId: null,
+            blockStart: Number.isFinite(cellLine?.blockStart)
+              ? Number(cellLine.blockStart) + cell.startOffset
+              : cell.startOffset,
+            blockId: cellLine.blockId ?? null,
             x: cellBaseX + (Number.isFinite(cellLine.x) ? cellLine.x : 0),
             relativeY: tableTop + rowInset + (cellLine.relativeY || 0),
-            blockType: "table",
+            blockType: cellLine.blockType || "table",
             blockAttrs: {
               ...(cellLine.blockAttrs || {}),
               rows,
@@ -567,22 +737,9 @@ export const tableRenderer = {
             cellWidth: cellWidthWithSpan,
             cellPadding: padding,
             cellPaddingY: paddingY,
+            fragmentOwners: [tableRootOwner, cellOwner, ...(cellLine.fragmentOwners || [])],
+            tableOwnerMeta,
           };
-
-          if (r === 0 && cell.colIndex === 0 && lineIndex === 0) {
-            line.tableMeta = {
-              rows,
-              cols,
-              rowHeights,
-              cells: tableCells,
-              colWidth,
-              tableWidth,
-              tableHeight,
-              padding,
-              paddingY,
-              tableTop: 0,
-            };
-          }
 
           lines.push(line);
         }
@@ -615,150 +772,29 @@ export const tableRenderer = {
   },
 
   renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-    if (line?.blockAttrs?.listType) {
-      renderListMarker({ ctx, line, pageX, pageTop, layout });
-    }
-    if (line.tableMeta) {
-      const tableXOffset = Number.isFinite(line.tableMeta?.tableXOffset)
-        ? line.tableMeta.tableXOffset
+    const tableMeta = line.tableOwnerMeta || line.tableMeta;
+    if (tableMeta && !hasTableFragmentOwner(line)) {
+      const tableXOffset = Number.isFinite(tableMeta?.tableXOffset)
+        ? tableMeta.tableXOffset
         : 0;
       const tableX = pageX + layout.margin.left + tableXOffset;
       const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
-      const tableTop = line.tableMeta.tableTop || 0;
+      const tableTop = tableMeta.tableTop || 0;
       const tableY = pageTop + line.y - relativeY + tableTop;
-
-      const {
-        rows,
-        cols,
-        rowHeights,
-        tableWidth,
-        colWidth,
-        tableHeight,
-        continuedFromPrev,
-        continuesAfter,
-        rowSplit,
-        sliceBreak,
-        cells,
-      } = line.tableMeta;
-
-      const suppressTop = !!rowSplit && !!continuedFromPrev;
-      const suppressBottom = !!rowSplit && !!continuesAfter;
-      const forceTop = !rowSplit && !!sliceBreak && !!continuedFromPrev;
-      const forceBottom = !rowSplit && !!sliceBreak && !!continuesAfter;
-      const showTop = !suppressTop && (!continuedFromPrev || forceTop);
-      const showBottom = !suppressBottom && (!continuesAfter || forceBottom);
-
-      ctx.save();
-      if (Array.isArray(cells) && cells.length > 0) {
-        for (const cell of cells) {
-          const explicitBackground = normalizeTableCellBackground(cell?.background);
-          const fillColor = explicitBackground || (cell?.header === true ? "#f3f4f6" : null);
-          if (!fillColor) {
-            continue;
-          }
-          const x = tableX + (Number.isFinite(cell.x) ? cell.x : 0);
-          const y = tableY + (Number.isFinite(cell.y) ? cell.y : 0);
-          const width = Number.isFinite(cell.width) ? cell.width : 0;
-          const height = Number.isFinite(cell.height) ? cell.height : 0;
-          if (width > 0 && height > 0) {
-            ctx.fillStyle = fillColor;
-            ctx.fillRect(x, y, width, height);
-          }
-        }
-      }
-      ctx.strokeStyle = "#6b7280";
-      ctx.lineWidth = 1;
-
-      if (Array.isArray(cells) && cells.length > 0) {
-        const hSegments = new Map();
-        const vSegments = new Map();
-        const toKey = (value) => Number(value).toFixed(3);
-        const addH = (y, x1, x2) => {
-          const start = Math.min(x1, x2);
-          const end = Math.max(x1, x2);
-          const key = `${toKey(y)}:${toKey(start)}:${toKey(end)}`;
-          if (!hSegments.has(key)) {
-            hSegments.set(key, { y, x1: start, x2: end });
-          }
-        };
-        const addV = (x, y1, y2) => {
-          const start = Math.min(y1, y2);
-          const end = Math.max(y1, y2);
-          const key = `${toKey(x)}:${toKey(start)}:${toKey(end)}`;
-          if (!vSegments.has(key)) {
-            vSegments.set(key, { x, y1: start, y2: end });
-          }
-        };
-
-        for (const cell of cells) {
-          const x1 = tableX + (Number.isFinite(cell.x) ? cell.x : 0);
-          const y1 = tableY + (Number.isFinite(cell.y) ? cell.y : 0);
-          const x2 = x1 + (Number.isFinite(cell.width) ? cell.width : 0);
-          const y2 = y1 + (Number.isFinite(cell.height) ? cell.height : 0);
-          addH(y1, x1, x2);
-          addH(y2, x1, x2);
-          addV(x1, y1, y2);
-          addV(x2, y1, y2);
-        }
-
-        const topY = tableY;
-        const bottomY = tableY + tableHeight;
-        const epsilon = 0.5;
-        ctx.beginPath();
-        for (const segment of hSegments.values()) {
-          const isTopEdge = Math.abs(segment.y - topY) <= epsilon;
-          const isBottomEdge = Math.abs(segment.y - bottomY) <= epsilon;
-          if (isTopEdge && !showTop) {
-            continue;
-          }
-          if (isBottomEdge && !showBottom) {
-            continue;
-          }
-          ctx.moveTo(segment.x1, segment.y);
-          ctx.lineTo(segment.x2, segment.y);
-        }
-        for (const segment of vSegments.values()) {
-          ctx.moveTo(segment.x, segment.y1);
-          ctx.lineTo(segment.x, segment.y2);
-        }
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(tableX, tableY);
-        ctx.lineTo(tableX, tableY + tableHeight);
-        ctx.moveTo(tableX + tableWidth, tableY);
-        ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
-        if (showTop) {
-          ctx.moveTo(tableX, tableY);
-          ctx.lineTo(tableX + tableWidth, tableY);
-        }
-        if (showBottom) {
-          ctx.moveTo(tableX, tableY + tableHeight);
-          ctx.lineTo(tableX + tableWidth, tableY + tableHeight);
-        }
-        ctx.stroke();
-
-        let y = tableY;
-        for (let r = 0; r < rows - 1; r += 1) {
-          y += rowHeights[r];
-          ctx.beginPath();
-          ctx.moveTo(tableX, y);
-          ctx.lineTo(tableX + tableWidth, y);
-          ctx.stroke();
-        }
-
-        for (let c = 1; c < cols; c += 1) {
-          const x = tableX + c * colWidth;
-          ctx.beginPath();
-          ctx.moveTo(x, tableY);
-          ctx.lineTo(x, tableY + tableHeight);
-          ctx.stroke();
-        }
-      }
-
-      ctx.restore();
+      drawTableChrome({ ctx, tableX, tableY, tableMeta });
     }
 
     defaultRender(line, pageX, pageTop, layout);
+  },
+  renderFragment({ ctx, fragment, pageX, pageTop }) {
+    if (fragment?.role !== "table" || !fragment?.meta) {
+      return;
+    }
+    drawTableChrome({
+      ctx,
+      tableX: pageX + (Number(fragment.x) || 0),
+      tableY: pageTop + (Number(fragment.y) || 0),
+      tableMeta: fragment.meta,
+    });
   },
 };

@@ -3,6 +3,40 @@ import type { MarkAnnotationResolver } from "./mark";
 
 type CanvasNodeViewLike = any;
 
+export type LayoutFragmentOwner = {
+  key: string;
+  type: string;
+  role?: string;
+  nodeId?: string | null;
+  blockId?: string | null;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  start?: number | null;
+  end?: number | null;
+  anchorOffset?: number | null;
+  fixedBounds?: boolean;
+  meta?: Record<string, unknown> | null;
+};
+
+export type LayoutFragment = {
+  key: string;
+  type: string;
+  role?: string;
+  nodeId?: string | null;
+  blockId?: string | null;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  start?: number | null;
+  end?: number | null;
+  fixedBounds?: boolean;
+  meta?: Record<string, unknown> | null;
+  children?: LayoutFragment[];
+};
+
 export type NodeLayoutResult = {
   lines: any[];
   length: number;
@@ -49,6 +83,7 @@ export type NodeRenderer = {
     indent?: number;
   }) => unknown;
   renderLine?: (ctx: any) => void;
+  renderFragment?: (ctx: any) => void;
   getContainerStyle?: (ctx: any) => ContainerStyle | null;
   renderContainer?: (ctx: any) => void;
   createNodeView?: (node: any, view: any, getPos: () => number) => CanvasNodeViewLike;
