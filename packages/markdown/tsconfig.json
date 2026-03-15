@@ -1,19 +1,11 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "declaration": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-core": ["../core/src/index.ts"],
-      "lumenpage-extension-*": ["../extension-*/src/index.ts"],
-      "lumenpage-model": ["../lp/model/src/index.ts"],
-      "lumenpage-node-*": ["../node-*/src/index.ts"],
-      "lumenpage-starter-kit": ["../starter-kit/src/index.ts"]
-    }
-  },
-  "include": ["src/**/*"]
+﻿{
+    "extends":  "../../tsconfig.base.json",
+    "compilerOptions":  {
+                            "outDir":  "dist",
+                            "rootDir":  "src",
+                            "declaration":  true
+                        },
+    "include":  [
+                    "src/**/*"
+                ]
 }
-
-

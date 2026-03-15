@@ -36,9 +36,12 @@ export const nodePasteRule = (config: {
   new PasteRule({
     find: config.find,
     handler: ({ state, range, match, pasteEvent }) => {
-      const attributes = config.getAttributes
-        ? callOrReturn(config.getAttributes, match, pasteEvent)
-        : undefined;
+      const attributes =
+        config.getAttributes == null
+          ? undefined
+          : config.getAttributes === false
+            ? false
+            : callOrReturn(config.getAttributes, match, pasteEvent);
       const content =
         attributes && config.getContent ? callOrReturn(config.getContent, attributes) : config.getContent;
 

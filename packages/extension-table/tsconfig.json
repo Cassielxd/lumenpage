@@ -1,48 +1,30 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true,
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-core": [
-        "../core/src/index.ts"
-      ],
-      "lumenpage-model": [
-        "../lp/model/src/index.ts"
-      ],
-      "lumenpage-render-engine": [
-        "../render-engine/src/index.ts"
-      ],
-      "lumenpage-state": [
-        "../lp/state/src/index.ts"
-      ],
-      "lumenpage-view-canvas": [
-        "../view-canvas/src/index.ts"
-      ]
-    }
-  },
-  "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../core"
-    },
-    {
-      "path": "../lp/model"
-    },
-    {
-      "path": "../render-engine"
-    },
-    {
-      "path": "../lp/state"
-    },
-    {
-      "path": "../view-canvas"
-    }
-  ]
+﻿{
+    "extends":  "../../tsconfig.base.json",
+    "compilerOptions":  {
+                            "rootDir":  "src",
+                            "outDir":  "dist",
+                            "declaration":  true,
+                            "declarationMap":  true,
+                            "composite":  true
+                        },
+    "include":  [
+                    "src"
+                ],
+    "references":  [
+                       {
+                           "path":  "../core"
+                       },
+                       {
+                           "path":  "../lp/model"
+                       },
+                       {
+                           "path":  "../render-engine"
+                       },
+                       {
+                           "path":  "../lp/state"
+                       },
+                       {
+                           "path":  "../view-canvas"
+                       }
+                   ]
 }

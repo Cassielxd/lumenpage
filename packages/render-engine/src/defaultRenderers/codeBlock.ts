@@ -1,5 +1,6 @@
 ﻿import { breakLines } from "../lineBreaker";
 import { textblockToRuns } from "../textRuns";
+import { hasFragmentOwnerType } from "./fragmentOwners";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -56,6 +57,17 @@ const measureLinesHeight = (lines: any[], fallbackLineHeight: number) => {
   return usedRelativeY ? maxBottom : cursor;
 };
 
+const drawCodeBlockChrome = ({ ctx, x, y, width, height, background, borderColor }: any) => {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return;
+  }
+  ctx.fillStyle = background;
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
+};
+
 export const codeBlockRenderer = {
   allowSplit: true,
   layoutBlock({ node, settings, registry }: { node: any; settings: any; registry?: any }) {
@@ -71,6 +83,14 @@ export const codeBlockRenderer = {
       codeBlockBorderColor: metrics.borderColor,
       codeBlockOuterX: settings.margin.left,
       codeBlockOuterWidth: settings.pageWidth - settings.margin.left - settings.margin.right,
+      fragmentOwnerMeta: {
+        codeBlockBackground: metrics.background,
+        codeBlockBorderColor: metrics.borderColor,
+      },
+      visualBounds: {
+        x: settings.margin.left,
+        width: settings.pageWidth - settings.margin.left - settings.margin.right,
+      },
     };
     const runsResult = textblockToRuns(
       node,
@@ -130,6 +150,12 @@ export const codeBlockRenderer = {
         : layout.margin.left);
     const y = pageTop + line.y;
     const height = line.lineHeight ?? layout.lineHeight;
+    if (hasFragmentOwnerType(line, "codeBlock", line?.blockId)) {
+      if (defaultRender) {
+        defaultRender(line, pageX, pageTop, layout);
+      }
+      return;
+    }
     const lineIndex = Number.isFinite(line.blockAttrs?.codeBlockLineIndex)
       ? line.blockAttrs.codeBlockLineIndex
       : 0;
@@ -160,5 +186,19 @@ export const codeBlockRenderer = {
     if (defaultRender) {
       defaultRender(line, pageX, pageTop, layout);
     }
+  },
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "codeBlock") {
+      return;
+    }
+    drawCodeBlockChrome({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      background: fragment?.meta?.codeBlockBackground ?? "#f3f4f6",
+      borderColor: fragment?.meta?.codeBlockBorderColor ?? "#e5e7eb",
+    });
   },
 };

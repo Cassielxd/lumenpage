@@ -1,9 +1,9 @@
 import { NodeSelection } from "lumenpage-state";
 import { docPosToTextOffset } from "../../core";
 import { resolveNodeSelectionDecision } from "./selectionPolicy";
-import { getVisiblePages } from "../virtualization";
 
-import { getFirstLineForBlockId, getLineAtOffset } from "../layoutIndex";
+import { getLineAtOffset } from "../layoutIndex";
+import { collectAllLayoutBoxesForRange, resolveLayoutBoxRect } from "../render/geometry";
 
 // NodeView manager.
 export const createNodeViewManager = ({
@@ -55,6 +55,23 @@ export const createNodeViewManager = ({
     return false;
   };
 
+  const getPreferredBlockIdFromLine = (line) => {
+    if (line?.blockId) {
+      return line.blockId;
+    }
+    const owners = Array.isArray(line?.fragmentOwners) ? line.fragmentOwners : [];
+    for (let index = owners.length - 1; index >= 0; index -= 1) {
+      const owner = owners[index];
+      if (owner?.blockId != null) {
+        return owner.blockId;
+      }
+      if (owner?.nodeId != null) {
+        return owner.nodeId;
+      }
+    }
+    return null;
+  };
+
   const getNodeViewKey = (node, pos) => {
     const id = node?.attrs?.id;
     if (id) {
@@ -76,7 +93,7 @@ export const createNodeViewManager = ({
   };
 
   const getNodeViewForLine = (line) => {
-    const blockId = line?.blockId;
+    const blockId = getPreferredBlockIdFromLine(line);
     if (blockId && nodeViewsByBlockId.has(blockId)) {
       return nodeViewsByBlockId.get(blockId).view;
     }
@@ -112,6 +129,103 @@ export const createNodeViewManager = ({
     return found;
   };
 
+  const resolveNodeViewBoxRect = ({
+    entry,
+    layout,
+    layoutIndex,
+    scrollTop,
+    viewportWidth,
+    viewportHeight,
+    doc,
+  }) => {
+    if (!entry?.node || !Number.isFinite(entry?.pos) || !layout || !layoutIndex || !doc) {
+      return null;
+    }
+    const fromOffset = docPosToTextOffset(doc, entry.pos);
+    const endPos = Math.max(entry.pos, entry.pos + Math.max(1, entry.node.nodeSize ?? 1) - 1);
+    const toOffset = docPosToTextOffset(doc, endPos);
+    if (!Number.isFinite(fromOffset) || !Number.isFinite(toOffset)) {
+      return null;
+    }
+    const minOffset = Math.min(fromOffset, toOffset);
+    const maxOffset = Math.max(fromOffset, toOffset);
+    const boxHits = collectAllLayoutBoxesForRange(layout, minOffset, maxOffset, {
+      exact: true,
+      layoutIndex,
+      predicate: ({ box }) => {
+        if (!box) {
+          return false;
+        }
+        if (entry.blockId && (box?.blockId != null || box?.nodeId != null)) {
+          return (
+            String(box.blockId ?? "") === String(entry.blockId) ||
+            String(box.nodeId ?? "") === String(entry.blockId)
+          );
+        }
+        return String(box?.type || "") === String(entry.node?.type?.name || "");
+      },
+    });
+    if (boxHits.length === 0) {
+      return null;
+    }
+
+    let best = null;
+    for (const hit of boxHits) {
+      const rect = resolveLayoutBoxRect({
+        layout,
+        box: hit.box,
+        pageIndex: hit.pageIndex,
+        scrollTop,
+        viewportWidth,
+      });
+      if (!rect) {
+        continue;
+      }
+      const area = Math.max(1, rect.width * rect.height);
+      const viewportBottom =
+        Number.isFinite(viewportHeight) && Number(viewportHeight) > 0
+          ? Number(viewportHeight)
+          : null;
+      const visibleOverlap =
+        viewportBottom == null
+          ? 0
+          : Math.max(0, Math.min(rect.y + rect.height, viewportBottom) - Math.max(rect.y, 0));
+      const distanceToViewport =
+        viewportBottom == null
+          ? Math.abs(rect.y)
+          : rect.y + rect.height < 0
+            ? Math.abs(rect.y + rect.height)
+            : rect.y > viewportBottom
+              ? Math.abs(rect.y - viewportBottom)
+              : 0;
+      if (
+        !best ||
+        visibleOverlap > best.visibleOverlap ||
+        (visibleOverlap === best.visibleOverlap && distanceToViewport < best.distanceToViewport) ||
+        (visibleOverlap === best.visibleOverlap &&
+          distanceToViewport === best.distanceToViewport &&
+          area < best.area)
+      ) {
+        best = {
+          hit,
+          rect,
+          area,
+          visibleOverlap,
+          distanceToViewport,
+        };
+      }
+    }
+    if (!best) {
+      return null;
+    }
+
+    return {
+      ...best.rect,
+      pageIndex: best.hit.pageIndex,
+      box: best.hit.box,
+    };
+  };
+
   const getNodeViewAtCoords = ({
     coords,
     getDocPosFromCoords,
@@ -122,13 +236,49 @@ export const createNodeViewManager = ({
       return null;
     }
     const state = getState();
+    if (!state?.doc) {
+      return null;
+    }
+    const layout = view?._internals?.getLayout?.() ?? null;
+    const scrollArea = view?._internals?.dom?.scrollArea ?? null;
+    if (layout && scrollArea) {
+      let bestBoxEntry = null;
+      let bestBoxArea = Number.POSITIVE_INFINITY;
+      for (const entry of nodeViews.values()) {
+        const rect = resolveNodeViewBoxRect({
+          entry,
+          layout,
+          layoutIndex,
+          scrollTop: scrollArea.scrollTop,
+          viewportWidth: scrollArea.clientWidth,
+          viewportHeight: scrollArea.clientHeight,
+          doc: state.doc,
+        });
+        if (!rect) {
+          continue;
+        }
+        const withinX = coords.x >= rect.x && coords.x <= rect.x + rect.width;
+        const withinY = coords.y >= rect.y && coords.y <= rect.y + rect.height;
+        if (!withinX || !withinY) {
+          continue;
+        }
+        const area = Math.max(1, rect.width * rect.height);
+        if (!bestBoxEntry || area <= bestBoxArea) {
+          bestBoxEntry = entry;
+          bestBoxArea = area;
+        }
+      }
+      if (bestBoxEntry?.view) {
+        return bestBoxEntry.view;
+      }
+    }
     const pos = getDocPosFromCoords(coords);
-    if (!Number.isFinite(pos) || !state?.doc) {
+    if (!Number.isFinite(pos)) {
       return null;
     }
     const offset = docPosToTextOffset(state.doc, pos);
     const lineItem = getLineAtOffset(layoutIndex, offset);
-    const blockId = lineItem?.line?.blockId;
+    const blockId = getPreferredBlockIdFromLine(lineItem?.line);
     if (blockId) {
       const fromBlockId = nodeViewsByBlockId.get(blockId)?.view ?? null;
       if (fromBlockId) {
@@ -203,60 +353,53 @@ export const createNodeViewManager = ({
     const viewportHeight = scrollArea.clientHeight;
     const pageSpan = layout.pageHeight + layout.pageGap;
     const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
-    const syncOverlayEntry = (entry, item) => {
+    const syncOverlayEntry = (entry, item = null, boxRect = null) => {
       if (!entry?.view) {
-        return;
+        return false;
       }
-      if (!item) {
+      if (!item && !boxRect) {
         entry.view.syncDOM?.({ visible: false });
-        return;
+        return false;
       }
-      const line = item.line;
-      const pageTop = item.pageIndex * pageSpan - scrollTop;
-      const x = pageX + (line.x ?? 0);
-      const y = pageTop + (line.y ?? 0);
-      const width = Number.isFinite(line.width)
-        ? line.width
-        : layout.pageWidth - layout.margin.left - layout.margin.right;
-      const height = Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
+      const line = item?.line ?? null;
+      const pageIndex = Number.isFinite(boxRect?.pageIndex)
+        ? Number(boxRect.pageIndex)
+        : item?.pageIndex ?? 0;
+      const pageTop = pageIndex * pageSpan - scrollTop;
+      const x = boxRect?.x ?? pageX + (line?.x ?? 0);
+      const y = boxRect?.y ?? pageTop + (line?.y ?? 0);
+      const width =
+        boxRect?.width ??
+        (Number.isFinite(line?.width)
+          ? line.width
+          : layout.pageWidth - layout.margin.left - layout.margin.right);
+      const height =
+        boxRect?.height ??
+        (Number.isFinite(line?.lineHeight) ? line.lineHeight : layout.lineHeight);
       const visible = y + height > 0 && y < viewportHeight;
-      entry.view.syncDOM?.({ x, y, width, height, visible, line, pageIndex: item.pageIndex, layout });
+      entry.view.syncDOM?.({ x, y, width, height, visible, line, pageIndex, layout });
+      return visible;
     };
 
-    const { startIndex, endIndex } = getVisiblePages(layout, scrollTop, viewportHeight);
     const nextVisibleOverlayKeys = new Set();
-    const syncedBlockIds = new Set();
-
-    for (let pageIndex = startIndex; pageIndex <= endIndex; pageIndex += 1) {
-      const page = layout.pages?.[pageIndex];
-      const lines = Array.isArray(page?.lines) ? page.lines : [];
-      for (const line of lines) {
-        const blockId = line?.blockId ?? null;
-        if (!blockId || syncedBlockIds.has(blockId)) {
-          continue;
-        }
-        syncedBlockIds.add(blockId);
-        const entry = nodeViewsByBlockId.get(blockId);
-        if (!entry) {
-          continue;
-        }
-        const item = getFirstLineForBlockId(layoutIndex, blockId);
-        syncOverlayEntry(entry, item);
-        nextVisibleOverlayKeys.add(entry.key);
-      }
-    }
 
     for (const entry of nodeViews.values()) {
-      if (entry?.blockId) {
-        continue;
-      }
+      const boxRect = resolveNodeViewBoxRect({
+        entry,
+        layout,
+        layoutIndex,
+        scrollTop,
+        viewportWidth,
+        viewportHeight,
+        doc: state.doc,
+      });
       let item = null;
       if (Number.isFinite(entry?.pos)) {
         const offset = docPosToTextOffset(state.doc, entry.pos);
         item = getLineAtOffset(layoutIndex, offset);
       }
-      syncOverlayEntry(entry, item);
-      if (item) {
+      const visible = syncOverlayEntry(entry, item, boxRect);
+      if (visible) {
         nextVisibleOverlayKeys.add(entry.key);
       }
     }
@@ -311,7 +454,7 @@ export const createNodeViewManager = ({
   };
 
   const syncNodeViews = (changeSummary = null) => {
-    // 文档变化后增量复�?NodeView；无�?update 的实例会被销毁并重建�?
+    // 鏂囨。鍙樺寲鍚庡閲忓鐢?NodeView锛涙棤娉?update 鐨勫疄渚嬩細琚攢姣佸苟閲嶅缓銆?
     const state = getState();
     if (!state?.doc) {
       return;
@@ -494,7 +637,7 @@ export const createNodeViewManager = ({
   };
 
   const destroyNodeViews = () => {
-    // 编辑器销毁时统一释放 NodeView，避免泄漏事件与 DOM�?
+    // 缂栬緫鍣ㄩ攢姣佹椂缁熶竴閲婃斁 NodeView锛岄伩鍏嶆硠婕忎簨浠朵笌 DOM銆?
     for (const entry of nodeViews.values()) {
       entry.view?.destroy?.();
     }
@@ -510,15 +653,21 @@ export const createNodeViewManager = ({
     textOffsetToDocPos,
     queryEditorProp,
   }) => {
-    // 将命中行解析为可选中的节点位置，兼容插件重写 isNodeSelectionTarget�?
+    // 灏嗗懡涓瑙ｆ瀽涓哄彲閫変腑鐨勮妭鐐逛綅缃紝鍏煎鎻掍欢閲嶅啓 isNodeSelectionTarget銆?
     const state = getState();
     if (!hit?.line || !state?.doc) {
       return null;
     }
     const line = hit.line;
-    const blockId = line.blockId;
+    const blockId = getPreferredBlockIdFromLine(line);
     const hitOffset = Number.isFinite(hit.offset) ? hit.offset : null;
-    const blockStart = Number.isFinite(line.blockStart) ? line.blockStart : null;
+    const blockStart = Number.isFinite(hit?.start)
+      ? Number(hit.start)
+      : Number.isFinite(hit?.page?.__pageOffsetDelta) && Number.isFinite(line.blockStart)
+        ? Number(line.blockStart) + Number(hit.page.__pageOffsetDelta)
+        : Number.isFinite(line.blockStart)
+          ? Number(line.blockStart)
+          : null;
     const primaryOffset = Number.isFinite(hitOffset) ? hitOffset : blockStart;
     let resolvedTarget = null;
     if (Number.isFinite(primaryOffset)) {

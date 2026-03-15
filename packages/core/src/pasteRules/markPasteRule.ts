@@ -46,9 +46,12 @@ export const markPasteRule = (config: {
   new PasteRule({
     find: config.find,
     handler: ({ state, range, match, pasteEvent }) => {
-      const attributes = config.getAttributes
-        ? callOrReturn(config.getAttributes, match, pasteEvent)
-        : undefined;
+      const attributes =
+        config.getAttributes == null
+          ? undefined
+          : config.getAttributes === false
+            ? false
+            : callOrReturn(config.getAttributes, match, pasteEvent);
 
       if (attributes === false || attributes === null) {
         return null;

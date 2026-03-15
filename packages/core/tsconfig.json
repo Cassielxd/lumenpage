@@ -4,19 +4,17 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-inputrules": ["../lp/inputrules/src/index.ts"],
-      "lumenpage-keymap": ["../lp/keymap/src/index.ts"],
-      "lumenpage-layout-engine": ["../layout-engine/src/index.ts"],
-      "lumenpage-link": ["../link/src/index.ts"],
-      "lumenpage-model": ["../lp/model/src/index.ts"],
-      "lumenpage-state": ["../lp/state/src/index.ts"],
-      "lumenpage-view-canvas": ["../view-canvas/src/index.ts"],
-      "lumenpage-view-runtime": ["../view-runtime/src/index.ts"]
-    }
+    "composite": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../lp/inputrules" },
+    { "path": "../lp/keymap" },
+    { "path": "../link" },
+    { "path": "../lp/model" },
+    { "path": "../lp/state" },
+    { "path": "../view-canvas" }
+  ]
 }
 
 

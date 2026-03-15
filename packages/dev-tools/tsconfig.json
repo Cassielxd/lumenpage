@@ -17,10 +17,13 @@
     "src/types.ts",
     "src/shims.d.ts",
     "src/utils/format-selection-object.ts",
+    "src/utils/find-node.ts",
+    "src/utils/subscribe-on-updates.ts",
     "src/state/idle-scheduler.ts",
     "src/state/json-diff-main.ts",
     "src/state/json-diff-worker.ts",
-    "src/utils/subscribe-on-updates.ts"
+    "src/types/window.ts",
+    "src/types/prosemirror.ts"
   ],
   "exclude": ["src/**/*.tsx", "tests/**/*", "dist", "node_modules"]
 }

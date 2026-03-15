@@ -1,9 +1,8 @@
 import { buildDecorationDrawData } from "./render/decorations";
 import { NodeSelection } from "lumenpage-state";
-import { tableCellSelectionToRects, tableRangeSelectionToCellRects } from "./render/selection";
-import {
-  getPageIndexForOffset,
-} from "lumenpage-view-runtime";
+import { getPageIndexForOffset } from "./layoutIndex";
+import { resolveLegacySelectionRects } from "./legacySelectionGeometry";
+import { materializeLayoutGeometry } from "lumenpage-layout-engine";
 import {
   PaginationWorkerClient,
   createWorkerPaginationRunsPayload,
@@ -270,13 +269,13 @@ export const createRenderSync = ({
   
   const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
     // Use indexed lookup if available - O(log n) instead of O(n)
-    if (layoutIndex && typeof getPageIndexForOffset === 'function') {
+    if (layoutIndex && typeof getPageIndexForOffset === "function") {
       const pageIndex = getPageIndexForOffset(layoutIndex, offset);
       if (Number.isFinite(pageIndex)) {
         return pageIndex;
       }
     }
-    
+
     // Fallback to linear scan
     if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
       return null;
@@ -285,10 +284,13 @@ export const createRenderSync = ({
     let lineEndFallback: number | null = null;
     for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
       const page = layout.pages[pageIndex];
+      const pageOffsetDelta = Number.isFinite(page?.__pageOffsetDelta)
+        ? Number(page.__pageOffsetDelta)
+        : 0;
       const lines = Array.isArray(page?.lines) ? page.lines : [];
       for (const line of lines) {
-        const start = Number.isFinite(line?.start) ? Number(line.start) : null;
-        const end = Number.isFinite(line?.end) ? Number(line.end) : null;
+        const start = Number.isFinite(line?.start) ? Number(line.start) + pageOffsetDelta : null;
+        const end = Number.isFinite(line?.end) ? Number(line.end) + pageOffsetDelta : null;
         if (start == null || end == null) {
           continue;
         }
@@ -361,39 +363,18 @@ export const createRenderSync = ({
       }
     }
 
-    const tableCellRectsResolver =
-      typeof geometry?.tableCellSelectionToRects === "function"
-        ? geometry.tableCellSelectionToRects
-        : tableCellSelectionToRects;
-    const tableRangeRectsResolver =
-      typeof geometry?.tableRangeSelectionToCellRects === "function"
-        ? geometry.tableRangeSelectionToCellRects
-        : tableRangeSelectionToCellRects;
-
-    const tableCellRects = tableCellRectsResolver({
+    const legacyResolved = resolveLegacySelectionRects({
+      geometry,
       layout,
-      selection: editorState?.selection,
-      doc: editorState?.doc,
+      editorState,
+      selection,
       scrollTop: scrollArea.scrollTop,
       viewportWidth: scrollArea.clientWidth,
       layoutIndex,
       docPosToTextOffset,
     });
-    if (Array.isArray(tableCellRects) && tableCellRects.length > 0) {
-      return [...tableCellRects, ...tableCellRects];
-    }
-
-    const tableRangeRects = tableRangeRectsResolver({
-      layout,
-      fromOffset: selection.from,
-      toOffset: selection.to,
-      scrollTop: scrollArea.scrollTop,
-      viewportWidth: scrollArea.clientWidth,
-      layoutIndex,
-      docPosToTextOffset,
-    });
-    if (Array.isArray(tableRangeRects) && tableRangeRects.length > 0) {
-      return [...tableRangeRects, ...tableRangeRects];
+    if (Array.isArray(legacyResolved) && legacyResolved.length > 0) {
+      return legacyResolved;
     }
 
     return null;
@@ -622,6 +603,7 @@ export const createRenderSync = ({
     if (!layout) {
       return;
     }
+    const layoutIndex = getLayoutIndex?.() ?? null;
     const selection = getEditorState().selection;
     if (selection instanceof NodeSelection) {
       setCaretRect(null);
@@ -651,7 +633,7 @@ export const createRenderSync = ({
       scrollArea.scrollTop,
       scrollArea.clientWidth,
       getTextLength(),
-      { preferBoundary }
+      { preferBoundary, layoutIndex }
     );
 
     setCaretRect(caretRect);
@@ -671,6 +653,7 @@ export const createRenderSync = ({
     }
     const applyStartedAt = now();
     const prevLayout = getLayout?.() ?? null;
+    materializeLayoutGeometry(nextLayout);
     nextLayout.__version = version;
     nextLayout.__changeSummary = changeSummary ?? null;
     nextLayout.__forceRedraw = !prevLayout || changeSummary?.docChanged === true;

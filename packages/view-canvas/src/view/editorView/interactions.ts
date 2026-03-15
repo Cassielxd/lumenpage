@@ -1,6 +1,7 @@
 import { createPointerHandlers } from "../input/pointerHandlers";
 import { createTouchHandlers } from "../input/touchHandlers";
 import { getCaretFromPoint } from "../caret";
+import { getCaretFromPointIndexed } from "../layoutIndex";
 import { createDragHandlers } from "./drag";
 import { NodeSelection } from "lumenpage-state";
 
@@ -34,6 +35,29 @@ export const createInteractionPipeline = ({
   setPendingPreferredUpdate,
   scheduleRender,
 }) => {
+  const resolveOffsetAtCoords = (layout, x, y, scrollTop, clientWidth, textLength) =>
+    posAtCoords(layout, x, y, scrollTop, clientWidth, textLength, {
+      layoutIndex: getLayoutIndex?.() ?? null,
+    });
+  const resolveHitAtCoords = (x, y) =>
+    getCaretFromPointIndexed(
+      getLayout(),
+      x,
+      y,
+      dom.scrollArea.scrollTop,
+      dom.scrollArea.clientWidth,
+      getTextLength(),
+      getLayoutIndex?.() ?? null
+    ) ??
+    getCaretFromPoint(
+      getLayout(),
+      x,
+      y,
+      dom.scrollArea.scrollTop,
+      dom.scrollArea.clientWidth,
+      getTextLength()
+    );
+
   const resolveDragNodePosFromEvent = (event) => {
     const fromProps = queryEditorProp?.("resolveDragNodePos", event);
     if (Number.isFinite(fromProps)) {
@@ -69,16 +93,8 @@ export const createInteractionPipeline = ({
     inputEl: dom.input,
     getText,
     getTextLength,
-    posAtCoords,
-    getHitAtCoords: (x, y) =>
-      getCaretFromPoint(
-        getLayout(),
-        x,
-        y,
-        dom.scrollArea.scrollTop,
-        dom.scrollArea.clientWidth,
-        getTextLength()
-      ),
+    posAtCoords: resolveOffsetAtCoords,
+    getHitAtCoords: resolveHitAtCoords,
     setSelectionOffsets: (anchor, head, updatePreferred) =>
       setSelectionOffsets(anchor, head, updatePreferred, true),
     setSelectionFromHit,
@@ -109,7 +125,7 @@ export const createInteractionPipeline = ({
       scrollArea: dom.scrollArea,
       getText,
       getTextLength,
-      posAtCoords,
+      posAtCoords: resolveOffsetAtCoords,
       setSelectionOffsets,
       getSelectionAnchorOffset,
       setPreferredX,

@@ -1,6 +1,9 @@
 import { breakLines } from "../lineBreaker";
 import { docToRuns, textblockToRuns } from "../textRuns";
-import { shiftFragmentOwners } from "./fragmentOwners";
+import { resolveContainerLayoutContext } from "../containerLayout";
+import { isLeafLayoutNode } from "../layoutRole";
+import { resolveNodeSplitFragments, resolveRendererFragmentModel } from "../pagination";
+import { ensureBlockFragmentOwner, shiftFragmentOwners } from "./fragmentOwners";
 
 type ListMode = "bullet" | "ordered" | "task";
 
@@ -214,6 +217,13 @@ const layoutLeafInList = ({
       };
     }
     applyContainerStack(lineCopy, context.containerStack);
+    lineCopy.fragmentOwners = ensureBlockFragmentOwner({
+      line: lineCopy,
+      node,
+      blockId,
+      blockStart: blockStartOffset,
+      blockAttrs: lineCopy.blockAttrs,
+    });
     if (Array.isArray(lineCopy.fragmentOwners) && lineCopy.fragmentOwners.length > 0) {
       lineCopy.fragmentOwners = shiftFragmentOwners(lineCopy.fragmentOwners, 0, baseY);
     }
@@ -243,7 +253,7 @@ const layoutNodeInList = ({
   listMeta,
 }) => {
   const renderer = registry?.get(node.type.name);
-  const isLeaf = renderer?.layoutBlock || renderer?.toRuns || node.isTextblock || node.isAtom;
+  const isLeaf = isLeafLayoutNode(renderer, node);
 
   if (isLeaf) {
     return layoutLeafInList({
@@ -256,27 +266,14 @@ const layoutNodeInList = ({
       listMeta,
     });
   }
-
-  const style = renderer?.getContainerStyle
-    ? renderer.getContainerStyle({ node, settings, registry })
-    : null;
-  const indent = Number.isFinite(style?.indent) ? style.indent : 0;
-  const shouldPush = indent > 0 || renderer?.renderContainer || style;
-  const nextContext = shouldPush
-    ? {
-        indent: context.indent + indent,
-        containerStack: [
-          ...context.containerStack,
-          {
-            ...style,
-            type: node.type.name,
-            offset: context.indent,
-            indent,
-            baseX: settings.margin.left + context.indent,
-          },
-        ],
-      }
-    : context;
+  const { nextContext } = resolveContainerLayoutContext({
+    renderer,
+    node,
+    settings,
+    registry,
+    context,
+    baseX: settings.margin.left,
+  });
 
   let offset = startOffset;
   let y = baseY;
@@ -400,6 +397,9 @@ const createListItemOwner = ({
     markerText,
     lineHeight,
     taskChecked,
+    layoutCapabilities: {
+      "content-container": true,
+    },
   },
 });
 
@@ -762,20 +762,9 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
   };
 
   const resolveContinuation = (splitResult, kind, fallback) => {
-    const fragment = Array.isArray(splitResult?.fragments)
-      ? splitResult.fragments.find((entry) => entry?.kind === kind)
-      : null;
-    const legacy =
-      kind === "visible"
-        ? splitResult?.continuation
-        : splitResult?.overflow?.continuation ?? splitResult?.continuation;
-    if (fragment?.continuation) {
-      return fragment.continuation;
-    }
-    if (legacy) {
-      return legacy;
-    }
-    return fallback;
+    const fragments = resolveNodeSplitFragments(splitResult);
+    const fragment = kind === "visible" ? fragments.visible : fragments.overflow;
+    return fragment?.continuation || fallback;
   };
 
   const groups = [];
@@ -881,7 +870,12 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
       const firstBlockLines = firstBlockGroup?.entries?.map((entry) => entry.line) || [];
       const firstBlockType = firstBlockLines[0]?.blockType;
       const childRenderer = firstBlockType ? registry?.get(firstBlockType) : null;
-      if (childRenderer?.splitBlock && firstBlockLines.length > 0) {
+      const childFragmentModel = resolveRendererFragmentModel(childRenderer);
+      if (
+        childFragmentModel === "continuation" &&
+        childRenderer?.splitBlock &&
+        firstBlockLines.length > 0
+      ) {
         const delegated = childRenderer.splitBlock({
           lines: firstBlockLines,
           length: inferLengthFromLines(firstBlockLines),
@@ -893,10 +887,13 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
           blockAttrs: firstBlockLines[0]?.blockAttrs || null,
         });
         if (delegated) {
-          const visibleSource = Array.isArray(delegated.lines) ? delegated.lines : [];
+          const delegatedFragments = resolveNodeSplitFragments(delegated);
+          const visibleSource = Array.isArray(delegatedFragments.visible?.lines)
+            ? delegatedFragments.visible.lines
+            : [];
           const visibleNormalized = cloneAndNormalize(normalizeLines(visibleSource));
-          const overflowSource = Array.isArray(delegated?.overflow?.lines)
-            ? delegated.overflow.lines
+          const overflowSource = Array.isArray(delegatedFragments.overflow?.lines)
+            ? delegatedFragments.overflow.lines
             : [];
           const overflowNormalized = cloneAndNormalize(normalizeLines(overflowSource));
           const overflowLines = [...overflowNormalized.lines];
@@ -917,8 +914,8 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
           return buildSplitResult({
             visibleLines: visibleNormalized.lines,
             overflowLines,
-            visibleHeight: Number.isFinite(delegated.height)
-              ? Math.max(0, Number(delegated.height))
+            visibleHeight: Number.isFinite(delegatedFragments.visible?.height)
+              ? Math.max(0, Number(delegatedFragments.visible?.height))
               : visibleNormalized.height,
             overflowHeight: overflowCursorY,
             visibleContinuation: resolveContinuation(delegated, "visible", {
@@ -1001,6 +998,7 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
 
 const createListRenderer = (mode: ListMode) => ({
   allowSplit: true,
+  lineBodyMode: "default-text",
   splitBlock: splitListBlock,
   pagination: {
     fragmentModel: "continuation",

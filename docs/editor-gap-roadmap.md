@@ -125,6 +125,86 @@
 - `packages/view-canvas/src/view/renderer.ts`
 - `packages/view-canvas/src/defaultRenderers/tablePagination/split.ts`
 
+### P0.y 参考 HTML 分层的 box/fragment 迁移清单（进行中，2026-03-15）
+
+目标：
+
+- 把当前“`lines` 为主、`boxes/fragments` 为派生”的过渡架构，逐步迁到更接近 HTML 渲染分层的模式：
+  - `doc tree`
+  - `box tree`
+  - `fragment tree`
+  - `paint/display list`
+- 迁移过程保持功能可用，优先做“单一物化入口、单一几何语义、单一分页协议”，避免一次性推翻。
+
+当前判断：
+
+- 已经有 `page.boxes`、`page.fragments` 和 `renderFragment`，但三者还不是主模型。
+- 顶层分页和文本交互仍然大量依赖 `page.lines`。
+- 渲染仍是“fragment 递归 + line 平铺”的混合模式。
+
+未完成任务清单：
+
+1. 统一 page 几何物化入口。
+   - 目标：`engine`、`renderer`、索引层都通过同一个 helper 物化 `boxes/fragments`，不再各自从 `lines` 重建。
+   - 状态：已完成。`pageGeometry` 已成为统一入口。
+
+2. 让 `page.boxes` 成为布局阶段的一等产物。
+   - 目标：减少“先 layout lines，再反推 box”的依赖，让 box 成为稳定的布局输出。
+   - 风险控制：先保持 `lines` 继续产出，只把 box 生成前移，不立即删除 line 依赖。
+   - 状态：已完成第一阶段。布局放线时已同步收集 box，仍保留从 `lines` 重建的兼容兜底。
+
+3. 让 `page.fragments` 成为唯一的复杂块渲染入口。
+   - 目标：复杂块 chrome、容器绘制、叶子视觉块都统一走 `renderFragment`。
+   - 保留项：文本叶子暂时仍允许保留 `line` fallback，但要收敛到 `TextLineFragment` 语义。
+   - 状态：进行中。已把纯 fragment 视觉块从 line body pass 中剥离，line body pass 也已下沉成明确的“叶子文本兼容层”；仍保留文本/辅助视觉的 line pass。
+
+4. 把文本叶子从“纯 line”升级成“leaf fragment + line index”双层模型。
+   - 目标：渲染主入口、命中、选区最终都围绕 leaf fragment；`line` 只保留给文本测量和快速索引。
+   - 风险控制：先做索引和渲染入口调整，不同步改所有编辑算法。
+   - 状态：进行中。`page.boxes/page.fragments` 已开始生成 `text-line` 叶子，渲染递归阶段会优先消费这些文本 fragment；`line` pass 仍保留为未命中文本 fragment 的兼容兜底。默认几何查询与 box 索引仍保持 block-first，`text-line` 叶子单独隔离在过渡索引里，避免干扰现有 block 级命中与选区；文本装饰、普通文本选区、indexed 文本移动链，以及带 `layoutIndex` 的 `coordsAtPos/posAtCoords/getHitAtCoords` 路径都已经开始优先走这层叶子索引。当前 `paragraph/heading/list` 这类正文仅依赖 `defaultRender` 的文本块已切到 `text-line fragment` 主路径，复杂块的 `renderLine` 仍保留在兼容层。
+
+5. 统一分页协议。
+   - 目标：从“顶层 line 分页 + 局部 splitBlock 委托”过渡到“容器递归分页 + legacy splitBlock 兼容”。
+   - 阶段要求：先明确 container/leaf 的分页职责，再逐步替换现有 `splitBlock` 主导逻辑。
+   - 状态：进行中。`paginationPolicy` 已抽出统一 reuse/split normalize 协议，`fragmentModel` 已接入 worker eligibility、list 子块委托与 renderer reuse 判定；容器/叶子职责、split chunk 物化、leaf overflow 判定、empty-visible split 判定都已开始走共享 helper，分页主循环暂未切到 fragment paginate。
+
+6. 建立独立的 paint/display list 层。
+   - 目标：把 canvas 绘制命令和布局结果解耦，为局部重绘、图层化、复杂装饰顺序提供稳定抽象。
+   - 前提：先完成 box/fragment 主链收敛。
+
+7. 清理 compatibility layer。
+   - 目标：把 `layoutSemanticsLegacy`、`fragmentOwnerLegacy`、`legacySelectionGeometry`、`legacyVisualBounds` 限定为过渡层，并在新协议稳定后逐步移除。
+   - 要求：不再往主链回流新的节点名特判。
+
+当前剩余重点：
+
+1. 渲染主链还不是纯递归。
+   - 现状：`paragraph/heading/list` 这类仅依赖 `defaultRender` 的正文已经切到 `text-line fragment` 主路径，但 `codeBlock/table/image/video/horizontalRule` 等仍保留 `renderLine` 兼容层。
+   - 剩余工作：继续缩小 `line body pass` 的职责，最终让 `renderLine` 只保留少量过渡兜底。
+
+2. 文本交互还没有完全 fragment-first。
+   - 现状：`coordsAtPos/posAtCoords/getHitAtCoords`、普通文本选区、文本装饰和 indexed 文本移动链已经优先走 `textBoxes`。
+   - 剩余工作：继续把 caret/selection/drag 的纯文本路径迁到 `text-line` 叶子索引，并清掉多余的 line-first fallback。
+
+3. 分页主循环仍然是过渡态。
+   - 现状：`paginationPolicy`、`fragmentModel`、容器/叶子职责和 split chunk 物化已经抽出来了。
+   - 剩余工作：把顶层 leaf overflow 决策继续从 `layoutPipeline` 状态编排中拆开，最后过渡到更统一的 container/fragment paginate。
+
+4. display list 还没有独立抽象。
+   - 现状：当前仍是布局结果直接驱动画布绘制。
+   - 剩余工作：在 box/fragment 主链稳定后，再补独立的 paint/display list 层，用于局部重绘、图层化和绘制顺序管理。
+
+5. compatibility layer 仍需最终清理。
+   - 现状：legacy 逻辑已经被集中到独立模块，不再散落在主链。
+   - 剩余工作：等新协议稳定后，逐步删掉这些兼容层，避免双路径长期并存。
+
+建议执行顺序：
+
+1. 先完成第 1 项，收口 `page` 级几何派生入口。
+2. 再做第 2 项，把 box 前移到布局主链。
+3. 然后做第 3、4 项，逐步把渲染和交互主链转成 fragment-first。
+4. 最后处理第 5、6、7 项，把分页和兼容层一起收口。
+
 ## P1（产品化）
 
 1. 粘贴/导入/导出保真。

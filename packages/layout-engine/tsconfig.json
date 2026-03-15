@@ -4,11 +4,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-render-engine": ["../render-engine/src/index.ts"]
-    }
+    "composite": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../render-engine" }
+  ]
 }
 

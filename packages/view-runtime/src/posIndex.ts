@@ -4,12 +4,38 @@
  */
 
 import { getCaretFromPoint, getCaretRect } from "./caret";
+import { findLineForOffsetIndexed, posAtCoordsIndexed } from "./layoutIndex";
+
+type PosAtCoordsOptions = {
+  layoutIndex?: any;
+};
 
 export function coordsAtPos(layout, offset, scrollTop, viewportWidth, textLength, options = null) {
-  return getCaretRect(layout, offset, scrollTop, viewportWidth, textLength, options);
+  const lineInfo = options?.layoutIndex
+    ? findLineForOffsetIndexed(layout, offset, textLength, options.layoutIndex)
+    : null;
+  return getCaretRect(layout, offset, scrollTop, viewportWidth, textLength, {
+    ...options,
+    lineInfo,
+  });
 }
 
-export function posAtCoords(layout, x, y, scrollTop, viewportWidth, textLength) {
+export function posAtCoords(
+  layout,
+  x,
+  y,
+  scrollTop,
+  viewportWidth,
+  textLength,
+  options: PosAtCoordsOptions | null = null
+) {
+  const indexedOffset = options?.layoutIndex
+    ? posAtCoordsIndexed(layout, x, y, scrollTop, viewportWidth, textLength, options.layoutIndex)
+    : null;
+  if (Number.isFinite(indexedOffset)) {
+    return indexedOffset;
+  }
+
   const hit = getCaretFromPoint(
     layout,
 

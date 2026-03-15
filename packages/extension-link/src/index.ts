@@ -191,7 +191,7 @@ export const Link = Mark.create({
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    const attrs = {
+    const attrs: Record<string, any> & { href: string; title?: string | null } = {
       ...HTMLAttributes,
       href: sanitizeLinkHref(HTMLAttributes.href) || "#",
     };

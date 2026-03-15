@@ -38,7 +38,8 @@ export const createA11yStatusUpdater = ({
       if (lineInfo?.line) {
         const page = Number.isFinite(lineInfo.pageIndex) ? lineInfo.pageIndex + 1 : null;
         const lineNumber = Number.isFinite(lineInfo.lineIndex) ? lineInfo.lineIndex + 1 : null;
-        const column = Math.max(1, offset - lineInfo.line.start + 1);
+        const lineStart = Number.isFinite(lineInfo.start) ? Number(lineInfo.start) : 0;
+        const column = Math.max(1, offset - lineStart + 1);
         const blockType = normalizeBlockType(lineInfo.line.blockType);
         const blockTypeText = blockType ? `, node ${blockType}` : "";
         if (Number.isFinite(page) && Number.isFinite(lineNumber)) {
@@ -62,8 +63,10 @@ export const createA11yStatusUpdater = ({
     const startLineInfo = layoutIndex ? getLineAtOffset(layoutIndex, rangeStart) : null;
     const endLineInfo = layoutIndex ? getLineAtOffset(layoutIndex, rangeEnd) : null;
     if (startLineInfo?.line && endLineInfo?.line) {
-      const startColumn = Math.max(1, rangeStart - startLineInfo.line.start + 1);
-      const endColumn = Math.max(1, rangeEnd - endLineInfo.line.start + 1);
+      const startLineStart = Number.isFinite(startLineInfo.start) ? Number(startLineInfo.start) : 0;
+      const endLineStart = Number.isFinite(endLineInfo.start) ? Number(endLineInfo.start) : 0;
+      const startColumn = Math.max(1, rangeStart - startLineStart + 1);
+      const endColumn = Math.max(1, rangeEnd - endLineStart + 1);
       const startPage = Number.isFinite(startLineInfo.pageIndex) ? startLineInfo.pageIndex + 1 : null;
       const endPage = Number.isFinite(endLineInfo.pageIndex) ? endLineInfo.pageIndex + 1 : null;
       if (Number.isFinite(startPage) && Number.isFinite(endPage)) {

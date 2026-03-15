@@ -2,6 +2,7 @@
 export const createCoordinateHelpers = ({
   dom,
   getLayout,
+  getLayoutIndex,
   getTextLength,
   getState,
   textOffsetToDocPos,
@@ -34,7 +35,8 @@ export const createCoordinateHelpers = ({
       coords.y,
       dom.scrollArea.scrollTop,
       dom.scrollArea.clientWidth,
-      getTextLength()
+      getTextLength(),
+      { layoutIndex: getLayoutIndex?.() ?? null }
     );
     if (offset == null) {
       return null;

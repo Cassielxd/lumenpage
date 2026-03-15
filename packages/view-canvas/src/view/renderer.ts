@@ -7,13 +7,14 @@ import { getVisiblePages } from "./virtualization";
 
 import { measureTextWidth, getFontSize } from "./measure";
 import { type DecorationDrawData } from "./render/decorations";
-import { buildPageFragmentsFromLines } from "lumenpage-layout-engine";
+import { renderLineBodyPass } from "./render/lineBodyPass";
+import { resolveLineRenderPlan } from "./render/lineRenderPlan";
+import { materializePageGeometry } from "lumenpage-layout-engine";
 import {
   drawRunBackground,
   drawRunMarkInstructions,
   drawRunStrike,
   drawRunUnderline,
-  renderListMarker,
   drawWavyLine as drawMarkWavyLine,
 } from "lumenpage-render-engine";
 
@@ -21,6 +22,52 @@ const now = () =>
   typeof performance !== "undefined" && typeof performance.now === "function"
     ? performance.now()
     : Date.now();
+
+const getPageOffsetDelta = (page: any) =>
+  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+
+const TEXT_LINE_FRAGMENT_ROLE = "text-line";
+
+const getTextLineFragmentKey = (target: any) => {
+  if (!target || typeof target !== "object") {
+    return null;
+  }
+  if (
+    typeof target.__textLineFragmentKey === "string" &&
+    target.__textLineFragmentKey.length > 0
+  ) {
+    return target.__textLineFragmentKey;
+  }
+  if (target.meta && typeof target.meta === "object") {
+    const metaLineKey = target.meta.lineKey;
+    if (typeof metaLineKey === "string" && metaLineKey.length > 0) {
+      return metaLineKey;
+    }
+  }
+  if (
+    (String(target?.role || "") === TEXT_LINE_FRAGMENT_ROLE ||
+      String(target?.type || "") === TEXT_LINE_FRAGMENT_ROLE) &&
+    typeof target?.key === "string" &&
+    target.key.length > 0
+  ) {
+    return target.key;
+  }
+  return null;
+};
+
+const isTextLineFragment = (fragment: any) =>
+  String(fragment?.role || "") === TEXT_LINE_FRAGMENT_ROLE ||
+  String(fragment?.type || "") === TEXT_LINE_FRAGMENT_ROLE;
+
+const ensurePageBoxes = (page: any) => {
+  const materialized = materializePageGeometry(page);
+  return Array.isArray(materialized?.boxes) ? materialized.boxes : [];
+};
+
+const ensurePageFragments = (page: any) => {
+  const materialized = materializePageGeometry(page);
+  return Array.isArray(materialized?.fragments) ? materialized.fragments : [];
+};
 
 const isGhostTraceEnabled = (settings) =>
   settings?.debugGhostTrace === true ||
@@ -130,6 +177,67 @@ const hashObjectLike = (hash, value, cache) => {
   const signature = objectHash >>> 0;
   cache?.set(value, signature);
   return hashNumber(hash, signature);
+};
+
+const getFragmentPaintSignature = (node, cache, registry) => {
+  if (!node || typeof node !== "object") {
+    return null;
+  }
+  const childSignatures: number[] = [];
+  if (Array.isArray(node?.children)) {
+    for (const child of node.children) {
+      const childSignature = getFragmentPaintSignature(child, cache, registry);
+      if (typeof childSignature === "number") {
+        childSignatures.push(childSignature);
+      }
+    }
+  }
+
+  const fragmentRenderer = node?.type ? registry?.get(node.type) : null;
+  const hasVisualSelf = typeof fragmentRenderer?.renderFragment === "function";
+  if (!hasVisualSelf && childSignatures.length === 0) {
+    return null;
+  }
+
+  let hash = 17;
+  if (hasVisualSelf) {
+    hash = hashString(hash, node?.type || "");
+    hash = hashString(hash, node?.role || "");
+    hash = hashNumber(hash, node?.x);
+    hash = hashNumber(hash, node?.y);
+    hash = hashNumber(hash, node?.width);
+    hash = hashNumber(hash, node?.height);
+    hash = hashNumber(hash, node?.fixedBounds ? 1 : 0);
+    hash = hashObjectLike(hash, node?.meta || null, cache);
+  }
+  if (childSignatures.length > 0) {
+    hash = hashNumber(hash, childSignatures.length);
+    for (const childSignature of childSignatures) {
+      hash = hashNumber(hash, childSignature);
+    }
+  }
+  return hash >>> 0;
+};
+
+const hashLayoutTreeForPaint = (hash, nodes, cache, registry) => {
+  if (!Array.isArray(nodes) || nodes.length === 0) {
+    return hash;
+  }
+  const nodeSignatures: number[] = [];
+  for (const node of nodes) {
+    const nodeSignature = getFragmentPaintSignature(node, cache, registry);
+    if (typeof nodeSignature === "number") {
+      nodeSignatures.push(nodeSignature);
+    }
+  }
+  if (nodeSignatures.length === 0) {
+    return hash;
+  }
+  hash = hashNumber(hash, nodeSignatures.length);
+  for (const nodeSignature of nodeSignatures) {
+    hash = hashNumber(hash, nodeSignature);
+  }
+  return hash;
 };
 
 const resolveSelectionStyle = (settings) => {
@@ -268,6 +376,7 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
       continue;
     }
     // 以 blockStart / blockId 为 key 聚合同一张表格在该页的切片信息
+    const pageOffsetDelta = getPageOffsetDelta(page);
     const groups = new Map();
     for (const line of page.lines) {
       const attrs = line?.blockAttrs || {};
@@ -281,11 +390,15 @@ const buildTablePaginationDebug = (layout, visibleRange) => {
       const key =
         tableOwnerKey ??
         line.blockId ??
-        (Number.isFinite(line.blockStart) ? line.blockStart : (line.start ?? 0));
+        (Number.isFinite(line.blockStart)
+          ? Number(line.blockStart) + pageOffsetDelta
+          : Number.isFinite(line.start)
+            ? Number(line.start) + pageOffsetDelta
+            : 0);
       if (!groups.has(key)) {
         groups.set(key, {
           blockStart: Number.isFinite(line.blockStart)
-            ? line.blockStart
+            ? Number(line.blockStart) + pageOffsetDelta
             : Number.isFinite(key)
               ? key
               : null,
@@ -452,8 +565,17 @@ export class Renderer {
 
     let hash = 0;
     const objectSignatureCache = new WeakMap();
+    const pageFragments = ensurePageFragments(page);
 
     for (const line of page.lines) {
+      const renderer = this.registry?.get(line.blockType);
+      const nodeView = this.nodeViewProvider?.(line);
+      const renderPlan = resolveLineRenderPlan(line, renderer, {
+        hasNodeViewRender: !!nodeView?.render,
+      });
+      if (renderPlan.shouldSkipBodyPassAfterFragment) {
+        continue;
+      }
       // Canvas page cache only depends on visual output. Absolute doc offsets can shift after
       // upstream edits without changing what this page actually draws.
       hash = hashNumber(hash, line.x);
@@ -472,13 +594,17 @@ export class Renderer {
       hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.tableOwnerMeta || null, objectSignatureCache);
-      hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
+      if (renderPlan.shouldRunContainerPass) {
+        hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
+      }
       hash = hashObjectLike(hash, line.fragmentOwners || null, objectSignatureCache);
-      hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
+      if (renderPlan.shouldRunListMarkerPass) {
+        hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
+      }
       hash = hashObjectLike(hash, line.imageMeta || null, objectSignatureCache);
       hash = hashObjectLike(hash, line.videoMeta || null, objectSignatureCache);
 
-      if (line.runs) {
+      if (renderPlan.hasTextPayload && line.runs) {
         for (const run of line.runs) {
           hash = hashString(hash, run.text || "");
 
@@ -508,6 +634,8 @@ export class Renderer {
         }
       }
     }
+
+    hash = hashLayoutTreeForPaint(hash, pageFragments || null, objectSignatureCache, this.registry);
 
     if (page) {
       page.__signature = hash;
@@ -771,9 +899,49 @@ export class Renderer {
 
     const defaultRender = (line, pageX, pageTop, layoutRef) =>
       this.drawLine(ctx, line, pageX, pageTop, layoutRef);
+    const lineEntries = page.lines.map((line) => {
+      const nodeView = this.nodeViewProvider?.(line);
+      const renderer = this.registry?.get(line.blockType);
+      const renderPlan = resolveLineRenderPlan(line, renderer, {
+        hasNodeViewRender: !!nodeView?.render,
+      });
+      return {
+        line,
+        nodeView,
+        renderer,
+        renderPlan,
+        textLineKey: getTextLineFragmentKey(line),
+      };
+    });
+    const leafTextLineEntries = new Map<string, (typeof lineEntries)[number]>();
+    for (const entry of lineEntries) {
+      if (typeof entry.textLineKey !== "string" || entry.textLineKey.length === 0) {
+        continue;
+      }
+      if (!entry.renderPlan.hasTextPayload) {
+        continue;
+      }
+      leafTextLineEntries.set(entry.textLineKey, entry);
+    }
+    const renderedLeafTextKeys = new Set<string>();
 
     const renderFragmentTree = (fragment) => {
       if (!fragment) {
+        return;
+      }
+      if (isTextLineFragment(fragment)) {
+        const textLineKey = getTextLineFragmentKey(fragment);
+        const lineEntry =
+          typeof textLineKey === "string" ? leafTextLineEntries.get(textLineKey) : null;
+        if (
+          lineEntry &&
+          !lineEntry.renderPlan.shouldRunNodeViewPass &&
+          (!lineEntry.renderPlan.shouldRunRendererLinePass ||
+            lineEntry.renderPlan.usesDefaultTextLineRenderer)
+        ) {
+          defaultRender(lineEntry.line, 0, 0, layout);
+          renderedLeafTextKeys.add(textLineKey);
+        }
         return;
       }
       const fragmentRenderer = fragment?.type ? this.registry?.get(fragment.type) : null;
@@ -794,19 +962,7 @@ export class Renderer {
       }
     };
 
-    const pageFragments =
-      Array.isArray(page?.fragments) && page.fragments.length > 0
-        ? page.fragments
-        : Array.isArray(page?.lines) &&
-            page.lines.some(
-              (line) =>
-                Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0
-            )
-          ? buildPageFragmentsFromLines(page.lines)
-          : [];
-    if (!Array.isArray(page?.fragments) && pageFragments.length > 0 && page) {
-      page.fragments = pageFragments;
-    }
+    const pageFragments = ensurePageFragments(page);
 
     if (pageFragments.length > 0) {
       for (const fragment of pageFragments) {
@@ -814,75 +970,23 @@ export class Renderer {
       }
     }
 
-    for (const line of page.lines) {
-      const containers = line.containers;
-
-      if (containers && this.registry) {
-        for (const container of containers) {
-          const containerRenderer = this.registry.get(container.type);
-          if (containerRenderer?.renderContainer) {
-            containerRenderer.renderContainer({
-              ctx,
-              line,
-              pageTop: 0,
-              pageX: 0,
-              layout,
-              container,
-              defaultRender,
-            });
-          }
-        }
-      }
-
-      if (
-        line?.listMarker ||
-        line?.blockAttrs?.listOwnerMarkerText ||
-        line?.blockAttrs?.markerText
-      ) {
-        renderListMarker({
-          ctx,
-          line,
-          pageTop: 0,
-          pageX: 0,
-          layout,
-        });
-      }
-
-      let handled = false;
-      const nodeView = this.nodeViewProvider?.(line);
-      if (nodeView?.render) {
-        nodeView.render({
-          ctx,
-          line,
-          pageTop: 0,
-          pageX: 0,
-          layout,
-          defaultRender,
-        });
-        handled = true;
-      }
-
-      if (!handled) {
-        const renderer = this.registry?.get(line.blockType);
-
-        if (renderer?.renderLine) {
-          renderer.renderLine({
-            ctx,
-
-            line,
-
-            pageTop: 0,
-
-            pageX: 0,
-
-            layout,
-
-            defaultRender,
-          });
-        } else {
-          defaultRender(line, 0, 0, layout);
-        }
-      }
+    for (const entryState of lineEntries) {
+      const renderPlan = resolveLineRenderPlan(entryState.line, entryState.renderer, {
+        hasNodeViewRender: !!entryState.nodeView?.render,
+        hasLeafTextFragment:
+          typeof entryState.textLineKey === "string" &&
+          renderedLeafTextKeys.has(entryState.textLineKey),
+      });
+      renderLineBodyPass({
+        ctx,
+        line: entryState.line,
+        layout,
+        registry: this.registry,
+        renderer: entryState.renderer,
+        nodeView: entryState.nodeView,
+        renderPlan,
+        defaultRender,
+      });
     }
 
     entry.dirty = false;

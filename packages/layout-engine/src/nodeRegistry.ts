@@ -1,5 +1,6 @@
-﻿export type {
+export type {
   ContainerStyle,
+  LayoutBox,
   LayoutFragment,
   LayoutFragmentOwner,
   MarkRenderAdapter,

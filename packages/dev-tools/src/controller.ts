@@ -35,9 +35,9 @@ export function createDevToolsController(
   const pluginSortAsc = ref(true);
   const selectionExpanded = ref(false);
   const selectedStructureNode = ref<any | null>(null);
-  const history = ref<DevToolsHistoryItem[]>([]);
-  const historyDiffs = ref<Record<string, DevToolsHistoryDiff>>({});
-  const snapshots = ref(loadSnapshots());
+  const history = shallowRef<DevToolsHistoryItem[]>([]);
+  const historyDiffs = shallowRef<Record<string, DevToolsHistoryDiff>>({});
+  const snapshots = shallowRef<DevToolsSnapshot[]>(loadSnapshots());
 
   const diffEngine = Promise.resolve(
     options.diffWorker

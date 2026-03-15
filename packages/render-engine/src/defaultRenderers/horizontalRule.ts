@@ -1,4 +1,6 @@
 ﻿
+import { hasFragmentOwnerType } from "./fragmentOwners";
+
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
 export const horizontalRuleNodeSpec: any = {
@@ -47,6 +49,13 @@ export const horizontalRuleRenderer = {
       blockType: "horizontalRule",
       blockAttrs: {
         lineHeight: height,
+        layoutCapabilities: {
+          "visual-block": true,
+        },
+        visualBounds: {
+          x: settings.margin.left,
+          width,
+        },
       },
     };
     return {
@@ -54,7 +63,16 @@ export const horizontalRuleRenderer = {
       length: 1,
       height,
       blockLineHeight: height,
-      blockAttrs: { lineHeight: height },
+      blockAttrs: {
+        lineHeight: height,
+        layoutCapabilities: {
+          "visual-block": true,
+        },
+        visualBounds: {
+          x: settings.margin.left,
+          width,
+        },
+      },
     };
   },
   renderLine({ ctx, line, pageX, pageTop, layout }: any) {
@@ -62,6 +80,26 @@ export const horizontalRuleRenderer = {
     const x = pageX + (Number.isFinite(line?.x) ? Number(line.x) : layout.margin.left);
     const height = line.lineHeight ?? layout.lineHeight;
     const y = pageTop + line.y + height / 2;
+    if (hasFragmentOwnerType(line, "horizontalRule", line?.blockId)) {
+      return;
+    }
+    ctx.strokeStyle = "#d1d5db";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y);
+    ctx.stroke();
+  },
+  renderFragment({ ctx, fragment, pageX, pageTop, layout }: any) {
+    if (fragment?.type !== "horizontalRule") {
+      return;
+    }
+    const width = Math.max(0, Number(fragment?.width) || 0);
+    const x =
+      pageX +
+      (Number.isFinite(fragment?.x) ? Number(fragment.x) : Number(layout?.margin?.left) || 0);
+    const height = Number(fragment?.height) || Number(layout?.lineHeight) || 0;
+    const y = pageTop + (Number(fragment?.y) || 0) + height / 2;
     ctx.strokeStyle = "#d1d5db";
     ctx.lineWidth = 1;
     ctx.beginPath();

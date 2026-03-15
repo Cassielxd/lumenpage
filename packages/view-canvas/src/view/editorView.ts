@@ -185,6 +185,7 @@ export class CanvasEditorView {
     const { getEventCoords, clampOffset, getDocPosFromCoords } = createCoordinateHelpers({
       dom,
       getLayout: () => layout,
+      getLayoutIndex: () => layoutIndex,
       getTextLength,
       getState: () => this.state,
       textOffsetToDocPos,
@@ -330,6 +331,9 @@ export class CanvasEditorView {
       getEditorPropsList,
       applyTransaction,
       createChangeEvent,
+      onBeforeTransaction: (args) => {
+        queryEditorProp("onBeforeTransaction", args);
+      },
       layoutPipeline,
       onChange,
       setPendingChangeSummary: (value) => {

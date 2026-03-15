@@ -38,6 +38,7 @@ export type LayoutHooks = {
 export type CanvasSelectionGeometry = {
   shouldComputeSelectionRects?: (ctx: any) => boolean;
   shouldRenderBorderOnly?: (ctx: any) => boolean;
+  resolveSelectionRects?: (ctx: any) => any[] | null | undefined;
 };
 
 export type CanvasHooks = {

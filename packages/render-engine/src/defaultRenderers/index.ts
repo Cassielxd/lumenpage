@@ -13,6 +13,12 @@ import {
   resolveListMarker,
   taskListRenderer,
 } from "./list";
+import {
+  createImplicitBlockFragmentOwner,
+  ensureBlockFragmentOwner,
+  hasFragmentOwnerType,
+  shiftFragmentOwners,
+} from "./fragmentOwners";
 
 export { blockquoteRenderer };
 export { codeBlockRenderer };
@@ -28,6 +34,12 @@ export {
   renderListMarker,
   resolveListMarker,
   taskListRenderer,
+};
+export {
+  createImplicitBlockFragmentOwner,
+  ensureBlockFragmentOwner,
+  hasFragmentOwnerType,
+  shiftFragmentOwners,
 };
 
 export { blockquoteRenderer as defaultBlockquoteRenderer };

@@ -5,15 +5,14 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {
-      "lumenpage-layout-engine": ["../layout-engine/src/index.ts"],
-      "lumenpage-render-engine": ["../render-engine/src/index.ts"],
-      "lumenpage-view-runtime": ["../view-runtime/src/index.ts"]
-    }
+    "composite": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../layout-engine" },
+    { "path": "../render-engine" },
+    { "path": "../view-runtime" }
+  ]
 }
 
 

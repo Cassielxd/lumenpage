@@ -1,9 +1,16 @@
 import { getFontSize, measureTextWidth } from "../measure";
 import { selectionToRects } from "./selection";
-import { resolveEmptyLineWidth, resolveLineVisualBox } from "./geometry";
+import {
+  collectAllLayoutBoxesForRange,
+  collectTextLineItemsForRange,
+  resolveEmptyLineWidth,
+  resolveLayoutBoxRect,
+  resolveLineVisualBox,
+} from "./geometry";
 import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
 import { getLinesInRange } from "../caret";
 import { resolveListMarker } from "lumenpage-render-engine";
+import { materializeLayoutGeometry } from "lumenpage-layout-engine";
 
 // Cache for decoration draw data to avoid recomputing on every frame
 const decorationCache = new Map<
@@ -78,6 +85,19 @@ const getLineHeight = (line, layout) =>
 const getLineOffsetDelta = (line) =>
   Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
 
+const getPageOffsetDelta = (page) =>
+  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+
+const getRunOffsetDelta = (line, page = null) => getLineOffsetDelta(line) + getPageOffsetDelta(page);
+
+const getLineStart = (line, page = null) =>
+  Number.isFinite(line?.start) ? Number(line.start) + getPageOffsetDelta(page) : 0;
+
+const getLineEnd = (line, page = null) => {
+  const start = getLineStart(line, page);
+  return Number.isFinite(line?.end) ? Number(line.end) + getPageOffsetDelta(page) : start;
+};
+
 const getBaselineOffset = (lineHeight, fontSize) => Math.max(0, (lineHeight - fontSize) / 2);
 
 const forEachLineItem = (layout, layoutIndex, visitor) => {
@@ -87,12 +107,14 @@ const forEachLineItem = (layout, layoutIndex, visitor) => {
       const lines = Array.isArray(pageEntry?.page?.lines) ? pageEntry.page.lines : [];
       for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
         const line = lines[lineIndex];
+        const start = getLineStart(line, pageEntry.page);
+        const end = getLineEnd(line, pageEntry.page);
         visitor({
           pageIndex: pageEntry.pageIndex,
           lineIndex,
           line,
-          start: line?.start,
-          end: line?.end,
+          start,
+          end,
         });
       }
     }
@@ -110,12 +132,14 @@ const forEachLineItem = (layout, layoutIndex, visitor) => {
     const page = layout.pages[p];
     for (let l = 0; l < page.lines.length; l += 1) {
       const line = page.lines[l];
+      const start = getLineStart(line, page);
+      const end = getLineEnd(line, page);
       visitor({
         pageIndex: p,
         lineIndex: l,
         line,
-        start: line.start,
-        end: line.end,
+        start,
+        end,
       });
     }
   }
@@ -133,8 +157,8 @@ const getLineItemsInRange = (layout, layoutIndex, minOffset, maxOffset) => {
 
   const items = [];
   forEachLineItem(layout, layoutIndex, (item) => {
-    const start = Number.isFinite(item?.line?.start) ? Number(item.line.start) : 0;
-    const end = Number.isFinite(item?.line?.end) ? Number(item.line.end) : start;
+    const start = Number.isFinite(item?.start) ? Number(item.start) : 0;
+    const end = Number.isFinite(item?.end) ? Number(item.end) : start;
     if (end < minOffset || start > maxOffset) {
       return;
     }
@@ -158,16 +182,18 @@ const collectTextSegments = ({
   rangeStart,
   rangeEnd,
   layout,
+  page,
   color,
 }) => {
   const segments = [];
   const lineHeight = getLineHeight(line, layout);
+  const lineStart = getLineStart(line, page);
 
   if (!line.runs || line.runs.length === 0) {
     const font = layout.font;
     const text = line.text || "";
-    const startIndex = Math.max(0, rangeStart - line.start);
-    const endIndex = Math.max(startIndex, Math.min(rangeEnd - line.start, text.length));
+    const startIndex = Math.max(0, rangeStart - lineStart);
+    const endIndex = Math.max(startIndex, Math.min(rangeEnd - lineStart, text.length));
     if (endIndex <= startIndex) {
       return segments;
     }
@@ -182,7 +208,7 @@ const collectTextSegments = ({
   }
 
   let cursorX = 0;
-  const lineOffsetDelta = getLineOffsetDelta(line);
+  const lineOffsetDelta = getRunOffsetDelta(line, page);
 
   for (const run of line.runs) {
     const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
@@ -271,7 +297,14 @@ export const buildDecorationDrawData = (
     viewportWidth: number;
     textLength: number;
     docPosToTextOffset: (doc: any, pos: number) => number;
-    coordsAtPos: (layout: any, offset: number, scrollTop: number, viewportWidth: number, textLength: number) => any;
+    coordsAtPos: (
+      layout: any,
+      offset: number,
+      scrollTop: number,
+      viewportWidth: number,
+      textLength: number,
+      options?: any
+    ) => any;
     layoutToken?: number;
   },
   skipCache = false
@@ -279,6 +312,7 @@ export const buildDecorationDrawData = (
   if (!layout || !doc) {
     return null;
   }
+  materializeLayoutGeometry(layout);
 
   // Use caching to avoid recomputing on every frame
   // Cache key includes layout token, scroll position, viewport, and decoration info
@@ -306,9 +340,19 @@ export const buildDecorationDrawData = (
 
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
   const pageSpan = layout.pageHeight + layout.pageGap;
-  const nodeOutlineUnion = new Map<CanvasDecoration, { left: number; top: number; right: number; bottom: number }>();
+  const nodeOutlineUnion = new Map<
+    string,
+    {
+      decoration: CanvasDecoration;
+      left: number;
+      top: number;
+      right: number;
+      bottom: number;
+    }
+  >();
 
-  for (const decoration of items) {
+  for (let decorationIndex = 0; decorationIndex < items.length; decorationIndex += 1) {
+    const decoration = items[decorationIndex];
     if (!decoration || !decoration.spec) {
       continue;
     }
@@ -318,7 +362,9 @@ export const buildDecorationDrawData = (
         continue;
       }
       const offset = docPosToTextOffset(doc, decoration.from);
-      const rect = coordsAtPos(layout, offset, scrollTop, viewportWidth, textLength);
+      const rect = coordsAtPos(layout, offset, scrollTop, viewportWidth, textLength, {
+        layoutIndex,
+      });
       if (!rect) {
         continue;
       }
@@ -347,13 +393,52 @@ export const buildDecorationDrawData = (
       const minOffset = Math.max(0, Math.min(outlineFromOffset, outlineToOffset));
       const maxOffset = Math.max(minOffset, Math.min(Math.max(outlineFromOffset, outlineToOffset), textLength));
       const lineItems = getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
+      const seedLine = lineItems[0]?.line ?? null;
+      const seedBlockId = seedLine?.blockId ?? null;
+      const seedBlockType = seedLine?.blockType ?? null;
+      const boxHits = collectAllLayoutBoxesForRange(layout, minOffset, maxOffset, {
+        exact: true,
+        layoutIndex,
+        predicate: ({ box }) => {
+          if (!box) {
+            return false;
+          }
+          if (seedBlockId != null && box?.blockId != null) {
+            return String(box.blockId) === String(seedBlockId);
+          }
+          if (seedBlockType) {
+            return String(box?.type || "") === String(seedBlockType);
+          }
+          return true;
+        },
+      });
+      if (boxHits.length > 0) {
+        for (const hit of boxHits) {
+          const rect = resolveLayoutBoxRect({
+            layout,
+            box: hit.box,
+            pageIndex: hit.pageIndex,
+            scrollTop,
+            viewportWidth,
+          });
+          if (!rect || rect.width <= 0 || rect.height <= 0) {
+            continue;
+          }
+          nodeRects.push({
+            ...rect,
+            decoration,
+          });
+        }
+        continue;
+      }
       for (const item of lineItems) {
         const line = item?.line;
         if (!line) {
           continue;
         }
-        const lineStart = Number.isFinite(line.start) ? line.start : 0;
-        const lineEnd = Number.isFinite(line.end) ? line.end : lineStart;
+        const page = layout.pages[item.pageIndex] ?? null;
+        const lineStart = Number.isFinite(item?.start) ? Number(item.start) : getLineStart(line, page);
+        const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
         const isEmptyLine = lineStart === lineEnd;
         if (isEmptyLine) {
           if (minOffset > lineStart || maxOffset < lineEnd) {
@@ -386,19 +471,17 @@ export const buildDecorationDrawData = (
         }
         // 浠ｇ爜鍧楁槸瀹瑰櫒鑳屾櫙锛坢argin 鍐呭叏瀹斤級+ 鍐呴儴鏂囧瓧锛坧adding 鍚庤捣濮嬶級锛?
         // 閫変腑妗嗛渶瑕佸榻愬鍣ㄨ竟鐣岃€屼笉鏄枃瀛楄捣濮嬩綅缃€?
-        const isCodeBlock =
-          line?.blockType === "codeBlock" ||
-          Number.isFinite(Number(line?.blockAttrs?.codeBlockPadding));
-        if (isCodeBlock) {
+        if (visualBox.hasOuterBounds) {
           left = Math.min(left, pageX + visualBox.outerX);
           right = Math.max(right, pageX + visualBox.outerX + visualBox.outerWidth);
         }
         const top = pageTop + line.y;
         const bottom = top + lineHeight;
-        const prev = nodeOutlineUnion.get(decoration);
+        const unionKey = `${decorationIndex}:${item.pageIndex}`;
+        const prev = nodeOutlineUnion.get(unionKey);
 
         if (!prev) {
-          nodeOutlineUnion.set(decoration, { left, top, right, bottom });
+          nodeOutlineUnion.set(unionKey, { decoration, left, top, right, bottom });
           continue;
         }
         prev.left = Math.min(prev.left, left);
@@ -427,17 +510,26 @@ export const buildDecorationDrawData = (
     if (decoration.spec.textColor) {
       const minOffset = Math.max(0, Math.min(fromOffset, toOffset));
       const maxOffset = Math.max(minOffset, Math.min(Math.max(fromOffset, toOffset), textLength));
-      const lineItems = getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
+      const textLineItems = collectTextLineItemsForRange(layout, minOffset, maxOffset, {
+        layoutIndex,
+      });
+      const lineItems =
+        textLineItems.length > 0
+          ? textLineItems
+          : getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
       for (const item of lineItems) {
         const line = item.line;
         if (!line) {
           continue;
         }
-        if (maxOffset <= line.start || minOffset >= line.end) {
+        const page = layout.pages[item.pageIndex] ?? null;
+        const lineStart = Number.isFinite(item?.start) ? Number(item.start) : getLineStart(line, page);
+        const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
+        if (maxOffset <= lineStart || minOffset >= lineEnd) {
           continue;
         }
-        const start = Math.max(minOffset, line.start);
-        const end = Math.min(maxOffset, line.end);
+        const start = Math.max(minOffset, lineStart);
+        const end = Math.min(maxOffset, lineEnd);
         if (end <= start) {
           continue;
         }
@@ -449,6 +541,7 @@ export const buildDecorationDrawData = (
           rangeStart: start,
           rangeEnd: end,
           layout,
+          page,
           color: decoration.spec.textColor,
         });
         if (segments.length > 0) {
@@ -459,7 +552,7 @@ export const buildDecorationDrawData = (
   }
 
   if (nodeOutlineUnion.size > 0) {
-    for (const [decoration, union] of nodeOutlineUnion.entries()) {
+    for (const union of nodeOutlineUnion.values()) {
       const width = Math.max(0, union.right - union.left);
       const height = Math.max(0, union.bottom - union.top);
       if (width <= 0 || height <= 0) {
@@ -470,7 +563,7 @@ export const buildDecorationDrawData = (
         y: union.top,
         width,
         height,
-        decoration,
+        decoration: union.decoration,
       });
     }
   }

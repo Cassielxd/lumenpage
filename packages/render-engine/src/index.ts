@@ -1,6 +1,7 @@
 ﻿export {
   NodeRendererRegistry,
   type ContainerStyle,
+  type LayoutBox,
   type LayoutFragment,
   type LayoutFragmentOwner,
   type NodeLayoutResult,
@@ -34,4 +35,11 @@ export {
 } from "./mark";
 export { breakLines } from "./lineBreaker";
 export { docToRuns, textToRuns, textblockToRuns } from "./textRuns";
+export { resolveContainerLayoutContext, type ResolvedContainerLayoutContext } from "./containerLayout";
+export { isLeafLayoutNode, resolveNodeLayoutRole, type NodeLayoutRole } from "./layoutRole";
+export {
+  resolveNodeSplitFragments,
+  resolveRendererFragmentModel,
+  type RendererFragmentModel,
+} from "./pagination";
 export * from "./defaultRenderers/index";

@@ -1,6 +1,8 @@
 import { breakLines } from "../lineBreaker";
 import { docToRuns, textblockToRuns } from "../textRuns";
-import { shiftFragmentOwners } from "./fragmentOwners";
+import { resolveContainerLayoutContext } from "../containerLayout";
+import { isLeafLayoutNode } from "../layoutRole";
+import { ensureBlockFragmentOwner, hasFragmentOwnerType, shiftFragmentOwners } from "./fragmentOwners";
 
 const normalizeTableCellBackground = (value) => {
   const text = String(value || "").trim();
@@ -90,6 +92,10 @@ const createTableRootOwner = ({ node, tableKey, settings, tableWidth, colWidth, 
     colWidth,
     padding,
     paddingY,
+    layoutCapabilities: {
+      "table-root": true,
+      "table-structure": true,
+    },
   },
 });
 
@@ -107,6 +113,11 @@ const createTableCellOwner = ({ tableKey, cell, settings, colWidth, padding }) =
     rowspan: cell.rowspan ?? 1,
     header: cell.header === true,
     background: normalizeTableCellBackground(cell.background),
+    layoutCapabilities: {
+      "content-container": true,
+      "table-cell": true,
+      "table-structure": true,
+    },
   },
 });
 
@@ -282,6 +293,13 @@ const layoutLeafInCell = ({
       };
     }
     applyContainerStack(lineCopy, context.containerStack);
+    lineCopy.fragmentOwners = ensureBlockFragmentOwner({
+      line: lineCopy,
+      node,
+      blockId,
+      blockStart: blockStartOffset,
+      blockAttrs: lineCopy.blockAttrs,
+    });
     if (Array.isArray(lineCopy.fragmentOwners) && lineCopy.fragmentOwners.length > 0) {
       lineCopy.fragmentOwners = shiftFragmentOwners(lineCopy.fragmentOwners, 0, baseY);
     }
@@ -311,7 +329,7 @@ const layoutNodeInCell = ({
   cellBaseX,
 }) => {
   const renderer = registry?.get(node.type.name);
-  const isLeaf = renderer?.layoutBlock || renderer?.toRuns || node.isTextblock || node.isAtom;
+  const isLeaf = isLeafLayoutNode(renderer, node);
 
   if (isLeaf) {
     return layoutLeafInCell({
@@ -324,27 +342,14 @@ const layoutNodeInCell = ({
       cellBaseX,
     });
   }
-
-  const style = renderer?.getContainerStyle
-    ? renderer.getContainerStyle({ node, settings, registry })
-    : null;
-  const indent = Number.isFinite(style?.indent) ? style.indent : 0;
-  const shouldPush = indent > 0 || renderer?.renderContainer || style;
-  const nextContext = shouldPush
-    ? {
-        indent: context.indent + indent,
-        containerStack: [
-          ...context.containerStack,
-          {
-            ...style,
-            type: node.type.name,
-            offset: context.indent,
-            indent,
-            baseX: cellBaseX + context.indent,
-          },
-        ],
-      }
-    : context;
+  const { nextContext } = resolveContainerLayoutContext({
+    renderer,
+    node,
+    settings,
+    registry,
+    context,
+    baseX: cellBaseX,
+  });
 
   let offset = startOffset;
   let y = baseY;
@@ -404,7 +409,10 @@ const layoutCell = (cell, settings, registry, maxWidth, cellBaseX) => {
 };
 
 const hasTableFragmentOwner = (line) =>
-  Array.isArray(line?.fragmentOwners) ? line.fragmentOwners.some((owner) => owner?.role === "table") : false;
+  hasFragmentOwnerType(line, "table", line?.blockId) ||
+  (Array.isArray(line?.fragmentOwners)
+    ? line.fragmentOwners.some((owner) => owner?.role === "table")
+    : false);
 
 const drawTableChrome = ({ ctx, tableX, tableY, tableMeta }) => {
   if (!tableMeta || !Number.isFinite(tableMeta?.tableWidth) || !Number.isFinite(tableMeta?.tableHeight)) {
@@ -681,7 +689,15 @@ export const tableRenderer = {
       paddingY,
       tableTop: 0,
     };
-    tableRootOwner.meta = tableOwnerMeta;
+    tableRootOwner.meta = {
+      ...(tableRootOwner.meta || {}),
+      ...tableOwnerMeta,
+      layoutCapabilities: {
+        ...((tableRootOwner.meta && tableRootOwner.meta.layoutCapabilities) || {}),
+        "table-root": true,
+        "table-structure": true,
+      },
+    };
 
     for (let r = 0; r < rows; r += 1) {
       const rowCells = cellLayouts[r];

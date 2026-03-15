@@ -446,7 +446,8 @@ const createMentionRenderer = (
       if (!item) {
         return close();
       }
-      return currentSuggestionProps.command(item) !== false;
+      currentSuggestionProps.command(item);
+      return true;
     };
 
     return {

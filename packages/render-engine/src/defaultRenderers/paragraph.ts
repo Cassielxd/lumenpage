@@ -49,8 +49,9 @@ export const paragraphNodeSpec: any = {
 
 export const paragraphRenderer = {
   allowSplit: true,
+  lineBodyMode: "default-text",
   toRuns(node: any, settings: any, registry: any) {
-    return textblockToRuns(
+    const runs = textblockToRuns(
       node,
       settings,
       node.type.name,
@@ -59,6 +60,26 @@ export const paragraphRenderer = {
       0,
       registry
     );
+    return {
+      ...runs,
+      blockAttrs: {
+        ...(runs?.blockAttrs || node.attrs || {}),
+        outlineMinWidth: 1,
+      },
+    };
+  },
+  getBlockSpacing({ settings, isTopLevel }: any) {
+    if (isTopLevel !== true) {
+      return null;
+    }
+    return {
+      before: Number.isFinite(settings?.paragraphSpacingBefore)
+        ? Number(settings.paragraphSpacingBefore)
+        : undefined,
+      after: Number.isFinite(settings?.paragraphSpacingAfter)
+        ? Number(settings.paragraphSpacingAfter)
+        : undefined,
+    };
   },
   renderLine({ defaultRender, line, pageX, pageTop, layout }: any) {
     defaultRender(line, pageX, pageTop, layout);

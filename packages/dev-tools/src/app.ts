@@ -183,8 +183,8 @@ const MetaGrid = defineComponent({
   },
 });
 
-function toViewerPath(path: Array<string | number>) {
-  return path.reduce((result, segment) => {
+function toViewerPath(path: Array<string | number>): string {
+  return path.reduce<string>((result, segment) => {
     if (typeof segment === "number") {
       return `${result}[${segment}]`;
     }

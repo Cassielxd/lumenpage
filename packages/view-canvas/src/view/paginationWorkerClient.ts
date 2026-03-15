@@ -1,4 +1,5 @@
 import { docToRuns } from "../layout-pagination";
+import { resolveRendererFragmentModel } from "lumenpage-render-engine";
 
 type WorkerRequestPayload = {
   runs: any[];
@@ -27,6 +28,11 @@ const toSerializableSettings = (settings: any) => ({
   minLineWidth: Number(settings?.minLineWidth) || 0,
 });
 
+const hasComplexPaginationModel = (renderer: any) => {
+  const fragmentModel = resolveRendererFragmentModel(renderer);
+  return renderer?.layoutBlock || fragmentModel === "continuation";
+};
+
 export const isWorkerPaginationEligibleDoc = (doc: any, registry: any) => {
   if (!doc || !Number.isFinite(doc?.childCount)) {
     return false;
@@ -34,8 +40,7 @@ export const isWorkerPaginationEligibleDoc = (doc: any, registry: any) => {
   for (let index = 0; index < doc.childCount; index += 1) {
     const block = doc.child(index);
     const renderer = registry?.get?.(block?.type?.name);
-    // 带 layoutBlock/splitBlock 的复杂块（如表格）暂不走 runs-worker，避免行为不一致。
-    if (renderer?.layoutBlock || renderer?.splitBlock) {
+    if (hasComplexPaginationModel(renderer)) {
       return false;
     }
   }
@@ -50,7 +55,7 @@ export const getWorkerPaginationIneligibleReason = (doc: any, registry: any) => 
     const block = doc.child(index);
     const typeName = block?.type?.name || "unknown";
     const renderer = registry?.get?.(typeName);
-    if (renderer?.layoutBlock || renderer?.splitBlock) {
+    if (hasComplexPaginationModel(renderer)) {
       return `complex-block:${typeName}`;
     }
   }

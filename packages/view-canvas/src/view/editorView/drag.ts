@@ -3,10 +3,12 @@ import { Slice } from "lumenpage-model";
 import { docPosToTextOffset } from "../../core";
 import { NodeSelection, Selection } from "lumenpage-state";
 import { getLineAtOffset } from "../layoutIndex";
+import { isLineVisualBlock } from "../layoutSemantics";
 import { Decoration } from "../decorations";
+import { resolveLineVisualBox } from "../render/geometry";
 import { isEditorDomEventHandled } from "./plugins";
 
-// 拖拽/放置处理（包�?drop cursor 计算与绘制）�?
+// 鎷栨嫿/鏀剧疆澶勭悊锛堝寘鍚?drop cursor 璁＄畻涓庣粯鍒讹級銆?
 export const createDragHandlers = ({
   view,
   settings,
@@ -67,7 +69,7 @@ export const createDragHandlers = ({
     }
   };
 
-  // 解析 drop cursor 样式�?
+  // 瑙ｆ瀽 drop cursor 鏍峰紡銆?
   const resolveDropCursorStyle = () => {
     const fromProps = queryEditorProp?.("dropCursor");
     if (fromProps === false) {
@@ -81,7 +83,7 @@ export const createDragHandlers = ({
     };
   };
 
-  // 根据落点定位光标高度�?
+  // 鏍规嵁钀界偣瀹氫綅鍏夋爣楂樺害銆?
   const resolveLineHeightAtPos = (pos) => {
     const layout = getLayout?.();
     if (!layout) {
@@ -101,7 +103,7 @@ export const createDragHandlers = ({
     return Number.isFinite(layout.lineHeight) ? layout.lineHeight : settings?.lineHeight ?? 22;
   };
 
-  // 设置 drop cursor 装饰�?
+  // 璁剧疆 drop cursor 瑁呴グ銆?
   const setDropDecoration = (pos) => {
     if (!Number.isFinite(pos)) {
       return;
@@ -117,27 +119,42 @@ export const createDragHandlers = ({
     dropPos = pos;
     const { color, width } = style;
     const height = resolveLineHeightAtPos(pos);
+    const layout = getLayout?.() ?? null;
     const layoutIndex = getLayoutIndex?.() ?? null;
     const offset = docPosToTextOffset(getState().doc, pos);
     const lineInfo = layoutIndex ? getLineAtOffset(layoutIndex, offset) : null;
     const line = lineInfo?.line ?? null;
-    const lineStart = Number.isFinite(line?.start) ? line.start : null;
-    const lineEnd = Number.isFinite(line?.end) ? line.end : null;
+    const lineStart = Number.isFinite(lineInfo?.start)
+      ? Number(lineInfo.start)
+      : null;
+    const lineEnd = Number.isFinite(lineInfo?.end)
+      ? Number(lineInfo.end)
+      : lineStart;
     const isLineEnd =
       lineStart != null &&
       lineEnd != null &&
       lineEnd > lineStart &&
       Number(offset) >= Number(lineEnd);
     const blockType = line?.blockType || null;
-    const isVisualBlock =
-      blockType === "image" || blockType === "video" || blockType === "horizontalRule";
-    const blockWidth = Number.isFinite(line?.width) ? Number(line.width) : null;
-    const lineX = Number.isFinite(line?.x) ? Number(line.x) : null;
+    const isVisualBlock = isLineVisualBlock(line);
+    const visualBox = line && layout ? resolveLineVisualBox(line, layout) : null;
+    const blockWidth = Number.isFinite(visualBox?.outerWidth)
+      ? Number(visualBox.outerWidth)
+      : Number.isFinite(line?.width)
+        ? Number(line.width)
+        : null;
+    const lineX = Number.isFinite(visualBox?.outerX)
+      ? Number(visualBox.outerX)
+      : Number.isFinite(line?.x)
+        ? Number(line.x)
+        : null;
     const marginLeft = Number.isFinite(settings?.margin?.left) ? Number(settings.margin.left) : null;
     const marginRight = Number.isFinite(settings?.margin?.right) ? Number(settings.margin.right) : null;
     const pageWidth = Number.isFinite(settings?.pageWidth) ? Number(settings.pageWidth) : null;
     const contentWidth =
-      pageWidth != null && marginLeft != null && marginRight != null
+      Number.isFinite(visualBox?.outerWidth)
+        ? Number(visualBox.outerWidth)
+        : pageWidth != null && marginLeft != null && marginRight != null
         ? Math.max(1, pageWidth - marginLeft - marginRight)
         : blockWidth;
     const isBlockBoundary =
@@ -169,11 +186,7 @@ export const createDragHandlers = ({
           const widgetHeight = Number.isFinite(renderHeight) ? Number(renderHeight) : height;
           const lineTop = y - Math.max(0, (height - widgetHeight) / 2);
           if (isBlockBoundary && Number.isFinite(contentWidth) && contentWidth > 0) {
-            const lineStartX = isLineEnd && Number.isFinite(blockWidth) ? x - Number(blockWidth) : x;
-            const left =
-              Number.isFinite(lineX) && Number.isFinite(marginLeft)
-                ? lineStartX - (Number(lineX) - Number(marginLeft))
-                : lineStartX;
+            const left = isLineEnd && Number.isFinite(blockWidth) ? x - Number(blockWidth) : x;
             const top = isLineEnd
               ? lineTop + height - thickness / 2
               : lineTop - thickness / 2;
@@ -189,7 +202,7 @@ export const createDragHandlers = ({
     scheduleRender();
   };
 
-  // 清理 drop cursor�?
+  // 娓呯悊 drop cursor銆?
   const clearDropDecoration = () => {
     if (!dropDecoration && dropPos == null) {
       return;
@@ -249,7 +262,7 @@ export const createDragHandlers = ({
     return true;
   };
 
-  // �?pointer 手势触发的内部拖拽入口（不依赖浏览器原生 dragstart）�?
+  // 鐢?pointer 鎵嬪娍瑙﹀彂鐨勫唴閮ㄦ嫋鎷藉叆鍙ｏ紙涓嶄緷璧栨祻瑙堝櫒鍘熺敓 dragstart锛夈€?
   const startInternalDragFromSelection = (event) => {
     if (!isEditable()) {
       return false;
@@ -271,7 +284,7 @@ export const createDragHandlers = ({
     return true;
   };
 
-  // 由节点位置触发内部拖拽（用于图片/视频等原子节点句柄）�?
+  // 鐢辫妭鐐逛綅缃Е鍙戝唴閮ㄦ嫋鎷斤紙鐢ㄤ簬鍥剧墖/瑙嗛绛夊師瀛愯妭鐐瑰彞鏌勶級銆?
   const startInternalDragFromNodePos = (nodePos, _event) => {
     if (!isEditable()) {
       return false;
@@ -339,7 +352,7 @@ export const createDragHandlers = ({
     return commitInternalDrop({ dropTargetPos, event });
   };
 
-  // 开始拖拽：写入剪贴数据�?
+  // 寮€濮嬫嫋鎷斤細鍐欏叆鍓创鏁版嵁銆?
   const handleDragStart = (event) => {
     if (!isEditable()) {
       event.preventDefault();
@@ -412,7 +425,7 @@ export const createDragHandlers = ({
     };
   };
 
-  // 拖拽中：更新 drop cursor�?
+  // 鎷栨嫿涓細鏇存柊 drop cursor銆?
   const handleDragOver = (event) => {
     if (!isEditable()) {
       event.preventDefault();
@@ -439,7 +452,7 @@ export const createDragHandlers = ({
     }
   };
 
-  // 离开拖拽区域：清�?drop cursor�?
+  // 绂诲紑鎷栨嫿鍖哄煙锛氭竻鐞?drop cursor銆?
   const handleDragLeave = (event) => {
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;
@@ -451,7 +464,7 @@ export const createDragHandlers = ({
     clearDropDecoration();
   };
 
-  // 放置：解析数据并插入/移动�?
+  // 鏀剧疆锛氳В鏋愭暟鎹苟鎻掑叆/绉诲姩銆?
   const handleDrop = (event) => {
     if (!isEditable()) {
       event.preventDefault();
@@ -538,7 +551,7 @@ export const createDragHandlers = ({
     dragState = null;
   };
 
-  // 拖拽结束：清理状态�?
+  // 鎷栨嫿缁撴潫锛氭竻鐞嗙姸鎬併€?
   const handleDragEnd = (event) => {
     if (event.defaultPrevented || isEditorDomEventHandled(event)) {
       return;

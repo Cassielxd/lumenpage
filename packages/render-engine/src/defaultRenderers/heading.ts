@@ -78,6 +78,7 @@ const getHeadingStyle = (level: number, baseFont: string) => {
 
 export const headingRenderer = {
   allowSplit: true,
+  lineBodyMode: "default-text",
   toRuns(node: any, settings: any, registry: any) {
     const level = Math.max(1, Math.min(3, Number(node.attrs?.level) || 1));
     const { font, lineHeight } = getHeadingStyle(level, settings.font);
@@ -90,7 +91,23 @@ export const headingRenderer = {
       0,
       registry
     );
-    return { ...runs, blockAttrs: { ...node.attrs, lineHeight } };
+    return {
+      ...runs,
+      blockAttrs: { ...node.attrs, lineHeight, outlineMinWidth: 1 },
+    };
+  },
+  getBlockSpacing({ settings, isTopLevel }: any) {
+    if (isTopLevel !== true) {
+      return null;
+    }
+    return {
+      before: Number.isFinite(settings?.paragraphSpacingBefore)
+        ? Number(settings.paragraphSpacingBefore)
+        : undefined,
+      after: Number.isFinite(settings?.paragraphSpacingAfter)
+        ? Number(settings.paragraphSpacingAfter)
+        : undefined,
+    };
   },
   renderLine({ defaultRender, line, pageX, pageTop, layout }: any) {
     defaultRender(line, pageX, pageTop, layout);

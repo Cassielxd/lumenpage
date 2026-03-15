@@ -30,6 +30,10 @@ export type CanvasEditorViewProps = {
     view: any,
     args: { pageCount: number; focused: "typing" | "idle"; inputFocused: boolean }
   ) => string | null;
+  onBeforeTransaction?: (
+    view: any,
+    args: { transaction: any; nextState: any }
+  ) => void;
   onChange?: (view: any, event: any) => void;
   nodeSelectionTypes?: string[];
   isNodeSelectionTarget?: (view: any, args: NodeSelectionTargetArgs) => boolean | null;

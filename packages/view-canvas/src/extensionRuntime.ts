@@ -4,6 +4,7 @@ import { getDefaultNodeRenderer } from "./defaultRenderers/index";
 type SelectionGeometry = {
   shouldComputeSelectionRects?: (ctx: any) => boolean;
   shouldRenderBorderOnly?: (ctx: any) => boolean;
+  resolveSelectionRects?: (ctx: any) => any[] | null | undefined;
 };
 
 type ResolvedExtensionRuntime = {
@@ -49,6 +50,19 @@ export const createSelectionGeometry = (resolved: ResolvedExtensionRuntime) => {
       geometries.some((geometry) => hasGeometryHandler(geometry, "shouldComputeSelectionRects", ctx)),
     shouldRenderBorderOnly: (ctx: any) =>
       geometries.some((geometry) => hasGeometryHandler(geometry, "shouldRenderBorderOnly", ctx)),
+    resolveSelectionRects: (ctx: any) => {
+      for (const geometry of geometries) {
+        const handler = geometry?.resolveSelectionRects;
+        if (typeof handler !== "function") {
+          continue;
+        }
+        const rects = handler(ctx);
+        if (Array.isArray(rects) && rects.length > 0) {
+          return rects;
+        }
+      }
+      return null;
+    },
   });
 };
 

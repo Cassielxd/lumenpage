@@ -39,7 +39,7 @@ export const createSelectionMovement = ({
       return null;
     }
 
-    return edge === "start" ? info.line.start : info.line.end;
+    return edge === "start" ? info.start : info.end;
   };
 
   const computeVerticalOffset = (direction) => {
@@ -84,10 +84,11 @@ export const createSelectionMovement = ({
       targetLineIndex = 0;
     }
 
-    const targetLine = layout.pages[targetPageIndex].lines[targetLineIndex];
+    const targetPage = layout.pages[targetPageIndex];
+    const targetLine = targetPage.lines[targetLineIndex];
     const pageX = Math.max(0, (scrollArea.clientWidth - layout.pageWidth) / 2);
     const localX = Math.max(0, preferredX - (pageX + targetLine.x));
-    return offsetAtXIndexed(layout, targetLine, localX);
+    return offsetAtXIndexed(layout, targetLine, localX, targetPage);
   };
 
   const moveHorizontal = (delta) => {
