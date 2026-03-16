@@ -55,17 +55,22 @@ export type LayoutFragment = {
   children?: LayoutFragment[];
 };
 
+export type NodeLayoutContinuation = {
+  fromPrev?: boolean;
+  hasNext?: boolean;
+  rowSplit?: boolean;
+  continuationToken?: string | null;
+  fragmentIdentity?: string | null;
+  carryState?: Record<string, unknown> | null;
+};
+
 export type NodeLayoutResult = {
   lines: any[];
   length: number;
   height?: number;
   blockAttrs?: any;
   blockLineHeight?: number;
-  continuation?: {
-    fromPrev?: boolean;
-    hasNext?: boolean;
-    rowSplit?: boolean;
-  };
+  continuation?: NodeLayoutContinuation;
   overflow?: NodeLayoutResult;
   fragments?: NodeLayoutSplitFragment[];
 };
@@ -75,11 +80,7 @@ export type NodeLayoutSplitFragment = {
   lines: any[];
   length: number;
   height?: number;
-  continuation?: {
-    fromPrev?: boolean;
-    hasNext?: boolean;
-    rowSplit?: boolean;
-  };
+  continuation?: NodeLayoutContinuation;
 };
 
 export type ContainerStyle = {

@@ -1,5 +1,9 @@
 import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags";
 import { arePagesEquivalent } from "./pageReuseEquivalence";
+import {
+  hashFragmentContinuationState,
+  readLineFragmentContinuationState,
+} from "./fragmentContinuation";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
 
 type FinalizePageReuseDecisionOptions = {
@@ -30,19 +34,6 @@ type FinalizePageReuseDecision =
       };
     };
 
-function readLineContinuationState(line: any) {
-  const attrs = line?.blockAttrs || {};
-  const tableMeta = line?.tableOwnerMeta || line?.tableMeta || {};
-  return {
-    fromPrev:
-      !!attrs.sliceFromPrev || !!attrs.tableSliceFromPrev || !!tableMeta.continuedFromPrev,
-    hasNext:
-      !!attrs.sliceHasNext || !!attrs.tableSliceHasNext || !!tableMeta.continuesAfter,
-    rowSplit:
-      !!attrs.sliceRowSplit || !!attrs.tableRowSplit || !!tableMeta.rowSplit,
-  };
-}
-
 function buildPageExitToken(page: any, offsetDelta = 0) {
   const lines = Array.isArray(page?.lines) ? page.lines : [];
   const line = lines.length > 0 ? lines[lines.length - 1] : null;
@@ -53,7 +44,7 @@ function buildPageExitToken(page: any, offsetDelta = 0) {
   const totalOffsetDelta =
     (Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0) +
     Number(offsetDelta || 0);
-  const continuation = readLineContinuationState(line);
+  const continuation = readLineFragmentContinuationState(line);
   let hash = 17;
   hash = hashString(hash, "page-exit");
   hash = hashString(hash, line.blockType || "");
@@ -68,9 +59,7 @@ function buildPageExitToken(page: any, offsetDelta = 0) {
     hash,
     Number.isFinite(line.end) ? Number(line.end) + totalOffsetDelta : Number.NaN
   );
-  hash = hashNumber(hash, continuation.fromPrev ? 1 : 0);
-  hash = hashNumber(hash, continuation.hasNext ? 1 : 0);
-  hash = hashNumber(hash, continuation.rowSplit ? 1 : 0);
+  hash = hashFragmentContinuationState(hash, continuation);
   hash = hashNumber(hash, getObjectSignature(line.containers || null, new WeakMap()));
   return String(hash >>> 0);
 }

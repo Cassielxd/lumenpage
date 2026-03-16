@@ -2,6 +2,9 @@ export type LayoutSplitContinuation = {
   fromPrev?: boolean;
   hasNext?: boolean;
   rowSplit?: boolean;
+  continuationToken?: string | null;
+  fragmentIdentity?: string | null;
+  carryState?: Record<string, unknown> | null;
 };
 
 export type LayoutSplitFragment = {

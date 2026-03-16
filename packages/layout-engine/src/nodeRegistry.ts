@@ -4,6 +4,7 @@ export type {
   LayoutFragment,
   LayoutFragmentOwner,
   MarkRenderAdapter,
+  NodeLayoutContinuation,
   NodeLayoutResult,
   NodeLayoutSplitFragment,
   NodeRenderer,

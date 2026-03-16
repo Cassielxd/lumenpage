@@ -1,19 +1,11 @@
 import { materializePageGeometry } from "../pageGeometry";
 import { getPageSignature } from "./pageReuseSignature";
+import {
+  applyContinuationMetadataPatch,
+  hashFragmentContinuationState,
+  readLineFragmentContinuationState,
+} from "./fragmentContinuation";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
-
-function readLineContinuationState(line: any) {
-  const attrs = line?.blockAttrs || {};
-  const tableMeta = line?.tableOwnerMeta || line?.tableMeta || {};
-  return {
-    fromPrev:
-      !!attrs.sliceFromPrev || !!attrs.tableSliceFromPrev || !!tableMeta.continuedFromPrev,
-    hasNext:
-      !!attrs.sliceHasNext || !!attrs.tableSliceHasNext || !!tableMeta.continuesAfter,
-    rowSplit:
-      !!attrs.sliceRowSplit || !!attrs.tableRowSplit || !!tableMeta.rowSplit,
-  };
-}
 
 /**
  * 生成页面结束状态的 token，用于校验复用页与新布局页是否一致。
@@ -27,7 +19,7 @@ export function getPageExitToken(page: any, offsetDelta = 0) {
   const totalOffsetDelta =
     (Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0) +
     Number(offsetDelta || 0);
-  const continuation = readLineContinuationState(line);
+  const continuation = readLineFragmentContinuationState(line);
   let hash = 17;
   hash = hashString(hash, "page-exit");
   hash = hashString(hash, line.blockType || "");
@@ -42,9 +34,7 @@ export function getPageExitToken(page: any, offsetDelta = 0) {
     hash,
     Number.isFinite(line.end) ? Number(line.end) + totalOffsetDelta : Number.NaN
   );
-  hash = hashNumber(hash, continuation.fromPrev ? 1 : 0);
-  hash = hashNumber(hash, continuation.hasNext ? 1 : 0);
-  hash = hashNumber(hash, continuation.rowSplit ? 1 : 0);
+  hash = hashFragmentContinuationState(hash, continuation);
   hash = hashNumber(hash, getObjectSignature(line.containers || null, new WeakMap()));
   return String(hash >>> 0);
 }
@@ -58,34 +48,31 @@ export function applyFragmentContinuation(lines: any[], continuation: any) {
   }
   const needsFromPrev = continuation.fromPrev === true || continuation.rowSplit === true;
   const needsHasNext = continuation.hasNext === true || continuation.rowSplit === true;
-  if (!needsFromPrev && !needsHasNext) {
+  const hasIdentity =
+    typeof continuation.fragmentIdentity === "string" ||
+    typeof continuation.continuationToken === "string" ||
+    (continuation.carryState && typeof continuation.carryState === "object");
+  if (!needsFromPrev && !needsHasNext && !hasIdentity) {
     return lines;
   }
   const nextLines = lines.slice();
-  const updateLineAt = (index: number, patch: Record<string, any>) => {
+  const updateLineAt = (index: number, edge: "start" | "end") => {
     if (index < 0 || index >= nextLines.length) {
       return;
     }
     const current = nextLines[index];
-    nextLines[index] = {
-      ...current,
-      blockAttrs: {
-        ...(current?.blockAttrs || {}),
-        ...patch,
-      },
-    };
+    nextLines[index] = applyContinuationMetadataPatch(current, continuation, edge);
   };
   if (needsFromPrev) {
-    updateLineAt(0, {
-      sliceFromPrev: continuation.fromPrev === true,
-      sliceRowSplit: continuation.rowSplit === true,
-    });
+    updateLineAt(0, "start");
   }
   if (needsHasNext) {
-    updateLineAt(nextLines.length - 1, {
-      sliceHasNext: continuation.hasNext === true,
-      sliceRowSplit: continuation.rowSplit === true,
-    });
+    updateLineAt(nextLines.length - 1, "end");
+  } else if (hasIdentity) {
+    updateLineAt(0, "start");
+    if (nextLines.length > 1) {
+      updateLineAt(nextLines.length - 1, "end");
+    }
   }
   return nextLines;
 }

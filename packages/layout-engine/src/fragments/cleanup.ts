@@ -1,3 +1,5 @@
+import { getFragmentSliceAnchorKey } from "../engine/fragmentContinuation";
+
 const hasSliceFlags = (line) => {
   const attrs = line?.blockAttrs || {};
   return (
@@ -8,21 +10,7 @@ const hasSliceFlags = (line) => {
 };
 
 const getSliceAnchorKey = (line) => {
-  if (!line) {
-    return null;
-  }
-  const attrs = line.blockAttrs || {};
-  const sliceGroup =
-    typeof attrs.sliceGroup === "string" && attrs.sliceGroup.trim()
-      ? attrs.sliceGroup.trim()
-      : line.blockType || "block";
-  if (Number.isFinite(line.blockStart)) {
-    return `${sliceGroup}:start:${Number(line.blockStart)}`;
-  }
-  if (line.blockId) {
-    return `${sliceGroup}:id:${String(line.blockId)}`;
-  }
-  return null;
+  return getFragmentSliceAnchorKey(line);
 };
 
 export const cleanupUnslicedDuplicateSlices = (

@@ -1,9 +1,10 @@
-﻿export {
+export {
   NodeRendererRegistry,
   type ContainerStyle,
   type LayoutBox,
   type LayoutFragment,
   type LayoutFragmentOwner,
+  type NodeLayoutContinuation,
   type NodeLayoutResult,
   type NodeLayoutSplitFragment,
   type NodeRenderer,

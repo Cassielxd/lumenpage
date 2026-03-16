@@ -25,6 +25,7 @@ export type {
   LayoutBox,
   LayoutFragment,
   LayoutFragmentOwner,
+  NodeLayoutContinuation,
   NodeLayoutResult,
   NodeLayoutSplitFragment,
   NodeRenderer,
