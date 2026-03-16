@@ -1,10 +1,14 @@
 import { findLineForOffset, getCaretFromPoint, offsetAtX } from "./caret";
+import { getFontForOffset, getBaselineOffset, getLineHeight, getLineXForOffset, isVisualBlockLine } from "./textLineGeometry";
+import { getFontSize } from "./measure";
+import { getTextLineBoxHitAtPoint, getTextLineOffsetHit } from "./textLineHit";
 
 type LayoutLineItem = {
   pageIndex: number;
   lineIndex: number;
   page: any;
   line: any;
+  box?: any;
   start: number;
   end: number;
   mid: number;
@@ -16,6 +20,10 @@ type LayoutBoxItem = {
   start: number;
   end: number;
   depth: number;
+};
+
+type LayoutTextLineItem = LayoutLineItem & {
+  box: any;
 };
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
@@ -39,6 +47,7 @@ export type LayoutIndex = {
   lines: LayoutLineItem[];
   boxes: LayoutBoxItem[];
   textBoxes: LayoutBoxItem[];
+  textLineItems: LayoutTextLineItem[];
   firstLineByBlockId: Map<string, LayoutLineItem>;
   emptyLineByOffset: Map<number, LayoutLineItem>;
   segmentIndex: Array<{ offset: number; startIdx: number; endIdx: number }>;
@@ -140,6 +149,21 @@ const createLineItem = (pageEntry: LayoutPageEntry, line: any, lineIndex: number
       : 0,
 });
 
+const createTextLineItem = (
+  pageEntry: LayoutPageEntry,
+  line: any,
+  lineIndex: number,
+  box: any,
+  start: number,
+  end: number
+): LayoutTextLineItem => ({
+  ...createLineItem(pageEntry, line, lineIndex),
+  start,
+  end,
+  mid: (start + end) / 2,
+  box,
+});
+
 const createEmptyMaps = () => ({
   firstLineByBlockId: new Map<string, LayoutLineItem>(),
   emptyLineByOffset: new Map<number, LayoutLineItem>(),
@@ -163,6 +187,16 @@ const scanBoxOffsets = (page: any) => {
 
 const scanPageOffsets = (page: any) => {
   const lines = getPageLines(page);
+  const boxOffsets = scanBoxOffsets(page);
+  if (boxOffsets.hasBounds) {
+    return {
+      lineCount: lines.length,
+      hasOffsetContent: true,
+      startOffset: boxOffsets.startOffset,
+      endOffset: boxOffsets.endOffset,
+    };
+  }
+
   let startOffset = Number.POSITIVE_INFINITY;
   let endOffset = Number.NEGATIVE_INFINITY;
 
@@ -176,15 +210,6 @@ const scanPageOffsets = (page: any) => {
   }
 
   if (!Number.isFinite(startOffset) || !Number.isFinite(endOffset)) {
-    const boxOffsets = scanBoxOffsets(page);
-    if (boxOffsets.hasBounds) {
-      return {
-        lineCount: lines.length,
-        hasOffsetContent: true,
-        startOffset: boxOffsets.startOffset,
-        endOffset: boxOffsets.endOffset,
-      };
-    }
     return {
       lineCount: lines.length,
       hasOffsetContent: false,
@@ -376,6 +401,59 @@ const buildFlattenedTextBoxes = (pageEntries: LayoutPageEntry[]) => {
     });
 };
 
+const buildFlattenedTextLineItems = (pageEntries: LayoutPageEntry[]) => {
+  const items: LayoutTextLineItem[] = [];
+  const seen = new Set<string>();
+  for (const pageEntry of pageEntries) {
+    const page = pageEntry.page;
+    const pageLines = getPageLines(page);
+    const boxes = Array.isArray(page?.boxes) ? page.boxes : [];
+    const offsetDelta = getPageOffsetDelta(page);
+    walkPageBoxes(
+      boxes,
+      pageEntry.pageIndex,
+      offsetDelta,
+      (item) => {
+        if (!isTextLineBox(item?.box)) {
+          return;
+        }
+        const lineIndex = Number.isFinite(item?.box?.meta?.lineIndex)
+          ? Number(item.box.meta.lineIndex)
+          : null;
+        if (lineIndex == null) {
+          return;
+        }
+        const line = pageLines[lineIndex];
+        if (!line) {
+          return;
+        }
+        const key = `${pageEntry.pageIndex}:${lineIndex}`;
+        if (seen.has(key)) {
+          return;
+        }
+        seen.add(key);
+        items.push(
+          createTextLineItem(pageEntry, line, lineIndex, item.box, item.start, item.end)
+        );
+      },
+      0,
+      { includeTextLineBoxes: true }
+    );
+  }
+  return items.sort((a, b) => {
+    if (a.start !== b.start) {
+      return a.start - b.start;
+    }
+    if (a.end !== b.end) {
+      return a.end - b.end;
+    }
+    if (a.pageIndex !== b.pageIndex) {
+      return a.pageIndex - b.pageIndex;
+    }
+    return a.lineIndex - b.lineIndex;
+  });
+};
+
 const buildDerivedMaps = (pageEntries: LayoutPageEntry[]) => {
   const { firstLineByBlockId, emptyLineByOffset } = createEmptyMaps();
 
@@ -430,6 +508,9 @@ const createLayoutIndex = (pageEntries: LayoutPageEntry[]): LayoutIndex => {
   defineLazyProperty(layoutIndex as Record<string, any>, "boxes", () => buildFlattenedBoxes(pageEntries));
   defineLazyProperty(layoutIndex as Record<string, any>, "textBoxes", () =>
     buildFlattenedTextBoxes(pageEntries)
+  );
+  defineLazyProperty(layoutIndex as Record<string, any>, "textLineItems", () =>
+    buildFlattenedTextLineItems(pageEntries)
   );
   defineLazyProperty(layoutIndex as Record<string, any>, "firstLineByBlockId", () => {
     const derived = buildDerivedMaps(pageEntries);
@@ -667,6 +748,30 @@ export const getTextBoxesInRange = (layoutIndex, minOffset, maxOffset) => {
   return result;
 };
 
+export const getTextLineItemsInRange = (layoutIndex, minOffset, maxOffset) => {
+  if (!layoutIndex?.textLineItems?.length) {
+    return [];
+  }
+
+  const clampedMin = Math.max(0, minOffset);
+  const clampedMax = Math.min(maxOffset, layoutIndex.maxOffset);
+  if (clampedMin > clampedMax) {
+    return [];
+  }
+
+  const result: LayoutTextLineItem[] = [];
+  for (const item of layoutIndex.textLineItems) {
+    if (item.end < clampedMin) {
+      continue;
+    }
+    if (item.start > clampedMax) {
+      break;
+    }
+    result.push(item);
+  }
+  return result;
+};
+
 const createLineItemFromTextBox = (layoutIndex: LayoutIndex, item: LayoutBoxItem) => {
   const lineIndex = Number.isFinite(item?.box?.meta?.lineIndex)
     ? Number(item.box.meta.lineIndex)
@@ -686,6 +791,22 @@ const createLineItemFromTextBox = (layoutIndex: LayoutIndex, item: LayoutBoxItem
   return createLineItem(pageEntry, line, lineIndex);
 };
 
+const createLineItemFromTextLineItem = (item: LayoutTextLineItem | null) => {
+  if (!item) {
+    return null;
+  }
+  return {
+    pageIndex: item.pageIndex,
+    lineIndex: item.lineIndex,
+    page: item.page,
+    line: item.line,
+    box: item.box,
+    start: item.start,
+    end: item.end,
+    mid: item.mid,
+  };
+};
+
 const getTextLineHitAtPoint = (
   layout: any,
   x: number,
@@ -694,90 +815,72 @@ const getTextLineHitAtPoint = (
   viewportWidth: number,
   layoutIndex: LayoutIndex
 ) => {
-  if (!layoutIndex?.textBoxes?.length || !layout?.pages?.length) {
+  const hit = getTextLineBoxHitAtPoint(layout, x, y, scrollTop, viewportWidth, layoutIndex);
+  if (!hit) {
     return null;
   }
 
-  const pageSpan = layout.pageHeight + layout.pageGap;
-  const pageIndex = Math.floor((y + scrollTop) / pageSpan);
-  if (pageIndex < 0 || pageIndex >= layout.pages.length) {
-    return null;
-  }
-
-  const page = layout.pages[pageIndex];
-  const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
-  const localY = y + scrollTop - pageIndex * pageSpan;
-  const localPageX = x - pageX;
-
-  let bestHit: LayoutBoxItem | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
-
-  for (const item of layoutIndex.textBoxes) {
-    if (item.pageIndex !== pageIndex) {
-      continue;
-    }
-    const box = item.box;
-    const top = Number.isFinite(box?.y) ? Number(box.y) : Number.NaN;
-    const height = Number.isFinite(box?.height) ? Number(box.height) : 0;
-    const bottom = top + Math.max(1, height);
-    if (!Number.isFinite(top) || localY < top || localY >= bottom) {
-      continue;
-    }
-
-    const left = Number.isFinite(box?.x) ? Number(box.x) : 0;
-    const width = Number.isFinite(box?.width) ? Number(box.width) : 0;
-    const right = left + Math.max(0, width);
-    const horizontalDistance =
-      localPageX < left ? left - localPageX : localPageX > right ? localPageX - right : 0;
-    const centerY = top + Math.max(1, height) / 2;
-    const verticalDistance = Math.abs(localY - centerY);
-    const score = horizontalDistance * 1000 + verticalDistance;
-    if (score < bestScore) {
-      bestScore = score;
-      bestHit = item;
-    }
-  }
-
-  if (!bestHit) {
-    return null;
-  }
-
-  const lineItem = createLineItemFromTextBox(layoutIndex, bestHit);
+  const lineItem = createLineItemFromTextLineItem(hit.lineItem);
   if (!lineItem) {
     return null;
   }
 
   return {
     lineItem,
-    page,
-    pageIndex,
-    pageX,
+    page: hit.page,
+    pageIndex: hit.pageIndex,
+    pageX: hit.pageX,
   };
 };
 
-const getTextLineAtOffset = (layoutIndex: LayoutIndex, offset: number) => {
-  const hits = getTextBoxesInRange(layoutIndex, offset, offset);
-  if (hits.length === 0) {
+type TextLineOffsetOptions = {
+  preferBoundary?: "start" | "end";
+};
+
+type TextLineOffsetHit = LayoutTextLineItem & {
+  isLineEnd?: boolean;
+};
+
+export const getTextLineItemAtOffset = (
+  layoutIndex: LayoutIndex,
+  offset: number,
+  options: TextLineOffsetOptions = {}
+): TextLineOffsetHit | null => {
+  return getTextLineOffsetHit(layoutIndex, offset, options) as TextLineOffsetHit | null;
+};
+
+export const getAdjacentTextLineItem = (
+  layoutIndex: LayoutIndex | null,
+  offset: number,
+  direction: "up" | "down"
+): LayoutTextLineItem | null => {
+  const items = Array.isArray(layoutIndex?.textLineItems) ? layoutIndex.textLineItems : [];
+  if (items.length === 0) {
     return null;
   }
 
-  let rangeHit: LayoutLineItem | null = null;
-  let lineEndHit: LayoutLineItem | null = null;
-  for (const item of hits) {
-    const lineItem = createLineItemFromTextBox(layoutIndex, item);
-    if (!lineItem) {
-      continue;
-    }
-    if (offset >= lineItem.start && offset < lineItem.end) {
-      rangeHit = lineItem;
-      break;
-    }
-    if (offset === lineItem.end && lineItem.end > lineItem.start && !lineEndHit) {
-      lineEndHit = lineItem;
-    }
+  const current = getTextLineItemAtOffset(layoutIndex as LayoutIndex, offset);
+  if (!current) {
+    return null;
   }
 
-  return rangeHit ?? lineEndHit;
+  const currentIndex = items.findIndex(
+    (item) =>
+      item.pageIndex === current.pageIndex &&
+      item.lineIndex === current.lineIndex &&
+      item.start === current.start &&
+      item.end === current.end
+  );
+  if (currentIndex < 0) {
+    return null;
+  }
+
+  const nextIndex = currentIndex + (direction === "up" ? -1 : 1);
+  if (nextIndex < 0 || nextIndex >= items.length) {
+    return null;
+  }
+
+  return items[nextIndex] ?? null;
 };
 
 export const getFirstLineForBlockId = (layoutIndex, blockId) => {
@@ -787,24 +890,92 @@ export const getFirstLineForBlockId = (layoutIndex, blockId) => {
   return layoutIndex.firstLineByBlockId.get(blockId) || null;
 };
 
-export const findLineForOffsetIndexed = (layout, offset, textLength, layoutIndex = null) => {
+export const findLineForOffsetIndexed = (
+  layout,
+  offset,
+  textLength,
+  layoutIndex = null,
+  options: TextLineOffsetOptions | null = null
+) => {
   if (!layoutIndex) {
-    return findLineForOffset(layout, offset, textLength);
+    return findLineForOffset(layout, offset, textLength, options ?? null);
   }
 
   const clamped = Math.max(0, Math.min(offset, textLength));
-  const hit = getTextLineAtOffset(layoutIndex, clamped) ?? getLineAtOffset(layoutIndex, clamped);
+  const textLineHit = getTextLineItemAtOffset(layoutIndex, clamped, options ?? {});
+  const hit =
+    createLineItemFromTextLineItem(textLineHit) ?? getLineAtOffset(layoutIndex, clamped);
   if (!hit) {
-    return findLineForOffset(layout, offset, textLength);
+    return findLineForOffset(layout, offset, textLength, {
+      ...(options ?? {}),
+      layoutIndex,
+    });
   }
 
   return {
     pageIndex: hit.pageIndex,
     lineIndex: hit.lineIndex,
     line: hit.line,
+    box: hit.box,
     page: layout?.pages?.[hit.pageIndex] ?? null,
     start: hit.start,
     end: hit.end,
+    isLineEnd: textLineHit?.isLineEnd === true,
+  };
+};
+
+export const getCaretRectIndexed = (
+  layout,
+  offset,
+  scrollTop,
+  viewportWidth,
+  textLength,
+  layoutIndex = null,
+  options: TextLineOffsetOptions | null = null
+) => {
+  if (!layoutIndex) {
+    return null;
+  }
+
+  const clamped = Math.max(0, Math.min(offset, textLength));
+  const textLineHit = getTextLineItemAtOffset(layoutIndex, clamped, options ?? {});
+  if (!textLineHit?.line) {
+    return null;
+  }
+
+  const { pageIndex, page, line, box, start, end } = textLineHit;
+  const pageSpan = layout.pageHeight + layout.pageGap;
+  const pageTop = pageIndex * pageSpan - scrollTop;
+  const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
+  const boxX = Number.isFinite(box?.x) ? Number(box.x) : Number(line?.x) || 0;
+  const boxY = Number.isFinite(box?.y) ? Number(box.y) : Number(line?.y) || 0;
+  const boxWidth = Number.isFinite(box?.width) ? Math.max(0, Number(box.width)) : Math.max(0, Number(line?.width) || 0);
+  const boxHeight =
+    Number.isFinite(box?.height) && Number(box.height) > 0
+      ? Number(box.height)
+      : Math.max(1, getLineHeight(line, layout));
+
+  if (isVisualBlockLine(line, page)) {
+    const caretX = textLineHit.isLineEnd === true || clamped === end ? boxWidth : 0;
+    return {
+      x: pageX + boxX + caretX,
+      y: pageTop + boxY,
+      height: boxHeight,
+    };
+  }
+
+  const localIndex = Math.max(0, Math.min(clamped - start, String(line?.text || "").length));
+  const localX = getLineXForOffset(line, start + localIndex, layout.font, page);
+  const caretX =
+    textLineHit.isLineEnd === true || clamped === end ? Math.max(localX, boxWidth || localX) : localX;
+  const caretFont = getFontForOffset(line, clamped, layout.font, page);
+  const fontSize = getFontSize(caretFont);
+  const baselineOffset = getBaselineOffset(boxHeight, fontSize);
+
+  return {
+    x: pageX + boxX + caretX,
+    y: pageTop + boxY + baselineOffset,
+    height: fontSize,
   };
 };
 
@@ -887,7 +1058,9 @@ export const posAtCoordsIndexed = (
     return textLineHit.offset;
   }
 
-  const hit = getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength);
+  const hit = getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength, {
+    layoutIndex,
+  });
   if (!hit || !Number.isFinite(hit.offset)) {
     return null;
   }
@@ -919,7 +1092,8 @@ export const getCaretFromPointIndexed = (
   if (textLineHit?.lineItem?.line) {
     const { lineItem, page, pageIndex, pageX } = textLineHit;
     const line = lineItem.line;
-    const localX = Math.max(0, x - pageX - (Number(line?.x) || 0));
+    const boxX = Number.isFinite(lineItem?.box?.x) ? Number(lineItem.box.x) : Number(line?.x) || 0;
+    const localX = Math.max(0, x - pageX - boxX);
     return {
       offset: offsetAtX(layout.font, line, localX, page),
       localX,
@@ -932,5 +1106,7 @@ export const getCaretFromPointIndexed = (
     };
   }
 
-  return getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength);
+  return getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength, {
+    layoutIndex,
+  });
 };

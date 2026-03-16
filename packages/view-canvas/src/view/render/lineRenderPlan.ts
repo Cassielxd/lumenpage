@@ -22,6 +22,9 @@ const lineHasAuxiliaryVisualPass = (line: any, hasNodeViewRender = false) => {
   );
 };
 
+const rendererHandlesListMarkerInFragment = (renderer: any) =>
+  renderer?.listMarkerRenderMode === "fragment";
+
 export type LineRenderPlan = {
   hasTextPayload: boolean;
   hasAuxiliaryPass: boolean;
@@ -36,6 +39,7 @@ export type LineRenderPlan = {
   shouldRunLeafTextPass: boolean;
   shouldRunDefaultTextPass: boolean;
   shouldSkipBodyPassAfterFragment: boolean;
+  shouldRunCompatPass: boolean;
 };
 
 export const resolveLineRenderPlan = (
@@ -50,13 +54,20 @@ export const resolveLineRenderPlan = (
     Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0;
   const hasLeafTextFragment = options.hasLeafTextFragment === true;
   const usesDefaultTextLineRenderer = renderer?.lineBodyMode === "default-text";
+  const fragmentHandlesListMarker = rendererHandlesListMarkerInFragment(renderer);
   const shouldRunContainerPass =
     Array.isArray(line?.containers) && line.containers.length > 0;
-  const shouldRunListMarkerPass = !!(
-    line?.listMarker ||
-    line?.blockAttrs?.listOwnerMarkerText ||
-    line?.blockAttrs?.markerText
-  );
+  const shouldRunListMarkerPass =
+    !(
+      fragmentHandlesListMarker &&
+      hasFragmentRenderer &&
+      hasFragmentOwner
+    ) &&
+    !!(
+      line?.listMarker ||
+      line?.blockAttrs?.listOwnerMarkerText ||
+      line?.blockAttrs?.markerText
+    );
   const shouldRunNodeViewPass = options.hasNodeViewRender === true;
   const shouldSkipBodyPassAfterFragment =
     hasFragmentRenderer && hasFragmentOwner && !hasAuxiliaryPass && !hasTextPayload;
@@ -64,6 +75,7 @@ export const resolveLineRenderPlan = (
     !shouldRunNodeViewPass &&
     !shouldSkipBodyPassAfterFragment &&
     typeof renderer?.renderLine === "function" &&
+    !(usesDefaultTextLineRenderer && !hasTextPayload) &&
     !(hasLeafTextFragment && usesDefaultTextLineRenderer);
   const shouldRunLeafTextPass =
     !shouldRunNodeViewPass &&
@@ -72,6 +84,12 @@ export const resolveLineRenderPlan = (
     !hasLeafTextFragment &&
     hasTextPayload;
   const shouldRunDefaultTextPass = shouldRunLeafTextPass;
+  const shouldRunCompatPass =
+    shouldRunContainerPass ||
+    shouldRunListMarkerPass ||
+    shouldRunNodeViewPass ||
+    shouldRunRendererLinePass ||
+    shouldRunLeafTextPass;
 
   return {
     hasTextPayload,
@@ -87,5 +105,6 @@ export const resolveLineRenderPlan = (
     shouldRunLeafTextPass,
     shouldRunDefaultTextPass,
     shouldSkipBodyPassAfterFragment,
+    shouldRunCompatPass,
   };
 };

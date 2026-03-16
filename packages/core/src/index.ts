@@ -18,6 +18,15 @@ export {
 } from "./PasteRule";
 export { markPasteRule, nodePasteRule, textPasteRule } from "./pasteRules";
 export { createSchema } from "./createSchema";
+export {
+  attachExtensionPaginationDocWorker,
+  type PaginationDocWorkerRequest,
+  type PaginationDocWorkerResponse,
+} from "./paginationWorker";
+export {
+  PaginationDocWorkerClient,
+  type PaginationDocWorkerClientRequest,
+} from "./paginationWorkerClient";
 
 export type {
   AttributeConfig,

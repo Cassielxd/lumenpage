@@ -25,5 +25,21 @@
     "src/types/window.ts",
     "src/types/prosemirror.ts"
   ],
-  "exclude": ["src/**/*.tsx", "tests/**/*", "dist", "node_modules"]
+  "exclude": [
+    "src/**/*.tsx",
+    "tests/**/*",
+    "dist",
+    "node_modules"
+  ],
+  "references": [
+    {
+      "path": "../lp/model"
+    },
+    {
+      "path": "../lp/state"
+    },
+    {
+      "path": "../lp/view-types"
+    }
+  ]
 }

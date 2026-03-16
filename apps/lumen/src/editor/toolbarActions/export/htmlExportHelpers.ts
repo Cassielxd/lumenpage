@@ -126,27 +126,28 @@ const insertSoftBreaksIntoBlock = (element: Element, offsets: number[]) => {
     }
 
     if (node.nodeType === Node.TEXT_NODE) {
-      let text = node.nodeValue || "";
+      let textNode = node as Text;
+      let text = textNode.nodeValue || "";
       while (targetIndex < offsets.length && targetOffset >= cursor && targetOffset <= cursor + text.length) {
         const splitIndex = targetOffset - cursor;
         if (splitIndex <= 0) {
-          insertBreakBefore(node);
+          insertBreakBefore(textNode);
           maybeAdvanceTarget();
           continue;
         }
         if (splitIndex >= text.length) {
           cursor += text.length;
-          insertBreakBefore(node.nextSibling);
+          insertBreakBefore(textNode.nextSibling);
           maybeAdvanceTarget();
           text = "";
           break;
         }
-        const tail = node.splitText(splitIndex);
+        const tail = textNode.splitText(splitIndex);
         cursor += splitIndex;
         insertBreakBefore(tail);
         maybeAdvanceTarget();
         text = tail.nodeValue || "";
-        node = tail;
+        textNode = tail;
       }
       if (text.length > 0) {
         cursor += text.length;

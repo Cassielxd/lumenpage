@@ -556,6 +556,7 @@ const drawTableChrome = ({ ctx, tableX, tableY, tableMeta }) => {
 export const tableRenderer = {
   allowSplit: true,
   cacheLayout: true,
+  lineBodyMode: "default-text",
 
   layoutBlock({ node, settings, registry }) {
     const { rows, cols } = getTableShape(node);

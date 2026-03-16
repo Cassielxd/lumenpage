@@ -1,5 +1,4 @@
-﻿import { NodeRendererRegistry, type NodeRenderer } from "lumenpage-render-engine";
-import { getDefaultNodeRenderer } from "./defaultRenderers/index";
+import { createNodeRegistry as createLayoutNodeRegistry } from "lumenpage-layout-engine";
 
 type SelectionGeometry = {
   shouldComputeSelectionRects?: (ctx: any) => boolean;
@@ -11,7 +10,7 @@ type ResolvedExtensionRuntime = {
   schema?: {
     nodes?: Record<string, any>;
   };
-  layout?: {
+  layout: {
     byNodeName: Map<
       string,
       {
@@ -69,56 +68,5 @@ export const createSelectionGeometry = (resolved: ResolvedExtensionRuntime) => {
 export const collectNodeSelectionTypes = (resolved: ResolvedExtensionRuntime) =>
   Array.from(new Set(resolved.canvas.nodeSelectionTypes));
 
-export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
-  const registry = new NodeRendererRegistry();
-  const layoutMap = resolved.layout?.byNodeName || new Map();
-  const presetMap = resolved.layout?.renderPresetsByNodeName || new Map();
-  const nodeViews = resolved.canvas?.nodeViews || {};
-  const markAdapters = resolved.canvas?.markAdapters || {};
-  const markAnnotationResolvers = resolved.canvas?.markAnnotationResolvers || {};
-  const nodeNames = new Set<string>([
-    ...Object.keys(resolved.schema?.nodes || {}),
-    ...layoutMap.keys(),
-    ...presetMap.keys(),
-    ...Object.keys(nodeViews),
-  ]);
-
-  for (const nodeName of nodeNames) {
-    const preset = presetMap.get(nodeName) || nodeName;
-    const defaultRenderer = getDefaultNodeRenderer(preset);
-    const layoutHooks = layoutMap.get(nodeName);
-    const explicitRenderer = (layoutHooks?.renderer || null) as (NodeRenderer & {
-      pagination?: unknown;
-    }) | null;
-    const createNodeView =
-      nodeViews[nodeName] || explicitRenderer?.createNodeView || defaultRenderer?.createNodeView;
-    const mergedRenderer = {
-      ...(defaultRenderer || {}),
-      ...(explicitRenderer || {}),
-      pagination:
-        layoutHooks?.pagination || explicitRenderer?.pagination || defaultRenderer?.pagination,
-      createNodeView,
-    };
-
-    if (!Object.values(mergedRenderer).some((value) => value != null)) {
-      continue;
-    }
-
-    registry.register(nodeName, mergedRenderer);
-  }
-
-  for (const [markName, adapter] of Object.entries(markAdapters)) {
-    if (adapter != null) {
-      registry.registerMarkAdapter(markName, adapter);
-    }
-  }
-
-  for (const [markName, resolver] of Object.entries(markAnnotationResolvers)) {
-    if (resolver != null) {
-      registry.registerMarkAnnotationResolver(markName, resolver);
-    }
-  }
-
-  return registry;
-};
-
+export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) =>
+  createLayoutNodeRegistry(resolved);

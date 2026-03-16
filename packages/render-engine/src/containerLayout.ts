@@ -13,6 +13,19 @@ export type ResolvedContainerLayoutContext<T extends BaseContainerContext> = {
   nextContext: T;
 };
 
+const getContainerFragmentKey = (node: any, baseX: number, depth: number) => {
+  if (node?.attrs?.id) {
+    return `container:${node.type.name}:${node.attrs.id}`;
+  }
+  if (typeof node?.hashCode === "function") {
+    const hash = node.hashCode();
+    if (hash != null) {
+      return `container:${node.type.name}:${String(hash)}`;
+    }
+  }
+  return `container:${node?.type?.name || "container"}:${depth}:${baseX}`;
+};
+
 export const resolveContainerLayoutContext = <T extends BaseContainerContext>({
   renderer,
   node,
@@ -55,7 +68,11 @@ export const resolveContainerLayoutContext = <T extends BaseContainerContext>({
         ...context.containerStack,
         {
           ...style,
+          key: getContainerFragmentKey(node, baseX + context.indent, context.containerStack.length),
           type: node.type.name,
+          role: "container",
+          nodeId: node?.attrs?.id ?? null,
+          blockId: node?.attrs?.id ?? null,
           offset: context.indent,
           indent,
           baseX: baseX + context.indent,

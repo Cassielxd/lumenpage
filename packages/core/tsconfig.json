@@ -6,15 +6,30 @@
     "declaration": true,
     "composite": true
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*"
+  ],
   "references": [
-    { "path": "../lp/inputrules" },
-    { "path": "../lp/keymap" },
-    { "path": "../link" },
-    { "path": "../lp/model" },
-    { "path": "../lp/state" },
-    { "path": "../view-canvas" }
+    {
+      "path": "../lp/inputrules"
+    },
+    {
+      "path": "../lp/keymap"
+    },
+    {
+      "path": "../link"
+    },
+    {
+      "path": "../lp/model"
+    },
+    {
+      "path": "../lp/state"
+    },
+    {
+      "path": "../view-canvas"
+    },
+    {
+      "path": "../layout-engine"
+    }
   ]
 }
-
-

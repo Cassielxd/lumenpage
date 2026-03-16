@@ -1,0 +1,137 @@
+import { getPageIndexForOffset } from "./layoutIndex";
+
+const toFiniteNumber = (value: unknown, fallback = 0) =>
+  Number.isFinite(value) ? Number(value) : fallback;
+
+export const resolveLayoutSettingsForPass = (settings: any, resolvedPageWidth: unknown) => {
+  const fallbackWidth = toFiniteNumber(settings?.pageWidth, 794);
+  const pageWidth =
+    Number.isFinite(resolvedPageWidth) && Number(resolvedPageWidth) > 0
+      ? Number(resolvedPageWidth)
+      : fallbackWidth > 0
+        ? fallbackWidth
+        : 794;
+  return {
+    ...settings,
+    pageWidth,
+  };
+};
+
+export const getLayoutSettingsSignature = (settings: any) => {
+  const margin = settings?.margin || {};
+  return [
+    toFiniteNumber(settings?.pageWidth, 0),
+    toFiniteNumber(settings?.pageHeight, 0),
+    toFiniteNumber(settings?.pageGap, 0),
+    toFiniteNumber(margin?.left, 0),
+    toFiniteNumber(margin?.right, 0),
+    toFiniteNumber(margin?.top, 0),
+    toFiniteNumber(margin?.bottom, 0),
+    toFiniteNumber(settings?.lineHeight, 0),
+    String(settings?.font || ""),
+    String(settings?.codeFont || ""),
+    toFiniteNumber(settings?.wrapTolerance, 0),
+    toFiniteNumber(settings?.minLineWidth, 0),
+    toFiniteNumber(settings?.blockSpacing, 0),
+    toFiniteNumber(settings?.paragraphSpacingBefore, 0),
+    toFiniteNumber(settings?.paragraphSpacingAfter, 0),
+    toFiniteNumber(settings?.listIndent, 0),
+    toFiniteNumber(settings?.listMarkerGap, 0),
+    String(settings?.listMarkerFont || ""),
+    toFiniteNumber(settings?.codeBlockPadding, 0),
+    String(settings?.textLocale || ""),
+    settings?.segmentText ? "segment:on" : "segment:off",
+  ].join("|");
+};
+
+export const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
+  if (layoutIndex && typeof getPageIndexForOffset === "function") {
+    const pageIndex = getPageIndexForOffset(layoutIndex, offset);
+    if (Number.isFinite(pageIndex)) {
+      return pageIndex;
+    }
+  }
+
+  if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
+    return null;
+  }
+
+  const target = Number.isFinite(offset) ? Number(offset) : 0;
+  let lineEndFallback: number | null = null;
+  for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
+    const page = layout.pages[pageIndex];
+    const pageOffsetDelta = Number.isFinite(page?.__pageOffsetDelta)
+      ? Number(page.__pageOffsetDelta)
+      : 0;
+    const lines = Array.isArray(page?.lines) ? page.lines : [];
+    for (const line of lines) {
+      const start = Number.isFinite(line?.start) ? Number(line.start) + pageOffsetDelta : null;
+      const end = Number.isFinite(line?.end) ? Number(line.end) + pageOffsetDelta : null;
+      if (start == null || end == null) {
+        continue;
+      }
+      if (start === end && target === start) {
+        return pageIndex;
+      }
+      if (target >= start && target < end) {
+        return pageIndex;
+      }
+      if (target === end && end > start && lineEndFallback == null) {
+        lineEndFallback = pageIndex;
+      }
+    }
+  }
+
+  if (lineEndFallback != null) {
+    return lineEndFallback;
+  }
+
+  return layout.pages.length - 1;
+};
+
+export const resolveCascadePaginationPlan = ({
+  prevLayout,
+  docChanged,
+  incrementalEnabled,
+  runForceFullPass,
+  editorState,
+  doc,
+  clampOffset,
+  docPosToTextOffset,
+  getLayoutIndex,
+}: {
+  prevLayout: any;
+  docChanged: boolean;
+  incrementalEnabled: boolean;
+  runForceFullPass: boolean;
+  editorState: any;
+  doc: any;
+  clampOffset: (offset: number) => number;
+  docPosToTextOffset: (doc: any, pos: number) => number;
+  getLayoutIndex: () => any;
+}) => {
+  let cascadeFromPageIndex: number | null = null;
+  let useCascadePagination = false;
+  if (prevLayout && docChanged && incrementalEnabled && !runForceFullPass) {
+    const headPos = editorState?.selection?.head;
+    const headOffset = Number.isFinite(headPos)
+      ? clampOffset(docPosToTextOffset(doc, Number(headPos)))
+      : null;
+    const prevLayoutIndex = getLayoutIndex?.() ?? null;
+    if (headOffset != null) {
+      const headPageIndex = findPageIndexForOffset(prevLayout, Number(headOffset), prevLayoutIndex);
+      if (Number.isFinite(headPageIndex)) {
+        cascadeFromPageIndex = Number(headPageIndex);
+        useCascadePagination = true;
+      }
+    }
+    if (cascadeFromPageIndex === null) {
+      cascadeFromPageIndex = 0;
+      useCascadePagination = true;
+    }
+  }
+  return {
+    cascadeFromPageIndex,
+    useCascadePagination,
+  };
+};

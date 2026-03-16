@@ -1,5 +1,6 @@
 import { getNearestContentOwner } from "../layoutSemantics";
 import { resolveLegacyLineVisualBounds } from "../legacyVisualBounds";
+import { getTextLineItemsInRange } from "../layoutIndex";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
 
@@ -313,6 +314,13 @@ export const collectTextLineItemsForRange = (
   maxOffset: number,
   options: Omit<LayoutBoxMatchOptions, "includeTextLineBoxes" | "roles" | "types"> = {}
 ) => {
+  if (options.layoutIndex) {
+    const indexedItems = getTextLineItemsInRange(options.layoutIndex, minOffset, maxOffset);
+    if (indexedItems.length > 0) {
+      return indexedItems;
+    }
+  }
+
   const hits = collectTextLineBoxesForRange(layout, minOffset, maxOffset, options);
   if (hits.length === 0) {
     return [];

@@ -1,5 +1,14 @@
 ﻿# 大文档优化接力文档（2026-03-09）
 
+## 2026-03-16 补充
+
+- 性能结论没有变化：主瓶颈仍在 `worker-provider` 布局计算链，不在 renderer。
+- worker 协议和装配边界已进一步收敛：
+  - `packages/core` 现在统一承接 pagination worker bootstrap
+  - 两个 app 的 `paginationDoc.worker.ts` 已收敛为薄包装
+  - 两个 app 的 `paginationDocWorkerClient.ts` 也已收敛为基于 `core` 的薄包装
+- 这一轮的意义主要是降低 app 与 `view-canvas` 的直接耦合，方便后续继续迭代 worker 协议和分页增量能力。
+
 ## 目标
 
 - 优化 300+ 页大文档的输入和回车性能

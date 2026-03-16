@@ -24,7 +24,14 @@ const layerFromRelativePath = (relativePath) => {
   const segments = normalized.split("/");
   const pkgDir = segments[1];
   if (pkgDir === "core" || pkgDir === "link") return "core";
-  if (pkgDir === "layout-engine" || pkgDir === "view-canvas" || pkgDir === "view-runtime") return "engine";
+  if (
+    pkgDir === "layout-engine" ||
+    pkgDir === "render-engine" ||
+    pkgDir === "view-canvas" ||
+    pkgDir === "view-runtime"
+  ) {
+    return "engine";
+  }
   if (pkgDir === "dev-tools") return "tooling";
   if (pkgDir) return "extensions";
   return "unknown";

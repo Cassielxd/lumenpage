@@ -1,13 +1,78 @@
-﻿{
-    "extends":  "../../tsconfig.base.json",
-    "compilerOptions":  {
-                            "rootDir":  "src",
-                            "outDir":  "dist",
-                            "declaration":  true,
-                            "declarationMap":  true,
-                            "composite":  true
-                        },
-    "include":  [
-                    "src"
-                ]
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../extension-base-keymap"
+    },
+    {
+      "path": "../extension-blockquote"
+    },
+    {
+      "path": "../extension-bold"
+    },
+    {
+      "path": "../extension-bullet-list"
+    },
+    {
+      "path": "../extension-canvas-keymap"
+    },
+    {
+      "path": "../extension-code"
+    },
+    {
+      "path": "../extension-code-block"
+    },
+    {
+      "path": "../extension-document"
+    },
+    {
+      "path": "../extension-editing-commands"
+    },
+    {
+      "path": "../extension-hard-break"
+    },
+    {
+      "path": "../extension-heading"
+    },
+    {
+      "path": "../extension-horizontal-rule"
+    },
+    {
+      "path": "../extension-italic"
+    },
+    {
+      "path": "../extension-list-item"
+    },
+    {
+      "path": "../extension-ordered-list"
+    },
+    {
+      "path": "../extension-paragraph"
+    },
+    {
+      "path": "../extension-smart-input-rules"
+    },
+    {
+      "path": "../extension-strike"
+    },
+    {
+      "path": "../extension-text"
+    },
+    {
+      "path": "../extension-undo-redo"
+    }
+  ]
 }

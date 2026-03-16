@@ -19,6 +19,17 @@ export type PageBoxCollector = {
 
 const cloneMeta = (meta: Record<string, unknown> | null | undefined) => (meta ? { ...meta } : null);
 
+const withLayoutCapabilities = (meta: Record<string, unknown> | null | undefined, capability: string) => {
+  const next = cloneMeta(meta) || {};
+  const layoutCapabilities =
+    next.layoutCapabilities && typeof next.layoutCapabilities === "object"
+      ? { ...(next.layoutCapabilities as Record<string, unknown>) }
+      : {};
+  layoutCapabilities[capability] = true;
+  next.layoutCapabilities = layoutCapabilities;
+  return next;
+};
+
 const getLineLeft = (line: any) => (Number.isFinite(line?.x) ? Number(line.x) : 0);
 
 const getLineTop = (line: any) => (Number.isFinite(line?.y) ? Number(line.y) : 0);
@@ -101,6 +112,57 @@ const createTextLineOwner = (
     blockId: line?.blockId ?? null,
   },
 });
+
+const getLineContainerOwners = (line: any): LayoutFragmentOwner[] => {
+  const containers = Array.isArray(line?.containers) ? line.containers : [];
+  if (containers.length === 0) {
+    return [];
+  }
+
+  return containers
+    .map((container): LayoutFragmentOwner | null => {
+      if (!container || typeof container !== "object" || !container.type) {
+        return null;
+      }
+
+      const baseX = Number.isFinite(container.baseX)
+        ? Number(container.baseX)
+        : Number.isFinite(container.offset)
+          ? Number(container.offset)
+          : 0;
+      const borderInset = Number.isFinite(container.borderInset) ? Number(container.borderInset) : 0;
+      const borderWidth = Number.isFinite(container.borderWidth) ? Number(container.borderWidth) : null;
+
+      return {
+        key:
+          typeof container.key === "string" && container.key.length > 0
+            ? container.key
+            : `container:${String(container.type)}`,
+        type: String(container.type),
+        role: String(container.role || "container"),
+        nodeId: container.nodeId ?? null,
+        blockId: container.blockId ?? null,
+        x: baseX + borderInset,
+        y: undefined,
+        width: borderWidth != null ? Math.max(0, borderWidth) : undefined,
+        height: undefined,
+        start: null,
+        end: null,
+        fixedBounds: false,
+        meta: withLayoutCapabilities(
+          {
+            borderColor: container.borderColor ?? null,
+            borderWidth,
+            borderInset,
+            indent: Number.isFinite(container.indent) ? Number(container.indent) : 0,
+            baseX,
+          },
+          "container-chrome"
+        ),
+      };
+    })
+    .filter((owner): owner is LayoutFragmentOwner => !!owner);
+};
 
 const updateBoxBounds = (box: MutableLayoutBox, owner: LayoutFragmentOwner, line: any) => {
   const lineLeft = getLineLeft(line);
@@ -248,7 +310,10 @@ export const createPageBoxCollector = (): PageBoxCollector => {
     const currentLineIndex = lineIndex;
     lineIndex += 1;
     line.__pageLineIndex = currentLineIndex;
-    const owners = Array.isArray(line?.fragmentOwners) ? line.fragmentOwners : [];
+    const owners = [
+      ...getLineContainerOwners(line),
+      ...(Array.isArray(line?.fragmentOwners) ? line.fragmentOwners : []),
+    ];
     if (owners.length === 0) {
       return;
     }

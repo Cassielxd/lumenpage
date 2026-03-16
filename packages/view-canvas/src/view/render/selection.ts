@@ -1,4 +1,11 @@
-import { findLineForOffset, offsetAtX, getLinesInRange } from "../caret";
+import { findLineForOffset, offsetAtX } from "../caret";
+import {
+  buildLayoutIndex as runtimeBuildLayoutIndex,
+  findLineForOffsetIndexed as runtimeFindLineForOffsetIndexed,
+  getLineAtOffset as runtimeGetLineAtOffset,
+  getLinesInRange as runtimeGetLinesInRange,
+  getTextLineItemsInRange as runtimeGetTextLineItemsInRange,
+} from "../layoutIndex";
 import {
   findNearestLineOwnerWithCapability,
   hasLayoutCapability,
@@ -18,7 +25,6 @@ import {
   resolveLayoutBoxRect,
   resolveLineVisualBox,
 } from "./geometry";
-import { materializeLayoutGeometry } from "lumenpage-layout-engine";
 
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
@@ -91,173 +97,15 @@ const offsetToX = (line, offset, layout, page = null) => {
   return x;
 };
 
-const getLineMetrics = (layout) => {
-  const items = [];
-  let maxOffset = 0;
-  let totalLines = 0;
-
-  for (let p = 0; p < layout.pages.length; p += 1) {
-    const page = layout.pages[p];
-    for (let l = 0; l < page.lines.length; l += 1) {
-      const line = page.lines[l];
-      const start = getLineStart(line, page);
-      const end = getLineEnd(line, page);
-      items.push({
-        pageIndex: p,
-        lineIndex: l,
-        line,
-        start,
-        end,
-        mid: (start + end) / 2,
-      });
-      totalLines += 1;
-      maxOffset = Math.max(maxOffset, end);
-    }
-  }
-
-  // Sort by start offset to enable binary search in getLinesInRange
-  // This is critical for correct selection rect calculation
-  items.sort((a, b) => a.start - b.start);
-
-  return { items, totalLines, maxOffset };
-};
-
-export const buildLayoutIndex = (layout) => {
+export const buildLayoutIndex = (layout, previousIndex = null, previousLayout = null) => {
   if (!layout) {
     return null;
   }
-
-  const metrics = getLineMetrics(layout);
-
-  return {
-    maxOffset: metrics.maxOffset,
-    totalLines: metrics.totalLines,
-    lines: metrics.items,
-  };
-};
-
-const binarySearchClosest = (lines, target) => {
-  let low = 0;
-  let high = lines.length - 1;
-  let best = null;
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const item = lines[mid];
-    if (!item) {
-      break;
-    }
-    if (target < item.start) {
-      best = item;
-      high = mid - 1;
-      continue;
-    }
-    if (target > item.end) {
-      low = mid + 1;
-      continue;
-    }
-    return item;
-  }
-
-  if (!best && lines.length > 0) {
-    best = lines[lines.length - 1];
-  }
-
-  return best;
+  return runtimeBuildLayoutIndex(layout, previousIndex, previousLayout);
 };
 
 const getPageEntries = (layoutIndex) =>
   Array.isArray(layoutIndex?.pageEntries) ? layoutIndex.pageEntries : null;
-
-const findPageInfoForOffset = (layoutIndex, offset) => {
-  const pageIndex = Array.isArray(layoutIndex?.pageIndex) ? layoutIndex.pageIndex : null;
-  if (!pageIndex || pageIndex.length === 0) {
-    return null;
-  }
-
-  let low = 0;
-  let high = pageIndex.length - 1;
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const item = pageIndex[mid];
-    if (offset < item.startOffset) {
-      high = mid - 1;
-      continue;
-    }
-    if (offset > item.endOffset) {
-      low = mid + 1;
-      continue;
-    }
-    return item;
-  }
-
-  if (low >= pageIndex.length) {
-    return pageIndex[pageIndex.length - 1] ?? null;
-  }
-  if (high < 0) {
-    return pageIndex[0] ?? null;
-  }
-
-  const lowItem = pageIndex[low];
-  const highItem = pageIndex[high];
-  if (!lowItem) {
-    return highItem ?? null;
-  }
-  if (!highItem) {
-    return lowItem ?? null;
-  }
-  return Math.abs(offset - lowItem.startOffset) <= Math.abs(offset - highItem.startOffset)
-    ? lowItem
-    : highItem;
-};
-
-const binarySearchClosestInPage = (pageEntry, target) => {
-  const lines = Array.isArray(pageEntry?.page?.lines) ? pageEntry.page.lines : [];
-  if (lines.length === 0) {
-    return null;
-  }
-
-  let low = 0;
-  let high = lines.length - 1;
-  let best = lines.length - 1;
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const line = lines[mid];
-    const start = getLineStart(line, pageEntry.page);
-    const end = getLineEnd(line, pageEntry.page);
-    if (target < start) {
-      best = mid;
-      high = mid - 1;
-      continue;
-    }
-    if (target > end) {
-      low = mid + 1;
-      continue;
-    }
-    return {
-      pageIndex: pageEntry.pageIndex,
-      lineIndex: mid,
-      line,
-      start,
-      end,
-      mid: (start + end) / 2,
-    };
-  }
-
-  const lineIndex = Math.max(0, best);
-  const line = lines[lineIndex];
-  const start = getLineStart(line, pageEntry.page);
-  const end = getLineEnd(line, pageEntry.page);
-  return {
-    pageIndex: pageEntry.pageIndex,
-    lineIndex,
-    line,
-    start,
-    end,
-    mid: (start + end) / 2,
-  };
-};
 
 const forEachLineItem = (layout, layoutIndex, visitor) => {
   const pageEntries = getPageEntries(layoutIndex);
@@ -308,7 +156,7 @@ const forEachLineItem = (layout, layoutIndex, visitor) => {
 
 const mergeTextLineCandidates = (lineItems, textLineItems) => {
   if (!Array.isArray(lineItems) || lineItems.length === 0) {
-    return [];
+    return Array.isArray(textLineItems) ? textLineItems : [];
   }
   if (!Array.isArray(textLineItems) || textLineItems.length === 0) {
     return lineItems;
@@ -425,32 +273,72 @@ const cellMapToRects = (cellMap) => {
 };
 
 export const getLineAtOffset = (layoutIndex, offset) => {
-  if (!layoutIndex) {
+  return runtimeGetLineAtOffset(layoutIndex, offset);
+};
+
+const getItemBoxX = (item, line) =>
+  Number.isFinite(item?.box?.x) ? Number(item.box.x) : Number.isFinite(line?.x) ? Number(line.x) : 0;
+
+const getItemBoxY = (item, line) =>
+  Number.isFinite(item?.box?.y) ? Number(item.box.y) : Number.isFinite(line?.y) ? Number(line.y) : 0;
+
+const getItemBoxWidth = (item, line) =>
+  Number.isFinite(item?.box?.width)
+    ? Math.max(0, Number(item.box.width))
+    : Math.max(0, Number(line?.width) || 0);
+
+const getItemBoxHeight = (item, line, layout) =>
+  Number.isFinite(item?.box?.height) && Number(item.box.height) > 0
+    ? Number(item.box.height)
+    : getLineHeight(line, layout);
+
+const resolveSelectionRectForItem = ({
+  item,
+  layout,
+  minOffset,
+  maxOffset,
+  scrollTop,
+  viewportWidth,
+}) => {
+  const line = item?.line;
+  if (!line) {
     return null;
   }
 
-  const emptyHit = layoutIndex.emptyLineByOffset?.get?.(offset);
-  if (emptyHit) {
-    return emptyHit;
-  }
-
-  const clamped = Math.max(0, Math.min(offset, layoutIndex.maxOffset));
-
-  const pageEntries = getPageEntries(layoutIndex);
-  if (pageEntries?.length) {
-    const pageInfo = findPageInfoForOffset(layoutIndex, clamped);
-    if (!pageInfo) {
+  const page = item.page ?? layout.pages?.[item.pageIndex] ?? null;
+  const lineStart = Number.isFinite(item?.start) ? Number(item.start) : getLineStart(line, page);
+  const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
+  const isEmptyLine = lineStart === lineEnd;
+  if (isEmptyLine) {
+    if (minOffset > lineStart || maxOffset < lineEnd) {
       return null;
     }
-    const pageEntry = pageEntries[pageInfo.pageIndex];
-    return pageEntry ? binarySearchClosestInPage(pageEntry, clamped) : null;
-  }
-
-  if (!layoutIndex.lines || layoutIndex.lines.length === 0) {
+  } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
     return null;
   }
 
-  return binarySearchClosest(layoutIndex.lines, clamped);
+  const start = Math.max(minOffset, lineStart);
+  const end = Math.min(maxOffset, lineEnd);
+  const isImage = isLineVisualBlock(line);
+  const xStart = isImage ? 0 : offsetToX(line, start, layout, page);
+  let xEnd = isImage ? getItemBoxWidth(item, line) : offsetToX(line, end, layout, page);
+  if (isEmptyLine) {
+    xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout), getItemBoxWidth(item, line));
+  }
+
+  const width = Math.max(0, xEnd - xStart);
+  if (width <= 0) {
+    return null;
+  }
+
+  const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
+  const pageSpan = layout.pageHeight + layout.pageGap;
+  return {
+    x: pageX + getItemBoxX(item, line) + xStart,
+    y: item.pageIndex * pageSpan - scrollTop + getItemBoxY(item, line),
+    width,
+    height: getItemBoxHeight(item, line, layout),
+  };
 };
 
 export function selectionToRects(
@@ -471,7 +359,6 @@ export function selectionToRects(
   if (!layout || fromOffset === toOffset) {
     return [];
   }
-  materializeLayoutGeometry(layout);
 
   const minOffset = Math.max(0, Math.min(fromOffset, toOffset));
 
@@ -481,123 +368,55 @@ export function selectionToRects(
     Math.min(Math.max(fromOffset, toOffset), textLength)
   );
 
+  const rects = [];
+
+  if (layoutIndex) {
+    const linesInRange = runtimeGetLinesInRange(layoutIndex, minOffset, maxOffset);
+    const textLineItems = runtimeGetTextLineItemsInRange(layoutIndex, minOffset, maxOffset);
+    const fallbackTextLineItems =
+      textLineItems.length > 0
+        ? textLineItems
+        : collectTextLineItemsForRange(layout, minOffset, maxOffset, {
+            layoutIndex,
+          });
+    const textCandidateItems = mergeTextLineCandidates(linesInRange, fallbackTextLineItems);
+    for (const item of textCandidateItems) {
+      const rect = resolveSelectionRectForItem({
+        item,
+        layout,
+        minOffset,
+        maxOffset,
+        scrollTop,
+        viewportWidth,
+      });
+      if (rect) {
+        rects.push(rect);
+      }
+    }
+    if (rects.length > 0) {
+      return rects;
+    }
+
+    forEachLineItem(layout, layoutIndex, (item) => {
+      const rect = resolveSelectionRectForItem({
+        item,
+        layout,
+        minOffset,
+        maxOffset,
+        scrollTop,
+        viewportWidth,
+      });
+      if (rect) {
+        rects.push(rect);
+      }
+    });
+
+    return rects;
+  }
+
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
 
   const pageSpan = layout.pageHeight + layout.pageGap;
-
-  const rects = [];
-
-  // Use getLinesInRange for O(k) complexity where k = lines in selection range
-  if (layoutIndex && typeof getLinesInRange === "function") {
-    const linesInRange = getLinesInRange(layoutIndex, minOffset, maxOffset);
-    const textLineItems = collectTextLineItemsForRange(layout, minOffset, maxOffset, {
-      layoutIndex,
-    });
-    const candidateItems = mergeTextLineCandidates(linesInRange, textLineItems);
-
-    for (const item of candidateItems) {
-      const line = item.line;
-      const page = layout.pages[item.pageIndex] ?? null;
-
-      const lineStart = Number.isFinite(item?.start) ? Number(item.start) : getLineStart(line, page);
-
-      const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
-
-      const isEmptyLine = lineStart === lineEnd;
-      if (isEmptyLine) {
-        if (minOffset > lineStart || maxOffset < lineEnd) {
-          continue;
-        }
-      } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
-        continue;
-      }
-
-      const start = Math.max(minOffset, lineStart);
-
-      const end = Math.min(maxOffset, lineEnd);
-
-      const isImage = isLineVisualBlock(line);
-
-      const xStart = isImage ? 0 : offsetToX(line, start, layout, page);
-      let xEnd = isImage
-        ? Math.max(xStart, line.width || 0)
-        : offsetToX(line, end, layout, page);
-      if (isEmptyLine) {
-        xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout));
-      }
-
-      const width = Math.max(0, xEnd - xStart);
-
-      if (width <= 0) {
-        continue;
-      }
-
-      rects.push({
-        x: pageX + line.x + xStart,
-
-        y: item.pageIndex * pageSpan - scrollTop + line.y,
-
-        width,
-
-        height: getLineHeight(line, layout),
-      });
-    }
-
-    return rects;
-  }
-
-  // Fallback: iterate current layout structure without forcing full index flattening.
-  if (layoutIndex) {
-    forEachLineItem(layout, layoutIndex, (item) => {
-      const line = item.line;
-      const page = layout.pages[item.pageIndex] ?? null;
-
-      const lineStart = Number.isFinite(item?.start) ? Number(item.start) : getLineStart(line, page);
-
-      const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
-
-      const isEmptyLine = lineStart === lineEnd;
-      if (isEmptyLine) {
-        if (minOffset > lineStart || maxOffset < lineEnd) {
-          return;
-        }
-      } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
-        return;
-      }
-
-      const start = Math.max(minOffset, lineStart);
-
-      const end = Math.min(maxOffset, lineEnd);
-
-      const isImage = isLineVisualBlock(line);
-
-      const xStart = isImage ? 0 : offsetToX(line, start, layout, page);
-      let xEnd = isImage
-        ? Math.max(xStart, line.width || 0)
-        : offsetToX(line, end, layout, page);
-      if (isEmptyLine) {
-        xEnd = Math.max(xEnd, resolveEmptyLineWidth(line, layout));
-      }
-
-      const width = Math.max(0, xEnd - xStart);
-
-      if (width <= 0) {
-        return;
-      }
-
-      rects.push({
-        x: pageX + line.x + xStart,
-
-        y: item.pageIndex * pageSpan - scrollTop + line.y,
-
-        width,
-
-        height: getLineHeight(line, layout),
-      });
-    });
-
-    return rects;
-  }
 
   for (let p = 0; p < layout.pages.length; p += 1) {
     const page = layout.pages[p];
@@ -1023,7 +842,9 @@ export function activeBlockToRects(
         start: info.start,
         end: info.end,
       }
-    : findLineForOffset(layout, offset, textLength);
+    : layoutIndex
+      ? runtimeFindLineForOffsetIndexed(layout, offset, textLength, layoutIndex)
+      : findLineForOffset(layout, offset, textLength);
 
   if (!resolved?.line) {
     return [];
@@ -1179,23 +1000,7 @@ export function activeBlockToRects(
 }
 
 export const findLineForOffsetIndexed = (layout, offset, textLength, layoutIndex = null) => {
-  if (!layoutIndex) {
-    return findLineForOffset(layout, offset, textLength);
-  }
-
-  const hit = getLineAtOffset(layoutIndex, offset);
-  if (!hit) {
-    return findLineForOffset(layout, offset, textLength);
-  }
-
-  return {
-    pageIndex: hit.pageIndex,
-    lineIndex: hit.lineIndex,
-    line: hit.line,
-    page: layout?.pages?.[hit.pageIndex] ?? null,
-    start: hit.start,
-    end: hit.end,
-  };
+  return runtimeFindLineForOffsetIndexed(layout, offset, textLength, layoutIndex);
 };
 
 export const offsetAtXIndexed = (layout, line, x, page = null) => {

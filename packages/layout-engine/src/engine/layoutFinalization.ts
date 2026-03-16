@@ -1,5 +1,6 @@
 import { cleanupUnslicedDuplicateSlices } from "../fragments/cleanup";
-import { cloneAndShiftPages, invalidatePageReuseSignature } from "./pageReuse";
+import { cloneAndShiftPages } from "./pageReuseEquivalence";
+import { invalidatePageReuseSignature } from "./pageReuseSignature";
 import { markReusedPages, populatePageDerivedState } from "./pageState";
 
 /**

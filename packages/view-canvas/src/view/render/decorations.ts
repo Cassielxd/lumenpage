@@ -10,7 +10,6 @@ import {
 import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
 import { getLinesInRange } from "../caret";
 import { resolveListMarker } from "lumenpage-render-engine";
-import { materializeLayoutGeometry } from "lumenpage-layout-engine";
 
 // Cache for decoration draw data to avoid recomputing on every frame
 const decorationCache = new Map<
@@ -312,7 +311,6 @@ export const buildDecorationDrawData = (
   if (!layout || !doc) {
     return null;
   }
-  materializeLayoutGeometry(layout);
 
   // Use caching to avoid recomputing on every frame
   // Cache key includes layout token, scroll position, viewport, and decoration info

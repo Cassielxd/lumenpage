@@ -1,5 +1,5 @@
-import { createEditorOps } from "../../core";
-import { createSelectionMovement } from "../selectionMovement";
+import { createEditorOpsRuntime } from "./editingRuntime/editorOpsRuntime";
+import { createSelectionMovementRuntime } from "./editingRuntime/selectionRuntime";
 
 // 编辑运行时：组装编辑操作与光标移动，保持原有依赖注入与执行顺序。
 export const createEditingRuntime = ({
@@ -25,41 +25,44 @@ export const createEditingRuntime = ({
   scrollArea,
   getSelectionAnchorOffset,
 }) => {
-  const { setCaretOffset, insertText, insertTextWithBreaks, deleteSelectionIfNeeded, deleteText } = createEditorOps({
-    getEditorState: getState,
-    dispatchTransaction,
-    runCommand,
-    basicCommands,
-    pendingPreferredUpdateRef: {
-      set: setPendingPreferredUpdate,
-    },
-    getCaretOffset,
-    getText,
-    getTextLength,
-    setSelectionOffsets,
-    docPosToTextOffset,
-    textOffsetToDocPos,
-    createSelectionStateAtOffset,
-    logDelete,
-    isInSpecialStructureAtPos,
-    shouldAutoAdvanceAfterEnter:
-      typeof shouldAutoAdvanceAfterEnter === "function" ? shouldAutoAdvanceAfterEnter : undefined,
-  });
-
-  const { computeLineEdgeOffset, computeVerticalOffset, moveHorizontal, moveLineEdge, moveVertical, extendSelection } =
-    createSelectionMovement({
-      getLayout,
-      getLayoutIndex,
+  const { setCaretOffset, insertText, insertTextWithBreaks, deleteSelectionIfNeeded, deleteText } =
+    createEditorOpsRuntime({
+      getState,
+      dispatchTransaction,
+      runCommand,
+      basicCommands,
+      setPendingPreferredUpdate,
       getCaretOffset,
-      setCaretOffset,
-      getText: () => ({ length: getTextLength() }),
+      getText,
       getTextLength,
-      getPreferredX,
-      updateCaret,
-      scrollArea,
-      getSelectionAnchorOffset,
       setSelectionOffsets,
+      docPosToTextOffset,
+      textOffsetToDocPos,
+      createSelectionStateAtOffset,
+      logDelete,
+      isInSpecialStructureAtPos,
+      shouldAutoAdvanceAfterEnter,
     });
+
+  const {
+    computeLineEdgeOffset,
+    computeVerticalOffset,
+    moveHorizontal,
+    moveLineEdge,
+    moveVertical,
+    extendSelection,
+  } = createSelectionMovementRuntime({
+    getLayout,
+    getLayoutIndex,
+    getCaretOffset,
+    setCaretOffset,
+    getTextLength,
+    getPreferredX,
+    updateCaret,
+    scrollArea,
+    getSelectionAnchorOffset,
+    setSelectionOffsets,
+  });
 
   return {
     setCaretOffset,

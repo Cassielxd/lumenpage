@@ -1,4 +1,5 @@
-import { ENABLE_SAME_INDEX_TAIL_REUSE, arePagesEquivalent } from "./pageReuse";
+import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags";
+import { arePagesEquivalent } from "./pageReuseEquivalence";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
 
 type FinalizePageReuseDecisionOptions = {

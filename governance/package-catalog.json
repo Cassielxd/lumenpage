@@ -101,6 +101,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-render-engine": {
+      "layer": "engine",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-suggestion": {
       "layer": "extensions",
       "visibility": "public",
@@ -117,6 +122,11 @@
       "action": "keep"
     },
     "lumenpage-extension-active-block": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-audio": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -141,7 +151,17 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-bookmark": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-bullet-list": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-callout": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -161,6 +181,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-columns": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-document": {
       "layer": "extensions",
       "visibility": "public",
@@ -172,6 +197,16 @@
       "action": "keep"
     },
     "lumenpage-extension-editing-commands": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-embed-panel": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-file": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -216,7 +251,17 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-math": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-mention": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-option-box": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -242,6 +287,21 @@
       "action": "keep"
     },
     "lumenpage-extension-bubble-menu": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-seal": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-signature": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-slash-command": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -281,7 +341,22 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-tag": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-template": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-text": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
+    "lumenpage-extension-text-box": {
       "layer": "extensions",
       "visibility": "public",
       "action": "keep"
@@ -301,6 +376,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-web-page": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-markdown": {
       "layer": "extensions",
       "visibility": "internal",
@@ -308,6 +388,11 @@
     },
     "lumenpage-dev-tools": {
       "layer": "tooling",
+      "visibility": "app-only",
+      "action": "keep"
+    },
+    "lumenpage-docs": {
+      "layer": "apps",
       "visibility": "app-only",
       "action": "keep"
     },

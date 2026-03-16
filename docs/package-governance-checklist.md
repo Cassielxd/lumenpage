@@ -1,4 +1,4 @@
-# LumenPage 包治理清单（2026-03-13）
+# LumenPage 包治理清单（2026-03-16）
 
 ## 目标
 
@@ -15,6 +15,10 @@
 - [x] 完成历史兼容目录清理：`mark-engine`、`extension-schema-basic`、`extension-selection-bubble`
 - [x] 为现有库目录补齐 `README.md`
 - [x] 输出并更新包治理清单：`docs/package-governance-inventory.md`
+- [x] 把 node registry 的真实装配下沉到 `layout-engine`
+- [x] 把 selection geometry 聚合收回 `core`
+- [x] 把 pagination worker 的 bootstrap 与 client 协议收敛到 `core`
+- [x] 补齐当前主链缺失的 workspace 依赖、catalog 条目与 TypeScript project references
 
 ## 当前分层
 
@@ -43,17 +47,21 @@
 - `starter-kit` 已作为唯一默认装配入口
 - `render-engine` 已承接默认 Node/Mark 渲染实现
 - `dev-tools` 已切为 Vue 3 实现并接入 `playground`
+- `pnpm typecheck` 通过
+- `pnpm governance:check:layers` 通过
 
 ## 当前已知剩余工作
 
 - 清理历史文档中残留的旧路径与旧包名
 - 清理构建产物误入源码目录的问题：`src/*.js`、`src/*.d.ts`、`tsconfig.tsbuildinfo`
 - 继续降低 `view-canvas` 中剩余的总装复杂度
+- 推进分页引擎第二阶段的 `fragmentIdentity / carryState`
 - 为关键包补内部 `src/README.md` 时序说明（如后续需要）
 
 ## 下一阶段
 
 1. 继续清理历史治理文档与 handoff 文档中的旧路径引用
 2. 规范生成产物输出路径，避免污染源码目录
-3. 继续压缩 `view-canvas` 与 app 侧耦合
-4. 补充架构图与包依赖图，统一项目认知
+3. 继续压缩 `view-canvas` 与 app 侧耦合，优先处理 `renderSync` / `renderer`
+4. 在 continuation 节点上补 fragment 级稳定标识，为增量分页做准备
+5. 补充架构图与包依赖图，统一项目认知

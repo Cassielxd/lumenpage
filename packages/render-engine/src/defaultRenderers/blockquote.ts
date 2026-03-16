@@ -90,6 +90,7 @@ export const blockquoteNodeSpec: any = {
 };
 
 export const blockquoteRenderer = {
+  containerRenderMode: "fragment",
   getContainerStyle({ node, settings }: { node: any; settings: any }) {
     return {
       type: node.type.name,
@@ -98,6 +99,25 @@ export const blockquoteRenderer = {
       borderWidth: settings.blockquoteBorderWidth ?? 3,
       borderInset: settings.blockquoteBorderInset ?? 4,
     };
+  },
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "blockquote" || fragment?.role !== "container") {
+      return;
+    }
+    const width = Number.isFinite(fragment?.width)
+      ? Number(fragment.width)
+      : Number(fragment?.meta?.borderWidth) || 0;
+    const height = Number.isFinite(fragment?.height) ? Number(fragment.height) : 0;
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+    ctx.fillStyle = fragment?.meta?.borderColor ?? "#9ca3af";
+    ctx.fillRect(
+      pageX + (Number.isFinite(fragment?.x) ? Number(fragment.x) : 0),
+      pageTop + (Number.isFinite(fragment?.y) ? Number(fragment.y) : 0),
+      width,
+      height
+    );
   },
   renderContainer({ ctx, line, pageX, pageTop, layout, container }: any) {
     const borderColor = container?.borderColor ?? "#9ca3af";

@@ -24,6 +24,7 @@
   "dependencies": {
     "lumenpage-core": "workspace:*",
     "lumenpage-link": "workspace:*",
+    "lumenpage-model": "workspace:*",
     "lumenpage-render-engine": "workspace:*",
     "lumenpage-view-canvas": "workspace:*"
   },

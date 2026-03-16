@@ -9,6 +9,10 @@
   },
   "include": ["src"],
   "references": [
+    { "path": "../link" },
+    { "path": "../lp/model" },
+    { "path": "../lp/state" },
+    { "path": "../lp/transform" },
     { "path": "../layout-engine" },
     { "path": "../render-engine" },
     { "path": "../view-runtime" }

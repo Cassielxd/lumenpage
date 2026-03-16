@@ -1,0 +1,4 @@
+export const PAGE_REUSE_SIGNATURE_VERSION = 5;
+export const ENABLE_CROSS_PAGE_CANDIDATE_REUSE = false;
+export const ENABLE_SAME_INDEX_TAIL_REUSE = false;
+export const ENABLE_RESUME_FROM_ANCHOR_REUSE = false;

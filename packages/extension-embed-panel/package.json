@@ -31,6 +31,7 @@
   "dependencies": {
     "echarts": "^6.0.0",
     "lumenpage-core": "workspace:*",
+    "lumenpage-model": "workspace:*",
     "lumenpage-render-engine": "workspace:*",
     "mermaid": "^11.13.0"
   },

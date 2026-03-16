@@ -26,3 +26,8 @@ export { createEditorOps } from "./editor/editorOps";
 export { createChangeSummary } from "./editor/changeSummary";
 export { createChangeEvent, serializeSteps, deserializeSteps, setChangeSource, getChangeSource, CHANGE_SOURCE_META } from "./editor/changeEvent";
 export { createBlockIdPlugin, createBlockIdTransaction } from "./editor/blockIdPlugin";
+export {
+  attachPaginationDocWorker,
+  type PaginationDocWorkerRequest,
+  type PaginationDocWorkerResponse,
+} from "./paginationDocWorker";

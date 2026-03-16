@@ -7,8 +7,14 @@ export type PaginationDocWorkerRequest = {
   seedLayout: any;
   changeSummary: any;
   settings: any;
-   cascadePagination?: boolean;
-   cascadeFromPageIndex?: number | null;
+  cascadePagination?: boolean;
+  cascadeFromPageIndex?: number | null;
+  workerDebug?: {
+    hadSeedLayout?: boolean;
+    sentSeedLayout?: boolean;
+    settingsChanged?: boolean;
+    prevPages?: number;
+  };
 };
 
 export type PaginationDocWorkerResponse =
@@ -61,6 +67,9 @@ const normalizeSettings = (settings: any) => ({
   wrapTolerance: Number(settings?.wrapTolerance) || 0,
   minLineWidth: Number(settings?.minLineWidth) || 0,
   disablePageReuse: settings?.disablePageReuse === true,
+  debugPerf: settings?.debugPerf === true,
+  debugGhostTrace: settings?.debugGhostTrace === true,
+  __perf: settings?.debugPerf === true ? { layout: null } : undefined,
   measureTextWidth,
 });
 
@@ -109,9 +118,12 @@ export const attachPaginationDocWorker = ({
       mark("ensurePipeline");
       const doc = schema.nodeFromJSON(request.docJson);
       mark("nodeFromJSON");
+      const hadPreviousLayoutState = !!previousLayoutState;
+      const previousLayoutPagesBeforeSeed = previousLayoutState?.pages?.length ?? 0;
       if (request.seedLayout) {
         previousLayoutState = request.seedLayout;
       }
+      const previousLayoutPagesAfterSeed = previousLayoutState?.pages?.length ?? 0;
       mark("beforeLayoutFromDoc");
       const layout = layoutPipeline.layoutFromDoc(
         doc,
@@ -131,6 +143,18 @@ export const attachPaginationDocWorker = ({
         layout: {
           ...layout,
           __perf: perf,
+          __layoutPerfSummary: layoutPipeline?.settings?.__perf?.layout ?? null,
+          __ghostTrace: Array.isArray(layout?.__ghostTrace) ? layout.__ghostTrace : null,
+          __workerDebug: {
+            clientHadSeedLayout: request.workerDebug?.hadSeedLayout ?? null,
+            clientSentSeedLayout: request.workerDebug?.sentSeedLayout ?? null,
+            clientSettingsChanged: request.workerDebug?.settingsChanged ?? null,
+            clientPrevPages: request.workerDebug?.prevPages ?? null,
+            workerHadPreviousLayoutState: hadPreviousLayoutState,
+            workerPrevPagesBeforeSeed: previousLayoutPagesBeforeSeed,
+            workerPrevPagesAfterSeed: previousLayoutPagesAfterSeed,
+            workerNextPages: layout?.pages?.length ?? 0,
+          },
         },
       };
       mark("postMessage");

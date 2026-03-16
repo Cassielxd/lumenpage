@@ -1,11 +1,9 @@
 import { inputRules } from "lumenpage-inputrules";
 import { keymap } from "lumenpage-keymap";
+import { createNodeRegistry } from "lumenpage-layout-engine";
 import { EditorState, Selection } from "lumenpage-state";
 import {
   CanvasEditorView,
-  collectNodeSelectionTypes,
-  createNodeRegistry,
-  createSelectionGeometry,
   type CanvasCommands,
   type CanvasEditorViewProps,
 } from "lumenpage-view-canvas";
@@ -16,6 +14,7 @@ import { EventEmitter } from "./EventEmitter";
 import { createSchema } from "./createSchema";
 import { ExtensionManager } from "./ExtensionManager";
 import { pasteRulesPlugin } from "./PasteRule";
+import { collectNodeSelectionTypes, createSelectionGeometry } from "./selectionGeometry";
 import type {
   AnyExtensionInput,
   EnableRules,

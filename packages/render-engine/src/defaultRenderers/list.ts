@@ -40,6 +40,9 @@ const getFontSize = (font) => {
   return Number.isFinite(size) ? size : 16;
 };
 
+const getBaselineOffset = (lineHeight: number, fontSize: number) =>
+  Math.max(0, (lineHeight - fontSize) / 2);
+
 const scaleFontSize = (font: string, multiplier: number) => {
   const ratio = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1;
   if (!font || ratio === 1) {
@@ -466,6 +469,52 @@ const drawResolvedListMarker = ({
     ctx.font = fontSpec;
     ctx.fillStyle = marker.color || "#111827";
     ctx.fillText(marker.text, markerX, markerY);
+    return;
+  }
+
+  if (ctx.fillRect) {
+    const size = Math.max(4, Math.round(fontSize * 0.35));
+    ctx.fillRect(markerX, markerY + (fontSize - size) / 2, size, size);
+  }
+};
+
+const drawListMarkerFromFragment = ({
+  ctx,
+  fragment,
+  pageX,
+  pageTop,
+  fallbackFont,
+}: {
+  ctx: any;
+  fragment: any;
+  pageX: number;
+  pageTop: number;
+  fallbackFont: string;
+}) => {
+  if (fragment?.role !== "list-item") {
+    return;
+  }
+  const meta = fragment?.meta || null;
+  const markerText = typeof meta?.markerText === "string" ? meta.markerText : null;
+  const markerWidth = Number.isFinite(meta?.markerWidth) ? Number(meta.markerWidth) : null;
+  const markerGap = Number.isFinite(meta?.markerGap) ? Number(meta.markerGap) : null;
+  if (!markerText || markerWidth == null || markerGap == null) {
+    return;
+  }
+
+  const font = meta?.markerFont || fallbackFont;
+  const fontSize = getFontSize(font);
+  const lineHeight = Number.isFinite(meta?.lineHeight) ? Number(meta.lineHeight) : fontSize;
+  const baselineOffset = getBaselineOffset(lineHeight, fontSize);
+  const contentX = pageX + (Number(fragment?.x) || 0);
+  const lineY = pageTop + (Number(fragment?.y) || 0);
+  const markerX = contentX - markerGap - markerWidth;
+  const markerY = lineY + baselineOffset;
+
+  if (ctx.fillText) {
+    ctx.font = font;
+    ctx.fillStyle = meta?.markerColor || "#111827";
+    ctx.fillText(markerText, markerX, markerY);
     return;
   }
 
@@ -999,6 +1048,7 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
 const createListRenderer = (mode: ListMode) => ({
   allowSplit: true,
   lineBodyMode: "default-text",
+  listMarkerRenderMode: "fragment",
   splitBlock: splitListBlock,
   pagination: {
     fragmentModel: "continuation",
@@ -1011,7 +1061,13 @@ const createListRenderer = (mode: ListMode) => ({
     defaultRender(line, pageX, pageTop, layout);
   },
   renderFragment({ ctx, fragment, pageX, pageTop, layout }) {
-    return;
+    drawListMarkerFromFragment({
+      ctx,
+      fragment,
+      pageX,
+      pageTop,
+      fallbackFont: layout?.font || "16px sans-serif",
+    });
   },
 });
 

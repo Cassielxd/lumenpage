@@ -1,11 +1,8 @@
-import { createPointerHandlers } from "../input/pointerHandlers";
-import { createTouchHandlers } from "../input/touchHandlers";
-import { getCaretFromPoint } from "../caret";
-import { getCaretFromPointIndexed } from "../layoutIndex";
 import { createDragHandlers } from "./drag";
-import { NodeSelection } from "lumenpage-state";
+import { createPointerInteractionHandlers } from "./interactions/pointerPipeline";
+import { createInteractionResolvers } from "./interactions/resolvers";
+import { createTouchInteractionHandlers } from "./interactions/touchPipeline";
 
-// 指针/触摸/拖拽交互装配：保持原有依赖与调用顺序，仅抽离构造体积。
 export const createInteractionPipeline = ({
   view,
   settings,
@@ -34,37 +31,43 @@ export const createInteractionPipeline = ({
   dispatchTransaction,
   setPendingPreferredUpdate,
   scheduleRender,
+}: {
+  view: any;
+  settings: any;
+  dom: any;
+  getLayout: () => any;
+  getLayoutIndex: () => any;
+  getText: () => string;
+  getTextLength: () => number;
+  posAtCoords: any;
+  setSelectionOffsets: any;
+  setSelectionFromHit: any;
+  setNodeSelectionAtPos: any;
+  getSelectionAnchorOffset: () => any;
+  getSelectionRangeOffsets: () => any;
+  setSkipNextClickSelection: (value: boolean) => void;
+  getState?: () => any;
+  setPreferredX: (value: any) => void;
+  getEventCoords: (event: any) => any;
+  getDocPosFromCoords: (coords: any) => any;
+  serializeSliceToHtmlForClipboard: (slice: any, schema: any) => string | null;
+  clipboardTextSerializer?: (slice: any) => string | null;
+  createSliceFromText: (schema: any, text: string) => any;
+  parseHtmlToSlice: (html: string) => any;
+  dispatchEditorProp: (name: any, ...args: any[]) => boolean;
+  queryEditorProp?: (name: any, ...args: any[]) => any;
+  dispatchTransaction: (tr: any) => void;
+  setPendingPreferredUpdate: (value: boolean) => void;
+  scheduleRender: () => void;
 }) => {
-  const resolveOffsetAtCoords = (layout, x, y, scrollTop, clientWidth, textLength) =>
-    posAtCoords(layout, x, y, scrollTop, clientWidth, textLength, {
-      layoutIndex: getLayoutIndex?.() ?? null,
-    });
-  const resolveHitAtCoords = (x, y) =>
-    getCaretFromPointIndexed(
-      getLayout(),
-      x,
-      y,
-      dom.scrollArea.scrollTop,
-      dom.scrollArea.clientWidth,
-      getTextLength(),
-      getLayoutIndex?.() ?? null
-    ) ??
-    getCaretFromPoint(
-      getLayout(),
-      x,
-      y,
-      dom.scrollArea.scrollTop,
-      dom.scrollArea.clientWidth,
-      getTextLength()
-    );
-
-  const resolveDragNodePosFromEvent = (event) => {
-    const fromProps = queryEditorProp?.("resolveDragNodePos", event);
-    if (Number.isFinite(fromProps)) {
-      return fromProps;
-    }
-    return null;
-  };
+  const resolvers = createInteractionResolvers({
+    dom,
+    getLayout,
+    getLayoutIndex,
+    getTextLength,
+    posAtCoords,
+    queryEditorProp,
+  });
 
   const dragHandlers = createDragHandlers({
     view,
@@ -87,60 +90,42 @@ export const createInteractionPipeline = ({
     scheduleRender,
   });
 
-  const { handlePointerDown, handlePointerMove, handlePointerUp } = createPointerHandlers({
+  const pointerHandlers = createPointerInteractionHandlers({
+    view,
+    dom,
     getLayout,
-    scrollArea: dom.scrollArea,
-    inputEl: dom.input,
     getText,
     getTextLength,
-    posAtCoords: resolveOffsetAtCoords,
-    getHitAtCoords: resolveHitAtCoords,
-    setSelectionOffsets: (anchor, head, updatePreferred) =>
-      setSelectionOffsets(anchor, head, updatePreferred, true),
+    setSelectionOffsets,
     setSelectionFromHit,
     setNodeSelectionAtPos,
     getSelectionAnchorOffset,
     getSelectionRangeOffsets,
-    isNodeSelectionActive: () => view.state?.selection instanceof NodeSelection,
     setSkipNextClickSelection,
-    resolveDragNodePos: resolveDragNodePosFromEvent,
-    startInternalDragFromSelection: (event) => dragHandlers.startInternalDragFromSelection(event),
-    startInternalDragFromNodePos: (nodePos, event) =>
-      dragHandlers.startInternalDragFromNodePos(nodePos, event),
-    canStartSelectionDrag: (event) => {
-      const selection = view.state?.selection;
-      if (selection instanceof NodeSelection) {
-        return Number.isFinite(resolveDragNodePosFromEvent(event));
-      }
-      return true;
-    },
-    updateInternalDrag: (event, coords) => dragHandlers.updateInternalDrag(event, coords),
-    finishInternalDrag: (event, coords) => dragHandlers.finishInternalDrag(event, coords),
     setPreferredX,
+    dragHandlers,
+    resolvers,
   });
 
-  const { handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel } =
-    createTouchHandlers({
-      getLayout,
-      scrollArea: dom.scrollArea,
-      getText,
-      getTextLength,
-      posAtCoords: resolveOffsetAtCoords,
-      setSelectionOffsets,
-      getSelectionAnchorOffset,
-      setPreferredX,
-      dispatchEditorProp,
-      inputEl: dom.input,
-      longPressDelay: settings?.touch?.longPressDelay,
-      tapMoveThreshold: settings?.touch?.tapMoveThreshold,
-    });
+  const touchHandlers = createTouchInteractionHandlers({
+    settings,
+    dom,
+    getLayout,
+    getText,
+    getTextLength,
+    setSelectionOffsets,
+    getSelectionAnchorOffset,
+    setPreferredX,
+    dispatchEditorProp,
+    resolvers,
+  });
 
   const { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd } =
     dragHandlers;
 
   return {
-    pointerHandlers: { handlePointerDown, handlePointerMove, handlePointerUp },
-    touchHandlers: { handleTouchStart, handleTouchMove, handleTouchEnd, handleTouchCancel },
+    pointerHandlers,
+    touchHandlers,
     dragHandlers,
     domDragHandlers: { handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd },
   };

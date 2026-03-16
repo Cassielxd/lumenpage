@@ -4,33 +4,24 @@
  */
 
 import { measureTextWidth, getFontSize } from "./measure";
-import { hasLayoutCapability, isLineVisualBlock } from "./layoutSemantics";
-
-const getLineHeight = (line, layout) =>
-  Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
-
-const getLineOffsetDelta = (line) =>
-  Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
-
-const getPageOffsetDelta = (page) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
-
-const getRunOffsetDelta = (line, page = null) => getLineOffsetDelta(line) + getPageOffsetDelta(page);
-
-const getLineStart = (line, page = null) =>
-  Number.isFinite(line?.start) ? Number(line.start) + getPageOffsetDelta(page) : 0;
-
-const getLineEnd = (line, page = null) => {
-  const start = getLineStart(line, page);
-  return Number.isFinite(line?.end) ? Number(line.end) + getPageOffsetDelta(page) : start;
-};
-
-const getLineBlockStart = (line, page = null) => {
-  if (Number.isFinite(line?.blockStart)) {
-    return Number(line.blockStart) + getPageOffsetDelta(page);
-  }
-  return getLineStart(line, page);
-};
+import { hasLayoutCapability } from "./layoutSemantics";
+import {
+  getBaselineOffset,
+  getFontForOffset,
+  getLineBlockStart,
+  getLineEnd,
+  getLineHeight,
+  getLineStart,
+  getLineXForOffset,
+  getPageOffsetDelta,
+  getRunOffsetDelta,
+  isVisualBlockLine,
+} from "./textLineGeometry";
+import {
+  getNearestTextLineBoxOnPage,
+  getTextLineBoxHitAtPoint,
+  getTextLineOffsetHit,
+} from "./textLineHit";
 
 const getBoxTop = (box) => (Number.isFinite(box?.y) ? Number(box.y) : null);
 
@@ -49,76 +40,6 @@ const getBoxBottom = (box) => {
   return top + height;
 };
 
-const getLineXForOffset = (line, offset, fallbackFont, page = null) => {
-  const lineStart = getLineStart(line, page);
-  if (!line.runs || line.runs.length === 0) {
-    return measureTextWidth(fallbackFont, line.text.slice(0, Math.max(0, offset - lineStart)));
-  }
-
-  let x = 0;
-  const lineOffsetDelta = getRunOffsetDelta(line, page);
-
-  for (const run of line.runs) {
-    const runFont = run.font || fallbackFont;
-
-    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
-
-    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
-
-    const runWidth =
-      typeof run.width === "number" ? run.width : measureTextWidth(runFont, run.text);
-
-    if (offset <= runStart) {
-      return x;
-    }
-
-    if (offset >= runEnd) {
-      x += runWidth;
-
-      continue;
-    }
-
-    const part = run.text.slice(0, offset - runStart);
-
-    x += measureTextWidth(runFont, part);
-
-    return x;
-  }
-
-  return x;
-};
-
-const getFontForOffset = (line, offset, fallbackFont, page = null) => {
-  if (!line.runs || line.runs.length === 0) {
-    return fallbackFont;
-  }
-
-  const lineOffsetDelta = getRunOffsetDelta(line, page);
-  for (const run of line.runs) {
-    const runStart = Number.isFinite(run.start) ? Number(run.start) + lineOffsetDelta : 0;
-    const runEnd = Number.isFinite(run.end) ? Number(run.end) + lineOffsetDelta : runStart;
-    if (offset >= runStart && offset <= runEnd) {
-      return run.font || fallbackFont;
-    }
-  }
-
-  return fallbackFont;
-};
-
-const getBaselineOffset = (lineHeight, fontSize) => Math.max(0, (lineHeight - fontSize) / 2);
-
-const isVisualBlockLine = (line, page = null) => {
-  const lineStart = getLineStart(line, page);
-  const lineEnd = getLineEnd(line, page);
-  if (!line || !Number.isFinite(lineStart) || !Number.isFinite(lineEnd)) {
-    return false;
-  }
-  if (lineEnd <= lineStart) {
-    return false;
-  }
-  return isLineVisualBlock(line);
-};
-
 export function findLineForOffset(layout, offset, textLength, options = null) {
   if (!layout || layout.pages.length === 0) {
     return null;
@@ -126,6 +47,21 @@ export function findLineForOffset(layout, offset, textLength, options = null) {
 
   const clamped = Math.max(0, Math.min(offset, textLength));
   const preferBoundary = options?.preferBoundary === "end" ? "end" : "start";
+  const textLineHit = options?.layoutIndex
+    ? getTextLineOffsetHit(options.layoutIndex, clamped, { preferBoundary })
+    : null;
+  if (textLineHit?.line) {
+    return {
+      pageIndex: textLineHit.pageIndex,
+      lineIndex: textLineHit.lineIndex,
+      line: textLineHit.line,
+      box: textLineHit.box,
+      page: textLineHit.page,
+      start: textLineHit.start,
+      end: textLineHit.end,
+      isLineEnd: textLineHit.isLineEnd === true,
+    };
+  }
 
   let emptyHit = null;
   let lineEndHit = null;
@@ -493,17 +429,33 @@ const collectGapContainers = (boxes, localX, localY, result, depth = 0) => {
   }
 };
 
-const buildContainerBlockGroups = (page, containerBox, layout) => {
-  if (!page?.lines?.length || !containerBox?.key) {
+const buildContainerBlockGroups = (
+  page,
+  pageIndex,
+  containerBox,
+  layout,
+  layoutIndex = null
+) => {
+  if (!containerBox?.key) {
     return [];
   }
 
   const groups = [];
-
-  for (let index = 0; index < page.lines.length; index += 1) {
-    const line = page.lines[index];
+  const appendGroupEntry = ({
+    line,
+    lineIndex,
+    top,
+    bottom,
+    box = null,
+  }: {
+    line: any;
+    lineIndex: number;
+    top: number;
+    bottom: number;
+    box?: any;
+  }) => {
     if (!lineMatchesContainer(line, containerBox.key)) {
-      continue;
+      return;
     }
 
     const ownerInfo = getOwnerPathInfo(line, containerBox.key);
@@ -514,46 +466,139 @@ const buildContainerBlockGroups = (page, containerBox, layout) => {
     const key = getGapBlockKey(line, page, childPathKey);
     const lineStart = getLineStart(line, page);
     const lineEnd = getLineEnd(line, page);
-    const lineTop = Number.isFinite(line?.y) ? Number(line.y) : 0;
-    const lineBottom = lineTop + getLineHeight(line, layout);
     const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
 
     if (lastGroup && lastGroup.key === key) {
       lastGroup.start = Math.min(lastGroup.start, lineStart);
       lastGroup.end = Math.max(lastGroup.end, lineEnd);
-      lastGroup.top = Math.min(lastGroup.top, lineTop);
-      lastGroup.bottom = Math.max(lastGroup.bottom, lineBottom);
+      lastGroup.top = Math.min(lastGroup.top, top);
+      lastGroup.bottom = Math.max(lastGroup.bottom, bottom);
       lastGroup.lastLine = line;
-      lastGroup.lastLineIndex = index;
-      continue;
+      lastGroup.lastLineIndex = lineIndex;
+      lastGroup.lastBox = box;
+      return;
     }
 
     groups.push({
       key,
       start: lineStart,
       end: lineEnd,
+      top,
+      bottom,
+      firstLine: line,
+      firstLineIndex: lineIndex,
+      firstBox: box,
+      lastLine: line,
+      lastLineIndex: lineIndex,
+      lastBox: box,
+    });
+  };
+
+  const textLineItems = layoutIndex
+    ? getSortedPageTextLineItems(layoutIndex, pageIndex, layout)
+    : [];
+  if (textLineItems.length > 0) {
+    for (const entry of textLineItems) {
+      appendGroupEntry({
+        line: entry.line,
+        lineIndex: entry.lineIndex,
+        top: entry.top,
+        bottom: entry.bottom,
+        box: entry.item?.box ?? null,
+      });
+    }
+    return groups;
+  }
+
+  if (!page?.lines?.length) {
+    return groups;
+  }
+
+  for (let index = 0; index < page.lines.length; index += 1) {
+    const line = page.lines[index];
+    const lineTop = Number.isFinite(line?.y) ? Number(line.y) : 0;
+    const lineBottom = lineTop + getLineHeight(line, layout);
+    appendGroupEntry({
+      line,
+      lineIndex: index,
       top: lineTop,
       bottom: lineBottom,
-      firstLine: line,
-      firstLineIndex: index,
-      lastLine: line,
-      lastLineIndex: index,
     });
   }
 
   return groups;
 };
 
-const createGapHit = (pageIndex, page, pageX, x, line, lineIndex, offset) => ({
+const createGapHit = (pageIndex, page, pageX, x, line, lineIndex, offset, box = null) => ({
   offset,
-  localX: Math.max(0, x - pageX - (Number(line?.x) || 0)),
+  localX: Math.max(
+    0,
+    x - pageX - (Number.isFinite(box?.x) ? Number(box.x) : Number(line?.x) || 0)
+  ),
   pageIndex,
   lineIndex,
   line,
+  box,
   page,
 });
 
-const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout) => {
+const getTextLineItemBounds = (item, layout) => {
+  const boxTop = Number.isFinite(item?.box?.y) ? Number(item.box.y) : Number.NaN;
+  const boxHeight = Number.isFinite(item?.box?.height) ? Number(item.box.height) : Number.NaN;
+  if (Number.isFinite(boxTop) && Number.isFinite(boxHeight)) {
+    return {
+      top: boxTop,
+      bottom: boxTop + Math.max(1, boxHeight),
+    };
+  }
+  const lineTop = Number.isFinite(item?.line?.y) ? Number(item.line.y) : 0;
+  const lineHeight = getLineHeight(item?.line, layout);
+  return {
+    top: lineTop,
+    bottom: lineTop + Math.max(1, lineHeight),
+  };
+};
+
+const getSortedPageTextLineItems = (layoutIndex, pageIndex, layout) => {
+  const items = Array.isArray(layoutIndex?.textLineItems) ? layoutIndex.textLineItems : [];
+  return items
+    .filter((item) => item?.pageIndex === pageIndex)
+    .map((item) => {
+      const bounds = getTextLineItemBounds(item, layout);
+      return {
+        item,
+        line: item.line,
+        lineIndex: item.lineIndex,
+        top: bounds.top,
+        bottom: bounds.bottom,
+      };
+    })
+    .sort((a, b) => {
+      if (a.top !== b.top) {
+        return a.top - b.top;
+      }
+      return a.lineIndex - b.lineIndex;
+    });
+};
+
+const getPageTextLineIndexSet = (layoutIndex, pageIndex) => {
+  const items = Array.isArray(layoutIndex?.textLineItems) ? layoutIndex.textLineItems : [];
+  if (items.length === 0) {
+    return null;
+  }
+
+  const lineIndexes = new Set();
+  for (const item of items) {
+    if (item?.pageIndex !== pageIndex || !Number.isFinite(item?.lineIndex)) {
+      continue;
+    }
+    lineIndexes.add(Number(item.lineIndex));
+  }
+
+  return lineIndexes.size > 0 ? lineIndexes : null;
+};
+
+const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout, layoutIndex = null) => {
   if (!Array.isArray(page?.boxes) || page.boxes.length === 0) {
     return null;
   }
@@ -587,23 +632,30 @@ const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout) => {
       continue;
     }
 
-    const groups = buildContainerBlockGroups(page, containerBox, layout);
+    const groups = buildContainerBlockGroups(
+      page,
+      pageIndex,
+      containerBox,
+      layout,
+      layoutIndex
+    );
     if (groups.length === 0) {
       continue;
     }
 
     const firstGroup = groups[0];
-    if (localY >= containerTop && localY < firstGroup.top) {
-      return createGapHit(
-        pageIndex,
-        page,
-        pageX,
-        x,
-        firstGroup.firstLine,
-        firstGroup.firstLineIndex,
-        firstGroup.start
-      );
-    }
+      if (localY >= containerTop && localY < firstGroup.top) {
+        return createGapHit(
+          pageIndex,
+          page,
+          pageX,
+          x,
+          firstGroup.firstLine,
+          firstGroup.firstLineIndex,
+          firstGroup.start,
+          firstGroup.firstBox ?? null
+        );
+      }
 
     for (let index = 0; index < groups.length - 1; index += 1) {
       const previous = groups[index];
@@ -622,7 +674,8 @@ const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout) => {
             x,
             previous.lastLine,
             previous.lastLineIndex,
-            previous.end
+            previous.end,
+            previous.lastBox ?? null
           )
         : createGapHit(
             pageIndex,
@@ -631,7 +684,8 @@ const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout) => {
             x,
             next.firstLine,
             next.firstLineIndex,
-            next.start
+            next.start,
+            next.firstBox ?? null
           );
     }
 
@@ -640,22 +694,26 @@ const resolveBoxGapHit = (page, pageIndex, localY, x, pageX, layout) => {
       return createGapHit(
         pageIndex,
         page,
-        pageX,
-        x,
-        lastGroup.lastLine,
-        lastGroup.lastLineIndex,
-        lastGroup.end
-      );
-    }
+          pageX,
+          x,
+          lastGroup.lastLine,
+          lastGroup.lastLineIndex,
+          lastGroup.end,
+          lastGroup.lastBox ?? null
+        );
+      }
   }
 
   return null;
 };
 
-const resolveLineGapHit = (page, pageIndex, localY, x, pageX, layout) => {
+const resolveLineGapHit = (page, pageIndex, localY, x, pageX, layout, options = null) => {
   if (!page?.lines?.length) {
     return null;
   }
+
+  const textLineIndexSet =
+    options?.textLineIndexSet instanceof Set ? options.textLineIndexSet : null;
 
   let previous = null;
   let next = null;
@@ -688,10 +746,19 @@ const resolveLineGapHit = (page, pageIndex, localY, x, pageX, layout) => {
     return null;
   }
 
+  if (textLineIndexSet) {
+    const previousIsIndexedText =
+      textLineIndexSet.has(previous.index) && !isVisualBlockLine(previous.line, page);
+    const nextIsIndexedText =
+      textLineIndexSet.has(next.index) && !isVisualBlockLine(next.line, page);
+    if (previousIsIndexedText && nextIsIndexedText) {
+      return null;
+    }
+  }
+
   const gapMid = previous.bottom + (next.top - previous.bottom) / 2;
   const usePrevious = localY < gapMid;
   const target = usePrevious ? previous : next;
-  const fallbackOffset = getLineStart(target.line, page);
   const offset = usePrevious
     ? getLineEnd(previous.line, page)
     : getLineStart(next.line, page);
@@ -699,11 +766,102 @@ const resolveLineGapHit = (page, pageIndex, localY, x, pageX, layout) => {
   return createGapHit(pageIndex, page, pageX, x, target.line, target.index, offset);
 };
 
+const resolveTextLineGapHit = (
+  page,
+  pageIndex,
+  localY,
+  x,
+  pageX,
+  layout,
+  layoutIndex
+) => {
+  const items = getSortedPageTextLineItems(layoutIndex, pageIndex, layout);
+  if (items.length < 2) {
+    return null;
+  }
+
+  let previous = null;
+  let next = null;
+
+  for (const item of items) {
+    if (item.bottom <= localY) {
+      previous = item;
+      continue;
+    }
+    if (localY >= item.top && localY < item.bottom) {
+      return null;
+    }
+    if (item.top > localY) {
+      next = item;
+      break;
+    }
+  }
+
+  if (!previous || !next || localY < previous.bottom || localY >= next.top) {
+    return null;
+  }
+
+  if (!getSharedBoundaryOwnerKey(previous.line, next.line)) {
+    return null;
+  }
+
+  if (!isDistinctBlockBoundary(previous.line, next.line, page)) {
+    return null;
+  }
+
+  const gapMid = previous.bottom + (next.top - previous.bottom) / 2;
+  const usePrevious = localY < gapMid;
+  const target = usePrevious ? previous : next;
+  const offset = usePrevious
+    ? getLineEnd(previous.line, page)
+    : getLineStart(next.line, page);
+
+  return createGapHit(
+    pageIndex,
+    page,
+    pageX,
+    x,
+    target.line,
+    target.lineIndex,
+    offset,
+    target.item?.box ?? null
+  );
+};
+
 /* 鍛戒腑娴嬭瘯锛氭牴鎹潗鏍囬€夋嫨鏈€杩戣骞跺弽绠楀亸绉?*/
 
-export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLength) {
+export function getCaretFromPoint(
+  layout,
+  x,
+  y,
+  scrollTop,
+  viewportWidth,
+  textLength,
+  options = null
+) {
   if (!layout || layout.pages.length === 0) {
     return null;
+  }
+
+  const textLineHit = options?.layoutIndex
+    ? getTextLineBoxHitAtPoint(layout, x, y, scrollTop, viewportWidth, options.layoutIndex)
+    : null;
+  if (textLineHit?.lineItem?.line) {
+    const { lineItem, page, pageIndex, pageX } = textLineHit;
+    const line = lineItem.line;
+    const boxX = Number.isFinite(lineItem?.box?.x) ? Number(lineItem.box.x) : Number(line?.x) || 0;
+    const localX = Math.max(0, x - pageX - boxX);
+    return {
+      offset: offsetAtX(layout.font, line, localX, page),
+      localX,
+      pageIndex,
+      lineIndex: lineItem.lineIndex,
+      line,
+      box: lineItem.box,
+      page,
+      start: getLineStart(line, page),
+      end: getLineEnd(line, page),
+    };
   }
 
   const pageSpan = layout.pageHeight + layout.pageGap;
@@ -719,6 +877,8 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
   const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
 
   const localY = y + scrollTop - pageIndex * pageSpan;
+  const pageTextLineIndexSet =
+    options?.layoutIndex ? getPageTextLineIndexSet(options.layoutIndex, pageIndex) : null;
 
   const linesAtY = [];
   for (let index = 0; index < page.lines.length; index += 1) {
@@ -735,24 +895,87 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
 
   if (!line) {
     const gapHit =
-      resolveBoxGapHit(page, pageIndex, localY, x, pageX, layout) ||
-      resolveLineGapHit(page, pageIndex, localY, x, pageX, layout);
+      resolveBoxGapHit(
+        page,
+        pageIndex,
+        localY,
+        x,
+        pageX,
+        layout,
+        options?.layoutIndex ?? null
+      ) ||
+      (options?.layoutIndex
+        ? resolveTextLineGapHit(
+            page,
+            pageIndex,
+            localY,
+            x,
+            pageX,
+            layout,
+            options.layoutIndex
+        )
+      : null) ||
+      resolveLineGapHit(page, pageIndex, localY, x, pageX, layout, {
+        textLineIndexSet: pageTextLineIndexSet,
+      });
     if (gapHit) {
       return gapHit;
     }
-    const closest = page.lines.reduce((best, candidate, index) => {
-      const lineHeight = getLineHeight(candidate, layout);
+    const nearestTextLineHit = options?.layoutIndex
+      ? getNearestTextLineBoxOnPage(
+          layout,
+          x,
+          y,
+          scrollTop,
+          viewportWidth,
+          options.layoutIndex
+        )
+      : null;
+    if (nearestTextLineHit?.lineItem?.line) {
+      const {
+        lineItem,
+        page: hitPage,
+        pageIndex: hitPageIndex,
+        pageX: hitPageX,
+      } = nearestTextLineHit;
+      line = lineItem.line;
+      lineIndex = lineItem.lineIndex;
+      const boxX =
+        Number.isFinite(lineItem?.box?.x) ? Number(lineItem.box.x) : Number(line?.x) || 0;
+      const localX = Math.max(0, x - hitPageX - boxX);
+      return {
+        offset: offsetAtX(layout.font, line, localX, hitPage),
+        localX,
+        pageIndex: hitPageIndex,
+        lineIndex,
+        line,
+        box: lineItem.box,
+        page: hitPage,
+        start: getLineStart(line, hitPage),
+        end: getLineEnd(line, hitPage),
+      };
+    }
+    const reduceClosestLine = (includeIndexedText) =>
+      page.lines.reduce((best, candidate, index) => {
+        const skipIndexedText =
+          !includeIndexedText &&
+          pageTextLineIndexSet?.has(index) &&
+          !isVisualBlockLine(candidate, page);
+        if (skipIndexedText) {
+          return best;
+        }
 
-      const center = candidate.y + lineHeight / 2;
+        const lineHeight = getLineHeight(candidate, layout);
+        const center = candidate.y + lineHeight / 2;
+        const delta = Math.abs(center - localY);
 
-      const delta = Math.abs(center - localY);
+        if (!best || delta < best.delta) {
+          return { line: candidate, index, delta };
+        }
 
-      if (!best || delta < best.delta) {
-        return { line: candidate, index, delta };
-      }
-
-      return best;
-    }, null);
+        return best;
+      }, null);
+    const closest = reduceClosestLine(false) ?? reduceClosestLine(true);
     line = closest?.line ?? null;
     lineIndex =
       Number.isFinite(closest?.index) ? Number(closest.index) : lineIndex;
@@ -772,11 +995,8 @@ export function getCaretFromPoint(layout, x, y, scrollTop, viewportWidth, textLe
 
   return {
     offset,
-
     localX,
-
     pageIndex,
-
     lineIndex: Number.isFinite(lineIndex) ? Number(lineIndex) : page.lines.indexOf(line),
     line,
     page,

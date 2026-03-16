@@ -9,7 +9,7 @@ type RenderLineBodyPassArgs = {
   renderer: any;
   nodeView: any;
   renderPlan: LineRenderPlan;
-  defaultRender: (line: any, pageTop: number, pageX: number, layout: any) => void;
+  defaultRender: (line: any, pageX: number, pageTop: number, layout: any) => void;
   pageTop?: number;
   pageX?: number;
 };
@@ -34,6 +34,9 @@ export const renderLineBodyPass = ({
   if (renderPlan.shouldRunContainerPass && Array.isArray(line?.containers) && registry) {
     for (const container of line.containers) {
       const containerRenderer = registry.get(container.type);
+      if (containerRenderer?.containerRenderMode === "fragment") {
+        continue;
+      }
       if (containerRenderer?.renderContainer) {
         containerRenderer.renderContainer({
           ctx,
@@ -87,6 +90,6 @@ export const renderLineBodyPass = ({
   }
 
   if (renderPlan.shouldRunLeafTextPass) {
-    defaultRender(line, pageTop, pageX, layout);
+    defaultRender(line, pageX, pageTop, layout);
   }
 };

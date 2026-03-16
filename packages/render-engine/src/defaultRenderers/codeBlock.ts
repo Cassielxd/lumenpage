@@ -70,6 +70,7 @@ const drawCodeBlockChrome = ({ ctx, x, y, width, height, background, borderColor
 
 export const codeBlockRenderer = {
   allowSplit: true,
+  lineBodyMode: "default-text",
   layoutBlock({ node, settings, registry }: { node: any; settings: any; registry?: any }) {
     const metrics = resolveMetrics(settings);
     const codeSettings = {

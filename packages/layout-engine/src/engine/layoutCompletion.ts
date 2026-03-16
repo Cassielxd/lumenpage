@@ -1,0 +1,114 @@
+import { finalizeLayoutPages } from "./layoutFinalization";
+import { finalizeLayoutPerf } from "./perfSummary";
+import { materializeLayoutGeometry } from "../pageGeometry";
+
+export const completeLayoutRun = ({
+  session,
+  pageHeight,
+  pageGap,
+  pageWidth,
+  margin,
+  lineHeight,
+  font,
+  previousLayout,
+  changeSummary,
+  offsetDelta,
+  appendGhostTrace,
+  ghostTrace,
+  perf,
+  now,
+  baseSettingsRaw,
+  resumeAnchorPageIndex,
+  resumeAnchorLineIndex,
+  resumeAnchorMatchKey,
+  resumeAnchorSkippedReason,
+  reusedPrefixPages,
+  reusedPrefixLines,
+  logLayout,
+}: {
+  session: any;
+  pageHeight: number;
+  pageGap: number;
+  pageWidth: number;
+  margin: any;
+  lineHeight: number;
+  font: string;
+  previousLayout: any;
+  changeSummary: any;
+  offsetDelta: number;
+  appendGhostTrace: (ghostTrace: any[] | null, event: any) => void;
+  ghostTrace: any[] | null;
+  perf: any;
+  now: () => number;
+  baseSettingsRaw: any;
+  resumeAnchorPageIndex: number | null;
+  resumeAnchorLineIndex: number | null;
+  resumeAnchorMatchKey: string | null;
+  resumeAnchorSkippedReason: string | null;
+  reusedPrefixPages: number;
+  reusedPrefixLines: number;
+  logLayout: (...args: any[]) => void;
+}) => {
+  const finalPages = finalizeLayoutPages({
+    pages: session.pages,
+    shouldStop: session.shouldStop,
+    previousLayout,
+    syncFromIndex: session.syncFromIndex,
+    offsetDelta,
+    appendGhostTrace,
+    ghostTrace,
+  });
+  session.pages = finalPages.pages;
+  // Finalize box/fragment geometry at the layout boundary so view/runtime consumers
+  // can treat page geometry as stable output instead of rebuilding it during render.
+  materializeLayoutGeometry({ pages: session.pages });
+  if (perf) {
+    perf.reusedPages = finalPages.reusedTailCount;
+  }
+
+  const totalHeight =
+    session.pages.length * pageHeight + Math.max(0, session.pages.length - 1) * pageGap;
+
+  if (perf) {
+    const summary = finalizeLayoutPerf({
+      perf,
+      now,
+      pages: session.pages,
+      previousLayout,
+      changeSummary,
+      syncAfterIndex: session.syncAfterIndex,
+      canSync: session.canSync,
+      passedChangedRange: session.passedChangedRange,
+      syncFromIndex: session.syncFromIndex,
+      resumeFromAnchor: session.resumeFromAnchor,
+      resumeAnchorPageIndex,
+      resumeAnchorLineIndex,
+      resumeAnchorMatchKey,
+      resumeAnchorSkippedReason,
+      reusedPrefixPages,
+      reusedPrefixLines,
+    });
+    if (baseSettingsRaw?.__perf) {
+      baseSettingsRaw.__perf.layout = summary;
+    }
+    logLayout(`[layout-engine] perf:`, summary);
+  }
+
+  logLayout(
+    `[layout-engine] DONE pages:${session.pages.length}, progressiveApplied:${session.progressiveApplied}, prevPages:${previousLayout?.pages?.length ?? 0}`
+  );
+
+  return {
+    pages: session.pages,
+    pageHeight,
+    pageWidth,
+    pageGap,
+    margin,
+    lineHeight,
+    font,
+    totalHeight,
+    __progressiveApplied: session.progressiveApplied,
+    __progressiveTruncated: session.progressiveTruncated,
+    __ghostTrace: ghostTrace,
+  };
+};

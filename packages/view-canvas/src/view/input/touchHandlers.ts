@@ -20,7 +20,7 @@ type TouchHandlersOptions = {
   tapMoveThreshold?: number;
 };
 
-﻿export const createTouchHandlers = ({
+export const createTouchHandlers = ({
   getLayout,
   scrollArea,
   getText,
@@ -40,12 +40,12 @@ type TouchHandlersOptions = {
   let startOffset = null;
   let startX = 0;
   let startY = 0;
-  let longPressTimer = 0;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clearLongPress = () => {
-    if (longPressTimer) {
+    if (longPressTimer != null) {
       clearTimeout(longPressTimer);
-      longPressTimer = 0;
+      longPressTimer = null;
     }
   };
 
