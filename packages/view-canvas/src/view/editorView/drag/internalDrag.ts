@@ -1,4 +1,4 @@
-import { isDragCopy, isEditable, resolveDropSelection } from "./helpers";
+import { isDragCopy, isEditable, resolveDraggableNodeRange, resolveDropSelection } from "./helpers";
 
 export const createInternalDragController = ({
   view,
@@ -100,17 +100,12 @@ export const createInternalDragController = ({
     if (nodePos < 0 || nodePos > docSize) {
       return false;
     }
-    let node = null;
-    try {
-      node = editorState.doc.nodeAt(nodePos);
-    } catch (_error) {
+    const range = resolveDraggableNodeRange(editorState.doc, nodePos);
+    if (!range?.node) {
       return false;
     }
-    if (!editorState?.doc || !node) {
-      return false;
-    }
-    const from = nodePos;
-    const to = nodePos + node.nodeSize;
+    const from = range.from;
+    const to = range.to;
     const slice = editorState.doc.slice(from, to);
     if (!slice || slice.size === 0) {
       return false;

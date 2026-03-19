@@ -11,6 +11,64 @@ export const clampDocPos = (doc: any, pos: any) => {
   return Math.max(0, Math.min(size, nextPos));
 };
 
+export const resolveDraggableNodeRange = (doc: any, pos: any) => {
+  if (!doc) {
+    return null;
+  }
+  const docSize = Number(doc?.content?.size ?? 0);
+  const resolvedPos = clampDocPos(doc, pos);
+  if (!Number.isFinite(resolvedPos) || resolvedPos < 0 || resolvedPos >= docSize) {
+    return null;
+  }
+
+  let directNode = null;
+  try {
+    directNode = doc.nodeAt(resolvedPos);
+  } catch (_error) {
+    directNode = null;
+  }
+
+  try {
+    const $pos = doc.resolve(resolvedPos);
+    let containingCandidate = null;
+    for (let depth = $pos.depth; depth > 0; depth -= 1) {
+      const node = $pos.node(depth);
+      if (!node || node.isText) {
+        continue;
+      }
+      const from = $pos.before(depth);
+      const to = from + node.nodeSize;
+      if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to > docSize) {
+        continue;
+      }
+      if (from === resolvedPos) {
+        return { node, from, to };
+      }
+      if (!containingCandidate && from <= resolvedPos && resolvedPos < to) {
+        containingCandidate = { node, from, to };
+      }
+    }
+    if (containingCandidate) {
+      return containingCandidate;
+    }
+  } catch (_error) {
+    // Fall back to direct node resolution below.
+  }
+
+  if (directNode && !directNode.isText) {
+    const to = resolvedPos + directNode.nodeSize;
+    if (to <= docSize) {
+      return {
+        node: directNode,
+        from: resolvedPos,
+        to,
+      };
+    }
+  }
+
+  return null;
+};
+
 export const resolveDropSelection = (tr: any, insertPos: number, slice: any) => {
   if (!tr?.doc || !Number.isFinite(insertPos)) {
     return tr;

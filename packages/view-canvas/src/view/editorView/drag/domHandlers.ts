@@ -1,7 +1,7 @@
 import { Slice } from "lumenpage-model";
 
 import { isEditorDomEventHandled } from "../plugins";
-import { isDragCopy, resolveDropSelection } from "./helpers";
+import { isDragCopy, resolveDraggableNodeRange, resolveDropSelection } from "./helpers";
 
 export const createDomDragHandlers = ({
   view,
@@ -68,21 +68,15 @@ export const createDomDragHandlers = ({
     if (editorState.selection.empty) {
       const fromProps = queryEditorProp?.("resolveDragNodePos", event);
       const nodePos = Number.isFinite(fromProps) ? fromProps : null;
-      const docSize = Number(editorState.doc?.content?.size ?? 0);
-      let node = null;
-      if (Number.isFinite(nodePos) && nodePos >= 0 && nodePos <= docSize) {
-        try {
-          node = editorState.doc.nodeAt(nodePos);
-        } catch (_error) {
-          node = null;
-        }
-      }
-      if (!node || !Number.isFinite(nodePos)) {
+      const range = Number.isFinite(nodePos)
+        ? resolveDraggableNodeRange(editorState.doc, nodePos)
+        : null;
+      if (!range?.node) {
         event.preventDefault();
         return;
       }
-      from = nodePos;
-      to = nodePos + node.nodeSize;
+      from = range.from;
+      to = range.to;
       slice = editorState.doc.slice(from, to);
       if (!slice || slice.size === 0) {
         event.preventDefault();

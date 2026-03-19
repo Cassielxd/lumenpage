@@ -72,6 +72,36 @@ const getCellTextLength = (cell, helpers) => {
   return length;
 };
 
+const resolveTerminalTextPos = (node, nodePos, helpers) => {
+  if (!node) {
+    return nodePos;
+  }
+
+  if (node.childCount > 0) {
+    let innerPos = nodePos + 1;
+    for (let index = 0; index < node.childCount; index += 1) {
+      const child = node.child(index);
+      if (index === node.childCount - 1) {
+        return resolveTerminalTextPos(child, innerPos, helpers);
+      }
+      innerPos += child.nodeSize;
+    }
+  }
+
+  if (node.isTextblock) {
+    const textLength = helpers?.getNodeTextLength
+      ? helpers.getNodeTextLength(node)
+      : node.textContent.length;
+    return nodePos + 1 + Math.max(0, textLength);
+  }
+
+  if (node.isLeaf || node.isAtom) {
+    return nodePos + Math.max(0, node.nodeSize);
+  }
+
+  return nodePos + Math.max(0, node.nodeSize - 1);
+};
+
 const mapOffsetInCell = (cell, cellPos, offset, helpers) => {
   let remaining = offset;
   let innerPos = cellPos + 1;
@@ -89,13 +119,13 @@ const mapOffsetInCell = (cell, cellPos, offset, helpers) => {
     remaining -= textLength;
     if (i < cell.childCount - 1) {
       if (remaining === 0) {
-        return blockPos + block.nodeSize - 1;
+        return resolveTerminalTextPos(block, blockPos, helpers);
       }
       remaining -= 1;
     }
     innerPos += block.nodeSize;
   }
-  return cellPos + cell.nodeSize - 1;
+  return resolveTerminalTextPos(cell, cellPos, helpers);
 };
 
 const mapPosInCell = (cell, cellPos, pos, helpers) => {
@@ -170,7 +200,7 @@ const tableOffsetMapping = {
         remaining -= cellLength;
         if (c < row.childCount - 1) {
           if (remaining === 0) {
-            return cellPos + cell.nodeSize - 1;
+            return resolveTerminalTextPos(cell, cellPos, helpers);
           }
           remaining -= 1;
         }
@@ -178,13 +208,13 @@ const tableOffsetMapping = {
       }
       if (r < table.childCount - 1) {
         if (remaining === 0) {
-          return rowPos + row.nodeSize - 1;
+          return resolveTerminalTextPos(row, rowPos, helpers);
         }
         remaining -= 1;
       }
       rowPos += row.nodeSize;
     }
-    return tablePos + table.nodeSize - 1;
+    return resolveTerminalTextPos(table, tablePos, helpers);
   },
   mapPosToOffset: (table, tablePos, pos, helpers) => {
     let offset = 0;
@@ -327,3 +357,4 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
     },
   },
 };
+
