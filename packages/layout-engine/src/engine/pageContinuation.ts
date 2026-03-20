@@ -1,6 +1,13 @@
 import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags";
 import { arePagesEquivalent } from "./pageReuseEquivalence";
 import {
+  createPaginationSyncDiagnostics,
+  type PaginationSyncDiagnostics,
+} from "./paginationDiagnostics";
+import {
+  buildPageBoundaryAnchorToken,
+  getPagePreferredBoundaryAnchor,
+  getPageFragmentAnchorSummary,
   hashFragmentContinuationState,
   readLineFragmentContinuationState,
 } from "./fragmentContinuation";
@@ -13,6 +20,25 @@ type FinalizePageReuseDecisionOptions = {
   page: any;
   previousLayout: any;
   offsetDelta: number;
+  preferredBoundaryAnchor: string | null;
+};
+
+const pageHasVisualBlock = (page: any) => {
+  const lines = Array.isArray(page?.lines) ? page.lines : [];
+  for (const line of lines) {
+    const capabilities = line?.blockAttrs?.layoutCapabilities;
+    if (capabilities?.["visual-block"] === true) {
+      return true;
+    }
+    if (Array.isArray(line?.fragmentOwners)) {
+      for (const owner of line.fragmentOwners) {
+        if (owner?.meta?.layoutCapabilities?.["visual-block"] === true) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 };
 
 type FinalizePageReuseDecision =
@@ -23,7 +49,15 @@ type FinalizePageReuseDecision =
         event: "same-index-boundary-reuse";
         pageIndex: number;
         nextExitToken: string | null;
+        boundaryToken: string | null;
+        boundaryAnchor: string | null;
+        equivalenceStage: "boundary-token" | "exit-token";
+        matchPass:
+          | "same-index-boundary-anchor-token"
+          | "same-index-boundary-fragment-token"
+          | "same-index-boundary-exit-token";
       };
+      diagnostics: PaginationSyncDiagnostics;
     }
   | {
       reason: "same-index-tail-reuse";
@@ -31,12 +65,24 @@ type FinalizePageReuseDecision =
       trace: {
         event: "same-index-tail-reuse";
         pageIndex: number;
+        matchPass:
+          | "same-index-tail-boundary-anchor"
+          | "same-index-tail-fragment-anchor"
+          | "same-index-tail-fallback";
+        expectedBoundaryAnchor: string | null;
+        equivalenceStage: string | null;
       };
+      diagnostics: PaginationSyncDiagnostics;
     };
 
 function buildPageExitToken(page: any, offsetDelta = 0) {
   const lines = Array.isArray(page?.lines) ? page.lines : [];
-  const line = lines.length > 0 ? lines[lines.length - 1] : null;
+  const fragmentAnchorSummary = getPageFragmentAnchorSummary(page);
+  const anchorLineIndex =
+    fragmentAnchorSummary.lastFragmentAnchorLineIndex != null
+      ? fragmentAnchorSummary.lastFragmentAnchorLineIndex
+      : lines.length - 1;
+  const line = anchorLineIndex >= 0 ? lines[anchorLineIndex] : null;
   if (!line) {
     return "empty";
   }
@@ -49,6 +95,7 @@ function buildPageExitToken(page: any, offsetDelta = 0) {
   hash = hashString(hash, "page-exit");
   hash = hashString(hash, line.blockType || "");
   hash = hashString(hash, line.blockId || "");
+  hash = hashString(hash, fragmentAnchorSummary.lastFragmentAnchor || "");
   hash = hashNumber(hash, Number.isFinite(line.rootIndex) ? Number(line.rootIndex) : -1);
   hash = hashNumber(hash, Number.isFinite(line.blockSignature) ? Number(line.blockSignature) : 0);
   hash = hashNumber(
@@ -74,8 +121,17 @@ export function resolveFinalizePageReuseDecision({
   page,
   previousLayout,
   offsetDelta,
+  preferredBoundaryAnchor,
 }: FinalizePageReuseDecisionOptions): FinalizePageReuseDecision | null {
   if (!cascadePagination || cascadeFromPageIndex == null || pageIndex < cascadeFromPageIndex) {
+    return null;
+  }
+
+  // finalizeCurrentPage only runs while there is still overflow content to place on a next page.
+  // If we are already on the old layout tail, stopping here would drop that overflow because there
+  // is no reused tail page available to carry it.
+  const previousPageCount = previousLayout?.pages?.length ?? 0;
+  if (pageIndex >= previousPageCount - 1) {
     return null;
   }
 
@@ -84,9 +140,42 @@ export function resolveFinalizePageReuseDecision({
     return null;
   }
 
+  const boundaryAnchor = getPagePreferredBoundaryAnchor(page, preferredBoundaryAnchor);
+  const nextBoundaryToken = buildPageBoundaryAnchorToken(page, preferredBoundaryAnchor);
+  const previousBoundaryToken = buildPageBoundaryAnchorToken(previousPage, preferredBoundaryAnchor);
+  const hasVisualBlock = pageHasVisualBlock(page) || pageHasVisualBlock(previousPage);
+  if (!hasVisualBlock && nextBoundaryToken === previousBoundaryToken) {
+    return {
+      reason: "same-index-boundary-reuse",
+      syncFromIndex: pageIndex,
+      trace: {
+        event: "same-index-boundary-reuse",
+        pageIndex,
+        nextExitToken: null,
+        boundaryToken: nextBoundaryToken,
+        boundaryAnchor,
+        equivalenceStage: "boundary-token",
+        matchPass: preferredBoundaryAnchor
+          ? "same-index-boundary-anchor-token"
+          : "same-index-boundary-fragment-token",
+      },
+      diagnostics: createPaginationSyncDiagnostics({
+        source: "same-index-boundary-reuse",
+        reason: "same-index-boundary-reuse",
+        matchPass: preferredBoundaryAnchor
+          ? "same-index-boundary-anchor-token"
+          : "same-index-boundary-fragment-token",
+        equivalenceStage: "boundary-token",
+        expectedBoundaryAnchor: preferredBoundaryAnchor,
+        boundaryAnchor,
+        matchedOldPageIndex: pageIndex,
+      }),
+    };
+  }
+
   const nextExitToken = buildPageExitToken(page, 0);
   const previousExitToken = buildPageExitToken(previousPage, offsetDelta);
-  if (nextExitToken === previousExitToken) {
+  if (!hasVisualBlock && nextExitToken === previousExitToken) {
     return {
       reason: "same-index-boundary-reuse",
       syncFromIndex: pageIndex,
@@ -94,18 +183,60 @@ export function resolveFinalizePageReuseDecision({
         event: "same-index-boundary-reuse",
         pageIndex,
         nextExitToken,
+        boundaryToken: nextBoundaryToken,
+        boundaryAnchor,
+        equivalenceStage: "exit-token",
+        matchPass: "same-index-boundary-exit-token",
       },
+      diagnostics: createPaginationSyncDiagnostics({
+        source: "same-index-boundary-reuse",
+        reason: "same-index-boundary-reuse",
+        matchPass: "same-index-boundary-exit-token",
+        equivalenceStage: "exit-token",
+        expectedBoundaryAnchor: preferredBoundaryAnchor,
+        boundaryAnchor,
+        matchedOldPageIndex: pageIndex,
+      }),
     };
   }
 
-  if (ENABLE_SAME_INDEX_TAIL_REUSE && arePagesEquivalent(page, previousPage, null, offsetDelta)) {
+  const expectedBoundaryAnchor =
+    boundaryAnchor ||
+    getPageFragmentAnchorSummary(page).lastFragmentAnchor ||
+    null;
+  const equivalenceDebug: any = {};
+  if (
+    ENABLE_SAME_INDEX_TAIL_REUSE &&
+    arePagesEquivalent(page, previousPage, equivalenceDebug, offsetDelta, {
+      expectedBoundaryAnchor,
+    })
+  ) {
+    const matchPass = expectedBoundaryAnchor
+      ? preferredBoundaryAnchor
+        ? "same-index-tail-boundary-anchor"
+        : "same-index-tail-fragment-anchor"
+      : "same-index-tail-fallback";
     return {
       reason: "same-index-tail-reuse",
       syncFromIndex: pageIndex,
       trace: {
         event: "same-index-tail-reuse",
         pageIndex,
+        matchPass,
+        expectedBoundaryAnchor,
+        equivalenceStage:
+          typeof equivalenceDebug?.matchStage === "string" ? equivalenceDebug.matchStage : null,
       },
+      diagnostics: createPaginationSyncDiagnostics({
+        source: "same-index-tail-reuse",
+        reason: "same-index-tail-reuse",
+        matchPass,
+        equivalenceStage:
+          typeof equivalenceDebug?.matchStage === "string" ? equivalenceDebug.matchStage : null,
+        expectedBoundaryAnchor,
+        boundaryAnchor,
+        matchedOldPageIndex: pageIndex,
+      }),
     };
   }
 

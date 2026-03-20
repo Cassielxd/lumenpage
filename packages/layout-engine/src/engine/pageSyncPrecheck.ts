@@ -2,6 +2,10 @@ type MaybeSyncPrecheckOptions = {
   candidateReuseEnabled: boolean;
   canSync: boolean;
   passedChangedRange: boolean;
+  passedChangedFragmentAnchor: boolean;
+  passedChangedFragmentBoundary: boolean;
+  syncAfterFragmentAnchor: string | null;
+  syncAfterNewFragmentAnchor: string | null;
   previousLayout: any;
   pageIndex: number;
 };
@@ -13,6 +17,10 @@ export function resolveMaybeSyncPrecheck({
   candidateReuseEnabled,
   canSync,
   passedChangedRange,
+  passedChangedFragmentAnchor,
+  passedChangedFragmentBoundary,
+  syncAfterFragmentAnchor,
+  syncAfterNewFragmentAnchor,
   previousLayout,
   pageIndex,
 }: MaybeSyncPrecheckOptions) {
@@ -26,17 +34,29 @@ export function resolveMaybeSyncPrecheck({
         pageIndex,
         canSync,
         passedChangedRange,
+        passedChangedFragmentAnchor,
+        passedChangedFragmentBoundary,
       },
     };
   }
 
-  if (!canSync || !passedChangedRange || !previousLayout) {
+  const useFragmentBoundary = !!syncAfterFragmentAnchor || !!syncAfterNewFragmentAnchor;
+  const passedSyncBoundary = useFragmentBoundary
+    ? passedChangedFragmentBoundary
+    : passedChangedRange;
+  if (!canSync || !passedSyncBoundary || !previousLayout) {
     return {
       ok: false as const,
       reason: "precheck-failed" as const,
       perfSnapshot: {
         canSync,
         passedChangedRange,
+        passedChangedFragmentAnchor,
+        passedChangedFragmentBoundary,
+        syncAfterFragmentAnchor,
+        syncAfterNewFragmentAnchor,
+        passedSyncBoundary,
+        useFragmentBoundary,
         hasPrev: !!previousLayout,
       },
     };
@@ -47,6 +67,14 @@ export function resolveMaybeSyncPrecheck({
     return {
       ok: false as const,
       reason: "old-page-missing" as const,
+    };
+  }
+
+  const previousPageCount = previousLayout.pages?.length ?? 0;
+  if (pageIndex >= previousPageCount - 1) {
+    return {
+      ok: false as const,
+      reason: "old-tail-missing" as const,
     };
   }
 
