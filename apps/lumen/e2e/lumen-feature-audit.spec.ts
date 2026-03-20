@@ -28,14 +28,6 @@ const cases: FeatureAuditCase[] = [
     expectResult: (before, after) => getTypeCount(after, "codeBlock") > getTypeCount(before, "codeBlock"),
   },
   {
-    name: "insert math",
-    menu: "insert",
-    action: "math",
-    expectResult: (before, after) =>
-      getTypeCount(after, "math") > getTypeCount(before, "math") ||
-      after.textContent.includes("E = mc^2"),
-  },
-  {
     name: "insert callout",
     menu: "insert",
     action: "callout",
@@ -50,14 +42,6 @@ const cases: FeatureAuditCase[] = [
     expectResult: (before, after) =>
       getTypeCount(after, "optionBox") > getTypeCount(before, "optionBox") ||
       getTypeCount(after, "taskList") > getTypeCount(before, "taskList"),
-  },
-  {
-    name: "insert text box",
-    menu: "insert",
-    action: "text-box",
-    expectResult: (before, after) =>
-      getTypeCount(after, "textBox") > getTypeCount(before, "textBox") ||
-      getTypeCount(after, "table") > getTypeCount(before, "table"),
   },
   {
     name: "insert QR code",

@@ -10,9 +10,6 @@ export const createInsertActionHandlers = ({
   file: () => {
     insertAdvancedActions.insertFile();
   },
-  math: () => {
-    insertAdvancedActions.insertMath();
-  },
   tag: () => {
     insertAdvancedActions.insertTag();
   },
@@ -33,9 +30,6 @@ export const createInsertActionHandlers = ({
   },
   template: () => {
     insertAdvancedActions.insertTemplate();
-  },
-  "text-box": () => {
-    insertAdvancedActions.insertTextBox();
   },
   "web-page": () => {
     insertAdvancedActions.insertWebPage();

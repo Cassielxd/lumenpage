@@ -91,14 +91,12 @@ export type QuickInsertActions = {
 export type InsertAdvancedActions = {
   insertAudio: () => ToolbarActionResult;
   insertFile: () => ToolbarActionResult;
-  insertMath: () => ToolbarActionResult;
   insertTag: () => ToolbarActionResult;
   insertCallout: () => ToolbarActionResult;
   insertMention: () => ToolbarActionResult;
   insertBookmark: () => ToolbarActionResult;
   insertOptionBox: () => ToolbarActionResult;
   insertTemplate: () => ToolbarActionResult;
-  insertTextBox: () => ToolbarActionResult;
   insertWebPage: () => ToolbarActionResult;
 };
 

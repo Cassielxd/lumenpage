@@ -11,14 +11,12 @@ type InsertAdvancedTexts = {
   promptAudioTitle: string;
   promptFileUrl: string;
   promptFileName: string;
-  promptMathExpr: string;
   promptColumnsCount: string;
   promptTagText: string;
   promptCalloutText: string;
   promptBookmarkUrl: string;
   promptBookmarkTitle: string;
   promptOptionText: string;
-  promptTextBoxText: string;
   promptWebPageUrl: string;
   promptWebPageTitle: string;
   promptTemplateTitle: string;
@@ -29,15 +27,12 @@ type InsertAdvancedTexts = {
   insertAudioPrefix: string;
   insertFilePrefix: string;
   insertCalloutPrefix: string;
-  insertTextBoxPrefix: string;
   insertTemplatePrefix: string;
   defaultCallout: string;
-  defaultTextBox: string;
   defaultBookmarkTitle: string;
   defaultWebPageTitle: string;
   defaultAudioTitle: string;
   defaultFileName: string;
-  defaultMathExpr: string;
   defaultTag: string;
   defaultOptionText: string;
   defaultColumnsCount: string;
@@ -54,14 +49,12 @@ const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
         promptAudioTitle: "Audio title",
         promptFileUrl: "File URL",
         promptFileName: "File name",
-        promptMathExpr: "Math expression",
         promptColumnsCount: "Column count (2-4)",
         promptTagText: "Tag text",
         promptCalloutText: "Callout text",
         promptBookmarkUrl: "Bookmark URL",
         promptBookmarkTitle: "Bookmark title",
         promptOptionText: "Option items (comma/new line separated)",
-        promptTextBoxText: "Text box content",
         promptWebPageUrl: "Web page URL",
         promptWebPageTitle: "Web page title",
         promptTemplateTitle: "Template title",
@@ -72,15 +65,12 @@ const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
         insertAudioPrefix: "Audio",
         insertFilePrefix: "File",
         insertCalloutPrefix: "Callout",
-        insertTextBoxPrefix: "TextBox",
         insertTemplatePrefix: "Template",
         defaultCallout: "Important note",
-        defaultTextBox: "Editable text box",
         defaultBookmarkTitle: "Reference",
         defaultWebPageTitle: "Embedded page",
         defaultAudioTitle: "Audio clip",
         defaultFileName: "Attachment",
-        defaultMathExpr: "E = mc^2",
         defaultTag: "tag",
         defaultOptionText: "Option A,Option B",
         defaultColumnsCount: "2",
@@ -94,14 +84,12 @@ const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
         promptAudioTitle: "\u97f3\u9891\u6807\u9898",
         promptFileUrl: "\u6587\u4ef6\u5730\u5740",
         promptFileName: "\u6587\u4ef6\u540d",
-        promptMathExpr: "\u6570\u5b66\u516c\u5f0f",
         promptColumnsCount: "\u5217\u6570\uff082-4\uff09",
         promptTagText: "\u6807\u7b7e\u6587\u672c",
         promptCalloutText: "\u63d0\u793a\u6587\u672c",
         promptBookmarkUrl: "\u4e66\u7b7e\u5730\u5740",
         promptBookmarkTitle: "\u4e66\u7b7e\u6807\u9898",
         promptOptionText: "\u9009\u9879\u5217\u8868\uff08\u9017\u53f7\u6216\u6362\u884c\u5206\u9694\uff09",
-        promptTextBoxText: "\u6587\u672c\u6846\u5185\u5bb9",
         promptWebPageUrl: "\u7f51\u9875\u5730\u5740",
         promptWebPageTitle: "\u7f51\u9875\u6807\u9898",
         promptTemplateTitle: "\u6a21\u677f\u6807\u9898",
@@ -112,15 +100,12 @@ const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
         insertAudioPrefix: "\u97f3\u9891",
         insertFilePrefix: "\u6587\u4ef6",
         insertCalloutPrefix: "\u63d0\u793a",
-        insertTextBoxPrefix: "\u6587\u672c\u6846",
         insertTemplatePrefix: "\u6a21\u677f",
         defaultCallout: "\u91cd\u8981\u63d0\u793a",
-        defaultTextBox: "\u53ef\u7f16\u8f91\u6587\u672c\u6846",
         defaultBookmarkTitle: "\u53c2\u8003\u8d44\u6599",
         defaultWebPageTitle: "\u5d4c\u5165\u9875\u9762",
         defaultAudioTitle: "\u97f3\u9891\u7247\u6bb5",
         defaultFileName: "\u9644\u4ef6",
-        defaultMathExpr: "E = mc^2",
         defaultTag: "\u6807\u7b7e",
         defaultOptionText: "\u9009\u9879 A,\u9009\u9879 B",
         defaultColumnsCount: "2",
@@ -246,39 +231,6 @@ const createParagraphNode = (schema: any, text: string) => {
   }
   const content = text ? [schema.text(text)] : undefined;
   return paragraphType.createAndFill?.(null, content) ?? paragraphType.create?.(null, content) ?? null;
-};
-
-const createTableNode = (
-  schema: any,
-  rows: number,
-  cols: number,
-  getCellText: (rowIndex: number, colIndex: number) => string
-) => {
-  const tableType = schema?.nodes?.table;
-  const rowType = schema?.nodes?.tableRow;
-  const cellType = schema?.nodes?.tableCell;
-  if (!tableType || !rowType || !cellType) {
-    return null;
-  }
-  const safeRows = Math.max(1, Math.min(20, Math.floor(rows)));
-  const safeCols = Math.max(1, Math.min(20, Math.floor(cols)));
-  const tableRows = [];
-  for (let rowIndex = 0; rowIndex < safeRows; rowIndex += 1) {
-    const cells = [];
-    for (let colIndex = 0; colIndex < safeCols; colIndex += 1) {
-      const paragraph = createParagraphNode(schema, getCellText(rowIndex, colIndex));
-      const cell =
-        cellType.createAndFill?.(null, paragraph ? [paragraph] : undefined) ??
-        cellType.create?.(null, paragraph ? [paragraph] : undefined) ??
-        null;
-      if (!cell) {
-        return null;
-      }
-      cells.push(cell);
-    }
-    tableRows.push(rowType.create(null, cells));
-  }
-  return tableType.createAndFill?.(null, tableRows) ?? tableType.create?.(null, tableRows) ?? null;
 };
 
 const createTaskListNode = (schema: any, items: string[]) => {
@@ -521,23 +473,6 @@ export const createInsertAdvancedActions = ({
     return insertReference(getView, texts.insertFilePrefix, name, href);
   };
 
-  const insertMath = async () => {
-    const texts = resolveTexts(getLocaleKey());
-    const expr = await readInput({
-      title: dialogTitle("Insert Formula", "插入公式"),
-      label: texts.promptMathExpr,
-      defaultValue: texts.defaultMathExpr,
-      required: true,
-    });
-    if (!expr) {
-      return false;
-    }
-    if (run("insertMath", { source: expr })) {
-      return true;
-    }
-    return insertText(getView, `$$ ${expr} $$`);
-  };
-
   const insertTag = async () => {
     const texts = resolveTexts(getLocaleKey());
     const raw = await readInput({
@@ -654,32 +589,6 @@ export const createInsertAdvancedActions = ({
     return replaceSelectionWithNode(getView, taskListNode);
   };
 
-  const insertTextBox = async () => {
-    const payload = getViewState(getView);
-    if (!payload) {
-      return false;
-    }
-    const texts = resolveTexts(getLocaleKey());
-    const raw = await readInput({
-      title: dialogTitle("Insert Text Box", "插入文本框"),
-      label: texts.promptTextBoxText,
-      defaultValue: texts.defaultTextBox,
-      type: "textarea",
-    });
-    if (raw === null) {
-      return false;
-    }
-    const content = raw || texts.defaultTextBox;
-    if (run("insertTextBox", { title: texts.insertTextBoxPrefix, text: content })) {
-      return true;
-    }
-    const tableNode = createTableNode(payload.state.schema, 1, 1, () => content);
-    if (!tableNode) {
-      return false;
-    }
-    return replaceSelectionWithNode(getView, tableNode);
-  };
-
   const insertWebPage = async () => {
     const texts = resolveTexts(getLocaleKey());
     const result = await requestInputDialog({
@@ -775,12 +684,10 @@ export const createInsertAdvancedActions = ({
   return {
     insertAudio,
     insertFile,
-    insertMath,
     insertTag,
     insertCallout,
     insertBookmark,
     insertOptionBox,
-    insertTextBox,
     insertWebPage,
     insertMention,
     insertTemplate,

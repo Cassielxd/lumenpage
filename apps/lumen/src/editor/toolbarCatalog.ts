@@ -160,7 +160,6 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("symbol", "symbol", "符号", "Symbol", "symbol", true),
         item("chinese-date", "date", "中文日期", "Chinese Date", "chinese-date", true),
         item("emoji", "emoji", "表情", "Emoji", "emoji", true),
-        item("math", "math", "公式", "Math", "math", true),
       ],
     },
     {
@@ -179,7 +178,6 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
         item("hard-break", "hard-break", "硬回车", "Hard Break", "hard-break", true),
         item("hr", "hr", "水平线", "Horizontal Rule", "hr", true),
         item("toc", "toc", "目录", "Table of Contents", "toc", true),
-        item("text-box", "text-box", "文本框", "Text Box", "text-box", true),
       ],
     },
     {
