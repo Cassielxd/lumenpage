@@ -10,12 +10,16 @@ export const createViewportSyncScheduler = ({
   updateStatus,
   updateCaret,
   scheduleRender,
+  syncNodeViewOverlays,
+  shouldDeferVisualSync,
   eventTiming = false,
 }: {
   hasFocus: () => boolean;
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
   scheduleRender: () => void;
+  syncNodeViewOverlays?: () => void;
+  shouldDeferVisualSync?: () => boolean;
   eventTiming?: boolean;
 }) => {
   let scrollRafId = 0;
@@ -32,6 +36,10 @@ export const createViewportSyncScheduler = ({
     setHandle(
       requestAnimationFrame(() => {
         setHandle(0);
+        if (shouldDeferVisualSync?.() === true) {
+          return;
+        }
+        syncNodeViewOverlays?.();
         updateCaret(false);
         scheduleRender();
       })
@@ -46,6 +54,10 @@ export const createViewportSyncScheduler = ({
       return;
     }
     updateStatus();
+    if (shouldDeferVisualSync?.() === true) {
+      logEventTiming(eventTiming, "selectionchange:deferred", startedAt);
+      return;
+    }
     updateCaret(false);
     scheduleRender();
     logEventTiming(eventTiming, "selectionchange", startedAt);

@@ -1,3 +1,6 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+import { resolveEmbedPanelDefaultSize } from "./embedPanel";
+
 const trimText = (value: unknown) => String(value || "").trim();
 
 const KIND_STYLES: Record<string, { border: string; background: string; accent: string; label: string }> = {
@@ -9,41 +12,79 @@ const KIND_STYLES: Record<string, { border: string; background: string; accent: 
 
 const resolveKindStyle = (kind: unknown) => KIND_STYLES[String(kind || "")] || KIND_STYLES.diagram;
 const previewSource = (value: unknown) => trimText(value).replace(/\s+/g, " ").slice(0, 160) || "Source";
+const resolvePositiveDimension = (value: unknown) => {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+const buildEmbedPanelLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const style = resolveKindStyle(attrs.kind);
+  const defaultSize = resolveEmbedPanelDefaultSize(attrs.kind);
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(
+    1,
+    Math.min(maxWidth, resolvePositiveDimension(attrs.width) ?? Math.min(defaultSize.width, maxWidth)),
+  );
+  const height = Math.max(1, resolvePositiveDimension(attrs.height) ?? defaultSize.height);
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "embedPanel",
+    blockAttrs,
+    embedPanelMeta: {
+      kind: String(attrs.kind || "diagram"),
+      title: trimText(attrs.title),
+      source: trimText(attrs.source),
+      width,
+      height,
+      style,
+    },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs,
+    length: 1,
+  };
+};
 
 export const embedPanelRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("embedPanel", buildEmbedPanelLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const style = resolveKindStyle(attrs.kind);
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(620, maxWidth)));
-    const height = 132;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "embedPanel",
-      blockAttrs: { lineHeight: height, width, height },
-      embedPanelMeta: {
-        kind: String(attrs.kind || "diagram"),
-        title: trimText(attrs.title),
-        source: trimText(attrs.source),
-        width,
-        height,
-        style,
-      },
-    };
+    const layout = buildEmbedPanelLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "embedPanel",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: { ...layout.blockAttrs },
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {
@@ -58,7 +99,7 @@ export const embedPanelRenderer = {
     ctx.strokeStyle = meta.style.border;
     ctx.strokeRect(x, y, width, height);
     ctx.fillStyle = meta.style.accent;
-    ctx.fillRect(x, y, width, 36);
+    ctx.fillRect(x, y, width, Math.min(36, height));
     ctx.fillStyle = "#ffffff";
     ctx.font = "13px Arial";
     ctx.fillText(meta.style.label, x + 14, y + 23);

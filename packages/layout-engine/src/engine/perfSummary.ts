@@ -1,3 +1,5 @@
+import type { PaginationSyncDiagnostics } from "./paginationDiagnostics";
+
 /**
  * 在布局结束后补齐 perf 字段，并生成统一的调试摘要。
  */
@@ -8,9 +10,15 @@ export function finalizeLayoutPerf(options: {
   previousLayout: any;
   changeSummary: any;
   syncAfterIndex: number | null;
+  syncAfterTextOffset: number | null;
+  syncAfterOldTextOffset: number | null;
+  syncAfterNewFragmentAnchor: string | null;
   canSync: boolean;
   passedChangedRange: boolean;
+  passedChangedFragmentBoundary: boolean;
   syncFromIndex: number | null;
+  syncMatchPass: string | null;
+  syncDiagnostics: PaginationSyncDiagnostics | null;
   resumeFromAnchor: boolean;
   resumeAnchorPageIndex: number | null;
   resumeAnchorLineIndex: number | null;
@@ -35,9 +43,15 @@ export function finalizeLayoutPerf(options: {
   }
 
   perf.syncAfterIndex = options.syncAfterIndex;
+  perf.syncAfterTextOffset = options.syncAfterTextOffset;
+  perf.syncAfterOldTextOffset = options.syncAfterOldTextOffset;
+  perf.syncAfterNewFragmentAnchor = options.syncAfterNewFragmentAnchor;
   perf.canSync = options.canSync;
   perf.passedChangedRange = options.passedChangedRange;
+  perf.passedChangedFragmentBoundary = options.passedChangedFragmentBoundary;
   perf.syncFromIndex = options.syncFromIndex;
+  perf.syncMatchPass = options.syncMatchPass;
+  perf.syncDiagnostics = options.syncDiagnostics;
   perf.resumeFromAnchor = options.resumeFromAnchor;
   perf.resumeAnchorPageIndex = options.resumeAnchorPageIndex;
   perf.resumeAnchorLineIndex = options.resumeAnchorLineIndex;
@@ -61,9 +75,15 @@ export function finalizeLayoutPerf(options: {
     reusedPages: perf.reusedPages,
     reuseReason: perf.reuseReason,
     syncAfterIndex: perf.syncAfterIndex,
+    syncAfterTextOffset: perf.syncAfterTextOffset,
+    syncAfterOldTextOffset: perf.syncAfterOldTextOffset,
+    syncAfterNewFragmentAnchor: perf.syncAfterNewFragmentAnchor,
     canSync: perf.canSync,
     passedChangedRange: perf.passedChangedRange,
+    passedChangedFragmentBoundary: perf.passedChangedFragmentBoundary,
     syncFromIndex: perf.syncFromIndex,
+    syncMatchPass: perf.syncMatchPass,
+    syncDiagnostics: perf.syncDiagnostics,
     resumeFromAnchor: perf.resumeFromAnchor,
     resumeAnchorPageIndex: perf.resumeAnchorPageIndex,
     resumeAnchorLineIndex: perf.resumeAnchorLineIndex,

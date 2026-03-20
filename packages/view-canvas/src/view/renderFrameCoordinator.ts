@@ -82,6 +82,7 @@ export const createRenderFrameCoordinator = ({
   });
   const overlaySync = createNodeOverlaySyncCoordinator({
     scrollArea,
+    settings: renderer?.settings ?? null,
     syncNodeViewOverlays,
   });
   const caretFrameUpdater = createCaretFrameUpdater({

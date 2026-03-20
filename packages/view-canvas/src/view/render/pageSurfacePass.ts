@@ -6,8 +6,13 @@ import {
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
 } from "./pageCanvasCache";
+import { type RendererPageDisplayList } from "./pageDisplayList";
 import { runPageCompositePass } from "./pageCompositePass";
-import { runPageRedrawPass } from "./pageRedrawPass";
+import {
+  pageHasVisualBlock,
+  pageIsReusedFromDifferentSource,
+  runPageRedrawPass,
+} from "./pageRedrawPass";
 
 export const renderPageSurfacePass = ({
   layout,
@@ -23,7 +28,7 @@ export const renderPageSurfacePass = ({
   layoutVersionChanged,
   forceRedraw,
   changedRange,
-  getPageSignature,
+  buildPageDisplayList,
   renderPage,
 }: {
   layout: any;
@@ -39,7 +44,7 @@ export const renderPageSurfacePass = ({
   layoutVersionChanged: boolean;
   forceRedraw: boolean;
   changedRange: { min: number; max: number } | null;
-  getPageSignature: (page: any) => number;
+  buildPageDisplayList: (pageIndex: number, layout: any) => RendererPageDisplayList;
   renderPage: (pageIndex: number, layout: any, entry: RendererPageCacheEntry) => void;
 }) => {
   const visible = getVisiblePages(layout, scrollTop, clientHeight);
@@ -62,15 +67,26 @@ export const renderPageSurfacePass = ({
   const pageSpan = layout.pageHeight + layout.pageGap;
   const pageTrace =
     settings?.debugGhostTrace === true || settings?.debugPerf === true ? [] : null;
+  const docChanged = layout?.__changeSummary?.docChanged === true;
+  const forceRedrawForVisualPagination =
+    layoutVersionChanged &&
+    docChanged &&
+    pageIndices.some((pageIndex) => {
+      const page = layout?.pages?.[pageIndex];
+      return pageHasVisualBlock(page) || pageIsReusedFromDifferentSource(page, pageIndex);
+    });
 
   let pageCacheHits = 0;
   let pageCacheMisses = 0;
   let pageCacheRecreated = 0;
   let signatureComputedPages = 0;
   let signatureSkippedPages = 0;
+  let displayListBuiltPages = 0;
+  let displayListReusedPages = 0;
+  let displayListItemCount = 0;
   let redrawCount = 0;
   let cachedPages = 0;
-  let signatureMs = 0;
+  let displayListBuildMs = 0;
   let renderPagesMs = 0;
   let compositeMs = 0;
 
@@ -83,10 +99,10 @@ export const renderPageSurfacePass = ({
       dpr,
       layoutVersion,
       layoutVersionChanged,
-      forceRedraw,
+      forceRedraw: forceRedraw || forceRedrawForVisualPagination,
       changedRange,
       settings,
-      getPageSignature,
+      buildPageDisplayList,
       renderPage,
     });
 
@@ -103,8 +119,15 @@ export const renderPageSurfacePass = ({
     } else {
       signatureSkippedPages += 1;
     }
+    if (redrawState.displayListBuilt) {
+      displayListBuiltPages += 1;
+    }
+    if (redrawState.displayListReused) {
+      displayListReusedPages += 1;
+    }
+    displayListItemCount += redrawState.displayListItemCount;
 
-    signatureMs += redrawState.signatureMs;
+    displayListBuildMs += redrawState.displayListBuildMs;
 
     if (redrawState.pageRedrawn) {
       redrawCount += 1;
@@ -138,8 +161,16 @@ export const renderPageSurfacePass = ({
           : null,
         lineCount: Array.isArray(redrawState.page?.lines) ? redrawState.page.lines.length : 0,
         reused: redrawState.page?.__reused === true,
+        hasVisualBlock: redrawState.hasVisualBlock,
+        reusedFromDifferentSource: redrawState.reusedFromDifferentSource,
+        forceDisplayListForVisualReuse: redrawState.forceDisplayListForVisualReuse,
+        forceRedrawForVisualPagination,
+        cacheDisposition: redrawState.cacheDisposition,
         canSkipSignature: redrawState.canSkipSignature,
         hasCachedSignature: redrawState.hasCachedSignature,
+        displayListBuilt: redrawState.displayListBuilt,
+        displayListReused: redrawState.displayListReused,
+        displayListItemCount: redrawState.displayListItemCount,
         pageRedrawn: redrawState.pageRedrawn,
         needsComposite: compositeState.needsComposite,
         signatureChanged: forceRedraw || redrawState.prevEntrySignature !== redrawState.signature,
@@ -162,9 +193,12 @@ export const renderPageSurfacePass = ({
     pageCacheRecreated,
     signatureComputedPages,
     signatureSkippedPages,
+    displayListBuiltPages,
+    displayListReusedPages,
+    displayListItemCount,
     redrawCount,
     cachedPages,
-    signatureMs,
+    displayListBuildMs,
     renderPagesMs,
     compositeMs,
   };

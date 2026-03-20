@@ -1,43 +1,57 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
+
+const buildFileLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(460, maxWidth)));
+  const height = 72;
+  const name = trimText(attrs.name) || "Attachment";
+  const size = trimText(attrs.size);
+  const mimeType = trimText(attrs.mimeType);
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "file",
+    blockAttrs: { lineHeight: height, width, height },
+    fileMeta: {
+      href: String(attrs.href || ""),
+      name,
+      size,
+      mimeType,
+      width,
+      height,
+    },
+  };
+
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
 
 export const fileRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("file", buildFileLayout),
 
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(460, maxWidth)));
-    const height = 72;
-    const name = trimText(attrs.name) || "Attachment";
-    const size = trimText(attrs.size);
-    const mimeType = trimText(attrs.mimeType);
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "file",
-      blockAttrs: { lineHeight: height, width, height },
-      fileMeta: {
-        href: String(attrs.href || ""),
-        name,
-        size,
-        mimeType,
-        width,
-        height,
-      },
-    };
-
+    const layout = buildFileLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "file",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
 

@@ -1,4 +1,8 @@
-import { resolveLineRenderPlan } from "./lineRenderPlan";
+import {
+  type PageLineEntry,
+  type PageRenderPlan,
+  isLeafTextExpectedFromFragment,
+} from "./pageRenderPlan";
 
 const hashNumber = (hash: number, value: unknown) => {
   const num = Number.isFinite(value) ? Math.round(Number(value)) : 0;
@@ -141,99 +145,113 @@ const hashLayoutTreeForPaint = (
   return hash;
 };
 
-export const getRendererPageSignature = ({
-  page,
-  pageFragments,
-  registry,
-  nodeViewProvider,
-}: {
-  page: any;
-  pageFragments?: any[] | null;
-  registry: any;
-  nodeViewProvider?: ((line: any) => any) | null;
-}) => {
-  const layoutVersion =
-    page && Number.isFinite(page.__layoutVersionToken) ? Number(page.__layoutVersionToken) : null;
-  if (
-    page &&
-    typeof page.__signature === "number" &&
-    (layoutVersion == null ||
-      (Number.isFinite(page.__signatureVersion) &&
-        Number(page.__signatureVersion) === layoutVersion))
-  ) {
-    return page.__signature;
+const hashLinePaintEntry = (
+  hash: number,
+  entry: PageLineEntry,
+  objectSignatureCache: WeakMap<object, number>
+) => {
+  const { line, renderPlan } = entry;
+  if (!line || renderPlan.shouldSkipBodyPassAfterFragment) {
+    return hash;
   }
 
-  let hash = 0;
-  const objectSignatureCache = new WeakMap<object, number>();
-
-  for (const line of page.lines) {
-    const renderer = registry?.get(line.blockType);
-    const nodeView = nodeViewProvider?.(line);
-    const renderPlan = resolveLineRenderPlan(line, renderer, {
-      hasNodeViewRender: !!nodeView?.render,
-    });
-    if (renderPlan.shouldSkipBodyPassAfterFragment) {
-      continue;
-    }
-
-    hash = hashNumber(hash, line.x);
-    hash = hashNumber(hash, line.y);
-    hash = hashNumber(hash, line.width);
-    hash = hashNumber(hash, line.lineHeight);
-    hash = hashNumber(hash, line.blockSignature);
-    hash = hashString(hash, line.blockType || "");
-    hash = hashString(hash, line.blockId || "");
-    hash = hashString(hash, line.text || "");
-    hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
-    hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
-    hash = hashObjectLike(hash, line.tableOwnerMeta || null, objectSignatureCache);
-    if (renderPlan.shouldRunContainerPass) {
-      hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
-    }
-    hash = hashObjectLike(hash, line.fragmentOwners || null, objectSignatureCache);
-    if (renderPlan.shouldRunListMarkerPass) {
-      hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
-    }
-    hash = hashObjectLike(hash, line.imageMeta || null, objectSignatureCache);
-    hash = hashObjectLike(hash, line.videoMeta || null, objectSignatureCache);
-
-    if (renderPlan.hasTextPayload && line.runs) {
-      for (const run of line.runs) {
-        hash = hashString(hash, run.text || "");
-        hash = hashString(hash, run.font || "");
-        hash = hashString(hash, run.color || "");
-        hash = hashNumber(hash, run.width);
-        hash = hashNumber(hash, run.underline ? 1 : 0);
-        hash = hashString(hash, run.underlineStyle || "");
-        hash = hashString(hash, run.underlineColor || "");
-        hash = hashNumber(hash, run.strike ? 1 : 0);
-        hash = hashString(hash, run.strikeColor || "");
-        hash = hashNumber(hash, run.shiftY);
-        hash = hashNumber(hash, run.backgroundRadius);
-        hash = hashNumber(hash, run.backgroundPaddingX);
-        hash = hashString(hash, run.linkHref || "");
-        hash = hashString(hash, run.annotationKey || "");
-        hash = hashObjectLike(hash, run.annotations || null, objectSignatureCache);
-        hash = hashString(hash, run.styleKey || "");
-        hash = hashObjectLike(hash, run.extras || null, objectSignatureCache);
-        hash = hashObjectLike(hash, run.drawInstructions || null, objectSignatureCache);
-        hash =
-          typeof run.background === "string"
-            ? hashString(hash, run.background)
-            : hashObjectLike(hash, run.background || null, objectSignatureCache);
-      }
-    }
+  hash = hashNumber(hash, line.x);
+  hash = hashNumber(hash, line.y);
+  hash = hashNumber(hash, line.width);
+  hash = hashNumber(hash, line.lineHeight);
+  hash = hashNumber(hash, line.blockSignature);
+  hash = hashString(hash, line.blockType || "");
+  hash = hashString(hash, line.blockId || "");
+  hash = hashString(hash, line.text || "");
+  hash = hashObjectLike(hash, line.blockAttrs || null, objectSignatureCache);
+  hash = hashObjectLike(hash, line.tableMeta || null, objectSignatureCache);
+  hash = hashObjectLike(hash, line.tableOwnerMeta || null, objectSignatureCache);
+  if (renderPlan.shouldRunContainerPass) {
+    hash = hashObjectLike(hash, line.containers || null, objectSignatureCache);
   }
+  hash = hashObjectLike(hash, line.fragmentOwners || null, objectSignatureCache);
+  if (renderPlan.shouldRunListMarkerPass) {
+    hash = hashObjectLike(hash, line.listMarker || null, objectSignatureCache);
+  }
+  hash = hashObjectLike(hash, line.imageMeta || null, objectSignatureCache);
+  hash = hashObjectLike(hash, line.videoMeta || null, objectSignatureCache);
 
-  hash = hashLayoutTreeForPaint(hash, pageFragments || null, objectSignatureCache, registry);
-
-  if (page) {
-    page.__signature = hash;
-    if (layoutVersion != null) {
-      page.__signatureVersion = layoutVersion;
+  if (renderPlan.hasTextPayload && line.runs) {
+    for (const run of line.runs) {
+      hash = hashString(hash, run.text || "");
+      hash = hashString(hash, run.font || "");
+      hash = hashString(hash, run.color || "");
+      hash = hashNumber(hash, run.width);
+      hash = hashNumber(hash, run.underline ? 1 : 0);
+      hash = hashString(hash, run.underlineStyle || "");
+      hash = hashString(hash, run.underlineColor || "");
+      hash = hashNumber(hash, run.strike ? 1 : 0);
+      hash = hashString(hash, run.strikeColor || "");
+      hash = hashNumber(hash, run.shiftY);
+      hash = hashNumber(hash, run.backgroundRadius);
+      hash = hashNumber(hash, run.backgroundPaddingX);
+      hash = hashString(hash, run.linkHref || "");
+      hash = hashString(hash, run.annotationKey || "");
+      hash = hashObjectLike(hash, run.annotations || null, objectSignatureCache);
+      hash = hashString(hash, run.styleKey || "");
+      hash = hashObjectLike(hash, run.extras || null, objectSignatureCache);
+      hash = hashObjectLike(hash, run.drawInstructions || null, objectSignatureCache);
+      hash =
+        typeof run.background === "string"
+          ? hashString(hash, run.background)
+          : hashObjectLike(hash, run.background || null, objectSignatureCache);
     }
   }
 
   return hash;
+};
+
+const getRendererLinePaintEntriesSignature = (lineEntries: PageLineEntry[]) => {
+  let hash = 0;
+  const objectSignatureCache = new WeakMap<object, number>();
+  for (const entry of lineEntries) {
+    hash = hashLinePaintEntry(hash, entry, objectSignatureCache);
+  }
+  return hash >>> 0;
+};
+
+export const getRendererPageShellSignature = ({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) => {
+  let hash = 17;
+  hash = hashNumber(hash, width);
+  hash = hashNumber(hash, height);
+  return hash >>> 0;
+};
+
+export const getRendererFragmentPassSignature = ({
+  plan,
+  registry,
+}: {
+  plan: PageRenderPlan;
+  registry: any;
+}) => {
+  const objectSignatureCache = new WeakMap<object, number>();
+  let hash = 0;
+  hash = hashLayoutTreeForPaint(hash, plan.pageFragments || null, objectSignatureCache, registry);
+  const leafTextLineEntries = plan.lineEntries.filter((entry) => isLeafTextExpectedFromFragment(entry));
+  if (leafTextLineEntries.length > 0) {
+    hash = hashNumber(hash, getRendererLinePaintEntriesSignature(leafTextLineEntries));
+  }
+  return hash >>> 0;
+};
+
+export const getRendererLineCompatPassSignature = ({
+  plan,
+}: {
+  plan: PageRenderPlan;
+}) => {
+  if (!Array.isArray(plan.compatLineEntries) || plan.compatLineEntries.length === 0) {
+    return 0;
+  }
+  return getRendererLinePaintEntriesSignature(plan.compatLineEntries);
 };

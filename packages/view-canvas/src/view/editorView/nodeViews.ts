@@ -15,6 +15,7 @@ import { createNodeViewManagerState } from "./nodeViews/state";
 export const createNodeViewManager = ({
   view,
   getState,
+  getPendingChangeSummary,
   nodeRegistry,
   getNodeViewFactories,
   getDecorations,
@@ -23,6 +24,7 @@ export const createNodeViewManager = ({
 }: {
   view: any;
   getState: () => any;
+  getPendingChangeSummary?: () => any;
   nodeRegistry: any;
   getNodeViewFactories?: () => any;
   getDecorations?: () => any;
@@ -44,6 +46,7 @@ export const createNodeViewManager = ({
     managerState,
     getState,
     getPreferredBlockIdFromLine,
+    getPendingChangeSummary,
   });
 
   const selectionHandlers = createNodeViewSelectionHandlers({

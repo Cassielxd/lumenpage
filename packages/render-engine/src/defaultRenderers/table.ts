@@ -78,6 +78,155 @@ const getNodeFragmentKey = (node, fallbackPrefix: string) => {
   return `${fallbackPrefix}:${node?.type?.name || "table"}`;
 };
 
+const createFragmentContinuationAttrs = (continuation) => ({
+  fragmentIdentity: continuation.fragmentIdentity,
+  fragmentContinuationToken: continuation.continuationToken,
+  fragmentCarryState: continuation.carryState,
+});
+
+const createTableContinuation = ({
+  tableKey,
+  rows,
+  cols,
+  firstRowIndex,
+  lastRowIndex,
+  rowSplit,
+  continuedFromPrev,
+  continuesAfter,
+  rowOffsetY = 0,
+}) => {
+  const fragmentIdentity = `table:${tableKey}`;
+  return {
+    fromPrev: continuedFromPrev === true,
+    hasNext: continuesAfter === true,
+    rowSplit: rowSplit === true,
+    fragmentIdentity,
+    continuationToken: `${fragmentIdentity}:continuation`,
+    carryState: {
+      kind: "table",
+      tableKey,
+      rows,
+      cols,
+      firstRowIndex,
+      lastRowIndex,
+      rowOffsetY: Math.max(0, Number(rowOffsetY) || 0),
+      rowSplit: rowSplit === true,
+      continuedFromPrev: continuedFromPrev === true,
+      continuesAfter: continuesAfter === true,
+    },
+  };
+};
+
+const getTableSliceMeta = (line) => line?.tableOwnerMeta || line?.tableMeta || null;
+
+const sumHeights = (rows, count?: number) => {
+  const values = Array.isArray(rows) ? rows : [];
+  const limit = Math.min(count ?? values.length, values.length);
+  let total = 0;
+  for (let i = 0; i < limit; i += 1) {
+    total += Number(values[i]) || 0;
+  }
+  return total;
+};
+
+const measureFragmentLength = (lines, fallbackLength = 0) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return Number.isFinite(fallbackLength) ? Math.max(0, Number(fallbackLength)) : 0;
+  }
+  let minStart = Number.POSITIVE_INFINITY;
+  let maxEnd = Number.NEGATIVE_INFINITY;
+  for (const line of lines) {
+    if (Number.isFinite(line?.start)) {
+      minStart = Math.min(minStart, Number(line.start));
+    }
+    if (Number.isFinite(line?.end)) {
+      maxEnd = Math.max(maxEnd, Number(line.end));
+    }
+  }
+  if (!Number.isFinite(minStart) || !Number.isFinite(maxEnd)) {
+    return Number.isFinite(fallbackLength) ? Math.max(0, Number(fallbackLength)) : 0;
+  }
+  return Math.max(0, maxEnd - minStart);
+};
+
+const buildTableSplitResult = ({
+  visibleLines,
+  visibleLength,
+  visibleHeight,
+  visibleContinuation,
+  overflowLines,
+  overflowLength,
+  overflowHeight,
+  overflowContinuation,
+}) => {
+  const normalizedVisibleLength = measureFragmentLength(visibleLines, visibleLength);
+  const fragments = [
+    {
+      kind: "visible",
+      lines: Array.isArray(visibleLines) ? visibleLines : [],
+      length: normalizedVisibleLength,
+      height: Number.isFinite(visibleHeight) ? Math.max(0, Number(visibleHeight)) : 0,
+      continuation: visibleContinuation || null,
+    },
+  ];
+
+  const result: any = {
+    lines: Array.isArray(visibleLines) ? visibleLines : [],
+    length: normalizedVisibleLength,
+    height: Number.isFinite(visibleHeight) ? Math.max(0, Number(visibleHeight)) : 0,
+    continuation: visibleContinuation || null,
+    fragments,
+  };
+
+  if (Array.isArray(overflowLines) && overflowLines.length > 0) {
+    const normalizedOverflowLength = measureFragmentLength(overflowLines, overflowLength);
+    const overflow = {
+      lines: overflowLines,
+      length: normalizedOverflowLength,
+      height: Number.isFinite(overflowHeight) ? Math.max(0, Number(overflowHeight)) : 0,
+      continuation: overflowContinuation || null,
+    };
+    result.overflow = overflow;
+    fragments.push({
+      kind: "overflow",
+      ...overflow,
+    });
+  }
+
+  return result;
+};
+
+const resolveTableKey = (lines, blockAttrs) => {
+  const firstLine = Array.isArray(lines) && lines.length > 0 ? lines[0] : null;
+  const candidates = [
+    blockAttrs?.tableKey,
+    getTableSliceMeta(firstLine)?.tableKey,
+    blockAttrs?.fragmentIdentity,
+    getTableSliceMeta(firstLine)?.fragmentIdentity,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || candidate.length === 0) {
+      continue;
+    }
+    if (candidate.startsWith("table:")) {
+      return candidate.slice("table:".length);
+    }
+    return candidate;
+  }
+
+  const blockId = blockAttrs?.blockId ?? firstLine?.blockId ?? null;
+  if (blockId != null && blockId !== "") {
+    return String(blockId);
+  }
+
+  const blockStart = Number.isFinite(firstLine?.blockStart) ? Number(firstLine.blockStart) : null;
+  if (blockStart != null) {
+    return `start:${blockStart}`;
+  }
+
+  return "table";
+};
+
 const createTableRootOwner = ({ node, tableKey, settings, tableWidth, colWidth, padding, paddingY }) => ({
   key: tableKey,
   type: "table",
@@ -99,6 +248,29 @@ const createTableRootOwner = ({ node, tableKey, settings, tableWidth, colWidth, 
   },
 });
 
+const createTableRowOwner = ({ tableKey, rowIndex, rowTop, rowHeight, settings, tableWidth }) => ({
+  key: `${tableKey}:row:${rowIndex}`,
+  type: "tableRow",
+  role: "table-row",
+  nodeId: null,
+  blockId: null,
+  x: settings.margin.left,
+  y: rowTop,
+  width: tableWidth,
+  height: rowHeight,
+  fixedBounds: true,
+  meta: {
+    rowIndex,
+    absoluteRowIndex: rowIndex,
+    sliceRowIndex: rowIndex,
+    rowHeight,
+    tableWidth,
+    layoutCapabilities: {
+      "table-row": true,
+      "table-structure": true,
+    },
+  },
+});
 const createTableCellOwner = ({ tableKey, cell, settings, colWidth, padding }) => ({
   key: `${tableKey}:cell:${cell.rowIndex}:${cell.colStart ?? cell.colIndex}:${cell.startOffset}`,
   type: cell.header ? "tableHeader" : "tableCell",
@@ -553,10 +725,1026 @@ const drawTableChrome = ({ ctx, tableX, tableY, tableMeta }) => {
   ctx.restore();
 };
 
+const measureTableSliceRange = (lines, baseStartPos, fallbackStartPos, fallbackEndPos) => {
+  const sourceLines = Array.isArray(lines) ? lines : [];
+  let minStart = Number.POSITIVE_INFINITY;
+  let maxEnd = Number.NEGATIVE_INFINITY;
+  for (const line of sourceLines) {
+    if (Number.isFinite(line?.start)) {
+      minStart = Math.min(minStart, Number(line.start));
+    }
+    if (Number.isFinite(line?.end)) {
+      maxEnd = Math.max(maxEnd, Number(line.end));
+    }
+  }
+  const resolvedStart = Number.isFinite(minStart)
+    ? Number(baseStartPos || 0) + minStart
+    : Number.isFinite(fallbackStartPos)
+      ? Number(fallbackStartPos)
+      : Number(baseStartPos || 0);
+  const resolvedEnd = Number.isFinite(maxEnd)
+    ? Number(baseStartPos || 0) + maxEnd
+    : Number.isFinite(fallbackEndPos)
+      ? Number(fallbackEndPos)
+      : resolvedStart;
+  return {
+    startPos: resolvedStart,
+    endPos: Math.max(resolvedStart, resolvedEnd),
+  };
+};
+
+const createTableSliceSnapshot = ({ measured, snapshot, fallbackStartPos, fallbackEndPos }) => {
+  const lines = Array.isArray(snapshot?.lines) ? snapshot.lines : [];
+  const baseStartPos = Number(measured?.startPos || 0);
+  const range = measureTableSliceRange(lines, baseStartPos, fallbackStartPos, fallbackEndPos);
+  return {
+    lines,
+    length: Math.max(0, Number(snapshot?.length || 0)),
+    height: Number.isFinite(snapshot?.height) ? Number(snapshot.height) : 0,
+    blockAttrs: snapshot?.blockAttrs || null,
+    continuation: snapshot?.continuation || null,
+    startPos: range.startPos,
+    endPos: range.endPos,
+  };
+};
+
+const buildMeasuredTableModelFromLayout = ({ node, layoutResult, startPos = 0 }) => {
+  if (!layoutResult || typeof layoutResult !== "object") {
+    return null;
+  }
+
+  const lines = Array.isArray(layoutResult.lines) ? layoutResult.lines : [];
+  const blockAttrs = layoutResult.blockAttrs || {};
+  const tableMeta =
+    lines.find((line) => line?.tableOwnerMeta)?.tableOwnerMeta ||
+    lines.find((line) => line?.tableMeta)?.tableMeta ||
+    null;
+  const rootNodeId = node?.attrs?.id ?? null;
+  const rootBlockId = rootNodeId;
+  const length = Math.max(0, Number(layoutResult.length || 0));
+  const tableWidth = Number.isFinite(blockAttrs?.tableWidth)
+    ? Number(blockAttrs.tableWidth)
+    : Number.isFinite(tableMeta?.tableWidth)
+      ? Number(tableMeta.tableWidth)
+      : 0;
+  const tableHeight = Number.isFinite(layoutResult.height)
+    ? Number(layoutResult.height)
+    : Number.isFinite(tableMeta?.tableHeight)
+      ? Number(tableMeta.tableHeight)
+      : 0;
+
+  const rowEntries = new Map();
+  const cellEntries = new Map();
+
+  const getOrCreateRowEntry = (owner, fallbackRowIndex) => {
+    const ownerMeta = owner?.meta || {};
+    const absoluteRowIndex = Number.isFinite(ownerMeta?.absoluteRowIndex)
+      ? Number(ownerMeta.absoluteRowIndex)
+      : Number.isFinite(ownerMeta?.rowIndex)
+        ? Number(ownerMeta.rowIndex)
+        : Number(fallbackRowIndex || 0);
+    const key = String(owner?.key || `table-row:${absoluteRowIndex}`);
+    let entry = rowEntries.get(key);
+    if (!entry) {
+      entry = {
+        key,
+        absoluteRowIndex,
+        owner,
+        startPos: Number.POSITIVE_INFINITY,
+        endPos: Number.NEGATIVE_INFINITY,
+        cells: [],
+      };
+      rowEntries.set(key, entry);
+    }
+    return entry;
+  };
+
+  const getOrCreateCellEntry = (owner, rowEntry, fallbackRowIndex, fallbackColIndex) => {
+    const ownerMeta = owner?.meta || {};
+    const rowIndex = Number.isFinite(ownerMeta?.rowIndex)
+      ? Number(ownerMeta.rowIndex)
+      : Number(fallbackRowIndex || 0);
+    const colIndex = Number.isFinite(ownerMeta?.colIndex)
+      ? Number(ownerMeta.colIndex)
+      : Number(fallbackColIndex || 0);
+    const key = String(owner?.key || `table-cell:${rowIndex}:${colIndex}`);
+    let entry = cellEntries.get(key);
+    if (!entry) {
+      entry = {
+        key,
+        rowIndex,
+        colIndex,
+        owner,
+        startPos: Number.POSITIVE_INFINITY,
+        endPos: Number.NEGATIVE_INFINITY,
+      };
+      cellEntries.set(key, entry);
+      rowEntry.cells.push(entry);
+    }
+    return entry;
+  };
+
+  for (const line of lines) {
+    const lineStart = Number.isFinite(line?.start) ? Number(line.start) : 0;
+    const lineEnd = Number.isFinite(line?.end) ? Number(line.end) : lineStart;
+    const absoluteStart = startPos + lineStart;
+    const absoluteEnd = startPos + lineEnd;
+    const fragmentOwners = Array.isArray(line?.fragmentOwners) ? line.fragmentOwners : [];
+
+    let rowEntry = null;
+    let fallbackRowIndex = Number.isFinite(line?.blockAttrs?.rowIndex)
+      ? Number(line.blockAttrs.rowIndex)
+      : 0;
+    let fallbackColIndex = Number.isFinite(line?.blockAttrs?.colIndex)
+      ? Number(line.blockAttrs.colIndex)
+      : 0;
+
+    for (const owner of fragmentOwners) {
+      if (!owner || typeof owner !== "object") {
+        continue;
+      }
+      if (owner.role === "table-row") {
+        rowEntry = getOrCreateRowEntry(owner, fallbackRowIndex);
+        fallbackRowIndex = rowEntry.absoluteRowIndex;
+        rowEntry.startPos = Math.min(rowEntry.startPos, absoluteStart);
+        rowEntry.endPos = Math.max(rowEntry.endPos, absoluteEnd);
+      }
+    }
+
+    if (!rowEntry) {
+      rowEntry = getOrCreateRowEntry(null, fallbackRowIndex);
+      rowEntry.startPos = Math.min(rowEntry.startPos, absoluteStart);
+      rowEntry.endPos = Math.max(rowEntry.endPos, absoluteEnd);
+    }
+
+    for (const owner of fragmentOwners) {
+      if (!owner || typeof owner !== "object") {
+        continue;
+      }
+      if (owner.role === "table-cell") {
+        const cellEntry = getOrCreateCellEntry(owner, rowEntry, fallbackRowIndex, fallbackColIndex);
+        fallbackColIndex = cellEntry.colIndex;
+        cellEntry.startPos = Math.min(cellEntry.startPos, absoluteStart);
+        cellEntry.endPos = Math.max(cellEntry.endPos, absoluteEnd);
+      }
+    }
+  }
+
+  const rows = Array.from(rowEntries.values())
+    .sort((left, right) => left.absoluteRowIndex - right.absoluteRowIndex)
+    .map((rowEntry) => {
+      const rowOwner = rowEntry.owner;
+      const rowChildren = rowEntry.cells
+        .sort((left, right) => left.colIndex - right.colIndex)
+        .map((cellEntry) => {
+          const cellOwner = cellEntry.owner;
+          const cellMeta = cellOwner?.meta && typeof cellOwner.meta === "object" ? cellOwner.meta : {};
+          return {
+            kind: "table-cell",
+            nodeId: null,
+            blockId: rootBlockId,
+            startPos: Number.isFinite(cellEntry.startPos) ? cellEntry.startPos : startPos,
+            endPos: Number.isFinite(cellEntry.endPos) ? cellEntry.endPos : startPos,
+            width: Number.isFinite(cellOwner?.width) ? Number(cellOwner.width) : 0,
+            height: Number.isFinite(cellOwner?.height) ? Number(cellOwner.height) : null,
+            children: [],
+            meta: {
+              key: cellEntry.key,
+              rowIndex: cellEntry.rowIndex,
+              colIndex: cellEntry.colIndex,
+              x: Number.isFinite(cellOwner?.x) ? Number(cellOwner.x) : null,
+              y: Number.isFinite(cellOwner?.y) ? Number(cellOwner.y) : null,
+              colspan: Number.isFinite(cellMeta?.colspan) ? Number(cellMeta.colspan) : 1,
+              rowspan: Number.isFinite(cellMeta?.rowspan) ? Number(cellMeta.rowspan) : 1,
+              header: cellMeta?.header === true,
+              background: cellMeta?.background ?? null,
+            },
+          };
+        });
+
+      const rowMeta = rowOwner?.meta && typeof rowOwner.meta === "object" ? rowOwner.meta : {};
+      return {
+        kind: "table-row",
+        nodeId: null,
+        blockId: rootBlockId,
+        startPos: Number.isFinite(rowEntry.startPos) ? rowEntry.startPos : startPos,
+        endPos: Number.isFinite(rowEntry.endPos) ? rowEntry.endPos : startPos,
+        width: Number.isFinite(rowOwner?.width) ? Number(rowOwner.width) : tableWidth,
+        height: Number.isFinite(rowOwner?.height) ? Number(rowOwner.height) : null,
+        children: rowChildren,
+        meta: {
+          key: rowEntry.key,
+          rowIndex: rowEntry.absoluteRowIndex,
+          sliceRowIndex: Number.isFinite(rowMeta?.sliceRowIndex)
+            ? Number(rowMeta.sliceRowIndex)
+            : rowEntry.absoluteRowIndex,
+          x: Number.isFinite(rowOwner?.x) ? Number(rowOwner.x) : null,
+          y: Number.isFinite(rowOwner?.y) ? Number(rowOwner.y) : null,
+          rowHeight: Number.isFinite(rowMeta?.rowHeight) ? Number(rowMeta.rowHeight) : null,
+        },
+      };
+    });
+
+  return {
+    kind: "table",
+    nodeId: rootNodeId,
+    blockId: rootBlockId,
+    startPos,
+    endPos: startPos + length,
+    width: tableWidth,
+    height: tableHeight,
+    children: rows,
+    meta: {
+      rows: Number.isFinite(blockAttrs?.rows) ? Number(blockAttrs.rows) : rows.length,
+      cols: Number.isFinite(blockAttrs?.cols) ? Number(blockAttrs.cols) : 0,
+      rowHeights: Array.isArray(blockAttrs?.rowHeights) ? [...blockAttrs.rowHeights] : [],
+      colWidth: Number.isFinite(blockAttrs?.colWidth) ? Number(blockAttrs.colWidth) : null,
+      tableWidth,
+      padding: Number.isFinite(blockAttrs?.padding) ? Number(blockAttrs.padding) : null,
+      paddingY: Number.isFinite(blockAttrs?.paddingY) ? Number(blockAttrs.paddingY) : null,
+      tableKey: blockAttrs?.tableKey ?? tableMeta?.tableKey ?? null,
+      source: "legacy-layout-adapter",
+      layoutSnapshot: {
+        lines,
+        length,
+        height: tableHeight,
+        blockAttrs,
+        continuation: layoutResult?.continuation || null,
+      },
+    },
+  };
+};
+export const splitTableBlock = ({
+  lines,
+  length,
+  availableHeight,
+  blockAttrs,
+  settings,
+  sliceRowIndex = undefined,
+  sliceRowOffsetY = 0,
+  inheritedSliceFromPrev = undefined,
+  inheritedRowSplit = undefined,
+}) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return null;
+  }
+
+  const firstLine = lines[0];
+  const firstAttrs = firstLine?.blockAttrs || {};
+  const firstMeta = getTableSliceMeta(firstLine) || {};
+  const continuationCarryStateCandidates = [
+    blockAttrs?.fragmentCarryState,
+    firstAttrs?.fragmentCarryState,
+    firstMeta?.fragmentCarryState,
+    blockAttrs?.carryState,
+    firstAttrs?.carryState,
+    firstMeta?.carryState,
+  ].filter((value) => value && typeof value === "object");
+  const continuationCarryState =
+    continuationCarryStateCandidates.find((value: any) => value?.kind === "table") || null;
+  let fullRowHeights = Array.isArray(blockAttrs?.rowHeights) ? blockAttrs.rowHeights : [];
+  if (fullRowHeights.length === 0 && Array.isArray(firstAttrs.rowHeights)) {
+    fullRowHeights = firstAttrs.rowHeights;
+  }
+  if (fullRowHeights.length === 0) {
+    const fallbackLine = lines.find((line) => Array.isArray(line?.blockAttrs?.rowHeights));
+    if (fallbackLine?.blockAttrs?.rowHeights) {
+      fullRowHeights = fallbackLine.blockAttrs.rowHeights;
+    }
+  }
+  if (fullRowHeights.length === 0 && Array.isArray(firstMeta?.rowHeights)) {
+    fullRowHeights = firstMeta.rowHeights;
+  }
+  if (fullRowHeights.length === 0) {
+    return null;
+  }
+
+  const rows = Number.isFinite(continuationCarryState?.rows)
+    ? Math.max(fullRowHeights.length, Number(continuationCarryState.rows))
+    : fullRowHeights.length;
+  const cols =
+    Number.isFinite(blockAttrs?.cols)
+      ? Number(blockAttrs.cols)
+      : Number.isFinite(firstAttrs?.cols)
+        ? Number(firstAttrs.cols)
+        : Number(firstMeta?.cols) || 0;
+  const colWidth =
+    Number.isFinite(blockAttrs?.colWidth)
+      ? Number(blockAttrs.colWidth)
+      : Number.isFinite(firstAttrs?.colWidth)
+        ? Number(firstAttrs.colWidth)
+        : Number(firstMeta?.colWidth) || 0;
+  const tableWidth =
+    Number.isFinite(blockAttrs?.tableWidth)
+      ? Number(blockAttrs.tableWidth)
+      : Number.isFinite(firstAttrs?.tableWidth)
+        ? Number(firstAttrs.tableWidth)
+        : Number(firstMeta?.tableWidth) || 0;
+  const padding =
+    Number.isFinite(blockAttrs?.padding)
+      ? Number(blockAttrs.padding)
+      : Number.isFinite(firstAttrs?.padding)
+        ? Number(firstAttrs.padding)
+        : Number(firstMeta?.padding) || 0;
+  const paddingY =
+    Number.isFinite(blockAttrs?.paddingY)
+      ? Number(blockAttrs.paddingY)
+      : Number.isFinite(firstAttrs?.paddingY)
+        ? Number(firstAttrs.paddingY)
+        : Number(firstMeta?.paddingY) || 0;
+  const tableXOffset = Number.isFinite(firstMeta?.tableXOffset) ? Number(firstMeta.tableXOffset) : 0;
+  const tableKey = resolveTableKey(lines, blockAttrs);
+
+  const inferredRowOffset = lines.reduce((minRow, line) => {
+    const rowIndex =
+      Number.isFinite(line?.blockAttrs?.rowIndex)
+        ? Number(line.blockAttrs.rowIndex)
+        : Number.isFinite(getTableSliceMeta(line)?.rowIndex)
+          ? Number(getTableSliceMeta(line).rowIndex)
+          : Number.POSITIVE_INFINITY;
+    return Math.min(minRow, rowIndex);
+  }, Number.POSITIVE_INFINITY);
+  const resolvedRowOffset = Number.isFinite(sliceRowIndex)
+    ? Math.max(0, Number(sliceRowIndex))
+    : Number.isFinite(inferredRowOffset)
+      ? Number(inferredRowOffset)
+      : 0;
+  const rowHeightsBaseIndex =
+    Number.isFinite(continuationCarryState?.firstRowIndex) &&
+    Number(continuationCarryState.firstRowIndex) >= 0 &&
+    rows > fullRowHeights.length
+      ? Number(continuationCarryState.firstRowIndex)
+      : 0;
+  const resolvedRowOffsetInSlice = Math.max(0, resolvedRowOffset - rowHeightsBaseIndex);
+  const resolvedRowOffsetY = Math.max(0, Number(sliceRowOffsetY) || 0);
+  const baseRowHeights = fullRowHeights.slice(resolvedRowOffsetInSlice);
+  if (baseRowHeights.length > 0 && resolvedRowOffsetY > 0) {
+    baseRowHeights[0] = Math.max(0, Number(baseRowHeights[0] || 0) - resolvedRowOffsetY);
+  }
+  const baseOffsetY = sumHeights(fullRowHeights, resolvedRowOffsetInSlice) + resolvedRowOffsetY;
+
+  const sourceMetaLine = lines.find((line) => Array.isArray(getTableSliceMeta(line)?.cells));
+  const sourceCells = Array.isArray(getTableSliceMeta(sourceMetaLine)?.cells)
+    ? getTableSliceMeta(sourceMetaLine).cells
+    : [];
+
+  const cloneLineForSlice = (
+    line,
+    rowIndexOffset,
+    rowHeights,
+    relativeYOffset,
+    continuation,
+    sliceFromPrev,
+    sliceHasNext,
+    rowSplitFlag
+  ) => {
+    const lineCopy = {
+      ...line,
+      runs: Array.isArray(line?.runs) ? line.runs.map((run) => ({ ...run })) : line?.runs,
+      blockAttrs: line?.blockAttrs ? { ...line.blockAttrs } : {},
+    };
+    if (line?.tableOwnerMeta && typeof line.tableOwnerMeta === "object") {
+      lineCopy.tableOwnerMeta = { ...line.tableOwnerMeta };
+    }
+    if (line?.tableMeta && typeof line.tableMeta === "object") {
+      lineCopy.tableMeta = { ...line.tableMeta };
+    }
+    if (Array.isArray(line?.fragmentOwners)) {
+      lineCopy.fragmentOwners = line.fragmentOwners.map((owner) => {
+        if (!owner || typeof owner !== "object") {
+          return owner;
+        }
+        const nextOwner = {
+          ...owner,
+          meta: owner?.meta && typeof owner.meta === "object" ? { ...owner.meta } : owner?.meta,
+        };
+        if (nextOwner.role !== "table" && Number.isFinite(nextOwner?.y)) {
+          nextOwner.y = Number(nextOwner.y) - relativeYOffset;
+        }
+        return nextOwner;
+      });
+    }
+
+    const originalRowIndex =
+      Number.isFinite(lineCopy.blockAttrs?.rowIndex)
+        ? Number(lineCopy.blockAttrs.rowIndex)
+        : Number.isFinite(lineCopy.tableOwnerMeta?.rowIndex)
+          ? Number(lineCopy.tableOwnerMeta.rowIndex)
+          : 0;
+    const sliceRowIndexValue = Math.max(0, originalRowIndex - rowIndexOffset);
+    lineCopy.blockAttrs.rowIndex = originalRowIndex;
+    lineCopy.blockAttrs.absoluteRowIndex = originalRowIndex;
+    lineCopy.blockAttrs.sliceRowIndex = sliceRowIndexValue;
+    lineCopy.blockAttrs.rows = rowHeights.length;
+    lineCopy.blockAttrs.cols = cols;
+    lineCopy.blockAttrs.rowHeights = rowHeights;
+    lineCopy.blockAttrs.colWidth = colWidth;
+    lineCopy.blockAttrs.tableWidth = tableWidth;
+    lineCopy.blockAttrs.padding = padding;
+    lineCopy.blockAttrs.paddingY = paddingY;
+    lineCopy.blockAttrs.tableKey = tableKey;
+    lineCopy.blockAttrs.sliceGroup = "table";
+    lineCopy.blockAttrs.sliceFromPrev = sliceFromPrev === true;
+    lineCopy.blockAttrs.sliceHasNext = sliceHasNext === true;
+    lineCopy.blockAttrs.sliceRowSplit = rowSplitFlag === true;
+    lineCopy.blockAttrs.tableSliceFromPrev = sliceFromPrev === true;
+    lineCopy.blockAttrs.tableSliceHasNext = sliceHasNext === true;
+    lineCopy.blockAttrs.tableRowSplit = rowSplitFlag === true;
+    Object.assign(lineCopy.blockAttrs, createFragmentContinuationAttrs(continuation));
+
+    if (Number.isFinite(lineCopy?.relativeY)) {
+      lineCopy.relativeY = Number(lineCopy.relativeY) - relativeYOffset;
+    }
+    return lineCopy;
+  };
+
+  const buildSliceCells = (sliceTop, rowHeights) => {
+    if (!Array.isArray(sourceCells) || sourceCells.length === 0) {
+      return [];
+    }
+    const sliceHeight = rowHeights.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const sliceBottom = sliceTop + sliceHeight;
+    const result = [];
+    for (const cell of sourceCells) {
+      const x = Number.isFinite(cell?.x) ? Number(cell.x) : 0;
+      const y = Number.isFinite(cell?.y) ? Number(cell.y) : 0;
+      const width = Number.isFinite(cell?.width) ? Number(cell.width) : 0;
+      const height = Number.isFinite(cell?.height) ? Number(cell.height) : 0;
+      if (width <= 0 || height <= 0) {
+        continue;
+      }
+      const top = Math.max(y, sliceTop);
+      const bottom = Math.min(y + height, sliceBottom);
+      if (!(bottom > top)) {
+        continue;
+      }
+      result.push({
+        x,
+        y: top - sliceTop,
+        width,
+        height: bottom - top,
+        header: cell?.header === true,
+        background: cell?.background ?? null,
+      });
+    }
+    return result;
+  };
+
+  const applyTableSliceMeta = (
+    sliceLines,
+    rowHeights,
+    continuation,
+    sliceFromPrev,
+    sliceHasNext,
+    rowSplitFlag,
+    sliceBreak,
+    sliceTop
+  ) => {
+    if (!Array.isArray(sliceLines) || sliceLines.length === 0) {
+      return;
+    }
+
+    const tableHeight = rowHeights.reduce((sum, value) => sum + (Number(value) || 0), 0);
+    const tableOwnerMeta = {
+      tableKey,
+      rows: rowHeights.length,
+      cols,
+      rowHeights,
+      colWidth,
+      tableWidth,
+      tableHeight,
+      padding,
+      paddingY,
+      cells: buildSliceCells(sliceTop, rowHeights),
+      tableTop: 0,
+      tableXOffset,
+      continuedFromPrev: sliceFromPrev === true,
+      continuesAfter: sliceHasNext === true,
+      rowSplit: rowSplitFlag === true,
+      sliceBreak: sliceBreak === true,
+      ...createFragmentContinuationAttrs(continuation),
+    };
+    const sliceFirstRowIndex = Number.isFinite(continuation?.carryState?.firstRowIndex)
+      ? Number(continuation.carryState.firstRowIndex)
+      : 0;
+
+    for (const line of sliceLines) {
+      line.tableOwnerMeta = tableOwnerMeta;
+      if (Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0) {
+        let updatedRootOwner = false;
+        line.fragmentOwners = line.fragmentOwners.map((owner) => {
+          if (!owner || typeof owner !== "object") {
+            return owner;
+          }
+          const nextOwner = {
+            ...owner,
+            meta: owner?.meta && typeof owner.meta === "object" ? { ...owner.meta } : owner?.meta,
+          };
+          if (!updatedRootOwner && nextOwner.role === "table") {
+            nextOwner.meta = {
+              ...(nextOwner.meta || {}),
+              ...tableOwnerMeta,
+            };
+            updatedRootOwner = true;
+          } else if (nextOwner.role === "table-row") {
+            const absoluteRowIndex = Number.isFinite(nextOwner?.meta?.absoluteRowIndex)
+              ? Number(nextOwner.meta.absoluteRowIndex)
+              : Number.isFinite(nextOwner?.meta?.rowIndex)
+                ? Number(nextOwner.meta.rowIndex)
+                : sliceFirstRowIndex;
+            const sliceRowIndexValue = Math.max(0, absoluteRowIndex - sliceFirstRowIndex);
+            const nextRowHeight = Number(rowHeights?.[sliceRowIndexValue] || 0);
+            let nextRowTop = 0;
+            for (let index = 0; index < sliceRowIndexValue; index += 1) {
+              nextRowTop += Number(rowHeights?.[index] || 0);
+            }
+            nextOwner.y = nextRowTop;
+            nextOwner.height = nextRowHeight;
+            nextOwner.width = tableWidth;
+            nextOwner.meta = {
+              ...(nextOwner.meta || {}),
+              rowIndex: absoluteRowIndex,
+              absoluteRowIndex,
+              sliceRowIndex: sliceRowIndexValue,
+              rowHeight: nextRowHeight,
+              tableWidth,
+            };
+          }
+          return nextOwner;
+        });
+      }
+    }
+  };
+
+  const currentLines = lines.filter((line) => {
+    const rowIndex =
+      Number.isFinite(line?.blockAttrs?.rowIndex)
+        ? Number(line.blockAttrs.rowIndex)
+        : Number.isFinite(getTableSliceMeta(line)?.rowIndex)
+          ? Number(getTableSliceMeta(line).rowIndex)
+          : 0;
+    if (rowIndex < resolvedRowOffset) {
+      return false;
+    }
+    if (rowIndex === resolvedRowOffset && resolvedRowOffsetY > 0) {
+      const relY = Number.isFinite(line?.relativeY) ? Number(line.relativeY) : 0;
+      if (relY < baseOffsetY) {
+        return false;
+      }
+    }
+    return true;
+  });
+  const remainingLength = measureFragmentLength(currentLines, length);
+  const effectiveSliceFromPrev =
+    typeof inheritedSliceFromPrev === "boolean"
+      ? inheritedSliceFromPrev
+      : resolvedRowOffset > 0 ||
+        resolvedRowOffsetY > 0 ||
+        lines.some(
+          (line) =>
+            line?.blockAttrs?.sliceFromPrev ||
+            line?.blockAttrs?.tableSliceFromPrev ||
+            getTableSliceMeta(line)?.continuedFromPrev,
+        );
+  const effectiveRowSplit =
+    typeof inheritedRowSplit === "boolean"
+      ? inheritedRowSplit
+      : resolvedRowOffsetY > 0 ||
+        lines.some(
+          (line) =>
+            line?.blockAttrs?.sliceRowSplit ||
+            line?.blockAttrs?.tableRowSplit ||
+            getTableSliceMeta(line)?.rowSplit,
+        );
+
+  let visibleRowCount = 0;
+  let accumulatedHeight = 0;
+  for (let i = 0; i < baseRowHeights.length; i += 1) {
+    const nextHeight = accumulatedHeight + (Number(baseRowHeights[i]) || 0);
+    if (nextHeight > availableHeight) {
+      break;
+    }
+    accumulatedHeight = nextHeight;
+    visibleRowCount += 1;
+  }
+
+  if (visibleRowCount === 0) {
+    const firstRowHeight = Number(baseRowHeights[0]) || 0;
+    const fullAvailableHeight = settings
+      ? Math.max(0, settings.pageHeight - settings.margin.top - settings.margin.bottom)
+      : availableHeight;
+    const canFitOnFreshPage =
+      fullAvailableHeight > 0 && firstRowHeight > 0 && firstRowHeight <= fullAvailableHeight;
+    if (canFitOnFreshPage) {
+      const overflowContinuation = createTableContinuation({
+        tableKey,
+        rows,
+        cols,
+        firstRowIndex: resolvedRowOffset,
+        lastRowIndex: Math.max(resolvedRowOffset, rows - 1),
+        rowSplit: effectiveRowSplit,
+        continuedFromPrev: effectiveSliceFromPrev,
+        continuesAfter: false,
+        rowOffsetY: resolvedRowOffsetY,
+      });
+      return buildTableSplitResult({
+        visibleLines: [],
+        visibleLength: 0,
+        visibleHeight: 0,
+        visibleContinuation: null,
+        overflowLines: currentLines,
+        overflowLength: remainingLength,
+        overflowHeight: sumHeights(baseRowHeights),
+        overflowContinuation,
+      });
+    }
+
+    const spacingAllowance = Math.max(0, settings?.blockSpacing || 0);
+    const effectiveAvailableHeight = Math.max(0, availableHeight - paddingY);
+    const effectiveFullHeight = Math.max(0, fullAvailableHeight - paddingY);
+    if (
+      firstRowHeight > 0 &&
+      fullAvailableHeight > 0 &&
+      firstRowHeight > fullAvailableHeight &&
+      effectiveAvailableHeight >= effectiveFullHeight - spacingAllowance
+    ) {
+      const cutHeight = Math.max(1, Math.min(effectiveAvailableHeight, firstRowHeight));
+      const cutY = baseOffsetY + cutHeight;
+      const visibleLinesRaw = [];
+      const overflowLinesRaw = [];
+      for (const line of currentLines) {
+        const rowIndex = Number.isFinite(line?.blockAttrs?.rowIndex) ? Number(line.blockAttrs.rowIndex) : 0;
+        if (rowIndex === resolvedRowOffset) {
+          const relY = Number.isFinite(line?.relativeY) ? Number(line.relativeY) : 0;
+          if (relY < cutY) {
+            visibleLinesRaw.push(line);
+          } else {
+            overflowLinesRaw.push(line);
+          }
+          continue;
+        }
+        overflowLinesRaw.push(line);
+      }
+
+      const visibleRowHeights = [cutHeight];
+      const overflowRowHeights = [Math.max(0, firstRowHeight - cutHeight), ...baseRowHeights.slice(1)];
+      const overflowTotalHeight = sumHeights(overflowRowHeights);
+      const needsAnotherSlice = overflowTotalHeight > effectiveFullHeight;
+      const visibleContinuation = createTableContinuation({
+        tableKey,
+        rows,
+        cols,
+        firstRowIndex: resolvedRowOffset,
+        lastRowIndex: resolvedRowOffset,
+        rowSplit: true,
+        continuedFromPrev: effectiveSliceFromPrev,
+        continuesAfter: true,
+        rowOffsetY: resolvedRowOffsetY,
+      });
+      const overflowContinuation = createTableContinuation({
+        tableKey,
+        rows,
+        cols,
+        firstRowIndex: resolvedRowOffset,
+        lastRowIndex: Math.max(resolvedRowOffset, rows - 1),
+        rowSplit: true,
+        continuedFromPrev: true,
+        continuesAfter: needsAnotherSlice,
+        rowOffsetY: resolvedRowOffsetY + cutHeight,
+      });
+
+      const visibleLines = visibleLinesRaw.map((line) =>
+        cloneLineForSlice(
+          line,
+          resolvedRowOffset,
+          visibleRowHeights,
+          baseOffsetY,
+          visibleContinuation,
+          effectiveSliceFromPrev,
+          true,
+          true,
+        ),
+      );
+      const overflowLines = overflowLinesRaw.map((line) =>
+        cloneLineForSlice(
+          line,
+          resolvedRowOffset,
+          overflowRowHeights,
+          cutY,
+          overflowContinuation,
+          true,
+          needsAnotherSlice,
+          true,
+        ),
+      );
+
+      applyTableSliceMeta(
+        visibleLines,
+        visibleRowHeights,
+        visibleContinuation,
+        effectiveSliceFromPrev,
+        true,
+        true,
+        false,
+        baseOffsetY,
+      );
+      applyTableSliceMeta(
+        overflowLines,
+        overflowRowHeights,
+        overflowContinuation,
+        true,
+        needsAnotherSlice,
+        true,
+        false,
+        cutY,
+      );
+
+      const visibleStart = visibleLinesRaw.reduce((min, line) => {
+        const start = Number.isFinite(line?.start) ? Number(line.start) : 0;
+        return Math.min(min, start);
+      }, Number.POSITIVE_INFINITY);
+      const visibleEnd = visibleLinesRaw.reduce((max, line) => {
+        const end = Number.isFinite(line?.end) ? Number(line.end) : 0;
+        return Math.max(max, end);
+      }, 0);
+      const normalizedStart = Number.isFinite(visibleStart) ? visibleStart : 0;
+      const visibleLengthInner = Math.max(0, visibleEnd - normalizedStart);
+      return buildTableSplitResult({
+        visibleLines,
+        visibleLength: visibleLengthInner,
+        visibleHeight: sumHeights(visibleRowHeights),
+        visibleContinuation,
+        overflowLines,
+        overflowLength: Math.max(0, remainingLength - visibleLengthInner),
+        overflowHeight: sumHeights(overflowRowHeights),
+        overflowContinuation,
+      });
+    }
+
+    const overflowContinuation = createTableContinuation({
+      tableKey,
+      rows,
+      cols,
+      firstRowIndex: resolvedRowOffset,
+      lastRowIndex: Math.max(resolvedRowOffset, rows - 1),
+      rowSplit: effectiveRowSplit,
+      continuedFromPrev: effectiveSliceFromPrev,
+      continuesAfter: false,
+      rowOffsetY: resolvedRowOffsetY,
+    });
+    return buildTableSplitResult({
+      visibleLines: [],
+      visibleLength: 0,
+      visibleHeight: 0,
+      visibleContinuation: null,
+      overflowLines: currentLines,
+      overflowLength: remainingLength,
+      overflowHeight: sumHeights(baseRowHeights),
+      overflowContinuation,
+    });
+  }
+
+  const visibleRowHeights = baseRowHeights.slice(0, visibleRowCount);
+  const overflowRowHeights = baseRowHeights.slice(visibleRowCount);
+  const overflowOffsetY = baseOffsetY + sumHeights(baseRowHeights, visibleRowCount);
+  const visibleLinesRaw = [];
+  const overflowLinesRaw = [];
+  for (const line of currentLines) {
+    const rowIndex = Number.isFinite(line?.blockAttrs?.rowIndex)
+      ? Number(line.blockAttrs.rowIndex) - resolvedRowOffset
+      : 0;
+    if (rowIndex < visibleRowCount) {
+      visibleLinesRaw.push(line);
+    } else {
+      overflowLinesRaw.push(line);
+    }
+  }
+
+  const hasOverflow = overflowLinesRaw.length > 0;
+  const visibleContinuation = createTableContinuation({
+    tableKey,
+    rows,
+    cols,
+    firstRowIndex: resolvedRowOffset,
+    lastRowIndex: Math.max(resolvedRowOffset, resolvedRowOffset + visibleRowHeights.length - 1),
+    rowSplit: effectiveRowSplit,
+    continuedFromPrev: effectiveSliceFromPrev,
+    continuesAfter: hasOverflow,
+    rowOffsetY: resolvedRowOffsetY,
+  });
+  const overflowContinuation = hasOverflow
+    ? createTableContinuation({
+        tableKey,
+        rows,
+        cols,
+        firstRowIndex: resolvedRowOffset + visibleRowCount,
+        lastRowIndex: Math.max(
+          resolvedRowOffset + visibleRowCount,
+          resolvedRowOffset + visibleRowCount + overflowRowHeights.length - 1,
+        ),
+        rowSplit: false,
+        continuedFromPrev: true,
+        continuesAfter: false,
+        rowOffsetY: 0,
+      })
+    : null;
+
+  const visibleLines = visibleLinesRaw.map((line) =>
+    cloneLineForSlice(
+      line,
+      resolvedRowOffset,
+      visibleRowHeights,
+      baseOffsetY,
+      visibleContinuation,
+      effectiveSliceFromPrev,
+      hasOverflow,
+      effectiveRowSplit,
+    ),
+  );
+  const overflowLines = overflowLinesRaw.map((line) =>
+    cloneLineForSlice(
+      line,
+      resolvedRowOffset + visibleRowCount,
+      overflowRowHeights,
+      overflowOffsetY,
+      overflowContinuation,
+      true,
+      false,
+      false,
+    ),
+  );
+
+  const visibleStart = visibleLinesRaw.reduce((min, line) => {
+    const start = Number.isFinite(line?.start) ? Number(line.start) : 0;
+    return Math.min(min, start);
+  }, Number.POSITIVE_INFINITY);
+  const visibleEnd = visibleLinesRaw.reduce((max, line) => {
+    const end = Number.isFinite(line?.end) ? Number(line.end) : 0;
+    return Math.max(max, end);
+  }, 0);
+  const normalizedStart = Number.isFinite(visibleStart) ? visibleStart : 0;
+  const visibleLength = Math.max(0, visibleEnd - normalizedStart);
+
+  applyTableSliceMeta(
+    visibleLines,
+    visibleRowHeights,
+    visibleContinuation,
+    effectiveSliceFromPrev,
+    hasOverflow,
+    effectiveRowSplit,
+    hasOverflow,
+    baseOffsetY,
+  );
+  if (hasOverflow) {
+    applyTableSliceMeta(
+      overflowLines,
+      overflowRowHeights,
+      overflowContinuation,
+      true,
+      false,
+      false,
+      hasOverflow,
+      overflowOffsetY,
+    );
+  }
+
+  return buildTableSplitResult({
+    visibleLines,
+    visibleLength,
+    visibleHeight: sumHeights(visibleRowHeights),
+    visibleContinuation,
+    overflowLines,
+    overflowLength: hasOverflow ? Math.max(0, remainingLength - visibleLength) : 0,
+    overflowHeight: sumHeights(overflowRowHeights),
+    overflowContinuation,
+  });
+};
+
 export const tableRenderer = {
   allowSplit: true,
   cacheLayout: true,
   lineBodyMode: "default-text",
+  pagination: {
+    fragmentModel: "continuation",
+    reusePolicy: "actual-slice-only",
+  },
+  splitBlock(ctx) {
+    return splitTableBlock(ctx);
+  },
+
+  measureBlock(ctx: any) {
+    const { node, settings, registry } = ctx || {};
+    const startPos = Number.isFinite(ctx?.startPos ?? ctx?.blockStart)
+      ? Number(ctx?.startPos ?? ctx?.blockStart)
+      : 0;
+    const layoutResult = this.layoutBlock({ node, settings, registry });
+    return buildMeasuredTableModelFromLayout({
+      node,
+      layoutResult,
+      startPos,
+    });
+  },
+
+  paginateBlock(ctx: any) {
+    const measured = ctx?.measured;
+    const measuredMeta = measured?.meta || {};
+    const fullSnapshot = measuredMeta?.layoutSnapshot || null;
+    if (!fullSnapshot || !Array.isArray(fullSnapshot.lines)) {
+      return null;
+    }
+
+    const cursorState = ctx?.cursor?.localCursor || {};
+    const rowIndex = Number.isFinite(cursorState?.rowIndex)
+      ? Math.max(0, Number(cursorState.rowIndex))
+      : 0;
+    const rowOffsetY = Number.isFinite(cursorState?.rowOffsetY)
+      ? Math.max(0, Number(cursorState.rowOffsetY))
+      : 0;
+    const fromPrev = cursorState?.fromPrev === true || rowIndex > 0 || rowOffsetY > 0;
+    const rowSplit = cursorState?.rowSplit === true || rowOffsetY > 0;
+
+    const splitResult = splitTableBlock({
+      lines: fullSnapshot.lines,
+      length: fullSnapshot.length,
+      availableHeight: ctx?.availableHeight,
+      blockAttrs: fullSnapshot.blockAttrs,
+      settings: ctx?.settings,
+      sliceRowIndex: rowIndex,
+      sliceRowOffsetY: rowOffsetY,
+      inheritedSliceFromPrev: fromPrev,
+      inheritedRowSplit: rowSplit,
+    });
+    if (!splitResult) {
+      return null;
+    }
+
+    const continuation = splitResult?.continuation || null;
+    const visibleRange = createTableSliceSnapshot({
+      measured,
+      snapshot: {
+        lines: splitResult.lines,
+        length: splitResult.length,
+        height: splitResult.height,
+        blockAttrs: fullSnapshot.blockAttrs,
+        continuation,
+      },
+      fallbackStartPos: Number(ctx?.cursor?.startPos ?? measured?.startPos ?? 0),
+      fallbackEndPos: Number(ctx?.cursor?.startPos ?? measured?.startPos ?? 0),
+    });
+
+    const overflowContinuation = splitResult?.overflow?.continuation || null;
+    const nextCursor = overflowContinuation
+      ? {
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: visibleRange.endPos,
+          endPos: Number(measured?.endPos ?? visibleRange.endPos),
+          localCursor: {
+            kind: "table-cursor",
+            rowIndex: Number.isFinite(overflowContinuation?.carryState?.firstRowIndex)
+              ? Number(overflowContinuation.carryState.firstRowIndex)
+              : rowIndex,
+            rowOffsetY: Number.isFinite(overflowContinuation?.carryState?.rowOffsetY)
+              ? Number(overflowContinuation.carryState.rowOffsetY)
+              : 0,
+            fromPrev: overflowContinuation?.fromPrev === true,
+            rowSplit: overflowContinuation?.rowSplit === true,
+          },
+          meta: {
+            source: "table-modern-paginate",
+            fragmentIdentity: overflowContinuation?.fragmentIdentity ?? null,
+            continuationToken: overflowContinuation?.continuationToken ?? null,
+            fromPrev: overflowContinuation?.fromPrev === true,
+            hasNext: overflowContinuation?.hasNext === true,
+            rowSplit: overflowContinuation?.rowSplit === true,
+          },
+        }
+      : null;
+
+    return {
+      slice: {
+        kind: measured?.kind || "table",
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: visibleRange.startPos,
+        endPos: visibleRange.endPos,
+        fromPrev: continuation?.fromPrev === true,
+        hasNext: continuation?.hasNext === true || !!nextCursor,
+        rowSplit: continuation?.rowSplit === true,
+        boxes: [],
+        fragments: [],
+        lines: Array.isArray(splitResult?.lines) ? splitResult.lines : [],
+        nextCursor,
+        meta: {
+          source: "table-modern-paginate",
+          continuation,
+          overflowLength: Number(splitResult?.overflow?.length || 0),
+        },
+      },
+      nextCursor,
+      exhausted: !nextCursor,
+    };
+  },
 
   layoutBlock({ node, settings, registry }) {
     const { rows, cols } = getTableShape(node);
@@ -679,6 +1867,7 @@ export const tableRenderer = {
       }
     }
     const tableOwnerMeta = {
+      tableKey,
       rows,
       cols,
       rowHeights,
@@ -689,6 +1878,21 @@ export const tableRenderer = {
       padding,
       paddingY,
       tableTop: 0,
+      continuedFromPrev: false,
+      continuesAfter: false,
+      rowSplit: false,
+      ...createFragmentContinuationAttrs(
+        createTableContinuation({
+          tableKey,
+          rows,
+          cols,
+          firstRowIndex: 0,
+          lastRowIndex: Math.max(0, rows - 1),
+          rowSplit: false,
+          continuedFromPrev: false,
+          continuesAfter: false,
+        })
+      ),
     };
     tableRootOwner.meta = {
       ...(tableRootOwner.meta || {}),
@@ -703,6 +1907,16 @@ export const tableRenderer = {
     for (let r = 0; r < rows; r += 1) {
       const rowCells = cellLayouts[r];
       const rowInset = paddingY;
+      const rowTop = Number(rowTops[r] || 0);
+      const rowHeight = Number(rowHeights[r] || 0);
+      const rowOwner = createTableRowOwner({
+        tableKey,
+        rowIndex: r,
+        rowTop,
+        rowHeight,
+        settings,
+        tableWidth,
+      });
 
       for (const cell of rowCells) {
         const cellLines = cell.layout.lines?.length
@@ -736,6 +1950,20 @@ export const tableRenderer = {
             tableTop + rowInset
           );
           const cellWidthWithSpan = Math.max(0, colWidth * (cell.colspan ?? 1) - padding * 2);
+          const lineContinuation = createTableContinuation({
+            tableKey,
+            rows,
+            cols,
+            firstRowIndex: r,
+            lastRowIndex: r,
+            rowSplit: false,
+            continuedFromPrev: false,
+            continuesAfter: false,
+          });
+          const lineTableMeta = {
+            ...tableOwnerMeta,
+            ...createFragmentContinuationAttrs(lineContinuation),
+          };
           const line = {
             ...cellLine,
             runs: adjustedRuns,
@@ -750,6 +1978,7 @@ export const tableRenderer = {
             blockType: cellLine.blockType || "table",
             blockAttrs: {
               ...(cellLine.blockAttrs || {}),
+              tableKey,
               rows,
               cols,
               rowIndex: r,
@@ -766,16 +1995,18 @@ export const tableRenderer = {
               sliceRowSplit: false,
               tableSliceFromPrev: false,
               tableSliceHasNext: false,
+              ...createFragmentContinuationAttrs(lineContinuation),
             },
             cellWidth: cellWidthWithSpan,
             cellPadding: padding,
             cellPaddingY: paddingY,
             fragmentOwners: [
               tableRootOwner,
+              rowOwner,
               { ...cellOwner, y: tableTop + rowInset },
               ...(shiftedCellOwners || []),
             ],
-            tableOwnerMeta,
+            tableOwnerMeta: lineTableMeta,
           };
 
           lines.push(line);
@@ -791,6 +2022,7 @@ export const tableRenderer = {
       height: tableHeight,
       blockType: "table",
       blockAttrs: {
+        tableKey,
         rows,
         cols,
         rowHeights,
@@ -804,6 +2036,18 @@ export const tableRenderer = {
         sliceRowSplit: false,
         tableSliceFromPrev: false,
         tableSliceHasNext: false,
+        ...createFragmentContinuationAttrs(
+          createTableContinuation({
+            tableKey,
+            rows,
+            cols,
+            firstRowIndex: 0,
+            lastRowIndex: Math.max(0, rows - 1),
+            rowSplit: false,
+            continuedFromPrev: false,
+            continuesAfter: false,
+          })
+        ),
       },
     };
   },
@@ -835,3 +2079,12 @@ export const tableRenderer = {
     });
   },
 };
+
+
+
+
+
+
+
+
+

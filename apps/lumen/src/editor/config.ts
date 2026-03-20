@@ -7,6 +7,7 @@ export type PlaygroundDebugFlags = {
   permissionMode: "full" | "comment" | "readonly";
   enableInputRules: boolean;
   debugPerf: boolean;
+  debugGhostTrace: boolean;
   enablePaginationWorker: boolean;
   forcePaginationWorker: boolean;
 };
@@ -77,12 +78,14 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   permissionMode: resolvePermissionMode(),
   enableInputRules: resolveBooleanParam("inputRules"),
   debugPerf: resolveBooleanParam("debugPerf"),
+  debugGhostTrace: resolveBooleanParam("debugGhostTrace"),
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveBooleanParam("paginationWorkerForce"),
 });
 
 export const createCanvasSettings = (
   debugPerf: boolean,
+  debugGhostTrace = false,
   enablePaginationWorker = false,
   forcePaginationWorker = false,
   locale: PlaygroundLocale = "zh-CN",
@@ -103,10 +106,12 @@ export const createCanvasSettings = (
     0,
     Math.floor(resolveNumberParam("pageReuseRootProbe", 2))
   );
+  const pageWidth = Math.max(480, Math.floor(resolveNumberParam("pageWidth", 794)));
+  const pageHeight = Math.max(640, Math.floor(resolveNumberParam("pageHeight", 720)));
 
   return {
-    pageWidth: 794,
-    pageHeight: 1123,
+    pageWidth,
+    pageHeight,
     pageGap: 24,
     margin: {
       top: 72,
@@ -126,6 +131,7 @@ export const createCanvasSettings = (
     pageBuffer: 1,
     maxPageCache: 32,
     debugPerf,
+    debugGhostTrace,
     pageReuseProbeRadius,
     pageReuseRootIndexProbeRadius,
     disablePageReuse: false,

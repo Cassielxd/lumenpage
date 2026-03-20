@@ -21,6 +21,15 @@ const DEFAULT_TITLES: Record<string, string> = {
 const isMermaidKind = (kind: string) =>
   kind === "diagram" || kind === "mermaid" || kind === "mindMap";
 const isEchartsKind = (kind: string) => kind === "echarts";
+const hasRenderedEmbedContent = (content: HTMLElement, kind: string) => {
+  if (isEchartsKind(kind)) {
+    return !!content.querySelector("canvas");
+  }
+  if (isMermaidKind(kind)) {
+    return !!content.querySelector("svg");
+  }
+  return content.childElementCount > 0;
+};
 
 let mermaidInitialized = false;
 let mermaidModulePromise: Promise<any> | null = null;
@@ -54,6 +63,14 @@ const ensureMermaidInitialized = async () => {
   return mermaid;
 };
 
+const syncNodeViewBlockId = (element: HTMLElement, node: any) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
 const createFrame = () => {
   const shell = document.createElement("div");
   shell.style.width = "100%";
@@ -183,6 +200,7 @@ export const createEmbedPanelNodeView = (node: any, view: any) => {
   container.style.pointerEvents = "none";
   container.style.overflow = "visible";
   container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
 
   const frame = createFrame();
@@ -288,6 +306,7 @@ export const createEmbedPanelNodeView = (node: any, view: any) => {
         return false;
       }
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       void runRender();
       return true;
     },
@@ -300,7 +319,15 @@ export const createEmbedPanelNodeView = (node: any, view: any) => {
       container.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       container.style.width = `${Math.max(1, Math.round(width))}px`;
       container.style.height = `${Math.max(1, Math.round(height))}px`;
-      chart?.resize();
+      const kind = normalizeKind(currentNode.attrs?.kind);
+      if (visible) {
+        if (chart) {
+          chart.resize();
+        } else if (!hasRenderedEmbedContent(frame.content, kind) && trimText(currentNode.attrs?.source)) {
+          lastRenderKey = "";
+          void runRender();
+        }
+      }
     },
     destroy() {
       resizeObserver?.disconnect();
@@ -317,3 +344,7 @@ export const createEmbedPanelNodeView = (node: any, view: any) => {
     },
   };
 };
+
+
+
+

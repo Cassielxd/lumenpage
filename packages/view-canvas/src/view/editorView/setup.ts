@@ -118,6 +118,7 @@ export const setupCanvasEditorView = ({
   const nodeViewManager = createNodeViewManager({
     view,
     getState: () => view.state,
+    getPendingChangeSummary: runtimeState.getPendingChangeSummary,
     nodeRegistry,
     getNodeViewFactories: () => runtimeState.queryEditorProp("nodeViews") ?? null,
     getDecorations: () => runtimeState.getDecorations(),
@@ -361,6 +362,8 @@ export const setupCanvasEditorView = ({
       getLayout: runtimeState.getLayout,
       getLayoutIndex: runtimeState.getLayoutIndex,
       getRafId: runtimeState.getRafId,
+      getCaretOffset: runtimeState.getCaretOffset,
+      getCaretRect: runtimeState.getCaretRect,
       getEditorProps: runtimeState.getEditorProps,
       setEditorProps: runtimeState.setEditorProps,
       setPendingChangeSummary: setPendingChangeSummaryValue,
@@ -422,7 +425,6 @@ export const setupCanvasEditorView = ({
     },
   });
 
-  view.commands = commands;
   view.dispatchTransaction = applyDispatchTransaction;
   view._internals = internals;
   view.composing = runtimeState.getIsComposing();
@@ -448,7 +450,7 @@ export const setupCanvasEditorView = ({
     state: view.state,
     domRoot: view.dom,
     overlayHost: view.overlayHost,
-    commands,
+    commands: view.commands,
     dispatchTransaction: applyDispatchTransaction,
     internals,
     composing: view.composing,

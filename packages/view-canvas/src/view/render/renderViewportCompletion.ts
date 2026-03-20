@@ -1,4 +1,4 @@
-import { now } from "../debugTrace";
+import { emitGhostTrace, now } from "../debugTrace";
 import { type RendererPerfSummary, reportRendererPerf } from "./renderPerfReporter";
 import { type RendererViewportState } from "./rendererViewportState";
 
@@ -18,6 +18,7 @@ export const completeRendererViewportPass = ({
   changedRange,
   surfacePass,
   overlayMs,
+  overlayDisplayListItemCount,
 }: {
   settings: any;
   perfStart: number;
@@ -43,14 +44,51 @@ export const completeRendererViewportPass = ({
     pageCacheRecreated: number;
     signatureComputedPages: number;
     signatureSkippedPages: number;
+    displayListBuiltPages: number;
+    displayListReusedPages: number;
+    displayListItemCount: number;
     redrawCount: number;
     cachedPages: number;
-    signatureMs: number;
+    displayListBuildMs: number;
     renderPagesMs: number;
     compositeMs: number;
   };
   overlayMs: number;
+  overlayDisplayListItemCount: number;
 }) => {
+  emitGhostTrace(
+    "render-frame",
+    {
+      layoutVersion,
+      prevLayoutVersion,
+      layoutVersionChanged,
+      skippedLayoutVersions: skippedLayoutVersions === true,
+      layoutDocChanged: layout?.__changeSummary?.docChanged === true,
+      forceRedraw,
+      cacheClearReasons,
+      activePages: surfacePass.activePages.size,
+      visibleStartIndex: surfacePass.visible.startIndex,
+      visibleEndIndex: surfacePass.visible.endIndex,
+      activeStartIndex: surfacePass.startIndex,
+      activeEndIndex: surfacePass.endIndex,
+      redrawPages: surfacePass.redrawCount,
+      cachedPages: surfacePass.cachedPages,
+      pageCacheHits: surfacePass.pageCacheHits,
+      pageCacheMisses: surfacePass.pageCacheMisses,
+      pageCacheRecreated: surfacePass.pageCacheRecreated,
+      signatureComputedPages: surfacePass.signatureComputedPages,
+      signatureSkippedPages: surfacePass.signatureSkippedPages,
+      displayListBuiltPages: surfacePass.displayListBuiltPages,
+      displayListReusedPages: surfacePass.displayListReusedPages,
+      displayListItemCount: surfacePass.displayListItemCount,
+      overlayDisplayListItemCount,
+      changedRangeMin: changedRange?.min ?? null,
+      changedRangeMax: changedRange?.max ?? null,
+      pageTrace: surfacePass.pageTrace || [],
+    },
+    settings
+  );
+
   if (!settings?.debugPerf) {
     return nextState;
   }
@@ -79,10 +117,14 @@ export const completeRendererViewportPass = ({
     cacheSize: pageCache.size,
     signatureComputedPages: surfacePass.signatureComputedPages,
     signatureSkippedPages: surfacePass.signatureSkippedPages,
-    signatureMs: Math.round(surfacePass.signatureMs),
+    displayListBuiltPages: surfacePass.displayListBuiltPages,
+    displayListReusedPages: surfacePass.displayListReusedPages,
+    displayListItemCount: surfacePass.displayListItemCount,
+    displayListBuildMs: Math.round(surfacePass.displayListBuildMs),
     renderPagesMs: Math.round(surfacePass.renderPagesMs),
     compositeMs: Math.round(surfacePass.compositeMs),
     overlayMs: Math.round(overlayMs),
+    overlayDisplayListItemCount,
     pageTrace:
       layout?.__changeSummary?.docChanged === true || forceRedraw
         ? surfacePass.pageTrace || []

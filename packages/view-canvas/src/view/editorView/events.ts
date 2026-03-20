@@ -15,6 +15,8 @@ export const createViewEventHandlers = ({
   updateStatus,
   updateCaret,
   scheduleRender,
+  syncNodeViewOverlays,
+  shouldDeferVisualSync,
   eventTiming = false,
 }: {
   getState: () => any;
@@ -29,6 +31,8 @@ export const createViewEventHandlers = ({
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
   scheduleRender: () => void;
+  syncNodeViewOverlays?: () => void;
+  shouldDeferVisualSync?: () => boolean;
   eventTiming?: boolean;
 }) => {
   const nodeEventRouting = createNodeEventRouting({
@@ -48,6 +52,8 @@ export const createViewEventHandlers = ({
     updateStatus,
     updateCaret,
     scheduleRender,
+    syncNodeViewOverlays,
+    shouldDeferVisualSync,
     eventTiming,
   });
 

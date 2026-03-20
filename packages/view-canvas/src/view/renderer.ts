@@ -1,11 +1,16 @@
 /* Offscreen page renderer orchestration. */
 
-import { getRendererPageFragments, renderPageContentPass } from "./render/pageContentPass";
+import {
+  buildRendererPageDisplayList,
+} from "./render/pageContentPass";
 import {
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
 } from "./render/pageCanvasCache";
-import { getRendererPageSignature } from "./render/pageSignature";
+import {
+  executeRendererPageDisplayList,
+  type RendererPageDisplayList,
+} from "./render/pageDisplayList";
 import { renderTextLine } from "./render/textLinePainter";
 import { runRendererViewportPass } from "./render/renderViewportPass";
 
@@ -53,33 +58,18 @@ export class Renderer {
     return this;
   }
 
-  getPageSignature(page: any) {
-    return getRendererPageSignature({
-      page,
-      pageFragments: getRendererPageFragments(page),
-      registry: this.registry,
-      nodeViewProvider: this.nodeViewProvider,
-    });
-  }
-
-  renderPage(pageIndex: number, layout: any, entry: RendererPageCacheEntry) {
-    const { ctx, width, height, dprX, dprY } = entry;
+  buildPageDisplayList(pageIndex: number, layout: any): RendererPageDisplayList {
     const page = layout.pages[pageIndex];
-
-    ctx.setTransform(dprX, 0, 0, dprY, 0, 0);
-    ctx.clearRect(0, 0, width, height);
-
-    renderPageContentPass({
-      ctx,
-      width,
-      height,
+    return buildRendererPageDisplayList({
+      width: layout.pageWidth,
+      height: layout.pageHeight,
       pageIndex,
       page,
       layout,
       settings: this.settings,
       registry: this.registry,
       nodeViewProvider: this.nodeViewProvider,
-      defaultRender: (line, pageX, pageTop, layoutRef) =>
+      createDefaultRender: (ctx) => (line, pageX, pageTop, layoutRef) =>
         renderTextLine({
           ctx,
           line,
@@ -87,6 +77,21 @@ export class Renderer {
           pageTop,
           layout: layoutRef,
         }),
+    });
+  }
+
+  renderPage(pageIndex: number, layout: any, entry: RendererPageCacheEntry) {
+    const { ctx, width, height, dprX, dprY } = entry;
+
+    ctx.setTransform(dprX, 0, 0, dprY, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    if (!entry.displayList) {
+      entry.displayList = this.buildPageDisplayList(pageIndex, layout);
+    }
+    executeRendererPageDisplayList({
+      ctx,
+      displayList: entry.displayList,
     });
 
     entry.dirty = false;
@@ -121,7 +126,8 @@ export class Renderer {
         lastViewportHeight: this.lastViewportHeight,
         lastPerfLog: this.lastPerfLog,
       },
-      getPageSignature: (page) => this.getPageSignature(page),
+      buildPageDisplayList: (pageIndex, currentLayout) =>
+        this.buildPageDisplayList(pageIndex, currentLayout),
       renderPage: (pageIndex, currentLayout, pageEntry) =>
         this.renderPage(pageIndex, currentLayout, pageEntry),
     });

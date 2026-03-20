@@ -1,4 +1,6 @@
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { resolveImageInsertAttrs } from "./mediaDimensions";
+
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
 
@@ -79,7 +81,7 @@ export const createInlineMediaActions = ({
     if (!src) {
       return false;
     }
-    return run("insertImage", { src });
+    return run("insertImage", await resolveImageInsertAttrs({ src }));
   };
 
   const insertVideo = async () => {

@@ -49,7 +49,9 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
   }
 
   const includeTypes = Array.isArray(options.includeTypes) ? options.includeTypes : null;
-  const excludeTypes = Array.isArray(options.excludeTypes) ? options.excludeTypes : ["table"];
+  const excludeTypes = Array.isArray(options.excludeTypes)
+    ? options.excludeTypes
+    : ["table", "image", "video", "audio", "embedPanel", "file", "bookmark", "signature", "webPage"];
   const typeName = range.node?.type?.name;
 
   if (includeTypes && !includeTypes.includes(typeName)) {
@@ -61,6 +63,11 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
 
   const borderColor = options.borderColor || "rgba(59, 130, 246, 0.8)";
   const borderWidth = Number.isFinite(options.borderWidth) ? options.borderWidth : 1;
+  const blockId =
+    range.node?.attrs && typeof range.node.attrs === "object" && range.node.attrs.id != null
+      ? String(range.node.attrs.id)
+      : null;
+  const nodeType = typeof typeName === "string" && typeName.length > 0 ? typeName : null;
 
   return DecorationSet.create(state.doc, [
     Decoration.node(
@@ -70,6 +77,8 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
         borderColor,
         borderWidth,
         backgroundColor: undefined,
+        blockId,
+        nodeType,
         blockOutline: true,
       } as any
     ),

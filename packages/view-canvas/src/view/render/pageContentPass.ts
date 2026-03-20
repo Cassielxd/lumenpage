@@ -1,5 +1,16 @@
 import { renderPageFragmentPass } from "./pageFragmentPass";
 import { renderPageLineCompatPass } from "./pageLineCompatPass";
+import {
+  executeRendererPageDisplayList,
+  getRendererPageDisplayListSignature,
+  type RendererPageDisplayList,
+  type RendererPageDisplayListItem,
+} from "./pageDisplayList";
+import {
+  getRendererFragmentPassSignature,
+  getRendererLineCompatPassSignature,
+  getRendererPageShellSignature,
+} from "./pageSignature";
 import { createPageRenderPlan, type DefaultRender } from "./pageRenderPlan";
 
 export { getRendererPageFragments } from "./pageRenderPlan";
@@ -96,34 +107,113 @@ export const renderPageContentPass = ({
   nodeViewProvider: ((line: any) => any) | null;
   defaultRender: DefaultRender;
 }) => {
-  renderPageShell({
-    ctx,
+  const displayList = buildRendererPageDisplayList({
     width,
     height,
     pageIndex,
+    page,
     layout,
     settings,
+    registry,
+    nodeViewProvider,
+    createDefaultRender: () => defaultRender,
   });
+  executeRendererPageDisplayList({
+    ctx,
+    displayList,
+  });
+};
 
+export const buildRendererPageDisplayList = ({
+  width,
+  height,
+  pageIndex,
+  page,
+  layout,
+  settings,
+  registry,
+  nodeViewProvider,
+  createDefaultRender,
+}: {
+  width: number;
+  height: number;
+  pageIndex: number;
+  page: any;
+  layout: any;
+  settings: any;
+  registry: any;
+  nodeViewProvider: ((line: any) => any) | null;
+  createDefaultRender: (
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+  ) => DefaultRender;
+}): RendererPageDisplayList => {
   const plan = createPageRenderPlan({
     page,
     registry,
     nodeViewProvider,
   });
+  const items: RendererPageDisplayListItem[] = [
+    {
+      kind: "page-shell",
+      signature: getRendererPageShellSignature({
+        width,
+        height,
+      }),
+      paint: (ctx) =>
+        renderPageShell({
+          ctx,
+          width,
+          height,
+          pageIndex,
+          layout,
+          settings,
+        }),
+    },
+    {
+      kind: "fragment-pass",
+      signature: getRendererFragmentPassSignature({
+        plan,
+        registry,
+      }),
+      paint: (ctx) =>
+        renderPageFragmentPass({
+          ctx,
+          layout,
+          registry,
+          defaultRender: createDefaultRender(ctx),
+          plan,
+        }),
+    },
+  ];
+  if (plan.compatLineEntries.length > 0) {
+    items.push({
+      kind: "line-compat-pass",
+      signature: getRendererLineCompatPassSignature({
+        plan,
+      }),
+      paint: (ctx) =>
+        renderPageLineCompatPass({
+          ctx,
+          layout,
+          registry,
+          defaultRender: createDefaultRender(ctx),
+          plan,
+        }),
+    });
+  }
+  const signature = getRendererPageDisplayListSignature(items);
+  const layoutVersion =
+    page && Number.isFinite(page.__layoutVersionToken) ? Number(page.__layoutVersionToken) : null;
 
-  renderPageFragmentPass({
-    ctx,
-    layout,
-    registry,
-    defaultRender,
-    plan,
-  });
+  if (page) {
+    page.__signature = signature;
+    if (layoutVersion != null) {
+      page.__signatureVersion = layoutVersion;
+    }
+  }
 
-  renderPageLineCompatPass({
-    ctx,
-    layout,
-    registry,
-    defaultRender,
-    plan,
-  });
+  return {
+    signature: Number.isFinite(signature) ? Number(signature) : null,
+    items,
+  };
 };

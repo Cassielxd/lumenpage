@@ -1,4 +1,3 @@
-import { resolveLegacySelectionRects } from "../legacySelectionGeometry";
 import { now } from "../debugTrace";
 
 type CreateRenderFrameSelectionArgs = {
@@ -26,6 +25,69 @@ export const createRenderFrameSelection = ({
   let lastTableSelectionRectsKey = "";
   let lastTableSelectionRects: any[] | null = null;
   let lastTableSelectionScrollTop = Number.NaN;
+
+  const resolveFallbackSelectionRects = ({
+    geometry,
+    layout,
+    editorState,
+    selection,
+    scrollTop,
+    viewportWidth,
+    layoutIndex,
+  }: {
+    geometry: any;
+    layout: any;
+    editorState: any;
+    selection: { from: number; to: number };
+    scrollTop: number;
+    viewportWidth: number;
+    layoutIndex: any;
+  }) => {
+    if (!geometry || typeof geometry !== "object") {
+      return null;
+    }
+
+    const tableCellRectsResolver =
+      typeof geometry?.tableCellSelectionToRects === "function"
+        ? geometry.tableCellSelectionToRects
+        : null;
+    const tableRangeRectsResolver =
+      typeof geometry?.tableRangeSelectionToCellRects === "function"
+        ? geometry.tableRangeSelectionToCellRects
+        : null;
+
+    if (tableCellRectsResolver) {
+      const tableCellRects = tableCellRectsResolver({
+        layout,
+        selection: editorState?.selection,
+        doc: editorState?.doc,
+        scrollTop,
+        viewportWidth,
+        layoutIndex,
+        docPosToTextOffset,
+      });
+      if (Array.isArray(tableCellRects) && tableCellRects.length > 0) {
+        return [...tableCellRects, ...tableCellRects];
+      }
+    }
+
+    if (tableRangeRectsResolver) {
+      const tableRangeRects = tableRangeRectsResolver({
+        layout,
+        fromOffset: selection?.from,
+        toOffset: selection?.to,
+        scrollTop,
+        viewportWidth,
+        layoutIndex,
+        docPosToTextOffset,
+      });
+      if (Array.isArray(tableRangeRects) && tableRangeRects.length > 0) {
+        return [...tableRangeRects, ...tableRangeRects];
+      }
+    }
+
+    return null;
+  };
 
   const resolveSelectionGeometry = () => {
     const fromProps =
@@ -67,7 +129,7 @@ export const createRenderFrameSelection = ({
       }
     }
 
-    const legacyResolved = resolveLegacySelectionRects({
+    const fallbackResolved = resolveFallbackSelectionRects({
       geometry,
       layout,
       editorState,
@@ -75,10 +137,9 @@ export const createRenderFrameSelection = ({
       scrollTop,
       viewportWidth,
       layoutIndex,
-      docPosToTextOffset,
     });
-    if (Array.isArray(legacyResolved) && legacyResolved.length > 0) {
-      return legacyResolved;
+    if (Array.isArray(fallbackResolved) && fallbackResolved.length > 0) {
+      return fallbackResolved;
     }
 
     return null;

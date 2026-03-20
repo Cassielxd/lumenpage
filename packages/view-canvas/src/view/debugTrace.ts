@@ -9,12 +9,43 @@ export const isGhostTraceEnabled = (settings: any) =>
     (globalThis as typeof globalThis & { __lumenGhostTraceEnabled?: boolean })
       .__lumenGhostTraceEnabled === true);
 
+const shouldEmitGhostTrace = (type: string, summary: Record<string, unknown>) => {
+  if (type === "page-redraw") {
+    return (
+      summary?.pageRedrawn === true ||
+      summary?.layoutVersionChanged === true ||
+      summary?.forceRedraw === true ||
+      summary?.forceDisplayListForVisualReuse === true ||
+      String(summary?.cacheDisposition || "") !== "hit"
+    );
+  }
+  if (type === "render-frame") {
+    const cacheClearReasons = Array.isArray(summary?.cacheClearReasons)
+      ? summary.cacheClearReasons
+      : [];
+    return (
+      summary?.layoutVersionChanged === true ||
+      summary?.forceRedraw === true ||
+      Number(summary?.displayListBuiltPages || 0) > 0 ||
+      Number(summary?.redrawPages || 0) > 0 ||
+      cacheClearReasons.length > 0
+    );
+  }
+  if (type === "node-overlay-sync") {
+    return summary?.phase === "layout" || summary?.layoutChanged === true;
+  }
+  return true;
+};
+
 export const emitGhostTrace = (
   type: string,
   summary: Record<string, unknown>,
   settings: any
 ) => {
   if (!isGhostTraceEnabled(settings)) {
+    return;
+  }
+  if (!shouldEmitGhostTrace(type, summary)) {
     return;
   }
   if (typeof globalThis === "undefined") {

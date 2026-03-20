@@ -109,7 +109,7 @@ const hasCompatContainerWork = (line: any, registry: any) => {
   });
 };
 
-const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
+export const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
   typeof entry.textLineKey === "string" &&
   entry.textLineKey.length > 0 &&
   entry.renderPlan.hasFragmentRenderer &&

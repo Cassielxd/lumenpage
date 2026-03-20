@@ -1,6 +1,33 @@
 import { drawWavyLine as drawMarkWavyLine } from "lumenpage-render-engine";
 import { type DecorationDrawData } from "./decorations";
 
+export type RendererOverlayDisplayListItem = {
+  kind:
+    | "decoration-inline-rects"
+    | "decoration-text-segments"
+    | "decoration-node-rects"
+    | "decoration-widgets"
+    | "selection-rects"
+    | "caret";
+  paint: (ctx: CanvasRenderingContext2D) => void;
+};
+
+export type RendererOverlayDisplayList = {
+  items: RendererOverlayDisplayListItem[];
+};
+
+export const executeRendererOverlayDisplayList = ({
+  ctx,
+  displayList,
+}: {
+  ctx: CanvasRenderingContext2D;
+  displayList: RendererOverlayDisplayList;
+}) => {
+  for (const item of displayList.items) {
+    item.paint(ctx);
+  }
+};
+
 const resolveSelectionStyle = (settings: any) => {
   const style = settings?.selectionStyle || {};
   const resolveColor = (value: any, fallback: string) => {
@@ -115,6 +142,152 @@ const drawDecorationWidgets = (
   }
 };
 
+const buildSelectionOverlayItem = ({
+  settings,
+  selectionRects = [],
+  blockRects = [],
+}: {
+  settings: any;
+  selectionRects?: any[];
+  blockRects?: any[];
+}) => {
+  const hasSelectionRects = Array.isArray(selectionRects) && selectionRects.length > 0;
+  const hasBlockRects = Array.isArray(blockRects) && blockRects.length > 0;
+  const overlayRects = hasSelectionRects ? selectionRects : hasBlockRects ? blockRects : [];
+
+  if (overlayRects.length === 0) {
+    return null;
+  }
+
+  return {
+    kind: "selection-rects",
+    paint: (ctx: CanvasRenderingContext2D) => {
+      const selectionStyle = resolveSelectionStyle(settings);
+      const isBlockHighlightOnly = !hasSelectionRects && hasBlockRects;
+      const hasFillBase = !isBlockHighlightOnly && !!selectionStyle.fill;
+      const hasStroke = !!selectionStyle.stroke && selectionStyle.strokeWidth > 0;
+
+      if (hasFillBase) {
+        ctx.fillStyle = selectionStyle.fill;
+      }
+      if (hasStroke) {
+        ctx.strokeStyle = selectionStyle.stroke;
+        ctx.lineWidth = selectionStyle.strokeWidth;
+      }
+
+      for (const rect of overlayRects) {
+        const inset = selectionStyle.inset || 0;
+        const x = rect.x + inset;
+        const y = rect.y + inset;
+        const width = rect.width - inset * 2;
+        const height = rect.height - inset * 2;
+
+        if (width <= 0 || height <= 0) {
+          continue;
+        }
+
+        drawSelectionRectPath(ctx, x, y, width, height, selectionStyle.radius || 0);
+
+        const borderOnly = rect?.borderOnly === true;
+        if (hasFillBase && !borderOnly) {
+          ctx.fill();
+        }
+        if (hasStroke) {
+          ctx.stroke();
+        }
+      }
+    },
+  } satisfies RendererOverlayDisplayListItem;
+};
+
+const buildCaretOverlayItem = ({
+  clientHeight,
+  caret,
+}: {
+  clientHeight: number;
+  caret: any;
+}) => {
+  if (!caret) {
+    return null;
+  }
+  const caretBottom = caret.y + caret.height;
+  if (caretBottom < 0 || caret.y > clientHeight) {
+    return null;
+  }
+
+  return {
+    kind: "caret",
+    paint: (ctx: CanvasRenderingContext2D) => {
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(caret.x, caret.y, 1, caret.height);
+    },
+  } satisfies RendererOverlayDisplayListItem;
+};
+
+export const buildRendererOverlayDisplayList = ({
+  settings,
+  clientHeight,
+  caret,
+  selectionRects = [],
+  blockRects = [],
+  decorations = null,
+}: {
+  settings: any;
+  clientHeight: number;
+  caret: any;
+  selectionRects?: any[];
+  blockRects?: any[];
+  decorations?: DecorationDrawData | null;
+}): RendererOverlayDisplayList => {
+  const items: RendererOverlayDisplayListItem[] = [];
+
+  if (decorations?.inlineRects?.length) {
+    items.push({
+      kind: "decoration-inline-rects",
+      paint: (ctx) => drawDecorationRects(ctx, decorations.inlineRects),
+    });
+  }
+  if (decorations?.textSegments?.length) {
+    items.push({
+      kind: "decoration-text-segments",
+      paint: (ctx) => drawDecorationTexts(ctx, decorations.textSegments),
+    });
+  }
+  if (decorations?.nodeRects?.length) {
+    items.push({
+      kind: "decoration-node-rects",
+      paint: (ctx) => drawDecorationRects(ctx, decorations.nodeRects),
+    });
+  }
+  if (decorations?.widgets?.length) {
+    items.push({
+      kind: "decoration-widgets",
+      paint: (ctx) => drawDecorationWidgets(ctx, decorations.widgets),
+    });
+  }
+
+  const selectionItem = buildSelectionOverlayItem({
+    settings,
+    selectionRects,
+    blockRects,
+  });
+  if (selectionItem) {
+    items.push(selectionItem);
+  }
+
+  const caretItem = buildCaretOverlayItem({
+    clientHeight,
+    caret,
+  });
+  if (caretItem) {
+    items.push(caretItem);
+  }
+
+  return {
+    items,
+  };
+};
+
 export const renderOverlayLayer = ({
   ctx,
   settings,
@@ -132,60 +305,15 @@ export const renderOverlayLayer = ({
   blockRects?: any[];
   decorations?: DecorationDrawData | null;
 }) => {
-  if (decorations) {
-    drawDecorationRects(ctx, decorations.inlineRects);
-    drawDecorationTexts(ctx, decorations.textSegments);
-    drawDecorationRects(ctx, decorations.nodeRects);
-    drawDecorationWidgets(ctx, decorations.widgets);
-  }
-
-  const hasSelectionRects = Array.isArray(selectionRects) && selectionRects.length > 0;
-  const hasBlockRects = Array.isArray(blockRects) && blockRects.length > 0;
-  const overlayRects = hasSelectionRects ? selectionRects : hasBlockRects ? blockRects : [];
-
-  if (overlayRects.length > 0) {
-    const selectionStyle = resolveSelectionStyle(settings);
-    const isBlockHighlightOnly = !hasSelectionRects && hasBlockRects;
-    const hasFillBase = !isBlockHighlightOnly && !!selectionStyle.fill;
-    const hasStroke = !!selectionStyle.stroke && selectionStyle.strokeWidth > 0;
-
-    if (hasFillBase) {
-      ctx.fillStyle = selectionStyle.fill;
-    }
-    if (hasStroke) {
-      ctx.strokeStyle = selectionStyle.stroke;
-      ctx.lineWidth = selectionStyle.strokeWidth;
-    }
-
-    for (const rect of overlayRects) {
-      const inset = selectionStyle.inset || 0;
-      const x = rect.x + inset;
-      const y = rect.y + inset;
-      const width = rect.width - inset * 2;
-      const height = rect.height - inset * 2;
-
-      if (width <= 0 || height <= 0) {
-        continue;
-      }
-
-      drawSelectionRectPath(ctx, x, y, width, height, selectionStyle.radius || 0);
-
-      const borderOnly = rect?.borderOnly === true;
-      if (hasFillBase && !borderOnly) {
-        ctx.fill();
-      }
-      if (hasStroke) {
-        ctx.stroke();
-      }
-    }
-  }
-
-  if (!caret) {
-    return;
-  }
-  const caretBottom = caret.y + caret.height;
-  if (caretBottom >= 0 && caret.y <= clientHeight) {
-    ctx.fillStyle = "#111827";
-    ctx.fillRect(caret.x, caret.y, 1, caret.height);
-  }
+  executeRendererOverlayDisplayList({
+    ctx,
+    displayList: buildRendererOverlayDisplayList({
+      settings,
+      clientHeight,
+      caret,
+      selectionRects,
+      blockRects,
+      decorations,
+    }),
+  });
 };

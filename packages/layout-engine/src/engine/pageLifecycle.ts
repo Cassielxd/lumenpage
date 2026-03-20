@@ -1,5 +1,6 @@
 import { createPageBoxCollector, type PageBoxCollector } from "../pageBoxes";
 import { finalizeCurrentPage } from "./pageLifecycleFinalization";
+import type { PaginationSyncDiagnostics } from "./paginationDiagnostics";
 import { maybeSyncCurrentPage } from "./pageLifecycleSync";
 
 export type LayoutPaginationSession = {
@@ -11,10 +12,19 @@ export type LayoutPaginationSession = {
   textOffset: number;
   startBlockIndex: number;
   syncAfterIndex: number | null;
+  syncAfterTextOffset: number | null;
+  syncAfterOldTextOffset: number | null;
+  syncAfterFragmentAnchor: string | null;
+  syncAfterNewFragmentAnchor: string | null;
+  syncAfterFragmentPageIndex: number | null;
   canSync: boolean;
   passedChangedRange: boolean;
+  passedChangedFragmentAnchor: boolean;
+  passedChangedFragmentBoundary: boolean;
   shouldStop: boolean;
   syncFromIndex: number | null;
+  syncMatchPass: string | null;
+  syncDiagnostics: PaginationSyncDiagnostics | null;
   progressiveApplied: boolean;
   progressiveTruncated: boolean;
   resumeFromAnchor: boolean;

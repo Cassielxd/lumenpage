@@ -4,6 +4,7 @@ import {
   resolveLinkHrefAtPos,
   resolveLinkHrefAtSelection,
 } from "lumenpage-link";
+import { NodeSelection, TextSelection } from "lumenpage-state";
 import { getPageIndexForOffset } from "lumenpage-view-runtime";
 import {
   CanvasEditorView,
@@ -33,7 +34,7 @@ import {
   normalizePastedText,
   sanitizePastedHtml,
 } from "./pastePolicy";
-import { initialDocJson } from "../initialDoc";
+import { initialDocMinimalJson } from "../initialDocMinimal";
 
 type MountPlaygroundEditorParams = {
   host: HTMLElement;
@@ -57,6 +58,171 @@ type MountedPlaygroundEditor = {
   setTocOutlineEnabled: (enabled: boolean) => void;
   isTocOutlineEnabled: () => boolean;
   destroy: () => void;
+};
+
+const toFiniteNumber = (value: unknown) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+const readDomRect = (element: Element | null) => {
+  if (!(element instanceof HTMLElement)) {
+    return null;
+  }
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    width: rect.width,
+    height: rect.height,
+  };
+};
+
+const walkLayoutBoxes = (
+  boxes: any[],
+  visitor: (box: any, depth: number, parent: any) => void,
+  depth = 0,
+  parent: any = null
+) => {
+  if (!Array.isArray(boxes) || boxes.length === 0) {
+    return;
+  }
+  for (const box of boxes) {
+    if (!box) {
+      continue;
+    }
+    visitor(box, depth, parent);
+    if (Array.isArray(box.children) && box.children.length > 0) {
+      walkLayoutBoxes(box.children, visitor, depth + 1, box);
+    }
+  }
+};
+
+const countLayoutBoxes = (boxes: any[]) => {
+  let count = 0;
+  walkLayoutBoxes(boxes, () => {
+    count += 1;
+  });
+  return count;
+};
+
+const listNodeOverlays = () => {
+  if (typeof document === "undefined") {
+    return [];
+  }
+  return Array.from(document.querySelectorAll("[data-node-view-block-id]")).map((element) => {
+    const html = element as HTMLElement;
+    const rect = readDomRect(html);
+    return {
+      blockId: html.dataset.nodeViewBlockId ?? null,
+      key: html.dataset.nodeViewKey ?? null,
+      className: html.className || null,
+      rect,
+      styleWidth: html.style.width || null,
+      styleHeight: html.style.height || null,
+      styleTransform: html.style.transform || null,
+      visible:
+        html.style.display !== "none" &&
+        html.style.visibility !== "hidden" &&
+        rect != null &&
+        rect.width > 0 &&
+        rect.height > 0,
+    };
+  });
+};
+
+const findNodeByBlockId = (doc: any, blockId: string) => {
+  if (!doc || typeof doc.descendants !== "function" || !blockId) {
+    return null;
+  }
+  let match: Record<string, unknown> | null = null;
+  doc.descendants((node: any, pos: number) => {
+    if (String(node?.attrs?.blockId ?? "") !== blockId) {
+      return undefined;
+    }
+    match = {
+      pos,
+      nodeType: node?.type?.name ?? null,
+      attrs: node?.attrs ?? null,
+      nodeSize: Number(node?.nodeSize) || 0,
+    };
+    return false;
+  });
+  return match;
+};
+
+const collectBoxesForBlockId = (layout: any, blockId: string, scrollArea: HTMLElement | null) => {
+  if (!layout || !Array.isArray(layout.pages) || !blockId) {
+    return [];
+  }
+  const scrollTop = Number(scrollArea?.scrollTop) || 0;
+  const viewportWidth = Number(scrollArea?.clientWidth) || 0;
+  const pageWidth = Number(layout?.pageWidth) || 0;
+  const pageHeight = Number(layout?.pageHeight) || 0;
+  const pageGap = Number(layout?.pageGap) || 0;
+  const pageSpan = pageHeight + pageGap;
+  const pageX = Math.max(0, (viewportWidth - pageWidth) / 2);
+  const matches: Array<Record<string, unknown>> = [];
+
+  for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
+    const page = layout.pages[pageIndex];
+    walkLayoutBoxes(page?.boxes ?? [], (box, depth, parent) => {
+      const boxBlockId = String(box?.blockId ?? box?.nodeId ?? "");
+      if (boxBlockId !== blockId) {
+        return;
+      }
+      const x = toFiniteNumber(box?.x);
+      const y = toFiniteNumber(box?.y);
+      const width = toFiniteNumber(box?.width);
+      const height = toFiniteNumber(box?.height);
+      const pageTop = pageIndex * pageSpan - scrollTop;
+      matches.push({
+        pageIndex,
+        depth,
+        key: box?.key ?? null,
+        role: box?.role ?? null,
+        type: box?.type ?? null,
+        parentKey: parent?.key ?? null,
+        start: toFiniteNumber(box?.start),
+        end: toFiniteNumber(box?.end),
+        x,
+        y,
+        width,
+        height,
+        viewportLeft: x == null ? null : pageX + x,
+        viewportTop: y == null ? null : pageTop + y,
+        viewportRight: x == null || width == null ? null : pageX + x + width,
+        viewportBottom: y == null || height == null ? null : pageTop + y + height,
+        layoutCapabilities:
+          box?.layoutCapabilities ??
+          box?.meta?.layoutCapabilities ??
+          box?.blockAttrs?.layoutCapabilities ??
+          null,
+      });
+    });
+  }
+
+  return matches;
+};
+
+const readSelectionSummary = (view: CanvasEditorView | null) => {
+  const selection = view?.state?.selection;
+  if (!selection) {
+    return null;
+  }
+  return {
+    from: selection.from,
+    to: selection.to,
+    empty: selection.empty === true,
+    type:
+      selection instanceof NodeSelection
+        ? "NodeSelection"
+        : selection instanceof TextSelection
+          ? "TextSelection"
+          : selection.constructor?.name ?? null,
+  };
 };
 
 const isInTableAtResolvedPos = ($pos: any) => {
@@ -134,6 +300,7 @@ export const mountPlaygroundEditor = ({
     flags.enablePaginationWorker ? new PaginationDocWorkerClient() : null;
   const settings = createCanvasSettings(
     flags.debugPerf,
+    flags.debugGhostTrace,
     flags.enablePaginationWorker,
     flags.forcePaginationWorker,
     flags.locale,
@@ -308,7 +475,7 @@ export const mountPlaygroundEditor = ({
   const editor = new Editor({
     element: host,
     extensions: [...extensions, ...runtimeExtensions],
-    content: initialDocJson,
+      content: initialDocMinimalJson,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,
@@ -321,6 +488,102 @@ export const mountPlaygroundEditor = ({
     },
   });
   const view = editor.view!;
+  const inspectCurrentBlock = (blockId: string) => {
+    const normalizedBlockId = String(blockId || "");
+    if (!normalizedBlockId) {
+      return null;
+    }
+    const internals = view?._internals ?? null;
+    const layout = internals?.getLayout?.() ?? null;
+    const layoutIndex = internals?.getLayoutIndex?.() ?? null;
+    const renderer = internals?.renderer ?? null;
+    const scrollArea = internals?.dom?.scrollArea ?? null;
+    const boxMatches = collectBoxesForBlockId(layout, normalizedBlockId, scrollArea);
+    const pageIndexes = Array.from(
+      new Set(
+        boxMatches
+          .map((entry) => Number(entry.pageIndex))
+          .filter((value) => Number.isFinite(value))
+      )
+    ).sort((a, b) => a - b);
+    const overlayEntries = listNodeOverlays().filter(
+      (entry) => String(entry.blockId ?? "") === normalizedBlockId
+    );
+    const pageCache = renderer?.pageCache instanceof Map ? renderer.pageCache : null;
+    const pageCanvases = Array.isArray(renderer?.pageCanvases) ? renderer.pageCanvases : [];
+    const ghostTrace = Array.isArray((globalThis as any).__lumenGhostTrace)
+      ? (globalThis as any).__lumenGhostTrace
+      : [];
+
+    return {
+      blockId: normalizedBlockId,
+      selection: readSelectionSummary(view),
+      node: findNodeByBlockId(view.state?.doc, normalizedBlockId),
+      layoutVersion:
+        toFiniteNumber(layout?.__layoutVersion) ??
+        toFiniteNumber(renderer?.lastLayoutVersion) ??
+        null,
+      overlayEntries,
+      boxMatches,
+      layoutIndexStats: {
+        boxCount: Array.isArray(layoutIndex?.boxes) ? layoutIndex.boxes.length : 0,
+        textBoxCount: Array.isArray(layoutIndex?.textBoxes) ? layoutIndex.textBoxes.length : 0,
+        pageEntryCount: Array.isArray(layoutIndex?.pageEntries) ? layoutIndex.pageEntries.length : 0,
+      },
+      pages: pageIndexes.map((pageIndex) => {
+        const page = layout?.pages?.[pageIndex] ?? null;
+        const cacheEntry = pageCache?.get(pageIndex) ?? null;
+        const canvasSlot =
+          pageCanvases.find((entry: any) => Number(entry?.pageIndex) === pageIndex) ?? null;
+        return {
+          pageIndex,
+          rootIndexMin: toFiniteNumber(page?.rootIndexMin),
+          rootIndexMax: toFiniteNumber(page?.rootIndexMax),
+          lineCount: Array.isArray(page?.lines) ? page.lines.length : 0,
+          boxCount: countLayoutBoxes(page?.boxes ?? []),
+          cacheEntry: cacheEntry
+            ? {
+                dirty: cacheEntry.dirty === true,
+                width: toFiniteNumber(cacheEntry.width),
+                height: toFiniteNumber(cacheEntry.height),
+                signature: toFiniteNumber(cacheEntry.signature),
+                signatureVersion: toFiniteNumber(cacheEntry.signatureVersion),
+                displayListItemCount: Array.isArray(cacheEntry.displayList?.items)
+                  ? cacheEntry.displayList.items.length
+                  : 0,
+              }
+            : null,
+          canvasSlot: canvasSlot
+            ? {
+                pageIndex: toFiniteNumber(canvasSlot.pageIndex),
+                signature: toFiniteNumber(canvasSlot.signature),
+                dprX: toFiniteNumber(canvasSlot.dprX),
+                dprY: toFiniteNumber(canvasSlot.dprY),
+              }
+            : null,
+        };
+      }),
+      recentTrace: ghostTrace
+        .filter((entry: any) => {
+          if (String(entry?.blockId ?? "") === normalizedBlockId) {
+            return true;
+          }
+          if (pageIndexes.includes(Number(entry?.pageIndex))) {
+            return true;
+          }
+          return false;
+        })
+        .slice(-40),
+    };
+  };
+  if (typeof window !== "undefined") {
+    const debugWindow = window as Window & {
+      __inspectLumenBlock?: ((blockId: string) => Record<string, unknown> | null) | null;
+      __listLumenNodeOverlays?: (() => Array<Record<string, unknown>>) | null;
+    };
+    debugWindow.__inspectLumenBlock = (blockId: string) => inspectCurrentBlock(blockId);
+    debugWindow.__listLumenNodeOverlays = () => listNodeOverlays();
+  }
 
   let statsFrameId = 0;
   let statsTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -455,6 +718,14 @@ export const mountPlaygroundEditor = ({
     },
     isTocOutlineEnabled: () => tocOutlineController.isEnabled(),
     destroy: () => {
+      if (typeof window !== "undefined") {
+        const debugWindow = window as Window & {
+          __inspectLumenBlock?: ((blockId: string) => Record<string, unknown> | null) | null;
+          __listLumenNodeOverlays?: (() => Array<Record<string, unknown>>) | null;
+        };
+        debugWindow.__inspectLumenBlock = null;
+        debugWindow.__listLumenNodeOverlays = null;
+      }
       editor.off("update", handleEditorUpdate);
       editor.off("selectionUpdate", handleEditorSelectionUpdate);
       editor.off("transaction", handleEditorTransaction);

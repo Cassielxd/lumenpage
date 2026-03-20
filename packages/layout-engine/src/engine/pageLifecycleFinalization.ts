@@ -2,6 +2,7 @@ import {
   resolveFinalizePageReuseDecision,
   shouldStopAtProgressiveCutoff,
 } from "./pageContinuation";
+import { createPaginationSyncDiagnostics } from "./paginationDiagnostics";
 import { newPage, populatePageDerivedState } from "./pageState";
 
 export function finalizeCurrentPage(options: {
@@ -47,10 +48,17 @@ export function finalizeCurrentPage(options: {
       page: session.page,
       previousLayout,
       offsetDelta,
+      preferredBoundaryAnchor:
+        session.syncAfterNewFragmentAnchor ?? session.syncAfterFragmentAnchor ?? null,
     });
     if (finalizeReuseDecision) {
-      appendGhostTrace(ghostTrace, finalizeReuseDecision.trace);
+      appendGhostTrace(ghostTrace, {
+        ...finalizeReuseDecision.trace,
+        syncDiagnostics: finalizeReuseDecision.diagnostics ?? null,
+      });
       session.syncFromIndex = finalizeReuseDecision.syncFromIndex;
+      session.syncMatchPass = finalizeReuseDecision.trace?.matchPass ?? finalizeReuseDecision.reason;
+      session.syncDiagnostics = finalizeReuseDecision.diagnostics ?? null;
       session.progressiveApplied = true;
       session.shouldStop = true;
       if (perf) {
@@ -71,6 +79,12 @@ export function finalizeCurrentPage(options: {
     })
   ) {
     session.syncFromIndex = session.pageIndex;
+    session.syncMatchPass = "progressive-cutoff";
+    session.syncDiagnostics = createPaginationSyncDiagnostics({
+      source: "progressive-cutoff",
+      reason: "progressive-cutoff",
+      matchPass: "progressive-cutoff",
+    });
     session.progressiveApplied = true;
     session.progressiveTruncated = true;
     session.shouldStop = true;

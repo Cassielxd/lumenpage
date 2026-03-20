@@ -19,7 +19,15 @@
 3. 在只读/权限模式下行为一致。
 4. 有可重复验证路径（smoke 或明确手工回归用例）。
 
-## 2. 当前基线（2026-02-27）
+## 2. 工程接线现状（2026-03-19）
+
+- `docs/lumen-menu-feature-checklist.md` 现已按 `toolbarCatalog.ts` 自动同步
+- 当前工程接线统计：`102 / 102`
+- 其中工具域的 `diagrams`、`echarts`、`mermaid`、`mind-map` 已完成接线
+- 历史基线里的 `seal` 仍是扩展能力，但已不在当前 Lumen 工具栏目录中，因此菜单总数从 `103` 调整为 `102`
+- 本文后续仍按“产品完成”口径跟踪，不等同于单纯 `implemented=true`
+
+## 3. 历史基线（2026-02-27）
 
 - 菜单总项：`103`
 - 接线完成：`99`
@@ -37,7 +45,7 @@
 - 顶部 `export` Tab 按产品策略默认隐藏，但导出能力仍在“开始”区复用。
 - 实时接线清单以 `docs/lumen-menu-feature-checklist.md` 为准。
 
-## 3. 产品收口优先级
+## 4. 产品收口优先级
 
 ### P0：完成 4 项未接线能力
 
@@ -58,7 +66,7 @@
 2. 在 `readonly/comment/full` 三种模式下补行为回归。
 3. 每次交付同步更新本文件和 `lumen-menu-feature-checklist.md`。
 
-## 4. 验收 DoD（单项）
+## 5. 验收 DoD（单项）
 
 - [ ] 接线完成且命令可触发
 - [ ] 无 `window.prompt/alert` 主流程

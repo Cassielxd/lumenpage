@@ -2,7 +2,11 @@ import { materializePageGeometry } from "../pageGeometry";
 import { getPageSignature } from "./pageReuseSignature";
 import {
   applyContinuationMetadataPatch,
+  buildPageBoundaryAnchorToken,
+  getPageFragmentAnchorSummary,
+  getPageFragmentChainSignature,
   hashFragmentContinuationState,
+  pageHasFragmentAnchor,
   readLineFragmentContinuationState,
 } from "./fragmentContinuation";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
@@ -12,7 +16,12 @@ import { getObjectSignature, hashNumber, hashString } from "./signature";
  */
 export function getPageExitToken(page: any, offsetDelta = 0) {
   const lines = Array.isArray(page?.lines) ? page.lines : [];
-  const line = lines.length > 0 ? lines[lines.length - 1] : null;
+  const fragmentAnchorSummary = getPageFragmentAnchorSummary(page);
+  const anchorLineIndex =
+    fragmentAnchorSummary.lastFragmentAnchorLineIndex != null
+      ? fragmentAnchorSummary.lastFragmentAnchorLineIndex
+      : lines.length - 1;
+  const line = anchorLineIndex >= 0 ? lines[anchorLineIndex] : null;
   if (!line) {
     return "empty";
   }
@@ -24,6 +33,7 @@ export function getPageExitToken(page: any, offsetDelta = 0) {
   hash = hashString(hash, "page-exit");
   hash = hashString(hash, line.blockType || "");
   hash = hashString(hash, line.blockId || "");
+  hash = hashString(hash, fragmentAnchorSummary.lastFragmentAnchor || "");
   hash = hashNumber(hash, Number.isFinite(line.rootIndex) ? Number(line.rootIndex) : -1);
   hash = hashNumber(hash, Number.isFinite(line.blockSignature) ? Number(line.blockSignature) : 0);
   hash = hashNumber(
@@ -80,7 +90,15 @@ export function applyFragmentContinuation(lines: any[], continuation: any) {
 /**
  * 比较新旧页面在给定 offset 偏移下是否可视等价。
  */
-export function arePagesEquivalent(nextPage: any, prevPage: any, debug: any, offsetDelta = 0) {
+export function arePagesEquivalent(
+  nextPage: any,
+  prevPage: any,
+  debug: any,
+  offsetDelta = 0,
+  options: {
+    expectedBoundaryAnchor?: string | null;
+  } = {}
+) {
   if (!nextPage || !prevPage) {
     if (debug) {
       debug.reason = "missing-page";
@@ -97,8 +115,66 @@ export function arePagesEquivalent(nextPage: any, prevPage: any, debug: any, off
     }
     return false;
   }
+  const expectedBoundaryAnchor =
+    typeof options.expectedBoundaryAnchor === "string" && options.expectedBoundaryAnchor.trim()
+      ? options.expectedBoundaryAnchor.trim()
+      : null;
+  if (expectedBoundaryAnchor && !pageHasFragmentAnchor(prevPage, expectedBoundaryAnchor)) {
+    if (debug) {
+      debug.reason = "expected-boundary-anchor";
+      debug.expectedBoundaryAnchor = expectedBoundaryAnchor;
+      debug.nextHasExpectedBoundaryAnchor = pageHasFragmentAnchor(nextPage, expectedBoundaryAnchor);
+      debug.prevHasExpectedBoundaryAnchor = false;
+    }
+    return false;
+  }
+  const nextFragmentSummary = getPageFragmentAnchorSummary(nextPage);
+  const prevFragmentSummary = getPageFragmentAnchorSummary(prevPage);
+  const nextFragmentSignature = getPageFragmentChainSignature(nextPage);
+  const prevFragmentSignature = getPageFragmentChainSignature(prevPage);
+  const hasFragmentSummary =
+    nextFragmentSummary.fragmentAnchors.length > 0 || prevFragmentSummary.fragmentAnchors.length > 0;
+  if (hasFragmentSummary && nextFragmentSignature !== prevFragmentSignature) {
+    if (debug) {
+      debug.reason = "fragment-signature";
+      debug.nextFragmentSignature = nextFragmentSignature;
+      debug.prevFragmentSignature = prevFragmentSignature;
+      debug.nextFragmentAnchors = nextFragmentSummary.fragmentAnchors.slice(0, 8);
+      debug.prevFragmentAnchors = prevFragmentSummary.fragmentAnchors.slice(0, 8);
+    }
+    return false;
+  }
+  const nextVisualSig = getPageSignature(nextPage, 0, false);
+  const prevVisualSig = getPageSignature(prevPage, 0, false);
+  if (expectedBoundaryAnchor) {
+    const nextBoundaryToken = buildPageBoundaryAnchorToken(nextPage, expectedBoundaryAnchor);
+    const prevBoundaryToken = buildPageBoundaryAnchorToken(prevPage, expectedBoundaryAnchor);
+    if (nextBoundaryToken === prevBoundaryToken && nextVisualSig === prevVisualSig) {
+      if (debug) {
+        debug.matchStage = "boundary-token";
+        debug.expectedBoundaryAnchor = expectedBoundaryAnchor;
+        debug.nextBoundaryToken = nextBoundaryToken;
+        debug.prevBoundaryToken = prevBoundaryToken;
+      }
+      return true;
+    }
+  }
+  if (nextVisualSig !== prevVisualSig) {
+    if (debug) {
+      debug.reason = "visual-signature";
+      debug.nextVisualSig = nextVisualSig;
+      debug.prevVisualSig = prevVisualSig;
+    }
+    return false;
+  }
   const nextSig = getPageSignature(nextPage, 0, true);
   const prevSig = getPageSignature(prevPage, offsetDelta, true);
+  if (nextSig === prevSig) {
+    if (debug) {
+      debug.matchStage = "absolute-signature";
+    }
+    return true;
+  }
   if (nextSig !== prevSig && debug) {
     debug.reason = "signature";
     debug.nextSig = nextSig;
@@ -144,7 +220,7 @@ export function arePagesEquivalent(nextPage: any, prevPage: any, debug: any, off
     }
     debug.sample = sample;
   }
-  return nextSig === prevSig;
+  return false;
 }
 
 /**

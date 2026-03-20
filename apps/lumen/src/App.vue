@@ -90,7 +90,7 @@ import {
   watch,
   type Ref,
 } from "vue";
-import { TextSelection } from "lumenpage-state";
+import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
@@ -211,6 +211,86 @@ const footerContactLabel = computed(() =>
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 
+type LumenSelectionSnapshot = {
+  from: number;
+  to: number;
+  empty: boolean;
+  type: string | null;
+};
+
+type LumenTestApi = {
+  forceRender: () => boolean;
+  getSelection: () => LumenSelectionSnapshot | null;
+  setJSON: (docJson: unknown) => boolean;
+  setSelection: (from: number, to: number) => boolean;
+};
+
+type LumenDebugWindow = Window & {
+  __lumenView?: CanvasEditorView | null;
+  __lumenTestApi?: LumenTestApi | null;
+};
+
+const clampSelectionPos = (doc: CanvasEditorView["state"]["doc"] | null | undefined, pos: number) => {
+  const contentSize = Number(doc?.content?.size);
+  if (!Number.isFinite(contentSize)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(contentSize, Math.floor(pos)));
+};
+
+const readSelectionSnapshot = (currentView: CanvasEditorView | null): LumenSelectionSnapshot | null => {
+  const selection = currentView?.state?.selection;
+  if (!selection) {
+    return null;
+  }
+  return {
+    from: Number(selection.from),
+    to: Number(selection.to),
+    empty: selection.empty === true,
+    type: selection.constructor?.name ?? null,
+  };
+};
+
+const setViewSelection = (currentView: CanvasEditorView | null, from: number, to: number) => {
+  const doc = currentView?.state?.doc;
+  const tr = currentView?.state?.tr;
+  if (!doc || !tr) {
+    return false;
+  }
+  const anchor = clampSelectionPos(doc, from);
+  const head = clampSelectionPos(doc, to);
+  try {
+    const nextSelection =
+      anchor === head
+        ? Selection.near(doc.resolve(head), 1)
+        : TextSelection.create(doc, Math.min(anchor, head), Math.max(anchor, head));
+    currentView.dispatch(tr.setSelection(nextSelection).scrollIntoView());
+    return true;
+  } catch (_error) {
+    return false;
+  }
+};
+
+const syncDebugHandles = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const debugWindow = window as LumenDebugWindow;
+  const currentView = view.value;
+  debugWindow.__lumenView = currentView ?? null;
+  debugWindow.__lumenTestApi = currentView
+    ? {
+        forceRender: () => {
+          currentView.forceRender();
+          return true;
+        },
+        getSelection: () => readSelectionSnapshot(currentView),
+        setJSON: (docJson: unknown) => currentView.setJSON(docJson),
+        setSelection: (from: number, to: number) => setViewSelection(currentView, from, to),
+      }
+    : null;
+};
+
 const applySessionModeToView = () => {
   const currentView = view.value;
   if (!currentView) {
@@ -298,6 +378,7 @@ onMounted(async () => {
     onStatsChange: handleStatsChange,
   });
   view.value = mounted.view;
+  syncDebugHandles();
   setTocOutlineEnabled = mounted.setTocOutlineEnabled;
   applySessionModeToView();
   detachEditor = mounted.destroy;
@@ -315,6 +396,7 @@ onBeforeUnmount(() => {
   detachEditor = null;
   setTocOutlineEnabled = null;
   view.value = null;
+  syncDebugHandles();
   tocItems.value = [];
   activeTocId.value = null;
   footerStats.value = {

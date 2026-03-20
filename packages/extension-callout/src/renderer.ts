@@ -1,3 +1,5 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
 
 const TONE_STYLES: Record<string, { border: string; background: string; accent: string; label: string }> = {
@@ -9,39 +11,51 @@ const TONE_STYLES: Record<string, { border: string; background: string; accent: 
 
 const resolveToneStyle = (tone: unknown) => TONE_STYLES[String(tone || "")] || TONE_STYLES.info;
 
+const buildCalloutLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const style = resolveToneStyle(attrs.tone);
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(560, maxWidth)));
+  const height = 96;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "callout",
+    blockAttrs: { lineHeight: height, width, height },
+    calloutMeta: {
+      title: trimText(attrs.title) || "Callout",
+      text: trimText(attrs.text) || "Note",
+      width,
+      height,
+      style,
+    },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
+
 export const calloutRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("callout", buildCalloutLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const style = resolveToneStyle(attrs.tone);
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(560, maxWidth)));
-    const height = 96;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "callout",
-      blockAttrs: { lineHeight: height, width, height },
-      calloutMeta: {
-        title: trimText(attrs.title) || "Callout",
-        text: trimText(attrs.text) || "Note",
-        width,
-        height,
-        style,
-      },
-    };
+    const layout = buildCalloutLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "callout",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {

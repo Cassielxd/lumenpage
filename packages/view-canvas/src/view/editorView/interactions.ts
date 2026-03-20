@@ -67,6 +67,7 @@ export const createInteractionPipeline = ({
     getTextLength,
     posAtCoords,
     queryEditorProp,
+    getState,
   });
 
   const dragHandlers = createDragHandlers({

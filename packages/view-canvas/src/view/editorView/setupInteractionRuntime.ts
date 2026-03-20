@@ -231,6 +231,19 @@ export const createEditorViewInteractionRuntime = ({
     updateStatus,
     updateCaret,
     scheduleRender,
+    shouldDeferVisualSync: () => runtimeState.getPendingChangeSummary()?.docChanged === true,
+    syncNodeViewOverlays: () => {
+      const layout = runtimeState.getLayout();
+      const layoutIndex = runtimeState.getLayoutIndex();
+      if (!layout || !layoutIndex) {
+        return;
+      }
+      nodeViewManager.syncNodeViewOverlays({
+        layout,
+        layoutIndex,
+        scrollArea: dom.scrollArea,
+      });
+    },
     eventTiming: false,
   });
 
@@ -247,3 +260,4 @@ export const createEditorViewInteractionRuntime = ({
     eventHandlers,
   };
 };
+

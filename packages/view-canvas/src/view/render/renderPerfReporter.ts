@@ -24,10 +24,14 @@ export type RendererPerfSummary = {
   cacheSize: number;
   signatureComputedPages: number;
   signatureSkippedPages: number;
-  signatureMs: number;
+  displayListBuiltPages: number;
+  displayListReusedPages: number;
+  displayListItemCount: number;
+  displayListBuildMs: number;
   renderPagesMs: number;
   compositeMs: number;
   overlayMs: number;
+  overlayDisplayListItemCount: number;
   pageTrace?: any[];
 };
 
@@ -104,10 +108,14 @@ export const reportRendererPerf = ({
       `  cacheSize: ${summary.cacheSize}`,
       `  sigComputed: ${summary.signatureComputedPages}`,
       `  sigSkipped: ${summary.signatureSkippedPages}`,
-      `  signatureMs: ${summary.signatureMs}`,
+      `  planBuilt: ${summary.displayListBuiltPages}`,
+      `  planReused: ${summary.displayListReusedPages}`,
+      `  planItems: ${summary.displayListItemCount}`,
+      `  planBuildMs: ${summary.displayListBuildMs}`,
       `  renderPagesMs: ${summary.renderPagesMs}`,
       `  compositeMs: ${summary.compositeMs}`,
       `  overlayMs: ${summary.overlayMs}`,
+      `  overlayPlanItems: ${summary.overlayDisplayListItemCount}`,
     ].join("\n");
   }
 
@@ -141,6 +149,12 @@ export const reportRendererPerf = ({
       cachedPages: summary.cachedPages,
       signatureComputedPages: summary.signatureComputedPages,
       signatureSkippedPages: summary.signatureSkippedPages,
+      displayListBuiltPages: summary.displayListBuiltPages,
+      displayListReusedPages: summary.displayListReusedPages,
+      displayListItemCount: summary.displayListItemCount,
+      displayListBuildMs: summary.displayListBuildMs,
+      overlayMs: summary.overlayMs,
+      overlayDisplayListItemCount: summary.overlayDisplayListItemCount,
       pageTrace: summary.pageTrace || [],
     },
     settings

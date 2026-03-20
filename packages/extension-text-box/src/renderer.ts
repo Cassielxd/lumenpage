@@ -1,36 +1,50 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
+
+const buildTextBoxLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(420, maxWidth)));
+  const height = 120;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "textBox",
+    blockAttrs: { lineHeight: height, width, height },
+    textBoxMeta: {
+      title: trimText(attrs.title) || "Text Box",
+      text: trimText(attrs.text) || "Text",
+      width,
+      height,
+    },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
 
 export const textBoxRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("textBox", buildTextBoxLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(420, maxWidth)));
-    const height = 120;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "textBox",
-      blockAttrs: { lineHeight: height, width, height },
-      textBoxMeta: {
-        title: trimText(attrs.title) || "Text Box",
-        text: trimText(attrs.text) || "Text",
-        width,
-        height,
-      },
-    };
+    const layout = buildTextBoxLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "textBox",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {

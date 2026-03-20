@@ -26,6 +26,8 @@ export const createNodeViewDocumentSync = ({
       return;
     }
     managerState.nodeViews.delete(entry.key);
+    managerState.lastVisibleOverlayKeys?.delete?.(entry.key);
+    managerState.lastOverlayStateByKey?.delete?.(entry.key);
     if (entry.blockId && managerState.nodeViewsByBlockId.get(entry.blockId) === entry) {
       managerState.nodeViewsByBlockId.delete(entry.blockId);
     }
@@ -84,7 +86,7 @@ export const createNodeViewDocumentSync = ({
       } else {
         const shouldUpdate = entry.view?.update?.(node, decorations);
         if (shouldUpdate === false) {
-          entry.view?.destroy?.();
+          destroyEntry(entry);
           entry = createEntry(node, pos, factory, key);
           if (!entry) {
             return;
@@ -104,7 +106,7 @@ export const createNodeViewDocumentSync = ({
 
     for (const [key, entry] of managerState.nodeViews.entries()) {
       if (!nextViews.has(key)) {
-        entry.view?.destroy?.();
+        destroyEntry(entry);
       }
     }
 
@@ -212,6 +214,7 @@ export const createNodeViewDocumentSync = ({
     managerState.nodeViewsByBlockId.clear();
     managerState.selectedNodeViewKey = null;
     managerState.lastVisibleOverlayKeys = new Set();
+    managerState.lastOverlayStateByKey.clear();
   };
 
   return {

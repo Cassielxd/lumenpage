@@ -1,5 +1,28 @@
 import { getCaretFromPoint } from "../../caret";
 
+const resolveClosestNodeViewBlockId = (event: any) => {
+  const target = event?.target;
+  if (!target || typeof target.closest !== "function") {
+    return null;
+  }
+  return target.closest("[data-node-view-block-id]")?.getAttribute("data-node-view-block-id") || null;
+};
+
+const getDocPosByBlockId = (doc: any, blockId: string | null) => {
+  if (!doc || !blockId || typeof doc.descendants !== "function") {
+    return null;
+  }
+  let found: number | null = null;
+  doc.descendants((node: any, pos: number) => {
+    if (node?.attrs?.id === blockId) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
 export const createInteractionResolvers = ({
   dom,
   getLayout,
@@ -7,6 +30,7 @@ export const createInteractionResolvers = ({
   getTextLength,
   posAtCoords,
   queryEditorProp,
+  getState,
 }: {
   dom: any;
   getLayout: () => any;
@@ -14,6 +38,7 @@ export const createInteractionResolvers = ({
   getTextLength: () => number;
   posAtCoords: any;
   queryEditorProp?: (name: any, ...args: any[]) => any;
+  getState?: () => any;
 }) => {
   const resolveOffsetAtCoords = (
     layout: any,
@@ -21,7 +46,7 @@ export const createInteractionResolvers = ({
     y: number,
     scrollTop: number,
     clientWidth: number,
-    textLength: number
+    textLength: number,
   ) =>
     posAtCoords(layout, x, y, scrollTop, clientWidth, textLength, {
       layoutIndex: getLayoutIndex?.() ?? null,
@@ -37,7 +62,7 @@ export const createInteractionResolvers = ({
       getTextLength(),
       {
         layoutIndex: getLayoutIndex?.() ?? null,
-      }
+      },
     );
 
   const resolveDragNodePosFromEvent = (event: any) => {
@@ -48,9 +73,22 @@ export const createInteractionResolvers = ({
     return null;
   };
 
+  const resolveNodeSelectionPosFromEvent = (event: any) => {
+    const fromProps = queryEditorProp?.("resolveNodeSelectionPos", event);
+    if (Number.isFinite(fromProps)) {
+      return fromProps;
+    }
+    const blockId = resolveClosestNodeViewBlockId(event);
+    if (!blockId) {
+      return null;
+    }
+    return getDocPosByBlockId(getState?.()?.doc, blockId);
+  };
+
   return {
     resolveOffsetAtCoords,
     resolveHitAtCoords,
     resolveDragNodePosFromEvent,
+    resolveNodeSelectionPosFromEvent,
   };
 };

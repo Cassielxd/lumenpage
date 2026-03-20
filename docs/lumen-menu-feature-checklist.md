@@ -2,9 +2,9 @@
 
 - Source: `apps/lumen/src/editor/toolbarCatalog.ts`
 - Rule: `implemented=true` means checked.
-- Stats: total `103`, done `99`, pending `4`.
+- Stats: total `102`, done `102`, pending `0`.
 - Product completeness baseline: see `docs/lumen-product-completion-plan.md` (该文档为产品态口径，不等于 `implemented=true`)。
-- Updated: 2026-02-27
+- Updated: 2026-03-19
 
 ## base (36/36)
 
@@ -91,16 +91,15 @@
 - [x] `previous-cell` (Previous Cell), action: `previous-cell`, command: `goToPreviousTableCell`
 - [x] `delete-table` (Delete Table), action: `delete-table`
 
-## tools (5/9)
+## tools (8/8)
 
 - [x] `qrcode` (QR Code), action: `qrcode`
 - [x] `barcode` (Barcode), action: `barcode`
 - [x] `signature` (Signature), action: `signature`
-- [x] `seal` (Seal), action: `seal`
-- [ ] `diagrams` (Diagrams), action: `diagrams`
-- [ ] `echarts` (ECharts), action: `echarts`
-- [ ] `mermaid` (Mermaid), action: `mermaid`
-- [ ] `mind-map` (Mind Map), action: `mind-map`
+- [x] `diagrams` (Diagrams), action: `diagrams`
+- [x] `echarts` (ECharts), action: `echarts`
+- [x] `mermaid` (Mermaid), action: `mermaid`
+- [x] `mind-map` (Mind Map), action: `mind-map`
 - [x] `chinese-case` (Chinese Case), action: `chinese-case`
 
 ## page (11/11)

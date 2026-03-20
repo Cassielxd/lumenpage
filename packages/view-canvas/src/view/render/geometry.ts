@@ -1,5 +1,4 @@
 import { getNearestContentOwner } from "../layoutSemantics";
-import { resolveLegacyLineVisualBounds } from "../legacyVisualBounds";
 import { getTextLineItemsInRange } from "../layoutIndex";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
@@ -11,6 +10,15 @@ const isTextLineBox = (box: any) =>
 const toFiniteNumber = (value: unknown) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+};
+
+const resolveFallbackLineVisualBounds = (line: any) => {
+  const x = toFiniteNumber(line?.blockAttrs?.codeBlockOuterX);
+  const width = toFiniteNumber(line?.blockAttrs?.codeBlockOuterWidth);
+  if (x == null && width == null) {
+    return null;
+  }
+  return { x, width };
 };
 
 const getBoxArea = (box: any) => {
@@ -407,11 +415,11 @@ export const resolveLineContentBox = (line: any, layout: any) => {
   const owner = getNearestContentOwner(line);
   const lineX = toFiniteNumber(line?.x) ?? toFiniteNumber(layout?.margin?.left) ?? 0;
   const visualBounds = getExplicitVisualBounds(line);
-  const legacyVisualBounds = resolveLegacyLineVisualBounds(line);
+  const fallbackVisualBounds = resolveFallbackLineVisualBounds(line);
   const blockOuterX =
-    toFiniteNumber(visualBounds?.x) ?? toFiniteNumber(legacyVisualBounds?.x);
+    toFiniteNumber(visualBounds?.x) ?? toFiniteNumber(fallbackVisualBounds?.x);
   const blockOuterWidth =
-    toFiniteNumber(visualBounds?.width) ?? toFiniteNumber(legacyVisualBounds?.width);
+    toFiniteNumber(visualBounds?.width) ?? toFiniteNumber(fallbackVisualBounds?.width);
 
   let x = blockOuterX ?? toFiniteNumber(owner?.x) ?? lineX;
   let width = blockOuterWidth ?? toFiniteNumber(owner?.width) ?? getLayoutContentWidth(layout);
@@ -433,11 +441,11 @@ export const resolveLineVisualBox = (line: any, layout: any) => {
   const lineX = toFiniteNumber(line?.x) ?? contentBox.x;
   const lineWidth = Math.max(0, toFiniteNumber(line?.width) ?? 0);
   const visualBounds = getExplicitVisualBounds(line);
-  const legacyVisualBounds = resolveLegacyLineVisualBounds(line);
+  const fallbackVisualBounds = resolveFallbackLineVisualBounds(line);
   const outerX =
-    toFiniteNumber(visualBounds?.x) ?? toFiniteNumber(legacyVisualBounds?.x) ?? lineX;
+    toFiniteNumber(visualBounds?.x) ?? toFiniteNumber(fallbackVisualBounds?.x) ?? lineX;
   let outerWidth =
-    toFiniteNumber(visualBounds?.width) ?? toFiniteNumber(legacyVisualBounds?.width);
+    toFiniteNumber(visualBounds?.width) ?? toFiniteNumber(fallbackVisualBounds?.width);
 
   if (!(outerWidth > 0)) {
     outerWidth = lineWidth > 0 ? lineWidth : contentBox.width;

@@ -13,6 +13,7 @@ import {
   resolveLeafSplitAction,
 } from "../paginationPolicy";
 import { ensureBlockFragmentOwner } from "lumenpage-render-engine";
+import { updateChangedBoundaryProgress } from "./changeBoundary";
 
 export function layoutLeafBlockOnPage(options: {
   session: any;
@@ -78,6 +79,7 @@ export function layoutLeafBlockOnPage(options: {
 
   if (blockTypeName === "pageBreak") {
     session.textOffset += 1;
+    updateChangedBoundaryProgress(session);
     if (session.page.lines.length > 0) {
       if (finalizePage()) {
         return true;
@@ -110,6 +112,7 @@ export function layoutLeafBlockOnPage(options: {
     blockAttrs: resolvedBlockAttrs,
     blockLineHeight,
     blockSignature,
+    measuredLayoutModel,
   } = resolveLeafBlockLayout({
     block,
     blockId,
@@ -191,11 +194,32 @@ export function layoutLeafBlockOnPage(options: {
     return true;
   };
 
-  while (remainingLines.length > 0) {
+  let hasPlacedContent = false;
+  const hasModernPagination = typeof renderer?.paginateBlock === "function";
+  if (hasModernPagination && !measuredLayoutModel) {
+    throw new Error(
+      `[pagination-modernization] Leaf block "${blockTypeName || "unknown"}" did not produce a measured layout model for modern pagination.`,
+    );
+  }
+  let modernCursor =
+    hasModernPagination
+      ? {
+          nodeId: blockId,
+          blockId,
+          startPos: blockStart,
+          endPos: blockStart + Math.max(0, Number(blockLength || 0)),
+          localCursor: null,
+          meta: {
+            source: "layout-leaf-traversal",
+          },
+        }
+      : null;
+
+  while ((modernCursor != null && hasModernPagination) || remainingLines.length > 0) {
     if (session.shouldStop) {
       return true;
     }
-    if (remainingLines === safeLines && spacingBefore > 0) {
+    if (!hasPlacedContent && spacingBefore > 0) {
       if (session.cursorY + spacingBefore > pageHeight - margin.bottom) {
         if (finalizePage()) {
           return true;
@@ -203,6 +227,59 @@ export function layoutLeafBlockOnPage(options: {
       }
       session.cursorY += spacingBefore;
     }
+
+    if (modernCursor && hasModernPagination) {
+      const availableHeight = pageHeight - margin.bottom - session.cursorY;
+      const modernResult = renderer.paginateBlock({
+        node: block,
+        measured: measuredLayoutModel,
+        cursor: modernCursor,
+        availableHeight,
+        settings: blockSettings,
+        registry,
+        indent: context.indent,
+        containerStack,
+        blockAttrs,
+        lineHeight: lineHeightValue,
+        pageHasLines: session.page.lines.length > 0,
+        blockStart,
+        rootIndex: context.rootIndex,
+      });
+
+      const modernSlice = modernResult?.slice ?? null;
+      const modernSliceLines = Array.isArray(modernSlice?.lines) ? modernSlice.lines : [];
+      const nextModernCursor = modernResult?.nextCursor ?? modernSlice?.nextCursor ?? null;
+
+      if (modernSlice && modernSliceLines.length > 0) {
+        placeLines(modernSliceLines);
+        session.cursorY += measureLinesHeight(modernSliceLines, lineHeightValue);
+        hasPlacedContent = true;
+        modernCursor = nextModernCursor;
+        if (modernCursor) {
+          if (finalizePage()) {
+            return true;
+          }
+          continue;
+        }
+        remainingLines = [];
+        break;
+      }
+
+      if (modernSlice && nextModernCursor && session.page.lines.length > 0) {
+        modernCursor = nextModernCursor;
+        if (finalizePage()) {
+          return true;
+        }
+        continue;
+      }
+
+      modernCursor = null;
+    }
+
+    if (remainingLines.length === 0) {
+      break;
+    }
+
     const availableHeight = pageHeight - margin.bottom - session.cursorY;
     if (remainingHeight > availableHeight) {
       const splitAction = resolveLeafSplitAction({
@@ -234,6 +311,7 @@ export function layoutLeafBlockOnPage(options: {
         if (!placeForcedFirstLine()) {
           break;
         }
+        hasPlacedContent = true;
         if (finalizePage()) {
           return true;
         }
@@ -242,6 +320,7 @@ export function layoutLeafBlockOnPage(options: {
       if (splitAction.kind === "place-whole-unsplittable") {
         placeLines(remainingLines);
         session.cursorY += remainingHeight;
+        hasPlacedContent = true;
         remainingLines = [];
         break;
       }
@@ -257,6 +336,7 @@ export function layoutLeafBlockOnPage(options: {
       if (splitAction.kind === "place-visible-split") {
         placeLines(splitAction.visible.lines);
         session.cursorY += splitAction.visible.height;
+        hasPlacedContent = true;
         const hasOverflow = !!splitAction.overflow && splitAction.overflow.lines.length > 0;
         if (finalizePage()) {
           return true;
@@ -273,10 +353,12 @@ export function layoutLeafBlockOnPage(options: {
     }
     placeLines(remainingLines);
     session.cursorY += remainingHeight;
+    hasPlacedContent = true;
     remainingLines = [];
   }
 
   session.textOffset += blockLength;
+  updateChangedBoundaryProgress(session);
 
   if (spacingAfter > 0) {
     session.cursorY += spacingAfter;
@@ -293,3 +375,7 @@ export function layoutLeafBlockOnPage(options: {
 
   return session.shouldStop;
 }
+
+
+
+

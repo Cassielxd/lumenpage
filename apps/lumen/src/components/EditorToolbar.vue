@@ -32,6 +32,7 @@
                 <div
                   v-if="isHeadingInlineBoxItem(item)"
                   class="heading-inline-box heading-inline-surface"
+                  :data-toolbar-action="item.action"
                 >
                   <button
                     v-for="option in headingInlineVisibleOptions"
@@ -71,6 +72,7 @@
                     v-model="fontFamilyValue"
                     size="small"
                     class="toolbar-inline-select toolbar-inline-select--font"
+                    data-toolbar-action="font-family"
                     :disabled="isItemDisabled(item)"
                     :options="fontFamilyOptions"
                     @change="handleInlineFontFamilyChange"
@@ -81,6 +83,7 @@
                     v-model="fontSizeValue"
                     size="small"
                     class="toolbar-inline-select toolbar-inline-select--size"
+                    data-toolbar-action="font-size"
                     :disabled="isItemDisabled(item)"
                     :options="fontSizeOptions"
                     @change="handleInlineFontSizeChange"
@@ -91,6 +94,7 @@
                     size="small"
                     variant="text"
                     class="icon-btn"
+                    :data-toolbar-action="item.action"
                     :class="{
                       'icon-btn--with-label': shouldShowItemDescription(group),
                       'icon-btn--base': isBaseGridGroup(group),

@@ -8,7 +8,6 @@ import {
   normalizeTableSelectionSemantics,
   type TableSelectionSemantics,
 } from "../view/tableSelectionSemantics";
-import { splitTableBlock } from "./tablePagination/split";
 
 type TableSelectionGeometryConfig = TableSelectionSemantics;
 
@@ -97,11 +96,4 @@ export const createTableSelectionGeometry = (config?: TableSelectionGeometryConf
   });
 };
 
-export const tableRenderer = {
-  ...baseTableRenderer,
-  splitBlock: splitTableBlock,
-  pagination: {
-    fragmentModel: "continuation",
-    reusePolicy: "actual-slice-only",
-  },
-};
+export const tableRenderer = baseTableRenderer;

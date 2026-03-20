@@ -96,12 +96,26 @@ export const createRenderSync = ({
   };
 
   const hasPendingLayoutWork = () => layoutPassCoordinator?.isPending() === true;
+  const hasPendingDocLayout = () => getPendingChangeSummary?.()?.docChanged === true;
+
+  const cancelScheduledRender = () => {
+    const renderRafId = getRafId();
+    if (!renderRafId) {
+      return;
+    }
+    cancelAnimationFrame(renderRafId);
+    setRafId(0);
+  };
 
   const scheduleRender = () => {
+    if (hasPendingLayoutWork() || hasPendingDocLayout()) {
+      return;
+    }
     renderFrameCoordinator?.scheduleRender();
   };
 
   const scheduleLayout = () => {
+    cancelScheduledRender();
     layoutPassCoordinator?.scheduleLayout();
   };
 
@@ -217,6 +231,7 @@ export const createRenderSync = ({
   });
 
   const updateLayout = () => {
+    cancelScheduledRender();
     layoutPassCoordinator?.updateLayout();
   };
 

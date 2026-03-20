@@ -8,6 +8,7 @@
           size="small"
           variant="text"
           class="menu-trigger menu-tab-trigger"
+          :data-toolbar-menu="item.value"
           :class="{ 'is-active': item.value === resolvedActiveMenu }"
           role="tab"
           :aria-selected="item.value === resolvedActiveMenu"

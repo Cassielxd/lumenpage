@@ -166,6 +166,92 @@ const getLineItemsInRange = (layout, layoutIndex, minOffset, maxOffset) => {
   return items;
 };
 
+const hasVisualBlockCapability = (box: any) => {
+  const capabilities = box?.layoutCapabilities ?? box?.blockAttrs?.layoutCapabilities;
+  return capabilities?.["visual-block"] === true;
+};
+
+const getLayoutBoxArea = (box: any) =>
+  Math.max(0, Number(box?.width) || 0) * Math.max(0, Number(box?.height) || 0);
+
+const selectBestOutlineBoxHitsByPage = (
+  hits: any[],
+  options: { blockId?: string | null; nodeType?: string | null } = {}
+) => {
+  if (!Array.isArray(hits) || hits.length === 0) {
+    return [];
+  }
+
+  const bestHitsByPage = new Map<number, any>();
+  for (const hit of hits) {
+    const pageIndex = Number(hit?.pageIndex) || 0;
+    const currentBest = bestHitsByPage.get(pageIndex);
+    if (!currentBest) {
+      bestHitsByPage.set(pageIndex, hit);
+      continue;
+    }
+
+    const hitMatchesBlockId =
+      options.blockId != null && String(hit?.box?.blockId ?? "") === String(options.blockId);
+    const bestMatchesBlockId =
+      options.blockId != null &&
+      String(currentBest?.box?.blockId ?? "") === String(options.blockId);
+    if (hitMatchesBlockId !== bestMatchesBlockId) {
+      if (hitMatchesBlockId) {
+        bestHitsByPage.set(pageIndex, hit);
+      }
+      continue;
+    }
+
+    const hitMatchesNodeType =
+      options.nodeType != null && String(hit?.box?.type ?? "") === String(options.nodeType);
+    const bestMatchesNodeType =
+      options.nodeType != null &&
+      String(currentBest?.box?.type ?? "") === String(options.nodeType);
+    if (hitMatchesNodeType !== bestMatchesNodeType) {
+      if (hitMatchesNodeType) {
+        bestHitsByPage.set(pageIndex, hit);
+      }
+      continue;
+    }
+
+    const hitIsVisual = hasVisualBlockCapability(hit?.box);
+    const bestIsVisual = hasVisualBlockCapability(currentBest?.box);
+    if (hitIsVisual !== bestIsVisual) {
+      if (hitIsVisual) {
+        bestHitsByPage.set(pageIndex, hit);
+      }
+      continue;
+    }
+
+    const hitDepth = Number(hit?.depth) || 0;
+    const bestDepth = Number(currentBest?.depth) || 0;
+    if (hitDepth !== bestDepth) {
+      if (hitDepth < bestDepth) {
+        bestHitsByPage.set(pageIndex, hit);
+      }
+      continue;
+    }
+
+    const hitArea = getLayoutBoxArea(hit?.box);
+    const bestArea = getLayoutBoxArea(currentBest?.box);
+    if (hitArea !== bestArea) {
+      if (hitArea > bestArea) {
+        bestHitsByPage.set(pageIndex, hit);
+      }
+      continue;
+    }
+  }
+
+  return Array.from(bestHitsByPage.values()).sort((a, b) => {
+    const pageDelta = (Number(a?.pageIndex) || 0) - (Number(b?.pageIndex) || 0);
+    if (pageDelta !== 0) {
+      return pageDelta;
+    }
+    return (Number(a?.depth) || 0) - (Number(b?.depth) || 0);
+  });
+};
+
 const getRunWidth = (run, fallbackFont) => {
   if (typeof run.width === "number") {
     return run.width;
@@ -391,9 +477,20 @@ export const buildDecorationDrawData = (
       const minOffset = Math.max(0, Math.min(outlineFromOffset, outlineToOffset));
       const maxOffset = Math.max(minOffset, Math.min(Math.max(outlineFromOffset, outlineToOffset), textLength));
       const lineItems = getLineItemsInRange(layout, layoutIndex, minOffset, maxOffset);
-      const seedLine = lineItems[0]?.line ?? null;
-      const seedBlockId = seedLine?.blockId ?? null;
-      const seedBlockType = seedLine?.blockType ?? null;
+      const explicitBlockId =
+        decoration.spec?.blockId != null && decoration.spec.blockId !== ""
+          ? String(decoration.spec.blockId)
+          : null;
+      const explicitNodeType =
+        decoration.spec?.nodeType != null && decoration.spec.nodeType !== ""
+          ? String(decoration.spec.nodeType)
+          : null;
+      const visualSeedLine =
+        lineItems.find((item) => item?.line?.blockAttrs?.layoutCapabilities?.["visual-block"] === true)
+          ?.line ?? null;
+      const seedLine = visualSeedLine ?? lineItems[0]?.line ?? null;
+      const seedBlockId = explicitBlockId ?? seedLine?.blockId ?? null;
+      const seedBlockType = explicitNodeType ?? seedLine?.blockType ?? null;
       const boxHits = collectAllLayoutBoxesForRange(layout, minOffset, maxOffset, {
         exact: true,
         layoutIndex,
@@ -401,8 +498,8 @@ export const buildDecorationDrawData = (
           if (!box) {
             return false;
           }
-          if (seedBlockId != null && box?.blockId != null) {
-            return String(box.blockId) === String(seedBlockId);
+          if (seedBlockId != null) {
+            return String(box?.blockId ?? "") === String(seedBlockId);
           }
           if (seedBlockType) {
             return String(box?.type || "") === String(seedBlockType);
@@ -411,7 +508,11 @@ export const buildDecorationDrawData = (
         },
       });
       if (boxHits.length > 0) {
-        for (const hit of boxHits) {
+        const outlineBoxHits = selectBestOutlineBoxHitsByPage(boxHits, {
+          blockId: seedBlockId,
+          nodeType: seedBlockType,
+        });
+        for (const hit of outlineBoxHits) {
           const rect = resolveLayoutBoxRect({
             layout,
             box: hit.box,

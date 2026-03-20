@@ -56,6 +56,7 @@ export const DEFAULT_SETTINGS = {
     tapMoveThreshold: 12,
   },
   debugPerf: false,
+  debugGhostTrace: false,
   measureTextWidth,
 };
 

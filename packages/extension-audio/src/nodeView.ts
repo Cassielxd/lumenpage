@@ -6,6 +6,15 @@ const resolveOverlayHost = (view: any) =>
   view?.dom?.querySelector?.(".lumenpage-overlay-host") ||
   null;
 
+const syncNodeViewBlockId = (element: HTMLElement, node: any) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
+
 const createAudioElement = (node: any) => {
   const audio = document.createElement("audio");
   audio.src = sanitizeAudioSrc(node.attrs?.src || "");
@@ -31,6 +40,7 @@ export const createDefaultAudioNodeView = (node: any, view: any) => {
   container.style.overflow = "visible";
   container.style.background = "transparent";
   container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
 
   const audio = createAudioElement(node);
@@ -48,6 +58,7 @@ export const createDefaultAudioNodeView = (node: any, view: any) => {
     update(nextNode: any) {
       if (nextNode.type !== currentNode.type) return false;
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       updateAudio(nextNode);
       return true;
     },

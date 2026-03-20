@@ -35,6 +35,7 @@ export const createPointerInteractionHandlers = ({
     resolveOffsetAtCoords: any;
     resolveHitAtCoords: any;
     resolveDragNodePosFromEvent: (event: any) => any;
+    resolveNodeSelectionPosFromEvent: (event: any) => any;
   };
 }) => {
   return createPointerHandlers({
@@ -54,6 +55,7 @@ export const createPointerInteractionHandlers = ({
     isNodeSelectionActive: () => view.state?.selection instanceof NodeSelection,
     setSkipNextClickSelection,
     resolveDragNodePos: resolvers.resolveDragNodePosFromEvent,
+    resolveNodeSelectionPos: resolvers.resolveNodeSelectionPosFromEvent,
     startInternalDragFromSelection: (event: any) => dragHandlers.startInternalDragFromSelection(event),
     startInternalDragFromNodePos: (nodePos: number, event: any) =>
       dragHandlers.startInternalDragFromNodePos(nodePos, event),

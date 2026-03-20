@@ -32,52 +32,180 @@ const buildMathRuns = (text: string, font: string) => [
   },
 ];
 
+const layoutMathBlock = ({ node, settings }: { node: any; settings: any }) => {
+  const source = trimText(node.attrs?.source) || "Formula";
+  const font = settings.mathFont || "18px Cambria Math, Times New Roman, serif";
+  const padding = 16;
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right - padding * 2;
+  const lines = breakLines(
+    buildMathRuns(source, font),
+    maxWidth,
+    font,
+    source.length,
+    settings.wrapTolerance || 0,
+    settings.minLineWidth || 0,
+    settings.measureTextWidth,
+    settings.segmentText,
+    settings.lineHeight,
+  );
+  const totalHeight =
+    lines.reduce(
+      (sum: number, current: any) => sum + (current.lineHeight || settings.lineHeight),
+      0,
+    ) +
+    padding * 2;
+  lines.forEach((line: any, index: number) => {
+    line.x = settings.margin.left + padding;
+    line.blockType = "math";
+    line.blockAttrs = {
+      source,
+      mathPadding: padding,
+      mathLineIndex: index,
+      mathLineCount: lines.length,
+      width: maxWidth + padding * 2,
+    };
+  });
+  return {
+    lines,
+    length: source.length,
+    height: totalHeight,
+    blockLineHeight: settings.lineHeight,
+    blockType: "math",
+    blockAttrs: {
+      source,
+      mathPadding: padding,
+      width: maxWidth + padding * 2,
+    },
+  };
+};
+
+const cloneMathLines = (lines: any[]) =>
+  (lines || []).map((line: any) => ({
+    ...line,
+    runs: Array.isArray(line?.runs) ? line.runs.map((run: any) => ({ ...run })) : line?.runs,
+    blockAttrs: line?.blockAttrs ? { ...line.blockAttrs } : {},
+  }));
+
 export const mathRenderer = {
   allowSplit: false,
 
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const source = trimText(node.attrs?.source) || "Formula";
-    const font = settings.mathFont || "18px Cambria Math, Times New Roman, serif";
-    const padding = 16;
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right - padding * 2;
-    const lines = breakLines(
-      buildMathRuns(source, font),
-      maxWidth,
-      font,
-      source.length,
-      settings.wrapTolerance || 0,
-      settings.minLineWidth || 0,
-      settings.measureTextWidth,
-      settings.segmentText,
-      settings.lineHeight
-    );
-    const totalHeight =
-      lines.reduce(
-        (sum: number, current: any) => sum + (current.lineHeight || settings.lineHeight),
-        0
-      ) + padding * 2;
-    lines.forEach((line: any, index: number) => {
-      line.x = settings.margin.left + padding;
-      line.blockType = "math";
-      line.blockAttrs = {
-        source,
-        mathPadding: padding,
-        mathLineIndex: index,
-        mathLineCount: lines.length,
-        width: maxWidth + padding * 2,
-      };
-    });
+    return layoutMathBlock({ node, settings });
+  },
+
+  measureBlock(ctx: any) {
+    const { node, settings } = ctx || {};
+    const layout = layoutMathBlock({ node, settings });
+    const startPos = Number.isFinite(ctx?.startPos ?? ctx?.blockStart)
+      ? Number(ctx?.startPos ?? ctx?.blockStart)
+      : 0;
     return {
-      lines,
-      length: source.length,
-      height: totalHeight,
-      blockLineHeight: settings.lineHeight,
-      blockType: "math",
-      blockAttrs: {
-        source,
-        mathPadding: padding,
-        width: maxWidth + padding * 2,
+      kind: "math",
+      nodeId: node?.attrs?.id ?? null,
+      blockId: node?.attrs?.id ?? null,
+      startPos,
+      endPos: startPos + Math.max(1, Number(layout?.length || 0)),
+      width: Number(layout?.blockAttrs?.width || 0),
+      height: Number(layout?.height || 0),
+      meta: {
+        source: "math-modern-measure",
+        layoutSnapshot: {
+          lines: cloneMathLines(layout?.lines || []),
+          length: Math.max(1, Number(layout?.length || 0)),
+          height: Number(layout?.height || 0),
+          blockAttrs: layout?.blockAttrs ? { ...layout.blockAttrs } : null,
+        },
       },
+    };
+  },
+
+  paginateBlock(ctx: any) {
+    const measured = ctx?.measured;
+    const snapshot = measured?.meta?.layoutSnapshot || null;
+    const cursorPlaced = ctx?.cursor?.localCursor?.placed === true;
+    if (!snapshot || cursorPlaced) {
+      const endPos = Number(measured?.endPos || measured?.startPos || 0);
+      return {
+        slice: {
+          kind: "math",
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: endPos,
+          endPos,
+          fromPrev: false,
+          hasNext: false,
+          boxes: [],
+          fragments: [],
+          lines: [],
+          nextCursor: null,
+          meta: {
+            source: "math-modern-paginate",
+            exhausted: true,
+          },
+        },
+        nextCursor: null,
+        exhausted: true,
+      };
+    }
+
+    const availableHeight = Number(ctx?.availableHeight || 0);
+    const pageHasLines = ctx?.pageHasLines === true;
+    const fits = availableHeight >= Number(snapshot.height || 0);
+    if (!fits && pageHasLines) {
+      const nextCursor = {
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: Number(measured?.startPos || 0),
+        endPos: Number(measured?.endPos || measured?.startPos || 0),
+        localCursor: { placed: false },
+        meta: {
+          source: "math-modern-paginate",
+          reason: "retry-on-fresh-page",
+        },
+      };
+      return {
+        slice: {
+          kind: "math",
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: Number(measured?.startPos || 0),
+          endPos: Number(measured?.startPos || 0),
+          fromPrev: false,
+          hasNext: true,
+          boxes: [],
+          fragments: [],
+          lines: [],
+          nextCursor,
+          meta: {
+            source: "math-modern-paginate",
+            deferred: true,
+          },
+        },
+        nextCursor,
+        exhausted: false,
+      };
+    }
+
+    return {
+      slice: {
+        kind: "math",
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: Number(measured?.startPos || 0),
+        endPos: Number(measured?.endPos || measured?.startPos || 0),
+        fromPrev: false,
+        hasNext: false,
+        boxes: [],
+        fragments: [],
+        lines: cloneMathLines(snapshot.lines),
+        nextCursor: null,
+        meta: {
+          source: "math-modern-paginate",
+          placed: true,
+        },
+      },
+      nextCursor: null,
+      exhausted: true,
     };
   },
 

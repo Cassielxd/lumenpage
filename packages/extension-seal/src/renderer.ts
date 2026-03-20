@@ -1,26 +1,48 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
+
+const buildSealLayout = ({ settings, node }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const size = 132;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width: size,
+    lineHeight: size,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "seal",
+    blockAttrs: { lineHeight: size, width: size, height: size },
+    sealMeta: {
+      text: trimText(attrs.text) || "APPROVED",
+      width: size,
+      height: size,
+    },
+  };
+  return {
+    width: size,
+    height: size,
+    line,
+    blockAttrs: { width: size, height: size, lineHeight: size },
+    length: 1,
+  };
+};
+
 export const sealRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("seal", buildSealLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const size = 132;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width: size,
-      lineHeight: size,
-      runs: [],
-      x: settings.margin.left,
+    const layout = buildSealLayout({ node, settings });
+    return {
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "seal",
-      blockAttrs: { lineHeight: size, width: size, height: size },
-      sealMeta: {
-        text: trimText(attrs.text) || "APPROVED",
-        width: size,
-        height: size,
-      },
+      blockAttrs: layout.blockAttrs,
     };
-    return { lines: [line], length: 1, height: size, blockLineHeight: size, blockType: "seal", blockAttrs: { width: size, height: size, lineHeight: size } };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {
     const meta = line.sealMeta;

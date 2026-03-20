@@ -30,7 +30,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev -- --host ${HOST} --port ${PORT}`,
+    command: `node ./e2e/preview-server.mjs ${HOST} ${PORT}`,
     cwd: appDir,
     url: baseURL,
     reuseExistingServer: !process.env.CI,

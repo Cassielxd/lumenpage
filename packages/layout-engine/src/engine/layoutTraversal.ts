@@ -1,5 +1,6 @@
 import { layoutLeafBlockOnPage } from "./layoutLeafTraversal";
 import { resolveContainerLayoutContext, isLeafLayoutNode } from "lumenpage-render-engine";
+import { updateChangedBoundaryProgress } from "./changeBoundary";
 
 export type LayoutTraversalSession = {
   page: any;
@@ -10,6 +11,7 @@ export type LayoutTraversalSession = {
   shouldStop: boolean;
   canSync: boolean;
   syncAfterIndex: number | null;
+  syncAfterTextOffset: number | null;
   passedChangedRange: boolean;
   resumeFromAnchor: boolean;
   resumeAnchorApplied: boolean;
@@ -92,6 +94,7 @@ export const createLayoutTraversalController = ({
       }
       if (index < node.childCount - 1) {
         session.textOffset += 1;
+        updateChangedBoundaryProgress(session);
       }
     }
 
@@ -119,9 +122,7 @@ export const createLayoutTraversalController = ({
       }
       if (index < doc.childCount - 1) {
         session.textOffset += 1;
-      }
-      if (session.canSync && session.syncAfterIndex != null && index >= session.syncAfterIndex) {
-        session.passedChangedRange = true;
+        updateChangedBoundaryProgress(session);
       }
     }
   };

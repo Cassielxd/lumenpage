@@ -1,4 +1,4 @@
-﻿import { defaultVideoRenderer as baseVideoRenderer } from "lumenpage-render-engine";
+import { defaultVideoRenderer as baseVideoRenderer } from "lumenpage-render-engine";
 import { sanitizePosterSrc, sanitizeVideoSrc } from "lumenpage-link";
 
 const resolveOverlayHost = (view) =>
@@ -6,6 +6,15 @@ const resolveOverlayHost = (view) =>
   view?._internals?.dom?.overlayHost ||
   view?.dom?.querySelector?.(".lumenpage-overlay-host") ||
   null;
+
+const syncNodeViewBlockId = (element, node) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
 
 const createMediaElement = (node) => {
   const attrs = node.attrs || {};
@@ -41,6 +50,7 @@ export const createDefaultVideoNodeView = (node, _view, _getPos) => {
   container.style.overflow = "visible";
   container.style.background = "#000";
   container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
 
   let mediaEl = null;
@@ -78,6 +88,7 @@ export const createDefaultVideoNodeView = (node, _view, _getPos) => {
     update(nextNode) {
       if (nextNode.type !== currentNode.type) return false;
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       updateMedia(nextNode);
       return true;
     },

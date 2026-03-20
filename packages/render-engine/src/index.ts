@@ -1,13 +1,19 @@
 export {
   NodeRendererRegistry,
   type ContainerStyle,
+  type FragmentCursor,
+  type FragmentCursorPathSegment,
   type LayoutBox,
   type LayoutFragment,
   type LayoutFragmentOwner,
+  type MeasuredLayoutBreakpoint,
+  type MeasuredLayoutModel,
   type NodeLayoutContinuation,
   type NodeLayoutResult,
   type NodeLayoutSplitFragment,
   type NodeRenderer,
+  type PaginateBlockResult,
+  type PaginatedSlice,
 } from "./node";
 export {
   addMarkDrawInstruction,
@@ -44,3 +50,6 @@ export {
   type RendererFragmentModel,
 } from "./pagination";
 export * from "./defaultRenderers/index";
+export { createUnsplittableBlockPagination, type UnsplittableBlockLayout } from "./modernUnsplittable";
+
+

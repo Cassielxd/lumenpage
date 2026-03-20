@@ -1,4 +1,10 @@
 import { findBlockAnchor, findBlockFirstOccurrence, getAnchorMatch, getDocChildStartPos } from "./anchors";
+import {
+  hasPassedChangedTextBoundary,
+  resolveSyncAfterOldTextOffset,
+  resolveSyncAfterTextOffset,
+} from "./changeBoundary";
+import { findFirstFragmentAnchorAfterBoundary } from "./fragmentContinuation";
 
 type ResolveResumeAnchorPlanOptions = {
   enabled: boolean;
@@ -53,6 +59,7 @@ export function resolveResumeAnchorPlan({
 
   const before = changeSummary.blocks?.before || {};
   const after = changeSummary.blocks?.after || {};
+  const oldRange = changeSummary.oldRange || {};
   const startIndexOld = Number.isFinite(before.fromIndex) ? before.fromIndex : null;
   const startIndexNew = Number.isFinite(after.fromIndex)
     ? after.fromIndex
@@ -153,7 +160,36 @@ export function resolveResumeAnchorPlan({
   const anchorY = Number.isFinite(anchorLine?.y) ? anchorLine.y : margin.top;
   const anchorRelativeY = Number.isFinite(anchorLine?.relativeY) ? anchorLine.relativeY : 0;
   const syncAfterIndex = Number.isFinite(lastIndexNew) ? Number(lastIndexNew) : null;
-  const canSync = Number.isFinite(syncAfterIndex);
+  const syncAfterTextOffset = resolveSyncAfterTextOffset(changeSummary);
+  const syncAfterOldTextOffset = resolveSyncAfterOldTextOffset(changeSummary);
+  const syncAfterOldIndex = Number.isFinite(before.toIndex)
+    ? Number(before.toIndex)
+    : Number.isFinite(before.fromIndex)
+      ? Number(before.fromIndex)
+      : null;
+  const syncAfterFragmentAnchorRef = findFirstFragmentAnchorAfterBoundary(previousLayout, {
+    textOffset: syncAfterOldTextOffset,
+    rootIndex: syncAfterOldIndex,
+  });
+  const syncAfterFragmentAnchor = syncAfterFragmentAnchorRef?.anchor ?? null;
+  const syncAfterFragmentPageIndex = Number.isFinite(syncAfterFragmentAnchorRef?.pageIndex)
+    ? Number(syncAfterFragmentAnchorRef.pageIndex)
+    : null;
+  const canSync =
+    Number.isFinite(syncAfterIndex) ||
+    Number.isFinite(syncAfterTextOffset) ||
+    Number.isFinite(syncAfterOldTextOffset) ||
+    !!syncAfterFragmentAnchor;
+  const passedChangedFragmentAnchor =
+    !!syncAfterFragmentAnchor &&
+    syncAfterFragmentPageIndex != null &&
+    anchorRef.pageIndex > syncAfterFragmentPageIndex;
+  const passedChangedRange = hasPassedChangedTextBoundary({
+    syncAfterTextOffset,
+    textOffset: startOffset,
+  });
+  const passedChangedFragmentBoundary =
+    passedChangedFragmentAnchor || (!syncAfterFragmentAnchor && passedChangedRange);
 
   return {
     startIndexOld,
@@ -178,7 +214,13 @@ export function resolveResumeAnchorPlan({
     textOffset: Number.isFinite(startOffset) ? Number(startOffset) : 0,
     startBlockIndex: startIndexNew,
     syncAfterIndex,
+    syncAfterTextOffset,
+    syncAfterOldTextOffset,
+    syncAfterFragmentAnchor,
+    syncAfterFragmentPageIndex,
     canSync,
-    passedChangedRange: canSync && startIndexNew >= syncAfterIndex,
+    passedChangedRange,
+    passedChangedFragmentAnchor,
+    passedChangedFragmentBoundary,
   };
 }

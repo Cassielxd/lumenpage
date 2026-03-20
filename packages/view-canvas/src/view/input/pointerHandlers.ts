@@ -15,6 +15,7 @@ export const createPointerHandlers = ({
   isNodeSelectionActive,
   setSkipNextClickSelection,
   resolveDragNodePos,
+  resolveNodeSelectionPos,
   startInternalDragFromSelection,
   startInternalDragFromNodePos,
   canStartSelectionDrag,
@@ -99,6 +100,15 @@ export const createPointerHandlers = ({
       // never fall through to generic canvas hit-testing on the first click.
       if (isHandleTarget) {
         setSkipNextClickSelection?.(true);
+        focusInputNoScroll();
+        return;
+      }
+
+      const nodeSelectionPos = event.shiftKey ? null : resolveNodeSelectionPos?.(event);
+      if (Number.isFinite(nodeSelectionPos) && setNodeSelectionAtPos?.(nodeSelectionPos)) {
+        setSkipNextClickSelection?.(true);
+        setPreferredX(null);
+        event.preventDefault?.();
         focusInputNoScroll();
         return;
       }
@@ -303,4 +313,5 @@ export const createPointerHandlers = ({
     handlePointerUp,
   };
 };
+
 

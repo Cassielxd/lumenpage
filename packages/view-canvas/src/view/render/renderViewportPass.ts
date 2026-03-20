@@ -1,7 +1,10 @@
 import { now } from "../debugTrace";
 import { type DecorationDrawData } from "./decorations";
 import { updatePaginationDebugPanel } from "./paginationDebugPanel";
-import { renderOverlayLayer } from "./overlayRenderer";
+import {
+  buildRendererOverlayDisplayList,
+  executeRendererOverlayDisplayList,
+} from "./overlayRenderer";
 import {
   completeRendererViewportPass,
 } from "./renderViewportCompletion";
@@ -13,6 +16,7 @@ import {
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
 } from "./pageCanvasCache";
+import { type RendererPageDisplayList } from "./pageDisplayList";
 import { type RendererViewportState } from "./rendererViewportState";
 
 export type { RendererViewportState } from "./rendererViewportState";
@@ -31,7 +35,7 @@ export const runRendererViewportPass = ({
   overlayCanvas,
   overlayCtx,
   state,
-  getPageSignature,
+  buildPageDisplayList,
   renderPage,
 }: {
   layout: any;
@@ -47,7 +51,7 @@ export const runRendererViewportPass = ({
   overlayCanvas: HTMLCanvasElement;
   overlayCtx: CanvasRenderingContext2D;
   state: RendererViewportState;
-  getPageSignature: (page: any) => number;
+  buildPageDisplayList: (pageIndex: number, layout: any) => RendererPageDisplayList;
   renderPage: (pageIndex: number, layout: any, entry: RendererPageCacheEntry) => void;
 }) => {
   if (!layout) {
@@ -79,7 +83,7 @@ export const runRendererViewportPass = ({
     layoutVersionChanged: setup.layoutVersionChanged,
     forceRedraw: setup.forceRedraw,
     changedRange: setup.changedRange,
-    getPageSignature,
+    buildPageDisplayList,
     renderPage,
   });
 
@@ -90,14 +94,17 @@ export const runRendererViewportPass = ({
   });
 
   const overlayStart = settings?.debugPerf ? now() : 0;
-  renderOverlayLayer({
-    ctx: overlayCtx,
+  const overlayDisplayList = buildRendererOverlayDisplayList({
     settings,
     clientHeight: setup.clientHeight,
     caret,
     selectionRects,
     blockRects,
     decorations,
+  });
+  executeRendererOverlayDisplayList({
+    ctx: overlayCtx,
+    displayList: overlayDisplayList,
   });
 
   const overlayMs = settings?.debugPerf ? now() - overlayStart : 0;
@@ -117,5 +124,6 @@ export const runRendererViewportPass = ({
     changedRange: setup.changedRange,
     surfacePass,
     overlayMs,
+    overlayDisplayListItemCount: overlayDisplayList.items.length,
   });
 };

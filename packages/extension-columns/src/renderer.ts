@@ -1,3 +1,5 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const normalizeCount = (value: unknown) => {
   const count = Number(value);
   return Number.isFinite(count) ? Math.max(2, Math.min(4, Math.round(count))) : 2;
@@ -11,34 +13,46 @@ const splitLabels = (value: unknown, count: number) => {
   return Array.from({ length: count }, (_unused, index) => labels[index] || `Column ${index + 1}`);
 };
 
+const buildColumnsLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const count = normalizeCount(attrs.count);
+  const labels = splitLabels(attrs.labels, count);
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(620, maxWidth)));
+  const height = 112;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "columns",
+    blockAttrs: { lineHeight: height, width, height },
+    columnsMeta: { count, labels, width, height },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
+
 export const columnsRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("columns", buildColumnsLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const count = normalizeCount(attrs.count);
-    const labels = splitLabels(attrs.labels, count);
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(620, maxWidth)));
-    const height = 112;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "columns",
-      blockAttrs: { lineHeight: height, width, height },
-      columnsMeta: { count, labels, width, height },
-    };
+    const layout = buildColumnsLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "columns",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {

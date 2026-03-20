@@ -144,13 +144,19 @@ export const applyIncrementalBootstrap = ({
   session.textOffset = resumeAnchorPlan.textOffset;
   session.startBlockIndex = resumeAnchorPlan.startBlockIndex;
   session.syncAfterIndex = resumeAnchorPlan.syncAfterIndex;
+  session.syncAfterTextOffset = resumeAnchorPlan.syncAfterTextOffset ?? null;
+  session.syncAfterOldTextOffset = resumeAnchorPlan.syncAfterOldTextOffset ?? null;
+  session.syncAfterFragmentAnchor = resumeAnchorPlan.syncAfterFragmentAnchor ?? null;
+  session.syncAfterFragmentPageIndex = resumeAnchorPlan.syncAfterFragmentPageIndex ?? null;
   logLayout(
-    `[layout-engine] syncAfterIndex=${session.syncAfterIndex}, startBlockIndex=${session.startBlockIndex}`
+    `[layout-engine] syncAfterIndex=${session.syncAfterIndex}, syncAfterTextOffset=${session.syncAfterTextOffset}, syncAfterOldTextOffset=${session.syncAfterOldTextOffset}, startBlockIndex=${session.startBlockIndex}`
   );
   session.canSync = resumeAnchorPlan.canSync;
   session.passedChangedRange = resumeAnchorPlan.passedChangedRange;
+  session.passedChangedFragmentAnchor = resumeAnchorPlan.passedChangedFragmentAnchor === true;
+  session.passedChangedFragmentBoundary = resumeAnchorPlan.passedChangedFragmentBoundary === true;
   logLayout(
-    `[layout-engine] canSync=${session.canSync}, passedChangedRange=${session.passedChangedRange}`
+    `[layout-engine] canSync=${session.canSync}, passedChangedRange=${session.passedChangedRange}, passedChangedFragmentAnchor=${session.passedChangedFragmentAnchor}, passedChangedFragmentBoundary=${session.passedChangedFragmentBoundary}`
   );
   session.resumeFromAnchor = true;
   session.resumeAnchorApplied = false;

@@ -83,6 +83,61 @@ export type NodeLayoutSplitFragment = {
   continuation?: NodeLayoutContinuation;
 };
 
+export type FragmentCursorPathSegment = string | number;
+
+export type FragmentCursor = {
+  nodeId: string | null;
+  blockId?: string | null;
+  startPos: number;
+  endPos: number;
+  path?: FragmentCursorPathSegment[];
+  localCursor?: unknown;
+  meta?: Record<string, unknown> | null;
+};
+
+export type MeasuredLayoutBreakpoint = {
+  kind: string;
+  startPos: number;
+  endPos: number;
+  cursor?: FragmentCursor | null;
+  meta?: Record<string, unknown> | null;
+};
+
+export type MeasuredLayoutModel = {
+  kind: string;
+  nodeId: string | null;
+  blockId?: string | null;
+  startPos: number;
+  endPos: number;
+  width: number;
+  height: number | null;
+  children?: MeasuredLayoutModel[];
+  breakpoints?: MeasuredLayoutBreakpoint[];
+  meta?: Record<string, unknown> | null;
+};
+
+export type PaginatedSlice = {
+  kind: string;
+  nodeId: string | null;
+  blockId?: string | null;
+  startPos: number;
+  endPos: number;
+  fromPrev: boolean;
+  hasNext: boolean;
+  rowSplit?: boolean;
+  boxes: LayoutBox[];
+  fragments: LayoutFragment[];
+  lines?: any[];
+  nextCursor?: FragmentCursor | null;
+  meta?: Record<string, unknown> | null;
+};
+
+export type PaginateBlockResult = {
+  slice: PaginatedSlice;
+  nextCursor?: FragmentCursor | null;
+  exhausted?: boolean;
+};
+
 export type ContainerStyle = {
   indent?: number;
   [key: string]: any;
@@ -102,6 +157,8 @@ export type NodeRenderer = {
   toRuns?: (node: any, settings: any, registry?: any) => any;
   layoutBlock?: (ctx: any) => NodeLayoutResult;
   splitBlock?: (ctx: any) => NodeLayoutResult;
+  measureBlock?: (ctx: any) => MeasuredLayoutModel | null;
+  paginateBlock?: (ctx: any) => PaginateBlockResult | null;
   allowSplit?: boolean;
   pagination?: NodeRendererPaginationConfig;
   lineBodyMode?: "default-text" | "custom";
@@ -115,6 +172,7 @@ export type NodeRenderer = {
   getBlockSpacing?: (ctx: any) => NodeRendererBlockSpacing | null;
   renderLine?: (ctx: any) => void;
   renderFragment?: (ctx: any) => void;
+  renderSlice?: (ctx: any) => void;
   getContainerStyle?: (ctx: any) => ContainerStyle | null;
   renderContainer?: (ctx: any) => void;
   createNodeView?: (node: any, view: any, getPos: () => number) => CanvasNodeViewLike;
@@ -162,6 +220,7 @@ export class NodeRendererRegistry {
   }
 
   has(typeName) {
+
     return this.renderers.has(typeName);
   }
 }

@@ -370,15 +370,12 @@ export function selectionToRects(
 
   const rects = [];
 
-  if (layoutIndex) {
-    const linesInRange = runtimeGetLinesInRange(layoutIndex, minOffset, maxOffset);
-    const textLineItems = runtimeGetTextLineItemsInRange(layoutIndex, minOffset, maxOffset);
-    const fallbackTextLineItems =
-      textLineItems.length > 0
-        ? textLineItems
-        : collectTextLineItemsForRange(layout, minOffset, maxOffset, {
-            layoutIndex,
-          });
+  const fallbackTextLineItems = collectTextLineItemsForRange(layout, minOffset, maxOffset, {
+    layoutIndex,
+  });
+
+  if (fallbackTextLineItems.length > 0) {
+    const linesInRange = layoutIndex ? runtimeGetLinesInRange(layoutIndex, minOffset, maxOffset) : [];
     const textCandidateItems = mergeTextLineCandidates(linesInRange, fallbackTextLineItems);
     for (const item of textCandidateItems) {
       const rect = resolveSelectionRectForItem({
@@ -396,7 +393,9 @@ export function selectionToRects(
     if (rects.length > 0) {
       return rects;
     }
+  }
 
+  if (layoutIndex) {
     forEachLineItem(layout, layoutIndex, (item) => {
       const rect = resolveSelectionRectForItem({
         item,

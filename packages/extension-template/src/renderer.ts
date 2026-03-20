@@ -1,42 +1,56 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const splitItems = (value: unknown) =>
   String(value || "")
     .split(/\r?\n/)
     .map((item) => item.trim())
     .filter(Boolean);
 
+const buildTemplateLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const items = splitItems(attrs.itemsText).slice(0, 3);
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(560, maxWidth)));
+  const height = 132;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "templateBlock",
+    blockAttrs: { lineHeight: height, width, height },
+    templateMeta: {
+      title: String(attrs.title || "").trim() || "Template",
+      summary: String(attrs.summary || "").trim(),
+      items,
+      width,
+      height,
+    },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
+
 export const templateRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("templateBlock", buildTemplateLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const items = splitItems(attrs.itemsText).slice(0, 3);
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(560, maxWidth)));
-    const height = 132;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "templateBlock",
-      blockAttrs: { lineHeight: height, width, height },
-      templateMeta: {
-        title: String(attrs.title || "").trim() || "Template",
-        summary: String(attrs.summary || "").trim(),
-        items,
-        width,
-        height,
-      },
-    };
+    const layout = buildTemplateLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "templateBlock",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {

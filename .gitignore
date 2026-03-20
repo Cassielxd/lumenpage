@@ -11,3 +11,6 @@ packages/**/src/**/*.js
 packages/**/src/**/*.js.map
 playwright-report/
 test-results/
+/.claude
+/.codex-temp
+/AGENTS.md

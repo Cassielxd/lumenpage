@@ -1,36 +1,50 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
+
+const buildSignatureLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const width = Math.max(1, Math.min(maxWidth, Math.min(360, maxWidth)));
+  const height = 88;
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "signature",
+    blockAttrs: { lineHeight: height, width, height },
+    signatureMeta: {
+      signer: trimText(attrs.signer) || "Signer",
+      signedAt: trimText(attrs.signedAt),
+      width,
+      height,
+    },
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
 
 export const signatureRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("signature", buildSignatureLayout),
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const width = Math.max(1, Math.min(maxWidth, Math.min(360, maxWidth)));
-    const height = 88;
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "signature",
-      blockAttrs: { lineHeight: height, width, height },
-      signatureMeta: {
-        signer: trimText(attrs.signer) || "Signer",
-        signedAt: trimText(attrs.signedAt),
-        width,
-        height,
-      },
-    };
+    const layout = buildSignatureLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "signature",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
   renderLine({ ctx, line, pageX, pageTop }: any) {

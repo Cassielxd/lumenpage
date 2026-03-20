@@ -126,7 +126,6 @@ export const createStateSyncCoordinator = ({
       setCaretOffsetValue(nextCaretOffset);
       setPendingPreferredUpdate(true);
       updateStatus();
-      scheduleRender();
       scheduleLayout();
       return;
     }

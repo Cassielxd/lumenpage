@@ -328,9 +328,115 @@ const getNodeFragmentKey = (node, fallbackPrefix: string) => {
   return `${fallbackPrefix}:${node?.type?.name || "node"}`;
 };
 
+const createFragmentContinuationAttrs = (continuation) => ({
+  fragmentIdentity: continuation.fragmentIdentity,
+  fragmentContinuationToken: continuation.continuationToken,
+  fragmentCarryState: continuation.carryState,
+});
+
+const getListContinuationOwnerKey = ({ node, listKey }) =>
+  node?.attrs?.id ? String(node.attrs.id) : listKey;
+
+const readListSliceMetaFromLines = (lines) => {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    return {
+      firstItemIndex: null,
+      lastItemIndex: null,
+      firstItemStart: null,
+      lastItemStart: null,
+    };
+  }
+
+  let firstItemIndex = null;
+  let lastItemIndex = null;
+  let firstItemStart = null;
+  let lastItemStart = null;
+  for (const line of lines) {
+    const meta = resolveListOwnerMeta(line);
+    if (!meta) {
+      continue;
+    }
+    if (firstItemIndex == null && Number.isFinite(meta.itemIndex)) {
+      firstItemIndex = Number(meta.itemIndex);
+    }
+    if (Number.isFinite(meta.itemIndex)) {
+      lastItemIndex = Number(meta.itemIndex);
+    }
+    if (firstItemStart == null && Number.isFinite(meta.itemStart)) {
+      firstItemStart = Number(meta.itemStart);
+    }
+    if (Number.isFinite(meta.itemStart)) {
+      lastItemStart = Number(meta.itemStart);
+    }
+  }
+
+  return {
+    firstItemIndex,
+    lastItemIndex,
+    firstItemStart,
+    lastItemStart,
+  };
+};
+
+const createDelegatedChildContinuation = (line, continuation) => {
+  if (!line || !continuation || typeof continuation !== "object") {
+    return null;
+  }
+  return {
+    blockType: line.blockType || null,
+    blockId: line.blockId ?? null,
+    fragmentIdentity:
+      typeof continuation.fragmentIdentity === "string" ? continuation.fragmentIdentity : null,
+    continuationToken:
+      typeof continuation.continuationToken === "string" ? continuation.continuationToken : null,
+    carryState:
+      continuation.carryState && typeof continuation.carryState === "object"
+        ? { ...continuation.carryState }
+        : null,
+  };
+};
+
+const createListContinuation = ({
+  mode,
+  node,
+  listKey,
+  lines = null,
+  firstItemIndex = null,
+  lastItemIndex = null,
+  firstItemStart = null,
+  lastItemStart = null,
+  fromPrev = false,
+  hasNext = false,
+  rowSplit = false,
+  delegatedChild = null,
+}) => {
+  const ownerKey = getListContinuationOwnerKey({ node, listKey });
+  const fragmentIdentity = `list:${ownerKey}`;
+  const continuationToken = `${fragmentIdentity}:continuation`;
+  const sliceMeta = readListSliceMetaFromLines(lines);
+  return {
+    fromPrev: fromPrev === true,
+    hasNext: hasNext === true,
+    rowSplit: rowSplit === true,
+    continuationToken,
+    fragmentIdentity,
+    carryState: {
+      kind: "list",
+      mode,
+      ownerBlockId: node?.attrs?.id ?? null,
+      firstItemIndex: firstItemIndex ?? sliceMeta.firstItemIndex ?? null,
+      lastItemIndex: lastItemIndex ?? sliceMeta.lastItemIndex ?? null,
+      firstItemStart: firstItemStart ?? sliceMeta.firstItemStart ?? null,
+      lastItemStart: lastItemStart ?? sliceMeta.lastItemStart ?? null,
+      ...(delegatedChild ? { delegatedChild } : null),
+    },
+  };
+};
+
 const createListOwnerMeta = ({
   mode,
   node,
+  listKey,
   index,
   offset,
   listIndent,
@@ -340,20 +446,36 @@ const createListOwnerMeta = ({
   markerColor,
   markerText,
   taskChecked,
-}) => ({
-  listOwnerType: mode,
-  listOwnerNodeType: node?.type?.name || null,
-  listOwnerBlockId: node?.attrs?.id ?? null,
-  listOwnerIndent: listIndent,
-  listOwnerMarkerGap: markerGap,
-  listOwnerMarkerWidth: markerWidth,
-  listOwnerMarkerFont: markerFont,
-  listOwnerMarkerColor: markerColor,
-  listOwnerMarkerText: markerText,
-  listOwnerItemIndex: index,
-  listOwnerItemStart: offset,
-  listOwnerTaskChecked: taskChecked,
-});
+}) => {
+  const continuation = createListContinuation({
+    mode,
+    node,
+    listKey,
+    lines: null,
+    firstItemIndex: index,
+    lastItemIndex: index,
+    firstItemStart: offset,
+    lastItemStart: offset,
+    fromPrev: false,
+    hasNext: false,
+    rowSplit: false,
+  });
+  return {
+    listOwnerType: mode,
+    listOwnerNodeType: node?.type?.name || null,
+    listOwnerBlockId: node?.attrs?.id ?? null,
+    listOwnerIndent: listIndent,
+    listOwnerMarkerGap: markerGap,
+    listOwnerMarkerWidth: markerWidth,
+    listOwnerMarkerFont: markerFont,
+    listOwnerMarkerColor: markerColor,
+    listOwnerMarkerText: markerText,
+    listOwnerItemIndex: index,
+    listOwnerItemStart: offset,
+    listOwnerTaskChecked: taskChecked,
+    ...createFragmentContinuationAttrs(continuation),
+  };
+};
 
 const createListRootOwner = ({ node, listKey, listIndent, settings, mode }) => ({
   key: listKey,
@@ -564,6 +686,7 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
     const listMeta = createListOwnerMeta({
       mode,
       node,
+      listKey,
       index,
       offset,
       listIndent,
@@ -609,7 +732,10 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
       const lineCopy = {
         ...line,
         runs: line.runs ? line.runs.map((run) => ({ ...run })) : line.runs,
-        blockType: line.blockType || node.type.name,
+        blockType:
+          line?.blockAttrs?.sliceGroup === "table" || line?.tableOwnerMeta || line?.tableMeta
+            ? "table"
+            : line.blockType || node.type.name,
         blockId: line.blockId ?? null,
         blockAttrs: { ...(line.blockAttrs || {}), ...listMeta },
         fragmentOwners: [listRootOwner, listItemOwner, ...(line.fragmentOwners || [])],
@@ -633,6 +759,16 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
     }
   });
 
+  const blockContinuation = createListContinuation({
+    mode,
+    node,
+    listKey,
+    lines,
+    fromPrev: false,
+    hasNext: false,
+    rowSplit: false,
+  });
+
   return {
     lines,
     length: offset,
@@ -645,6 +781,7 @@ const layoutList = (node, settings, registry, mode: ListMode) => {
       listOwnerIndent: listIndent,
       listOwnerMarkerGap: markerGap,
       listOwnerMarkerFont: baseMarkerFont,
+      ...createFragmentContinuationAttrs(blockContinuation),
     },
   };
 };
@@ -801,6 +938,18 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
 
   const getBlockGroupKey = (entry, fallbackIndex) => {
     const line = entry?.line;
+    const sliceGroup =
+      typeof line?.blockAttrs?.sliceGroup === "string" ? String(line.blockAttrs.sliceGroup) : null;
+    if (sliceGroup === "table") {
+      const tableKey =
+        line?.tableOwnerMeta?.tableKey ||
+        line?.tableMeta?.tableKey ||
+        line?.blockAttrs?.tableKey ||
+        line?.blockId ||
+        line?.nodeId ||
+        fallbackIndex;
+      return `table:${String(tableKey)}`;
+    }
     if (Number.isFinite(line?.blockStart)) {
       return `start:${Number(line.blockStart)}`;
     }
@@ -917,7 +1066,14 @@ const splitListBlock = ({ lines, length, availableHeight, lineHeight, settings, 
 
       const firstBlockGroup = blockGroups[0];
       const firstBlockLines = firstBlockGroup?.entries?.map((entry) => entry.line) || [];
-      const firstBlockType = firstBlockLines[0]?.blockType;
+      const firstBlockSliceGroup =
+        typeof firstBlockLines[0]?.blockAttrs?.sliceGroup === "string"
+          ? String(firstBlockLines[0].blockAttrs.sliceGroup)
+          : null;
+      const firstBlockType =
+        firstBlockSliceGroup === "table" || firstBlockLines[0]?.tableOwnerMeta || firstBlockLines[0]?.tableMeta
+          ? "table"
+          : firstBlockLines[0]?.blockType;
       const childRenderer = firstBlockType ? registry?.get(firstBlockType) : null;
       const childFragmentModel = resolveRendererFragmentModel(childRenderer);
       if (
@@ -1049,16 +1205,189 @@ const createListRenderer = (mode: ListMode) => ({
   allowSplit: true,
   lineBodyMode: "default-text",
   listMarkerRenderMode: "fragment",
-  splitBlock: splitListBlock,
+  splitBlock(ctx) {
+    const result = splitListBlock(ctx);
+    if (!result) {
+      return result;
+    }
+
+    const lines = Array.isArray(ctx?.lines) ? ctx.lines : [];
+    const attrs = ctx?.blockAttrs || lines[0]?.blockAttrs || {};
+    const listNode = {
+      attrs: {
+        id: attrs.listOwnerBlockId ?? attrs.listBlockId ?? null,
+      },
+    };
+    const listKey =
+      typeof attrs.fragmentIdentity === "string" && attrs.fragmentIdentity.startsWith("list:")
+        ? attrs.fragmentIdentity.slice("list:".length)
+        : getListContinuationOwnerKey({
+            node: listNode,
+            listKey: attrs.listOwnerBlockId ?? attrs.listBlockId ?? "list",
+          });
+    const delegatedVisible = createDelegatedChildContinuation(
+      Array.isArray(ctx?.lines) ? ctx.lines[0] : null,
+      result.continuation
+    );
+    const delegatedOverflow = createDelegatedChildContinuation(
+      Array.isArray(result?.overflow?.lines) ? result.overflow.lines[0] : null,
+      result?.overflow?.continuation
+    );
+
+    const visibleContinuation = createListContinuation({
+      mode,
+      node: listNode,
+      listKey,
+      lines: result.lines,
+      fromPrev: result.continuation?.fromPrev === true,
+      hasNext: result.continuation?.hasNext === true,
+      rowSplit: result.continuation?.rowSplit === true,
+      delegatedChild: delegatedVisible,
+    });
+    const overflowContinuation =
+      result.overflow && Array.isArray(result.overflow.lines) && result.overflow.lines.length > 0
+        ? createListContinuation({
+            mode,
+            node: listNode,
+            listKey,
+            lines: result.overflow.lines,
+            fromPrev: result.overflow.continuation?.fromPrev === true,
+            hasNext: result.overflow.continuation?.hasNext === true,
+            rowSplit: result.overflow.continuation?.rowSplit === true,
+            delegatedChild: delegatedOverflow,
+          })
+        : null;
+
+    return {
+      ...result,
+      continuation: visibleContinuation,
+      fragments: Array.isArray(result.fragments)
+        ? result.fragments.map((fragment) =>
+            fragment?.kind === "overflow"
+              ? { ...fragment, continuation: overflowContinuation }
+              : { ...fragment, continuation: visibleContinuation }
+          )
+        : result.fragments,
+      overflow: result.overflow
+        ? {
+            ...result.overflow,
+            continuation: overflowContinuation,
+          }
+        : result.overflow,
+    };
+  },
+  measureBlock(ctx: any) {
+    const { node, settings, registry } = ctx || {};
+    const layout = layoutList(node, settings, registry, mode);
+    const startPos = Number.isFinite(ctx?.startPos ?? ctx?.blockStart)
+      ? Number(ctx?.startPos ?? ctx?.blockStart)
+      : 0;
+    return {
+      kind: node?.type?.name || `${mode}List`,
+      nodeId: node?.attrs?.id ?? null,
+      blockId: node?.attrs?.id ?? null,
+      startPos,
+      endPos: startPos + Math.max(0, Number(layout?.length || 0)),
+      width: Math.max(
+        0,
+        Number(settings?.pageWidth || 0) - Number(settings?.margin?.left || 0) - Number(settings?.margin?.right || 0),
+      ),
+      height: Number.isFinite(layout?.height) ? Number(layout.height) : null,
+      meta: {
+        source: "list-modern-measure",
+        layoutSnapshot: {
+          lines: Array.isArray(layout?.lines) ? layout.lines : [],
+          length: Math.max(0, Number(layout?.length || 0)),
+          height: Number.isFinite(layout?.height) ? Number(layout.height) : 0,
+          blockAttrs: layout?.blockAttrs || null,
+          continuation: (layout as any)?.continuation || null,
+        },
+      },
+    };
+  },
+  paginateBlock(ctx: any) {
+    const measured = ctx?.measured;
+    const fullSnapshot = measured?.meta?.layoutSnapshot || null;
+    const currentSnapshot = ctx?.cursor?.localCursor?.snapshot || fullSnapshot;
+    if (!currentSnapshot || !Array.isArray(currentSnapshot.lines)) {
+      return null;
+    }
+
+    const splitResult = this.splitBlock({
+      lines: currentSnapshot.lines,
+      length: currentSnapshot.length,
+      availableHeight: ctx?.availableHeight,
+      lineHeight: ctx?.lineHeight,
+      settings: ctx?.settings,
+      registry: ctx?.registry,
+      blockAttrs: currentSnapshot.blockAttrs,
+    });
+    if (!splitResult) {
+      return null;
+    }
+
+    const visibleLength = Math.max(0, Number(splitResult?.length || 0));
+    const sliceStartPos = Number(ctx?.cursor?.startPos ?? measured?.startPos ?? 0);
+    const sliceEndPos = sliceStartPos + visibleLength;
+    const overflowSnapshot = splitResult?.overflow
+      ? {
+          lines: splitResult.overflow.lines,
+          length: Math.max(0, Number(splitResult.overflow.length || 0)),
+          height: Number.isFinite(splitResult.overflow.height) ? Number(splitResult.overflow.height) : 0,
+          blockAttrs: currentSnapshot.blockAttrs,
+          continuation: splitResult.overflow.continuation || null,
+          startPos: sliceEndPos,
+          endPos: Number(measured?.endPos ?? sliceEndPos),
+        }
+      : null;
+    const nextCursor = overflowSnapshot
+      ? {
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: overflowSnapshot.startPos,
+          endPos: overflowSnapshot.endPos,
+          localCursor: {
+            kind: "list-snapshot",
+            snapshot: overflowSnapshot,
+          },
+          meta: {
+            source: "list-modern-paginate",
+            fragmentIdentity: overflowSnapshot.continuation?.fragmentIdentity ?? null,
+            continuationToken: overflowSnapshot.continuation?.continuationToken ?? null,
+          },
+        }
+      : null;
+
+    return {
+      slice: {
+        kind: measured?.kind || `${mode}List`,
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: sliceStartPos,
+        endPos: sliceEndPos,
+        fromPrev: splitResult?.continuation?.fromPrev === true,
+        hasNext: splitResult?.continuation?.hasNext === true || !!nextCursor,
+        rowSplit: splitResult?.continuation?.rowSplit === true,
+        boxes: [],
+        fragments: [],
+        lines: Array.isArray(splitResult?.lines) ? splitResult.lines : [],
+        nextCursor,
+        meta: {
+          source: "list-modern-paginate",
+          continuation: splitResult?.continuation || null,
+          overflowLength: Number(splitResult?.overflow?.length || 0),
+        },
+      },
+      nextCursor,
+      exhausted: !nextCursor,
+    };
+  },
   pagination: {
     fragmentModel: "continuation",
     reusePolicy: "actual-slice-only",
   },
   layoutBlock({ node, settings, registry }) {
     return layoutList(node, settings, registry, mode);
-  },
-  renderLine({ defaultRender, line, pageX, pageTop, layout }) {
-    defaultRender(line, pageX, pageTop, layout);
   },
   renderFragment({ ctx, fragment, pageX, pageTop, layout }) {
     drawListMarkerFromFragment({
@@ -1074,4 +1403,14 @@ const createListRenderer = (mode: ListMode) => ({
 export const bulletListRenderer = createListRenderer("bullet");
 export const orderedListRenderer = createListRenderer("ordered");
 export const taskListRenderer = createListRenderer("task");
+
+
+
+
+
+
+
+
+
+
 

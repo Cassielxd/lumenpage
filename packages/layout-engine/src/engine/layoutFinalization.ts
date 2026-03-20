@@ -11,6 +11,8 @@ export function finalizeLayoutPages(options: {
   shouldStop: boolean;
   previousLayout: any;
   syncFromIndex: number | null;
+  syncMatchPass: string | null;
+  syncDiagnostics: any;
   offsetDelta: number;
   appendGhostTrace: (trace: any[] | null, event: any) => void;
   ghostTrace: any[] | null;
@@ -27,6 +29,11 @@ export function finalizeLayoutPages(options: {
     options.appendGhostTrace(options.ghostTrace, {
       event: "reuse-tail-applied",
       syncFromIndex: options.syncFromIndex,
+      syncMatchPass: options.syncMatchPass,
+      syncEquivalenceStage:
+        typeof options.syncDiagnostics?.equivalenceStage === "string"
+          ? options.syncDiagnostics.equivalenceStage
+          : null,
       reusedTailPages: reusedTail.length,
       offsetDelta: options.offsetDelta,
     });

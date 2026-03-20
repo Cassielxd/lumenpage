@@ -1,3 +1,5 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const resolvePositiveDimension = (value: unknown) => {
   if (value == null) {
     return null;
@@ -9,41 +11,66 @@ const resolvePositiveDimension = (value: unknown) => {
   return Number.isFinite(num) && num > 0 ? num : null;
 };
 
+const buildAudioLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const desiredWidth = resolvePositiveDimension(attrs.width) ?? Math.min(420, maxWidth);
+  const width = Math.max(1, Math.min(maxWidth, desiredWidth));
+  const height = 72;
+
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
+
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "audio",
+    blockAttrs,
+    audioMeta: {
+      src: String(attrs.src || ""),
+      title: String(attrs.title || "").trim(),
+      width,
+      height,
+    },
+  };
+
+  return {
+    width,
+    height,
+    line,
+    blockAttrs,
+    length: 1,
+  };
+};
+
 export const audioRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("audio", buildAudioLayout),
 
   layoutBlock({ node, settings }) {
-    const attrs = node.attrs || {};
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const desiredWidth = resolvePositiveDimension(attrs.width) ?? Math.min(420, maxWidth);
-    const width = Math.max(1, Math.min(maxWidth, desiredWidth));
-    const height = 72;
-
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "audio",
-      blockAttrs: { lineHeight: height, width, height },
-      audioMeta: {
-        src: String(attrs.src || ""),
-        title: String(attrs.title || "").trim(),
-        width,
-        height,
-      },
-    };
-
+    const layout = buildAudioLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "audio",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: { ...layout.blockAttrs },
     };
   },
 

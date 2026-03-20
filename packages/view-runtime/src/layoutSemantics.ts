@@ -1,11 +1,25 @@
-import { hasLegacyLayoutCapability } from "./layoutSemanticsLegacy";
-
 export type LayoutCapability =
   | "visual-block"
   | "content-container"
   | "table-cell"
   | "table-structure"
   | "table-root";
+
+const FALLBACK_ROLE_CAPABILITIES: Record<string, LayoutCapability[]> = {
+  list: [],
+  "list-item": ["content-container"],
+  table: ["table-root", "table-structure"],
+  "table-cell": ["content-container", "table-cell", "table-structure"],
+};
+
+const FALLBACK_TYPE_CAPABILITIES: Record<string, LayoutCapability[]> = {
+  image: ["visual-block"],
+  video: ["visual-block"],
+  horizontalRule: ["visual-block"],
+  table: ["table-root", "table-structure"],
+  tableCell: ["table-cell", "table-structure"],
+  tableHeader: ["table-cell", "table-structure"],
+};
 
 const getCapabilityBag = (target: any) => {
   if (!target || typeof target !== "object") {
@@ -35,6 +49,47 @@ const hasCapabilityInBag = (bag: any, capability: LayoutCapability) => {
   return false;
 };
 
+const hasFallbackRoleCapability = (target: any, capability: LayoutCapability) => {
+  const role = String(target?.role || "");
+  if (!role) {
+    return false;
+  }
+  return FALLBACK_ROLE_CAPABILITIES[role]?.includes(capability) === true;
+};
+
+const hasFallbackTypeCapability = (target: any, capability: LayoutCapability) => {
+  const candidates = [String(target?.type || ""), String(target?.blockType || "")].filter(Boolean);
+  return candidates.some((type) => FALLBACK_TYPE_CAPABILITIES[type]?.includes(capability) === true);
+};
+
+const hasFallbackLineCapability = (line: any, capability: LayoutCapability) => {
+  if (!line || typeof line !== "object") {
+    return false;
+  }
+  if (capability === "visual-block") {
+    return !!line.imageMeta || !!line.videoMeta;
+  }
+  if (capability === "table-structure" || capability === "table-cell") {
+    if (line.tableMeta || line.tableOwnerMeta) {
+      return true;
+    }
+    const attrs = line.blockAttrs || {};
+    return (
+      Number.isFinite(attrs?.rowIndex) &&
+      Number.isFinite(attrs?.colIndex) &&
+      (attrs?.sliceGroup === "table" ||
+        Number.isFinite(attrs?.tableWidth) ||
+        Number.isFinite(attrs?.colWidth))
+    );
+  }
+  return false;
+};
+
+const hasFallbackLayoutCapability = (target: any, capability: LayoutCapability) =>
+  hasFallbackRoleCapability(target, capability) ||
+  hasFallbackTypeCapability(target, capability) ||
+  hasFallbackLineCapability(target, capability);
+
 export const hasLayoutCapability = (target: any, capability: LayoutCapability) => {
   if (!capability || !target) {
     return false;
@@ -42,7 +97,7 @@ export const hasLayoutCapability = (target: any, capability: LayoutCapability) =
   if (hasCapabilityInBag(getCapabilityBag(target), capability)) {
     return true;
   }
-  return hasLegacyLayoutCapability(target, capability);
+  return hasFallbackLayoutCapability(target, capability);
 };
 
 export const findNearestLineOwnerWithCapability = (line: any, capability: LayoutCapability) => {

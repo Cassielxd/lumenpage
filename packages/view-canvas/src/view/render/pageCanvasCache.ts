@@ -1,3 +1,5 @@
+import type { RendererPageDisplayList } from "./pageDisplayList";
+
 export type RendererPageCanvasSlot = {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D | null;
@@ -18,6 +20,7 @@ export type RendererPageCacheEntry = {
   dirty: boolean;
   signature: number | null;
   signatureVersion: number | null;
+  displayList: RendererPageDisplayList | null;
 };
 
 const toDevicePixels = (value: number, dpr: number) => Math.max(1, Math.round(value * dpr));
@@ -154,6 +157,7 @@ export const getRendererPageCacheEntry = ({
       dirty: true,
       signature: null,
       signatureVersion: null,
+      displayList: null,
     };
     pageCache.set(pageIndex, entry);
   }

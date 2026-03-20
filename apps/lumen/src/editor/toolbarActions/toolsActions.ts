@@ -1,6 +1,7 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import type { RequestToolbarSignatureDialog } from "./ui/signatureDialog";
+import { resolveImageInsertAttrs } from "./mediaDimensions";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -342,7 +343,12 @@ export const createToolsActions = ({
     const src = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
       content
     )}`;
-    const inserted = run("insertImage", { src, alt: `QR: ${content.slice(0, 32)}` });
+            const inserted = run("insertImage", {
+      src,
+      alt: `QR: ${content.slice(0, 32)}`,
+      width: 256,
+      height: 256,
+    });
     if (inserted) {
       return true;
     }
@@ -361,7 +367,12 @@ export const createToolsActions = ({
       return false;
     }
     const src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(content)}`;
-    const inserted = run("insertImage", { src, alt: `BARCODE: ${content.slice(0, 32)}` });
+            const inserted = run("insertImage", {
+      src,
+      alt: `BARCODE: ${content.slice(0, 32)}`,
+      width: 360,
+      height: 180,
+    });
     if (inserted) {
       return true;
     }
@@ -513,5 +524,8 @@ export const createToolsActions = ({
     convertChineseCase,
   };
 };
+
+
+
 
 

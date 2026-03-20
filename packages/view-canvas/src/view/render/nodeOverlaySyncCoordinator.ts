@@ -1,10 +1,14 @@
+import { emitGhostTrace } from "../debugTrace";
+
 type CreateNodeOverlaySyncCoordinatorArgs = {
   scrollArea: any;
+  settings?: any;
   syncNodeViewOverlays?: (args: { layout: any; layoutIndex: any; scrollArea: any }) => void;
 };
 
 export const createNodeOverlaySyncCoordinator = ({
   scrollArea,
+  settings,
   syncNodeViewOverlays,
 }: CreateNodeOverlaySyncCoordinatorArgs) => {
   let overlaySyncRafId = 0;
@@ -25,6 +29,21 @@ export const createNodeOverlaySyncCoordinator = ({
       if (!context) {
         return;
       }
+      emitGhostTrace(
+        "node-overlay-sync",
+        {
+          phase: "raf",
+          layoutToken: Number.isFinite(context?.layout?.__version)
+            ? Number(context.layout.__version)
+            : Number.isFinite(lastOverlayLayoutToken)
+              ? Number(lastOverlayLayoutToken)
+              : null,
+          scrollTop: scrollArea?.scrollTop ?? null,
+          viewportWidth: scrollArea?.clientWidth ?? null,
+          viewportHeight: scrollArea?.clientHeight ?? null,
+        },
+        settings
+      );
       syncNodeViewOverlays?.({
         layout: context.layout,
         layoutIndex: context.layoutIndex,
@@ -46,17 +65,49 @@ export const createNodeOverlaySyncCoordinator = ({
     scrollTop: number;
     viewportWidth: number;
   }) => {
+    const layoutChanged = layoutToken !== lastOverlayLayoutToken;
     const overlayNeedsSync =
-      layoutToken !== lastOverlayLayoutToken ||
+      layoutChanged ||
       !Number.isFinite(lastOverlayScrollTop) ||
       Math.abs(scrollTop - lastOverlayScrollTop) > 0.5 ||
       viewportWidth !== lastOverlayViewportWidth;
     if (!overlayNeedsSync) {
       return;
     }
+    emitGhostTrace(
+      "node-overlay-sync",
+      {
+        phase: layoutChanged ? "layout" : "schedule",
+        layoutToken,
+        layoutChanged,
+        scrollTop,
+        lastScrollTop: Number.isFinite(lastOverlayScrollTop) ? lastOverlayScrollTop : null,
+        scrollDelta: Number.isFinite(lastOverlayScrollTop) ? scrollTop - lastOverlayScrollTop : null,
+        viewportWidth,
+        lastViewportWidth:
+          Number.isFinite(lastOverlayViewportWidth) && lastOverlayViewportWidth >= 0
+            ? lastOverlayViewportWidth
+            : null,
+        viewportHeight: scrollArea?.clientHeight ?? null,
+      },
+      settings
+    );
     lastOverlayLayoutToken = layoutToken;
     lastOverlayScrollTop = scrollTop;
     lastOverlayViewportWidth = viewportWidth;
+    if (layoutChanged) {
+      pendingOverlaySyncContext = null;
+      if (overlaySyncRafId) {
+        cancelAnimationFrame(overlaySyncRafId);
+        overlaySyncRafId = 0;
+      }
+      syncNodeViewOverlays?.({
+        layout,
+        layoutIndex,
+        scrollArea,
+      });
+      return;
+    }
     scheduleNodeOverlaySync(layout, layoutIndex);
   };
 

@@ -4,7 +4,7 @@ import { headingRenderer } from "./heading";
 import { horizontalRuleRenderer } from "./horizontalRule";
 import { imageRenderer } from "./image";
 import { paragraphRenderer } from "./paragraph";
-import { tableRenderer } from "./table";
+import { splitTableBlock, tableRenderer } from "./table";
 import { videoRenderer } from "./video";
 import {
   bulletListRenderer,
@@ -27,6 +27,7 @@ export { horizontalRuleRenderer };
 export { imageRenderer };
 export { paragraphRenderer };
 export { tableRenderer };
+export { splitTableBlock };
 export { videoRenderer };
 export {
   bulletListRenderer,
@@ -49,6 +50,7 @@ export { horizontalRuleRenderer as defaultHorizontalRuleRenderer };
 export { imageRenderer as defaultImageRenderer };
 export { paragraphRenderer as defaultParagraphRenderer };
 export { tableRenderer as defaultTableRenderer };
+export { splitTableBlock as defaultTableSplitBlock };
 export { videoRenderer as defaultVideoRenderer };
 export {
   bulletListRenderer as defaultBulletListRenderer,

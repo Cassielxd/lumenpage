@@ -1,4 +1,5 @@
 import { collectPageReuseCandidates, findEquivalentPageIndex } from "./pageSyncCandidates";
+import { createPaginationSyncDiagnostics } from "./paginationDiagnostics";
 import { resolveMaybeSyncPrecheck } from "./pageSyncPrecheck";
 
 export * from "./pageSyncCandidates";
@@ -11,6 +12,8 @@ export function resolveMaybeSyncDecision(options: {
   candidateReuseEnabled: boolean;
   canSync: boolean;
   passedChangedRange: boolean;
+  passedChangedFragmentAnchor: boolean;
+  passedChangedFragmentBoundary: boolean;
   previousLayout: any;
   pageIndex: number;
   page: any;
@@ -18,6 +21,9 @@ export function resolveMaybeSyncDecision(options: {
   previousPageSignatureIndex: Map<string, number[]> | null;
   previousPageReuseIndex: any;
   syncAfterIndex: number | null;
+  syncAfterOldTextOffset: number | null;
+  syncAfterFragmentAnchor: string | null;
+  syncAfterNewFragmentAnchor: string | null;
   pageReuseProbeRadius: number | null | undefined;
   pageReuseRootIndexProbeRadius: number | null | undefined;
   offsetDelta: number;
@@ -27,6 +33,10 @@ export function resolveMaybeSyncDecision(options: {
     candidateReuseEnabled: options.candidateReuseEnabled,
     canSync: options.canSync,
     passedChangedRange: options.passedChangedRange,
+    passedChangedFragmentAnchor: options.passedChangedFragmentAnchor,
+    passedChangedFragmentBoundary: options.passedChangedFragmentBoundary,
+    syncAfterFragmentAnchor: options.syncAfterFragmentAnchor,
+    syncAfterNewFragmentAnchor: options.syncAfterNewFragmentAnchor,
     previousLayout: options.previousLayout,
     pageIndex: options.pageIndex,
   });
@@ -36,10 +46,24 @@ export function resolveMaybeSyncDecision(options: {
       reason: precheck.reason,
       trace: "trace" in precheck ? precheck.trace : null,
       perfSnapshot: "perfSnapshot" in precheck ? precheck.perfSnapshot : null,
+      syncDiagnostics: createPaginationSyncDiagnostics({
+        source: "maybe-sync",
+        reason: precheck.reason,
+        boundaryAnchor: options.syncAfterFragmentAnchor,
+        expectedBoundaryAnchor: options.syncAfterNewFragmentAnchor,
+      }),
     };
   }
 
-  const { candidateIndexes, signatureKey } = collectPageReuseCandidates({
+  const {
+    candidateIndexes,
+    textRangeFallbackCandidateIndexes,
+    blockIdFallbackCandidateIndexes,
+    rootRangeFallbackCandidateIndexes,
+    signatureFallbackCandidateIndexes,
+    signatureKey,
+    fragmentSignatureKey,
+  } = collectPageReuseCandidates({
     pageIndex: options.pageIndex,
     page: options.page,
     previousLayout: options.previousLayout,
@@ -47,6 +71,9 @@ export function resolveMaybeSyncDecision(options: {
     previousPageSignatureIndex: options.previousPageSignatureIndex,
     previousPageReuseIndex: options.previousPageReuseIndex,
     syncAfterIndex: options.syncAfterIndex,
+    syncAfterOldTextOffset: options.syncAfterOldTextOffset,
+    syncAfterFragmentAnchor: options.syncAfterFragmentAnchor,
+    syncAfterNewFragmentAnchor: options.syncAfterNewFragmentAnchor,
     pageReuseProbeRadius: options.pageReuseProbeRadius,
     pageReuseRootIndexProbeRadius: options.pageReuseRootIndexProbeRadius,
   });
@@ -55,23 +82,83 @@ export function resolveMaybeSyncDecision(options: {
     page: options.page,
     previousLayout: options.previousLayout,
     candidateIndexes,
+    textRangeFallbackCandidateIndexes,
+    blockIdFallbackCandidateIndexes,
+    rootRangeFallbackCandidateIndexes,
+    signatureFallbackCandidateIndexes,
     offsetDelta: options.offsetDelta,
+    syncAfterFragmentAnchor: options.syncAfterFragmentAnchor,
+    syncAfterNewFragmentAnchor: options.syncAfterNewFragmentAnchor,
     createDiff: options.createDiff,
   });
 
-  if (!Number.isFinite(matchedOldPageIndex)) {
+  if (!matchedOldPageIndex || !Number.isFinite(matchedOldPageIndex.matchedOldPageIndex)) {
     return {
       ok: false as const,
       reason: "page-not-equivalent" as const,
       candidateIndexes,
+      textRangeFallbackCandidateIndexes,
+      blockIdFallbackCandidateIndexes,
+      rootRangeFallbackCandidateIndexes,
+      signatureFallbackCandidateIndexes,
+      fragmentSignatureKey,
       signatureKey,
+      syncDiagnostics: createPaginationSyncDiagnostics({
+        source: "maybe-sync",
+        reason: "page-not-equivalent",
+        boundaryAnchor: options.syncAfterFragmentAnchor,
+        expectedBoundaryAnchor: options.syncAfterNewFragmentAnchor,
+        candidateCount:
+          candidateIndexes.length +
+          textRangeFallbackCandidateIndexes.length +
+          blockIdFallbackCandidateIndexes.length +
+          rootRangeFallbackCandidateIndexes.length +
+          signatureFallbackCandidateIndexes.length,
+        candidateIndexes: candidateIndexes
+          .concat(textRangeFallbackCandidateIndexes)
+          .concat(blockIdFallbackCandidateIndexes)
+          .concat(rootRangeFallbackCandidateIndexes)
+          .concat(signatureFallbackCandidateIndexes),
+        fragmentSignatureKey,
+        signatureKey,
+      }),
     };
   }
 
   return {
     ok: true as const,
-    matchedOldPageIndex: Number(matchedOldPageIndex),
+    matchedOldPageIndex: Number(matchedOldPageIndex.matchedOldPageIndex),
+    matchPass: matchedOldPageIndex.matchPass,
+    equivalenceStage: matchedOldPageIndex.equivalenceStage ?? null,
+    expectedBoundaryAnchor: matchedOldPageIndex.expectedBoundaryAnchor ?? null,
     candidateIndexes,
+    textRangeFallbackCandidateIndexes,
+    blockIdFallbackCandidateIndexes,
+    rootRangeFallbackCandidateIndexes,
+    signatureFallbackCandidateIndexes,
+    fragmentSignatureKey,
     signatureKey,
+    syncDiagnostics: createPaginationSyncDiagnostics({
+      source: "maybe-sync",
+      reason: "reuse-ok",
+      matchPass: matchedOldPageIndex.matchPass,
+      equivalenceStage: matchedOldPageIndex.equivalenceStage ?? null,
+      expectedBoundaryAnchor: matchedOldPageIndex.expectedBoundaryAnchor ?? null,
+      boundaryAnchor: options.syncAfterFragmentAnchor,
+      matchedOldPageIndex: Number(matchedOldPageIndex.matchedOldPageIndex),
+      candidateCount:
+        candidateIndexes.length +
+        textRangeFallbackCandidateIndexes.length +
+        blockIdFallbackCandidateIndexes.length +
+        rootRangeFallbackCandidateIndexes.length +
+        signatureFallbackCandidateIndexes.length,
+      candidateIndexes: candidateIndexes
+        .concat(textRangeFallbackCandidateIndexes)
+        .concat(blockIdFallbackCandidateIndexes)
+        .concat(rootRangeFallbackCandidateIndexes)
+        .concat(signatureFallbackCandidateIndexes),
+      fragmentSignatureKey,
+      signatureKey,
+    }),
   };
 }

@@ -1,4 +1,3 @@
-﻿
 import { hasFragmentOwnerType } from "./fragmentOwners";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
@@ -34,45 +33,159 @@ export const horizontalRuleNodeSpec: any = {
   },
 };
 
+const buildHorizontalRuleLayout = (settings: any) => {
+  const width = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const height = Math.max(8, Math.round(settings.lineHeight * 0.8));
+  const blockAttrs = {
+    lineHeight: height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "horizontalRule",
+    blockAttrs,
+  };
+  return {
+    width,
+    height,
+    line,
+    blockAttrs,
+  };
+};
+
 export const horizontalRuleRenderer = {
   allowSplit: false,
   layoutBlock({ settings }: { node: any; settings: any }) {
-    const width = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const height = Math.max(8, Math.round(settings.lineHeight * 0.8));
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "horizontalRule",
-      blockAttrs: {
-        lineHeight: height,
-        layoutCapabilities: {
-          "visual-block": true,
-        },
-        visualBounds: {
-          x: settings.margin.left,
-          width,
-        },
+    const layout = buildHorizontalRuleLayout(settings);
+    return {
+      lines: [layout.line],
+      length: 1,
+      height: layout.height,
+      blockLineHeight: layout.height,
+      blockAttrs: layout.blockAttrs,
+    };
+  },
+  measureBlock(ctx: any) {
+    const { node, settings } = ctx || {};
+    const layout = buildHorizontalRuleLayout(settings);
+    const startPos = Number.isFinite(ctx?.startPos ?? ctx?.blockStart)
+      ? Number(ctx?.startPos ?? ctx?.blockStart)
+      : 0;
+    return {
+      kind: "horizontalRule",
+      nodeId: node?.attrs?.id ?? null,
+      blockId: node?.attrs?.id ?? null,
+      startPos,
+      endPos: startPos + 1,
+      width: layout.width,
+      height: layout.height,
+      meta: {
+        source: "horizontal-rule-modern-measure",
+        line: layout.line,
+        blockAttrs: layout.blockAttrs,
       },
     };
-    return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
-      blockAttrs: {
-        lineHeight: height,
-        layoutCapabilities: {
-          "visual-block": true,
+  },
+  paginateBlock(ctx: any) {
+    const measured = ctx?.measured;
+    const line = measured?.meta?.line
+      ? { ...measured.meta.line, blockAttrs: { ...(measured.meta.line.blockAttrs || {}) } }
+      : null;
+    const blockAttrs = measured?.meta?.blockAttrs ? { ...measured.meta.blockAttrs } : null;
+    const cursorPlaced = ctx?.cursor?.localCursor?.placed === true;
+    if (!measured || !line || !blockAttrs || cursorPlaced) {
+      return {
+        slice: {
+          kind: "horizontalRule",
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: Number(measured?.endPos || measured?.startPos || 0),
+          endPos: Number(measured?.endPos || measured?.startPos || 0),
+          fromPrev: false,
+          hasNext: false,
+          boxes: [],
+          fragments: [],
+          lines: [],
+          nextCursor: null,
+          meta: {
+            source: "horizontal-rule-modern-paginate",
+            exhausted: true,
+          },
         },
-        visualBounds: {
-          x: settings.margin.left,
-          width,
+        nextCursor: null,
+        exhausted: true,
+      };
+    }
+
+    const availableHeight = Number(ctx?.availableHeight || 0);
+    const pageHasLines = ctx?.pageHasLines === true;
+    const fits = availableHeight >= Number(measured.height || 0);
+    if (!fits && pageHasLines) {
+      const nextCursor = {
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: Number(measured?.startPos || 0),
+        endPos: Number(measured?.endPos || measured?.startPos || 0),
+        localCursor: { placed: false },
+        meta: {
+          source: "horizontal-rule-modern-paginate",
+          reason: "retry-on-fresh-page",
+        },
+      };
+      return {
+        slice: {
+          kind: "horizontalRule",
+          nodeId: measured?.nodeId ?? null,
+          blockId: measured?.blockId ?? null,
+          startPos: Number(measured?.startPos || 0),
+          endPos: Number(measured?.startPos || 0),
+          fromPrev: false,
+          hasNext: true,
+          boxes: [],
+          fragments: [],
+          lines: [],
+          nextCursor,
+          meta: {
+            source: "horizontal-rule-modern-paginate",
+            deferred: true,
+          },
+        },
+        nextCursor,
+        exhausted: false,
+      };
+    }
+
+    return {
+      slice: {
+        kind: "horizontalRule",
+        nodeId: measured?.nodeId ?? null,
+        blockId: measured?.blockId ?? null,
+        startPos: Number(measured?.startPos || 0),
+        endPos: Number(measured?.endPos || measured?.startPos || 0),
+        fromPrev: false,
+        hasNext: false,
+        boxes: [],
+        fragments: [],
+        lines: [{ ...line, blockAttrs }],
+        nextCursor: null,
+        meta: {
+          source: "horizontal-rule-modern-paginate",
+          placed: true,
         },
       },
+      nextCursor: null,
+      exhausted: true,
     };
   },
   renderLine({ ctx, line, pageX, pageTop, layout }: any) {
@@ -108,5 +221,3 @@ export const horizontalRuleRenderer = {
     ctx.stroke();
   },
 };
-
-

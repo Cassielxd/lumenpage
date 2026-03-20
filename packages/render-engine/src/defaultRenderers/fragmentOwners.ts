@@ -1,9 +1,45 @@
-import {
-  hasLegacyVisualBlockData,
-  resolveLegacyOwnerMeta,
-  resolveLegacyOwnerWidth,
-  resolveLegacyOwnerX,
-} from "./fragmentOwnerLegacy";
+const hasFallbackVisualBlockData = (line) =>
+  !!line?.imageMeta || !!line?.videoMeta || line?.blockType === "horizontalRule";
+
+const resolveFallbackOwnerX = ({ line, blockAttrs, fallbackX = null }) => {
+  if (Number.isFinite(blockAttrs?.codeBlockOuterX)) {
+    return Number(blockAttrs.codeBlockOuterX);
+  }
+  if (hasFallbackVisualBlockData(line) && Number.isFinite(line?.x)) {
+    return Number(line.x);
+  }
+  return Number.isFinite(fallbackX) ? Number(fallbackX) : undefined;
+};
+
+const resolveFallbackOwnerWidth = ({ line, blockAttrs, fallbackWidth = null }) => {
+  if (Number.isFinite(blockAttrs?.codeBlockOuterWidth)) {
+    return Math.max(0, Number(blockAttrs.codeBlockOuterWidth));
+  }
+  if (Number.isFinite(line?.imageMeta?.width)) {
+    return Math.max(0, Number(line.imageMeta.width));
+  }
+  if (Number.isFinite(line?.videoMeta?.width)) {
+    return Math.max(0, Number(line.videoMeta.width));
+  }
+  if (line?.blockType === "horizontalRule" && Number.isFinite(line?.width)) {
+    return Math.max(0, Number(line.width));
+  }
+  return Number.isFinite(fallbackWidth) ? Math.max(0, Number(fallbackWidth)) : undefined;
+};
+
+const resolveFallbackOwnerMeta = ({ line, blockAttrs }) => {
+  const meta: Record<string, unknown> = {};
+  if (typeof blockAttrs?.codeBlockBackground === "string") {
+    meta.codeBlockBackground = blockAttrs.codeBlockBackground;
+  }
+  if (typeof blockAttrs?.codeBlockBorderColor === "string") {
+    meta.codeBlockBorderColor = blockAttrs.codeBlockBorderColor;
+  }
+  if (line?.imageMeta && typeof line.imageMeta === "object") {
+    meta.alt = line.imageMeta.alt || "";
+  }
+  return meta;
+};
 
 export const shiftFragmentOwners = (owners, deltaX = 0, deltaY = 0) => {
   if (!Array.isArray(owners) || owners.length === 0) {
@@ -132,7 +168,7 @@ const resolveOwnerX = ({ line, blockAttrs, fallbackX = null }) => {
   if (Number.isFinite(visualBounds?.x)) {
     return Number(visualBounds.x);
   }
-  return resolveLegacyOwnerX({ line, blockAttrs, fallbackX });
+  return resolveFallbackOwnerX({ line, blockAttrs, fallbackX });
 };
 
 const resolveOwnerWidth = ({ line, blockAttrs, fallbackWidth = null }) => {
@@ -140,11 +176,11 @@ const resolveOwnerWidth = ({ line, blockAttrs, fallbackWidth = null }) => {
   if (Number.isFinite(visualBounds?.width)) {
     return Math.max(0, Number(visualBounds.width));
   }
-  return resolveLegacyOwnerWidth({ line, blockAttrs, fallbackWidth });
+  return resolveFallbackOwnerWidth({ line, blockAttrs, fallbackWidth });
 };
 
 const resolveOwnerMeta = ({ line, blockAttrs }) => {
-  const meta = resolveLegacyOwnerMeta({ line, blockAttrs });
+  const meta = resolveFallbackOwnerMeta({ line, blockAttrs });
   const explicitMeta = getExplicitOwnerMeta({ line, blockAttrs });
   const explicitCapabilities = getExplicitLayoutCapabilities({ line, blockAttrs });
   return withLayoutCapabilities(
@@ -154,7 +190,7 @@ const resolveOwnerMeta = ({ line, blockAttrs }) => {
     },
     [
       ...explicitCapabilities,
-      ...(explicitCapabilities.includes("visual-block") || !hasLegacyVisualBlockData(line)
+      ...(explicitCapabilities.includes("visual-block") || !hasFallbackVisualBlockData(line)
         ? []
         : ["visual-block"]),
     ]

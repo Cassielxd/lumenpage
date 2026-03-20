@@ -6,7 +6,7 @@ import {
 } from "./fragments/normalize";
 import type { NodeRenderer } from "./nodeRegistry";
 import { resolveLineHeight } from "./engine/lineLayout";
-import { resolveRendererFragmentModel } from "lumenpage-render-engine";
+import { resolveRendererFragmentModel, splitTableBlock as splitTableSlice } from "lumenpage-render-engine";
 
 export type RendererReusePolicy = "none" | "actual-slice-only" | "always-sensitive";
 
@@ -46,6 +46,44 @@ type ResolveNormalizedSplitFragmentsOptions = {
   getFittableLineCount: (lines: any[], availableHeight: number, fallbackLineHeight: number) => number;
   measureLinesHeight: (lines: any[], fallbackLineHeight: number) => number;
   normalizeChunkRelativeY: (lines: any[]) => any[];
+};
+
+const markSplitFragmentsDebugSource = (
+  fragments: ReturnType<typeof normalizeSplitFragments> | null,
+  source: "custom" | "auto",
+  reason: string | null = null
+) => {
+  if (!fragments) {
+    return;
+  }
+  const markLines = (lines: any[]) => {
+    if (!Array.isArray(lines)) {
+      return;
+    }
+    for (const line of lines) {
+      if (!line || typeof line !== "object") {
+        continue;
+      }
+      line.blockAttrs = {
+        ...(line.blockAttrs || {}),
+        __splitSource: source,
+        ...(reason ? { __splitValidationReason: reason } : null),
+      };
+    }
+  };
+  const mark = (continuation: LayoutSplitContinuation | null | undefined) => {
+    if (!continuation) {
+      return;
+    }
+    continuation.carryState = {
+      ...(continuation.carryState || {}),
+      __splitSource: source,
+    };
+  };
+  markLines(fragments.visible?.lines || []);
+  markLines(fragments.overflow?.lines || []);
+  mark(fragments.visible?.continuation);
+  mark(fragments.overflow?.continuation);
 };
 
 type MaterializedSplitChunk = {
@@ -110,7 +148,29 @@ export const resolveNormalizedSplitFragments = ({
   measureLinesHeight,
   normalizeChunkRelativeY,
 }: ResolveNormalizedSplitFragmentsOptions) => {
+  const looksLikeTableSlice =
+    Array.isArray(lines) &&
+    lines.length > 0 &&
+    lines.some(
+      (line) =>
+        Number.isFinite(line?.blockAttrs?.rowIndex) ||
+        Number.isFinite(line?.tableOwnerMeta?.rowIndex) ||
+        Number.isFinite(line?.tableMeta?.rowIndex)
+    ) &&
+    (Array.isArray(blockAttrs?.rowHeights) ||
+      lines.some(
+        (line) =>
+          Array.isArray(line?.blockAttrs?.rowHeights) ||
+          Array.isArray(line?.tableOwnerMeta?.rowHeights) ||
+          Array.isArray(line?.tableMeta?.rowHeights)
+      ));
   const pagination = resolveRendererPagination(renderer);
+  const tableSplitDebugTarget =
+    node?.type?.name === "table" || blockAttrs?.sliceGroup === "table"
+      ? (globalThis as typeof globalThis & {
+          __tableSplitDebug?: Record<string, unknown>;
+        })
+      : null;
   let splitResult = null;
   if (pagination.splitBlock) {
     splitResult = pagination.splitBlock({
@@ -124,6 +184,15 @@ export const resolveNormalizedSplitFragments = ({
       registry,
       indent,
       containerStack,
+      blockAttrs,
+    });
+  }
+  if (!splitResult && looksLikeTableSlice) {
+    splitResult = splitTableSlice({
+      lines,
+      length: remainingLength,
+      availableHeight,
+      settings,
       blockAttrs,
     });
   }
@@ -147,6 +216,23 @@ export const resolveNormalizedSplitFragments = ({
     measureLinesHeight,
   });
   let splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+  markSplitFragmentsDebugSource(splitFragments, "custom", splitValidation.reason);
+  if (tableSplitDebugTarget) {
+    tableSplitDebugTarget.__tableSplitDebug = {
+      stage: "after-custom-split",
+      hasCustomSplit: typeof pagination.splitBlock === "function",
+      hasSplitResult: !!splitResult,
+      splitResultVisibleLines: Array.isArray(splitResult?.lines) ? splitResult.lines.length : 0,
+      splitResultOverflowLines: Array.isArray(splitResult?.overflow?.lines)
+        ? splitResult.overflow.lines.length
+        : 0,
+      validation: splitValidation,
+      visibleLines: splitFragments?.visible?.lines?.length ?? 0,
+      overflowLines: splitFragments?.overflow?.lines?.length ?? 0,
+      visibleContinuation: splitFragments?.visible?.continuation ?? null,
+      overflowContinuation: splitFragments?.overflow?.continuation ?? null,
+    };
+  }
 
   if (!splitFragments && splitResult) {
     splitFragments = normalizeSplitFragments(autoSplitResult, {
@@ -155,15 +241,33 @@ export const resolveNormalizedSplitFragments = ({
       measureLinesHeight,
     });
     splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+    markSplitFragmentsDebugSource(splitFragments, "auto", splitValidation.reason);
   }
 
   if (splitFragments && !splitValidation.ok) {
+    if (tableSplitDebugTarget) {
+      tableSplitDebugTarget.__tableSplitDebug = {
+        ...(tableSplitDebugTarget.__tableSplitDebug || {}),
+        stage: "before-auto-fallback",
+        validation: splitValidation,
+      };
+    }
     splitFragments = normalizeSplitFragments(autoSplitResult, {
       fallbackLineHeight: lineHeightValue,
       expectedLength: remainingLength,
       measureLinesHeight,
     });
     splitValidation = validateNormalizedSplitFragments(splitFragments, remainingLength);
+    markSplitFragmentsDebugSource(splitFragments, "auto", splitValidation.reason);
+    if (tableSplitDebugTarget) {
+      tableSplitDebugTarget.__tableSplitDebug = {
+        ...(tableSplitDebugTarget.__tableSplitDebug || {}),
+        stage: "after-auto-fallback",
+        validation: splitValidation,
+        autoVisibleLines: splitFragments?.visible?.lines?.length ?? 0,
+        autoOverflowLines: splitFragments?.overflow?.lines?.length ?? 0,
+      };
+    }
   }
 
   return splitFragments && splitValidation.ok ? splitFragments : null;

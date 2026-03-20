@@ -1,3 +1,5 @@
+import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
+
 const trimText = (value: unknown) => String(value || "").trim();
 
 const resolvePositiveDimension = (value: unknown) => {
@@ -7,42 +9,54 @@ const resolvePositiveDimension = (value: unknown) => {
   return Number.isFinite(num) && num > 0 ? num : null;
 };
 
+const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) => {
+  const attrs = node.attrs || {};
+  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const desiredWidth = resolvePositiveDimension(attrs.width) ?? Math.min(620, maxWidth);
+  const desiredHeight = resolvePositiveDimension(attrs.height) ?? 360;
+  const width = Math.max(1, Math.min(maxWidth, desiredWidth));
+  const height = Math.max(180, desiredHeight);
+  const title = trimText(attrs.title) || "Embedded page";
+  const line = {
+    text: "",
+    start: 0,
+    end: 1,
+    width,
+    lineHeight: height,
+    runs: [],
+    x: settings.margin.left,
+    blockType: "webPage",
+    blockAttrs: { lineHeight: height, width, height },
+    webPageMeta: {
+      href: String(attrs.href || ""),
+      title,
+      width,
+      height,
+    },
+  };
+
+  return {
+    width,
+    height,
+    line,
+    blockAttrs: { width, height, lineHeight: height },
+    length: 1,
+  };
+};
+
 export const webPageRenderer = {
   allowSplit: false,
+  ...createUnsplittableBlockPagination("webPage", buildWebPageLayout),
 
   layoutBlock({ node, settings }: { node: any; settings: any }) {
-    const attrs = node.attrs || {};
-    const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
-    const desiredWidth = resolvePositiveDimension(attrs.width) ?? Math.min(620, maxWidth);
-    const desiredHeight = resolvePositiveDimension(attrs.height) ?? 360;
-    const width = Math.max(1, Math.min(maxWidth, desiredWidth));
-    const height = Math.max(180, desiredHeight);
-    const title = trimText(attrs.title) || "Embedded page";
-    const line = {
-      text: "",
-      start: 0,
-      end: 1,
-      width,
-      lineHeight: height,
-      runs: [],
-      x: settings.margin.left,
-      blockType: "webPage",
-      blockAttrs: { lineHeight: height, width, height },
-      webPageMeta: {
-        href: String(attrs.href || ""),
-        title,
-        width,
-        height,
-      },
-    };
-
+    const layout = buildWebPageLayout({ node, settings });
     return {
-      lines: [line],
-      length: 1,
-      height,
-      blockLineHeight: height,
+      lines: [layout.line],
+      length: layout.length,
+      height: layout.height,
+      blockLineHeight: layout.height,
       blockType: "webPage",
-      blockAttrs: { width, height, lineHeight: height },
+      blockAttrs: layout.blockAttrs,
     };
   },
 

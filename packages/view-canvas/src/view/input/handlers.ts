@@ -199,9 +199,11 @@ export const createInputHandlers = ({
         Number.isFinite(docSize) &&
         headPos >= Math.max(0, Number(docSize) - 2);
       try {
-        // Keep the expensive sync path only for tail-edge Enter where visual drift was observed.
-        (globalThis as any).__lumenImmediateLayoutHint = nearDocTail && event.repeat !== true;
-        (globalThis as any).__lumenForceSyncLayoutOnce = nearDocTail && event.repeat !== true;
+        // Tail-edge Enter can create a new page while the key is auto-repeating.
+        // Keep forcing the next pass sync in that narrow case so caret/page creation
+        // does not visibly lag behind repeated Enter input.
+        (globalThis as any).__lumenImmediateLayoutHint = nearDocTail;
+        (globalThis as any).__lumenForceSyncLayoutOnce = nearDocTail;
       } catch (_error) {
         // no-op
       }
