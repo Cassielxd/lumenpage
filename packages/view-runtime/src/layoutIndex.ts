@@ -288,6 +288,100 @@ const tryReusePageEntry = (
   };
 };
 
+const clonePageEntryForCurrentPage = (
+  page: any,
+  pageIndex: number,
+  sourceEntry: LayoutPageEntry
+): LayoutPageEntry => ({
+  pageIndex,
+  page,
+  lineCount: Number.isFinite(sourceEntry?.lineCount)
+    ? Number(sourceEntry.lineCount)
+    : getRawPageLines(page).length,
+  hasOffsetContent: sourceEntry?.hasOffsetContent === true,
+  startOffset: Number.isFinite(sourceEntry?.startOffset) ? Number(sourceEntry.startOffset) : 0,
+  endOffset: Number.isFinite(sourceEntry?.endOffset) ? Number(sourceEntry.endOffset) : 0,
+  sourcePageIndex:
+    Number.isFinite(sourceEntry?.sourcePageIndex) ? Number(sourceEntry.sourcePageIndex) : null,
+});
+
+const canReusePrefixPageEntry = (
+  page: any,
+  pageIndex: number,
+  previousLayout: any,
+  previousIndex: LayoutIndex | null
+) => {
+  const previousPage = previousLayout?.pages?.[pageIndex];
+  const previousEntry = previousIndex?.pageEntries?.[pageIndex];
+  if (!page || !previousPage || !previousEntry) {
+    return false;
+  }
+  if (page !== previousPage) {
+    return false;
+  }
+  return getRawPageLines(page).length === previousEntry.lineCount;
+};
+
+const resolveReusablePrefixCount = (
+  layout: any,
+  previousLayout: any,
+  previousIndex: LayoutIndex | null
+) => {
+  const maxCount = Math.min(
+    layout?.pages?.length ?? 0,
+    previousLayout?.pages?.length ?? 0,
+    previousIndex?.pageEntries?.length ?? 0
+  );
+  let count = 0;
+  while (
+    count < maxCount &&
+    canReusePrefixPageEntry(layout.pages[count], count, previousLayout, previousIndex)
+  ) {
+    count += 1;
+  }
+  return count;
+};
+
+const resolveReusableSuffixStart = (
+  layout: any,
+  previousLayout: any,
+  previousIndex: LayoutIndex | null,
+  minStart: number
+) => {
+  const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+  let suffixStart = pages.length;
+  for (let pageIndex = pages.length - 1; pageIndex >= minStart; pageIndex -= 1) {
+    const reusedEntry = tryReusePageEntry(pages[pageIndex], pageIndex, previousLayout, previousIndex);
+    if (!reusedEntry) {
+      break;
+    }
+    suffixStart = pageIndex;
+  }
+  return suffixStart;
+};
+
+const buildPageEntry = (
+  page: any,
+  pageIndex: number,
+  previousLayout: any = null,
+  previousIndex: LayoutIndex | null = null
+): LayoutPageEntry => {
+  const reusedEntry = tryReusePageEntry(page, pageIndex, previousLayout, previousIndex);
+  if (reusedEntry) {
+    return reusedEntry;
+  }
+  const offsets = scanPageOffsets(page);
+  return {
+    pageIndex,
+    page,
+    lineCount: offsets.lineCount,
+    hasOffsetContent: offsets.hasOffsetContent,
+    startOffset: offsets.startOffset,
+    endOffset: offsets.endOffset,
+    sourcePageIndex: null,
+  };
+};
+
 const buildPageEntries = (
   layout: any,
   previousLayout: any = null,
@@ -297,25 +391,39 @@ const buildPageEntries = (
     return [];
   }
 
-  const pageEntries: LayoutPageEntry[] = [];
-  for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
-    const page = layout.pages[pageIndex];
-    const reusedEntry = tryReusePageEntry(page, pageIndex, previousLayout, previousIndex);
-    if (reusedEntry) {
-      pageEntries.push(reusedEntry);
-      continue;
-    }
-    const offsets = scanPageOffsets(page);
-    pageEntries.push({
+  const pages = layout.pages;
+  const pageEntries: LayoutPageEntry[] = new Array(pages.length);
+  const reusablePrefixCount = resolveReusablePrefixCount(layout, previousLayout, previousIndex);
+  const reusableSuffixStart = resolveReusableSuffixStart(
+    layout,
+    previousLayout,
+    previousIndex,
+    reusablePrefixCount
+  );
+
+  for (let pageIndex = 0; pageIndex < reusablePrefixCount; pageIndex += 1) {
+    pageEntries[pageIndex] = clonePageEntryForCurrentPage(
+      pages[pageIndex],
       pageIndex,
-      page,
-      lineCount: offsets.lineCount,
-      hasOffsetContent: offsets.hasOffsetContent,
-      startOffset: offsets.startOffset,
-      endOffset: offsets.endOffset,
-      sourcePageIndex: null,
-    });
+      previousIndex!.pageEntries[pageIndex]
+    );
   }
+
+  for (let pageIndex = reusablePrefixCount; pageIndex < reusableSuffixStart; pageIndex += 1) {
+    pageEntries[pageIndex] = buildPageEntry(
+      pages[pageIndex],
+      pageIndex,
+      previousLayout,
+      previousIndex
+    );
+  }
+
+  for (let pageIndex = reusableSuffixStart; pageIndex < pages.length; pageIndex += 1) {
+    pageEntries[pageIndex] =
+      tryReusePageEntry(pages[pageIndex], pageIndex, previousLayout, previousIndex) ??
+      buildPageEntry(pages[pageIndex], pageIndex, previousLayout, previousIndex);
+  }
+
   return pageEntries;
 };
 
@@ -610,7 +718,7 @@ export const buildPartialLayoutIndex = (
     ...layout,
     pages: layout.pages.slice(Math.max(0, startPageIndex)),
   };
-  return buildLayoutIndex(partialLayout, previousLayout, previousIndex);
+  return buildLayoutIndex(partialLayout, previousIndex, previousLayout);
 };
 
 export const mergeLayoutIndex = (
