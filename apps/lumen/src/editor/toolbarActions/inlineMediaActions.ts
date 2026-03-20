@@ -1,5 +1,6 @@
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import { resolveImageInsertAttrs } from "./mediaDimensions";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -63,7 +64,7 @@ export const createInlineMediaActions = ({
     }
     const ok = run("toggleLink", { href, title: href });
     if (!ok) {
-      window.alert(toolbarTexts.alertLinkRequiresSelection);
+      showToolbarMessage(toolbarTexts.alertLinkRequiresSelection, "warning");
     }
     return ok;
   };

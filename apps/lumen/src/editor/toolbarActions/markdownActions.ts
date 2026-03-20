@@ -1,6 +1,7 @@
 import type { PlaygroundLocale } from "../i18n";
 import { loadMarkdownModule } from "../markdownBridge";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 type DownloadTextAsFile = (filename: string, content: string, mimeType?: string) => boolean;
@@ -79,7 +80,7 @@ export const createMarkdownActions = ({
     try {
       markdownModule = await loadMarkdownModule();
     } catch (_error) {
-      window.alert(menuTexts.markdownModuleLoadFailed);
+      showToolbarMessage(menuTexts.markdownModuleLoadFailed, "error");
       return false;
     }
     if (!markdownModule) {
@@ -91,7 +92,7 @@ export const createMarkdownActions = ({
         const text = markdownModule.defaultMarkdownSerializer.serialize(view.state.doc);
         return downloadTextAsFile("lumen-document.md", text);
       } catch (_error) {
-        window.alert(menuTexts.markdownExportFailed);
+        showToolbarMessage(menuTexts.markdownExportFailed, "error");
         return false;
       }
     }
@@ -105,7 +106,7 @@ export const createMarkdownActions = ({
         const nextDoc = markdownModule.defaultMarkdownParser.parse(source);
         return view.setJSON(nextDoc?.toJSON?.() ?? null);
       } catch (_error) {
-        window.alert(menuTexts.markdownImportFailed);
+        showToolbarMessage(menuTexts.markdownImportFailed, "error");
         return false;
       }
     }

@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 
@@ -97,14 +98,14 @@ export const createSearchReplaceActions = ({
 
     const searchKeyword = String(result.search || "");
     if (!searchKeyword) {
-      window.alert(texts.alertEmptySearch);
+      showToolbarMessage(texts.alertEmptySearch, "warning");
       return false;
     }
     const replacement = String(result.replace || "");
 
     const ranges = collectReplaceRanges(state.doc, searchKeyword);
     if (ranges.length === 0) {
-      window.alert(texts.alertNoMatch);
+      showToolbarMessage(texts.alertNoMatch, "info");
       return false;
     }
 
@@ -114,7 +115,7 @@ export const createSearchReplaceActions = ({
       tr = tr.insertText(replacement, range.from, range.to);
     }
     view.dispatch(tr.scrollIntoView());
-    window.alert(texts.alertReplaced(ranges.length));
+    showToolbarMessage(texts.alertReplaced(ranges.length), "success");
     return true;
   };
 

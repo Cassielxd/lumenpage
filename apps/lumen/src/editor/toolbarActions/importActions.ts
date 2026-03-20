@@ -1,6 +1,7 @@
 import { createDocument } from "lumenpage-core";
 import { DOMParser as PMDOMParser } from "lumenpage-model";
 import type { PlaygroundLocale } from "../i18n";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 
@@ -136,13 +137,13 @@ export const createImportActions = ({
       });
 
       if (!file) {
-        window.alert(texts.alertNoFile);
+        showToolbarMessage(texts.alertNoFile, "warning");
         return false;
       }
 
       const ext = getFileExtension(file.name);
       if (ext === "doc") {
-        window.alert(texts.alertWordUnsupported);
+        showToolbarMessage(texts.alertWordUnsupported, "warning");
         return false;
       }
 
@@ -158,12 +159,12 @@ export const createImportActions = ({
               : parseHtmlToDoc(state.schema, text) || parseTextToDoc(state.schema, text);
         }
       } catch (_error) {
-        window.alert(texts.alertReadFailed);
+        showToolbarMessage(texts.alertReadFailed, "error");
         return false;
       }
 
       if (!nextDoc) {
-        window.alert(texts.alertParseFailed);
+        showToolbarMessage(texts.alertParseFailed, "error");
         return false;
       }
 

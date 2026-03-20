@@ -2,6 +2,7 @@ import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import type { RequestToolbarSignatureDialog } from "./ui/signatureDialog";
 import { resolveImageInsertAttrs } from "./mediaDimensions";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
@@ -507,7 +508,7 @@ export const createToolsActions = ({
     const mode = normalizeChineseCaseMode(String(result.mode || "upper"));
     const converted = convertNumberToChineseCase(source, mode);
     if (!converted) {
-      window.alert(texts.alertChineseCaseInvalidNumber);
+      showToolbarMessage(texts.alertChineseCaseInvalidNumber, "warning");
       return false;
     }
     return replaceSelectionText(getView, converted);

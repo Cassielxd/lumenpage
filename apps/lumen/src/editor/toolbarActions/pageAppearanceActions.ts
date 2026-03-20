@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
 
@@ -326,7 +327,7 @@ export const createPageAppearanceActions = ({
       return refreshPageAppearance(payload.view);
     }
     if (!isValidCssColor(next)) {
-      window.alert(payload.texts.alertInvalidColor);
+      showToolbarMessage(payload.texts.alertInvalidColor, "warning");
       return false;
     }
     payload.state.backgroundColor = next;
@@ -375,7 +376,7 @@ export const createPageAppearanceActions = ({
     }
     const next = String(result.value || "").trim();
     if (next.length > WATERMARK_MAX_LENGTH) {
-      window.alert(payload.texts.alertWatermarkTooLong(WATERMARK_MAX_LENGTH));
+      showToolbarMessage(payload.texts.alertWatermarkTooLong(WATERMARK_MAX_LENGTH), "warning");
       return false;
     }
     payload.state.watermarkText = next;

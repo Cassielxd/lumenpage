@@ -439,6 +439,7 @@ import createTableActions from "../editor/toolbarActions/tableActions";
 import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
 import { createTextStyleActions } from "../editor/toolbarActions/textStyleActions";
 import { createToolsActions } from "../editor/toolbarActions/toolsActions";
+import { showToolbarMessage } from "../editor/toolbarActions/ui/message";
 import type {
   RequestToolbarInputDialog,
   ToolbarInputDialogField,
@@ -637,7 +638,7 @@ const canRun = (name: string, ...args: unknown[]) => {
 const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
   const ok = run(name, ...args);
   if (!ok) {
-    window.alert(message);
+    showToolbarMessage(message, "warning");
   }
   return ok;
 };
@@ -848,10 +849,11 @@ const handleInlineFontFamilyChange = (value: unknown) => {
   const ok = !next ? run("clearTextFontFamily") : run("setTextFontFamily", next);
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(
+    showToolbarMessage(
       localeKey.value === "en-US"
         ? "Unable to apply font family"
-        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u4f53"
+        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u4f53",
+      "error"
     );
   }
   syncInlineFontControls();
@@ -869,10 +871,11 @@ const handleInlineFontSizeChange = (value: unknown) => {
     const ok = run("clearTextFontSize");
     pendingInlineStyleSelection.value = null;
     if (!ok) {
-      window.alert(
+      showToolbarMessage(
         localeKey.value === "en-US"
           ? "Unable to apply font size"
-          : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7"
+          : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7",
+        "error"
       );
     }
     syncInlineFontControls();
@@ -880,8 +883,9 @@ const handleInlineFontSizeChange = (value: unknown) => {
   }
   const size = Number(next);
   if (!Number.isFinite(size) || size <= 0) {
-    window.alert(
-      localeKey.value === "en-US" ? "Invalid font size" : "\u5b57\u53f7\u65e0\u6548"
+    showToolbarMessage(
+      localeKey.value === "en-US" ? "Invalid font size" : "\u5b57\u53f7\u65e0\u6548",
+      "warning"
     );
     syncInlineFontControls();
     return;
@@ -889,10 +893,11 @@ const handleInlineFontSizeChange = (value: unknown) => {
   const ok = run("setTextFontSize", Math.round(size));
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    window.alert(
+    showToolbarMessage(
       localeKey.value === "en-US"
         ? "Unable to apply font size"
-        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7"
+        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7",
+      "error"
     );
   }
   syncInlineFontControls();
@@ -1130,7 +1135,10 @@ const handlePageSizeChange = (value: unknown) => {
   }
   const ok = layoutActions.applyPageSizePreset?.(next);
   if (!ok) {
-    window.alert(localeKey.value === "en-US" ? "Unable to set page size" : "无法设置纸张大小");
+    showToolbarMessage(
+      localeKey.value === "en-US" ? "Unable to set page size" : "无法设置纸张大小",
+      "error"
+    );
   }
   syncPageSizeControl();
 };
@@ -1335,7 +1343,7 @@ const handleColorDialogConfirm = () => {
   });
   if (!ok) {
     if (action === "cells-background") {
-      window.alert(i18n.value.toolbar.alertTableCellRequired);
+      showToolbarMessage(i18n.value.toolbar.alertTableCellRequired, "warning");
     }
     return;
   }

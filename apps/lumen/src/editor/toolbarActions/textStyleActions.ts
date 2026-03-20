@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog, ToolbarInputDialogOption } from "./ui/inputDialog";
+import { showToolbarMessage } from "./ui/message";
 
 type RunCommand = (name: string, ...args: unknown[]) => boolean;
 type GetView = () => any;
@@ -235,7 +236,7 @@ export const createTextStyleActions = ({
     }
     const size = Number(value);
     if (!Number.isFinite(size) || size <= 0) {
-      window.alert(texts.alertInvalidFontSize);
+      showToolbarMessage(texts.alertInvalidFontSize, "warning");
       return false;
     }
     return run("setTextFontSize", Math.round(size));
@@ -260,7 +261,7 @@ export const createTextStyleActions = ({
       return run("clearTextColor");
     }
     if (!isValidCssColor(value)) {
-      window.alert(getTexts().alertInvalidColor);
+      showToolbarMessage(getTexts().alertInvalidColor, "warning");
       return false;
     }
     return run("setTextColor", value);
@@ -285,7 +286,7 @@ export const createTextStyleActions = ({
       return run("clearTextBackground");
     }
     if (!isValidCssColor(value)) {
-      window.alert(getTexts().alertInvalidColor);
+      showToolbarMessage(getTexts().alertInvalidColor, "warning");
       return false;
     }
     return run("setTextBackground", value);

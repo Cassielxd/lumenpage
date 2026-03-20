@@ -1,6 +1,8 @@
 type GetView = () => any;
 type GetLocaleKey = () => "zh-CN" | "en-US";
 
+import { showToolbarMessage } from "./ui/message";
+
 type PainterSnapshot = {
   marks: any[];
   blockAttrs: Record<string, unknown> | null;
@@ -152,7 +154,7 @@ export const createTextFormatActions = ({
         marks: cloneMarks(marks || []),
         blockAttrs: captureBlockAttrsFromSelection(state),
       };
-      window.alert(texts.armed);
+      showToolbarMessage(texts.armed, "info");
       return true;
     }
 
@@ -183,7 +185,7 @@ export const createTextFormatActions = ({
       return false;
     }
     view.dispatch(tr.scrollIntoView());
-    window.alert(texts.applied);
+    showToolbarMessage(texts.applied, "success");
     return true;
   };
 

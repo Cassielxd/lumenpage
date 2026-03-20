@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../../i18n";
 import type { RequestToolbarInputDialog } from "../ui/inputDialog";
+import { showToolbarMessage } from "../ui/message";
 import { resolveExportLocaleTexts } from "./localeTexts";
 
 export const createShareClipboardActions = ({
@@ -60,7 +61,7 @@ export const createShareClipboardActions = ({
     const texts = resolveExportLocaleTexts(getLocaleKey());
     const mode = await copyTextWithFallback(url, texts.copyShareLink);
     if (mode === "clipboard") {
-      window.alert(texts.copiedToClipboard);
+      showToolbarMessage(texts.copiedToClipboard, "success");
     }
     return mode != null;
   };
@@ -75,7 +76,7 @@ export const createShareClipboardActions = ({
     const texts = resolveExportLocaleTexts(getLocaleKey());
     const mode = await copyTextWithFallback(snippet, texts.copyEmbedCode);
     if (mode === "clipboard") {
-      window.alert(texts.copiedToClipboard);
+      showToolbarMessage(texts.copiedToClipboard, "success");
     }
     return mode != null;
   };

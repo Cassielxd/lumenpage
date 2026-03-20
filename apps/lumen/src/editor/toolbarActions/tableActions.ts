@@ -1,5 +1,6 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import { showToolbarMessage } from "./ui/message";
 import { TextSelection } from "lumenpage-state";
 
 type GetView = () => any;
@@ -712,7 +713,7 @@ export const createTableActions = ({
     const context = resolveTableContext();
     const texts = resolveTexts(getLocaleKey());
     if (!context || resolveCellTargets(context).length === 0) {
-      window.alert(texts.alertCellRequired);
+      showToolbarMessage(texts.alertCellRequired, "warning");
       return false;
     }
     const current = getCurrentCellsAlign(context) || "left";
@@ -747,7 +748,7 @@ export const createTableActions = ({
     }
     const align = normalizeCellAlign(result.align);
     if (!align) {
-      window.alert(texts.alertInvalidCellAlign);
+      showToolbarMessage(texts.alertInvalidCellAlign, "warning");
       return false;
     }
     return setCurrentCellsAlign(align);

@@ -1,4 +1,5 @@
 import type { ToolbarActionContext, ToolbarHandlerRecord } from "./types";
+import { showToolbarMessage } from "../ui/message";
 
 export const createTableActionHandlers = ({
   runWithNotice,
@@ -48,22 +49,22 @@ export const createTableActionHandlers = ({
     },
     "toggle-header-row": () => {
       if (!tableActions.toggleHeaderRow()) {
-        window.alert(getToolbarTexts().alertTableCellRequired);
+        showToolbarMessage(getToolbarTexts().alertTableCellRequired, "warning");
       }
     },
     "toggle-header-column": () => {
       if (!tableActions.toggleHeaderColumn()) {
-        window.alert(getToolbarTexts().alertTableCellRequired);
+        showToolbarMessage(getToolbarTexts().alertTableCellRequired, "warning");
       }
     },
     "toggle-header-cell": () => {
       if (!tableActions.toggleHeaderCell()) {
-        window.alert(getToolbarTexts().alertTableCellRequired);
+        showToolbarMessage(getToolbarTexts().alertTableCellRequired, "warning");
       }
     },
     "delete-table": () => {
       if (!tableActions.deleteCurrentTable()) {
-        window.alert(getToolbarTexts().alertTableCellRequired);
+        showToolbarMessage(getToolbarTexts().alertTableCellRequired, "warning");
       }
     },
   };
