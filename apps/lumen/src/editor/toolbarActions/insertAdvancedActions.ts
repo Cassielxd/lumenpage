@@ -538,39 +538,6 @@ export const createInsertAdvancedActions = ({
     return insertText(getView, `$$ ${expr} $$`);
   };
 
-  const insertColumns = async () => {
-    const payload = getViewState(getView);
-    if (!payload) {
-      return false;
-    }
-    const texts = resolveTexts(getLocaleKey());
-    const raw = await readInput({
-      title: dialogTitle("Insert Columns", "插入分栏"),
-      label: texts.promptColumnsCount,
-      defaultValue: texts.defaultColumnsCount,
-      type: "number",
-      required: true,
-    });
-    if (!raw) {
-      return false;
-    }
-    const count = Number.parseInt(raw, 10);
-    if (!Number.isFinite(count)) {
-      return false;
-    }
-    const safeCount = Math.max(2, Math.min(4, count));
-    if (run("insertColumns", { count: safeCount })) {
-      return true;
-    }
-    const tableNode = createTableNode(payload.state.schema, 1, safeCount, (_rowIndex, colIndex) => {
-      return `${texts.labelColumn} ${colIndex + 1}`;
-    });
-    if (!tableNode) {
-      return false;
-    }
-    return replaceSelectionWithNode(getView, tableNode);
-  };
-
   const insertTag = async () => {
     const texts = resolveTexts(getLocaleKey());
     const raw = await readInput({
@@ -809,7 +776,6 @@ export const createInsertAdvancedActions = ({
     insertAudio,
     insertFile,
     insertMath,
-    insertColumns,
     insertTag,
     insertCallout,
     insertBookmark,

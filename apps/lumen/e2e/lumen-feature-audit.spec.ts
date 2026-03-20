@@ -36,14 +36,6 @@ const cases: FeatureAuditCase[] = [
       after.textContent.includes("E = mc^2"),
   },
   {
-    name: "insert columns",
-    menu: "insert",
-    action: "columns",
-    expectResult: (before, after) =>
-      getTypeCount(after, "columns") > getTypeCount(before, "columns") ||
-      getTypeCount(after, "table") > getTypeCount(before, "table"),
-  },
-  {
     name: "insert callout",
     menu: "insert",
     action: "callout",

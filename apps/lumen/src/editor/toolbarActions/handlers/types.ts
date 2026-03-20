@@ -92,7 +92,6 @@ export type InsertAdvancedActions = {
   insertAudio: () => ToolbarActionResult;
   insertFile: () => ToolbarActionResult;
   insertMath: () => ToolbarActionResult;
-  insertColumns: () => ToolbarActionResult;
   insertTag: () => ToolbarActionResult;
   insertCallout: () => ToolbarActionResult;
   insertMention: () => ToolbarActionResult;

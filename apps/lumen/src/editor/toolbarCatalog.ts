@@ -166,7 +166,6 @@ export const TOOLBAR_MENU_GROUPS: Record<ToolbarMenuKey, ToolbarGroupConfig[]> =
     {
       id: "insert-advanced",
       items: [
-        item("columns", "columns", "分栏", "Columns", "columns", true),
         item("tag", "tag", "标签", "Tag", "tag", true),
         item("callout", "callout", "气泡", "Callout", "callout", true),
         item("mention", "mention", "提及", "Mention", "mention", true),

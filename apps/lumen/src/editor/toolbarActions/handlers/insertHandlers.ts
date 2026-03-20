@@ -13,9 +13,6 @@ export const createInsertActionHandlers = ({
   math: () => {
     insertAdvancedActions.insertMath();
   },
-  columns: () => {
-    insertAdvancedActions.insertColumns();
-  },
   tag: () => {
     insertAdvancedActions.insertTag();
   },
