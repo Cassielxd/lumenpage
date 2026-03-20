@@ -407,11 +407,29 @@ export const createTableActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const insertTable = async () => {
+  const insertTableWithSize = (rows: number, cols: number) => {
     const view = getView();
     if (!view?.state?.tr) {
       return false;
     }
+    const nextRows = Math.round(Number(rows));
+    const nextCols = Math.round(Number(cols));
+    if (
+      !Number.isFinite(nextRows) ||
+      !Number.isFinite(nextCols) ||
+      nextRows <= 0 ||
+      nextCols <= 0
+    ) {
+      return false;
+    }
+    const tableNode = createDefaultTableNode(view, nextRows, nextCols);
+    if (!tableNode) {
+      return false;
+    }
+    return replaceSelectionWithTableAndParagraphs(view, tableNode);
+  };
+
+  const insertTable = async () => {
     const result = await requestInputDialog({
       title: getLocaleKey() === "en-US" ? "Insert Table" : "\u63d2\u5165\u8868\u683c",
       fields: [
@@ -430,11 +448,7 @@ export const createTableActions = ({
     if (!tableSize) {
       return false;
     }
-    const tableNode = createDefaultTableNode(view, tableSize.rows, tableSize.cols);
-    if (!tableNode) {
-      return false;
-    }
-    return replaceSelectionWithTableAndParagraphs(view, tableNode);
+    return insertTableWithSize(tableSize.rows, tableSize.cols);
   };
 
   const deleteCurrentTable = () => {
@@ -740,6 +754,7 @@ export const createTableActions = ({
   };
 
   return {
+    insertTableWithSize,
     insertTable,
     deleteCurrentTable,
     toggleHeaderRow,

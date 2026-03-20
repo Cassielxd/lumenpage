@@ -59,20 +59,35 @@ export const focusEditor = async (page: Page) => {
   await input.focus();
 };
 
-export const openTableInsertDialog = async (page: Page) => {
+export const openTableInsertPicker = async (page: Page) => {
   await page.locator(".menu-tab-trigger").nth(2).click();
-  await page.locator(".toolbar .icon-btn").first().click();
-  const dialog = page
-    .locator(".t-dialog")
-    .filter({ has: page.locator(".toolbar-input-dialog") });
-  await expect(dialog).toBeVisible();
-  return dialog;
+  await page.locator('[data-toolbar-action="table-insert"]').first().click();
+  const picker = page.locator(".table-insert-picker");
+  await expect(picker).toBeVisible();
+  return picker;
 };
 
 export const insertTable = async (page: Page, value: string) => {
-  const dialog = await openTableInsertDialog(page);
-  await dialog.locator("input").first().fill(value);
-  await dialog.locator("button").last().click();
+  const match = String(value || "")
+    .trim()
+    .toLowerCase()
+    .match(/^(\d+)\s*[xX*]\s*(\d+)$/);
+  expect(match, `invalid table size: ${value}`).not.toBeNull();
+  const rows = Number(match?.[1] || 0);
+  const cols = Number(match?.[2] || 0);
+  const picker = await openTableInsertPicker(page);
+  await picker.locator(`[data-table-size="${rows}x${cols}"]`).click();
+  await expect(picker).toBeHidden();
+  await waitForLayoutIdle(page);
+};
+
+export const selectToolbarPageSize = async (page: Page, value: string) => {
+  await page.locator('[data-toolbar-action="page-size"]').first().click();
+  const option = page.locator(".toolbar-page-size-dropdown .t-dropdown__item").filter({
+    hasText: new RegExp(`^${value}$`, "i"),
+  });
+  await expect(option).toBeVisible();
+  await option.first().click();
 };
 
 export const scrollEditor = async (scrollArea: Locator, top: number) => {

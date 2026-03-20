@@ -2,7 +2,6 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   attachConsoleGuards,
   clickToolbarAction,
-  fillVisibleToolbarDialog,
   focusEditor,
   getDocumentSnapshot,
   getParagraphDocPos,
@@ -210,7 +209,7 @@ const cases: AuditCase[] = [
     menu: "table",
     action: "table-insert",
     submit: async (page) => {
-      await fillVisibleToolbarDialog(page, ["2x2"]);
+      await page.locator('.table-insert-picker [data-table-size="2x2"]').click();
     },
     expectResult: ({ beforeDoc, afterDoc }) =>
       getTypeCount(afterDoc, "table") > getTypeCount(beforeDoc, "table"),

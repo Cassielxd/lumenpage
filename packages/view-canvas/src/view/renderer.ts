@@ -4,6 +4,7 @@ import {
   buildRendererPageDisplayList,
 } from "./render/pageContentPass";
 import {
+  getRendererPageCacheEntry,
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
 } from "./render/pageCanvasCache";
@@ -56,6 +57,15 @@ export class Renderer {
   setNodeViewProvider(provider: (line: any) => any) {
     this.nodeViewProvider = provider;
     return this;
+  }
+
+  getPageCache(pageIndex: number, layout: any, dpr: number) {
+    return getRendererPageCacheEntry({
+      pageCache: this.pageCache,
+      pageIndex,
+      layout,
+      dpr,
+    });
   }
 
   buildPageDisplayList(pageIndex: number, layout: any): RendererPageDisplayList {

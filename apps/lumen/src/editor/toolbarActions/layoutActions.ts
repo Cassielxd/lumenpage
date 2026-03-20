@@ -9,32 +9,66 @@ const TOC_PLACEHOLDER = "[[TOC]]";
 
 const TOC_MARKERS = new Set([TOC_PLACEHOLDER, "[TOC]"]);
 
-const parsePaperSize = (raw: string | null) => {
-  const text = String(raw || "")
-    .trim()
-    .toLowerCase();
-  if (!text) {
-    return null;
-  }
-  if (text === "a4") {
-    return { width: 794, height: 1123 };
-  }
-  if (text === "letter") {
-    return { width: 816, height: 1056 };
-  }
-  if (text === "legal") {
-    return { width: 816, height: 1344 };
-  }
-  const match = text.match(/^(\d+(?:\.\d+)?)\s*[xX*]\s*(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    return null;
-  }
-  const width = Number(match[1]);
-  const height = Number(match[2]);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    return null;
-  }
-  return { width: Math.round(width), height: Math.round(height) };
+export type PageSizePreset = {
+  value: string;
+  label: Record<PlaygroundLocale, string>;
+  width: number;
+  height: number;
+};
+
+export const PAGE_SIZE_PRESETS: PageSizePreset[] = [
+  {
+    value: "a3",
+    label: { "zh-CN": "A3", "en-US": "A3" },
+    width: 1123,
+    height: 1587,
+  },
+  {
+    value: "a4",
+    label: { "zh-CN": "A4", "en-US": "A4" },
+    width: 794,
+    height: 1123,
+  },
+  {
+    value: "a5",
+    label: { "zh-CN": "A5", "en-US": "A5" },
+    width: 559,
+    height: 794,
+  },
+  {
+    value: "b4",
+    label: { "zh-CN": "B4", "en-US": "B4" },
+    width: 944,
+    height: 1334,
+  },
+  {
+    value: "b5",
+    label: { "zh-CN": "B5", "en-US": "B5" },
+    width: 665,
+    height: 944,
+  },
+  {
+    value: "letter",
+    label: { "zh-CN": "Letter", "en-US": "Letter" },
+    width: 816,
+    height: 1056,
+  },
+  {
+    value: "legal",
+    label: { "zh-CN": "Legal", "en-US": "Legal" },
+    width: 816,
+    height: 1344,
+  },
+];
+
+const findPageSizePreset = (width: number, height: number) => {
+  const shortEdge = Math.min(width, height);
+  const longEdge = Math.max(width, height);
+  return (
+    PAGE_SIZE_PRESETS.find(
+      (preset) => preset.width === shortEdge && preset.height === longEdge
+    ) || null
+  );
 };
 
 export const createLayoutActions = ({
@@ -79,6 +113,47 @@ export const createLayoutActions = ({
     return true;
   };
 
+  const getCurrentPageSizeInfo = () => {
+    const view = getView();
+    const settings = view?._internals?.settings;
+    if (!settings) {
+      return null;
+    }
+    const width = Math.max(1, Math.round(Number(settings.pageWidth) || 794));
+    const height = Math.max(1, Math.round(Number(settings.pageHeight) || 1123));
+    return {
+      width,
+      height,
+      preset: findPageSizePreset(width, height),
+    };
+  };
+
+  const setPageSizeDimensions = (width: number, height: number) => {
+    const view = getView();
+    const settings = view?._internals?.settings;
+    const nextWidth = Math.max(1, Math.round(Number(width) || 0));
+    const nextHeight = Math.max(1, Math.round(Number(height) || 0));
+    if (!settings || !Number.isFinite(nextWidth) || !Number.isFinite(nextHeight)) {
+      return false;
+    }
+    settings.pageWidth = nextWidth;
+    settings.pageHeight = nextHeight;
+    return refreshLayoutAndRender();
+  };
+
+  const applyPageSizePreset = (value: string) => {
+    const preset = PAGE_SIZE_PRESETS.find((item) => item.value === value) || null;
+    if (!preset) {
+      return false;
+    }
+    const current = getCurrentPageSizeInfo();
+    const isLandscape = current ? current.width > current.height : false;
+    return setPageSizeDimensions(
+      isLandscape ? preset.height : preset.width,
+      isLandscape ? preset.width : preset.height
+    );
+  };
+
   const requestNumber = async ({
     title,
     label,
@@ -114,8 +189,8 @@ export const createLayoutActions = ({
     }
     const current = Number(settings.lineHeight) || 26;
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Line Height" : "\u884c\u9ad8",
-      label: getLocaleKey() === "en-US" ? "Line height (px)" : "\u884c\u9ad8\uff08px\uff09",
+      title: getLocaleKey() === "en-US" ? "Line Height" : "行高",
+      label: getLocaleKey() === "en-US" ? "Line height (px)" : "行高（px）",
       defaultValue: String(current),
     });
     if (!Number.isFinite(next) || next <= 0) {
@@ -127,8 +202,8 @@ export const createLayoutActions = ({
 
   const applyParagraphSpacingSetting = async () => {
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Paragraph Spacing" : "\u6bb5\u95f4\u8ddd",
-      label: getLocaleKey() === "en-US" ? "Paragraph spacing (px)" : "\u6bb5\u95f4\u8ddd\uff08px\uff09",
+      title: getLocaleKey() === "en-US" ? "Paragraph Spacing" : "段间距",
+      label: getLocaleKey() === "en-US" ? "Paragraph spacing (px)" : "段间距（px）",
       defaultValue: "8",
     });
     if (!Number.isFinite(next) || next < 0) {
@@ -161,8 +236,8 @@ export const createLayoutActions = ({
     }
     const current = Number(settings.margin.left) || 72;
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Page Margin" : "\u9875\u8fb9\u8ddd",
-      label: getLocaleKey() === "en-US" ? "Page margin (px)" : "\u9875\u8fb9\u8ddd\uff08px\uff09",
+      title: getLocaleKey() === "en-US" ? "Page Margin" : "页边距",
+      label: getLocaleKey() === "en-US" ? "Page margin (px)" : "页边距（px）",
       defaultValue: String(current),
     });
     if (!Number.isFinite(next) || next < 0) {
@@ -174,22 +249,20 @@ export const createLayoutActions = ({
   };
 
   const applyPageSizeSetting = async () => {
-    const view = getView();
-    const settings = view?._internals?.settings;
-    if (!settings) {
-      return false;
-    }
-    const current = `${Number(settings.pageWidth) || 794}x${Number(settings.pageHeight) || 1123}`;
+    const current = getCurrentPageSizeInfo();
+    const currentPreset = current?.preset?.value || PAGE_SIZE_PRESETS[1]?.value || "a4";
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Size" : "\u7eb8\u5f20\u5927\u5c0f",
+      title: getLocaleKey() === "en-US" ? "Page Size" : "纸张大小",
       fields: [
         {
           key: "value",
-          label:
-            getLocaleKey() === "en-US"
-              ? "Paper size: A4 / Letter / Legal / widthxheight"
-              : "\u7eb8\u5f20\u5927\u5c0f\uff1aA4 / Letter / Legal / \u5bbdx\u9ad8",
-          defaultValue: current,
+          label: getLocaleKey() === "en-US" ? "Paper type" : "纸张类型",
+          type: "select",
+          options: PAGE_SIZE_PRESETS.map((preset) => ({
+            label: preset.label[getLocaleKey()],
+            value: preset.value,
+          })),
+          defaultValue: currentPreset,
           required: true,
         },
       ],
@@ -197,26 +270,15 @@ export const createLayoutActions = ({
     if (!result) {
       return false;
     }
-    const nextSize = parsePaperSize(result.value);
-    if (!nextSize) {
-      return false;
-    }
-    settings.pageWidth = nextSize.width;
-    settings.pageHeight = nextSize.height;
-    return refreshLayoutAndRender();
+    return applyPageSizePreset(result.value);
   };
 
   const togglePageOrientation = () => {
-    const view = getView();
-    const settings = view?._internals?.settings;
-    if (!settings) {
+    const current = getCurrentPageSizeInfo();
+    if (!current) {
       return false;
     }
-    const width = Number(settings.pageWidth) || 794;
-    const height = Number(settings.pageHeight) || 1123;
-    settings.pageWidth = height;
-    settings.pageHeight = width;
-    return refreshLayoutAndRender();
+    return setPageSizeDimensions(current.height, current.width);
   };
 
   const toggleTocPlaceholder = () => {
@@ -262,6 +324,9 @@ export const createLayoutActions = ({
 
   return {
     refreshLayoutAndRender,
+    getCurrentPageSizeInfo,
+    setPageSizeDimensions,
+    applyPageSizePreset,
     applyLineHeightSetting,
     applyParagraphSpacingSetting,
     selectAllContent,

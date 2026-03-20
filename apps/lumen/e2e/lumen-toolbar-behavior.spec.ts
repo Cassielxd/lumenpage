@@ -10,6 +10,7 @@ import {
   openToolbarMenu,
   setDocumentJson,
   setParagraphDocument,
+  selectToolbarPageSize,
   setTextSelection,
   submitVisibleSignatureDialog,
   waitForLayoutIdle,
@@ -31,6 +32,7 @@ type AuditCase = {
   name: string;
   menu: ToolbarMenu;
   action: string;
+  skipActionClick?: boolean;
   prepare?: (page: Page) => Promise<void>;
   submit?: (page: Page) => Promise<void>;
   expectResult?: (context: AuditContext) => boolean;
@@ -328,14 +330,17 @@ const cases: AuditCase[] = [
     name: "set page size",
     menu: "page",
     action: "page-size",
+    skipActionClick: true,
     submit: async (page) => {
-      await fillVisibleToolbarDialog(page, ["816x1056"]);
+      await selectToolbarPageSize(page, "Letter");
     },
     expectResult: ({ beforeSettings, afterSettings }) =>
       (beforeSettings.pageWidth !== afterSettings.pageWidth ||
         beforeSettings.pageHeight !== afterSettings.pageHeight) &&
-      afterSettings.pageWidth === 816 &&
-      afterSettings.pageHeight === 1056,
+      Math.min(afterSettings.pageWidth, afterSettings.pageHeight) === 816 &&
+      Math.max(afterSettings.pageWidth, afterSettings.pageHeight) === 1056 &&
+      (beforeSettings.pageWidth > beforeSettings.pageHeight) ===
+        (afterSettings.pageWidth > afterSettings.pageHeight),
   },
   {
     name: "toggle page orientation",
@@ -419,7 +424,9 @@ for (const auditCase of cases) {
     const beforeSettings = await getEditorSettingsSnapshot(page);
 
     await openToolbarMenu(page, auditCase.menu);
-    await clickToolbarAction(page, auditCase.action);
+    if (!auditCase.skipActionClick) {
+      await clickToolbarAction(page, auditCase.action);
+    }
     await auditCase.submit?.(page);
     await waitForLayoutIdle(page);
 

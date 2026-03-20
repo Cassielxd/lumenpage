@@ -67,28 +67,161 @@
                     v
                   </button>
                 </div>
-                <div v-else-if="isFontFamilyItem(item)" class="toolbar-inline-control">
-                  <t-select
-                    v-model="fontFamilyValue"
-                    size="small"
-                    class="toolbar-inline-select toolbar-inline-select--font"
+                <t-dropdown
+                  v-else-if="isFontFamilyItem(item)"
+                  trigger="click"
+                  placement="bottom-left"
+                  :disabled="isItemDisabled(item)"
+                  :hide-after-item-click="true"
+                  :options="fontFamilyMenuOptions"
+                  :popup-props="{ overlayInnerClassName: 'toolbar-check-dropdown toolbar-font-family-dropdown' }"
+                  @click="handleFontFamilyDropdownClick"
+                >
+                  <button
+                    type="button"
+                    class="toolbar-inline-dropdown-trigger toolbar-inline-dropdown-trigger--font"
                     data-toolbar-action="font-family"
                     :disabled="isItemDisabled(item)"
-                    :options="fontFamilyOptions"
-                    @change="handleInlineFontFamilyChange"
-                  />
-                </div>
-                <div v-else-if="isFontSizeItem(item)" class="toolbar-inline-control">
-                  <t-select
-                    v-model="fontSizeValue"
-                    size="small"
-                    class="toolbar-inline-select toolbar-inline-select--size"
+                    :aria-disabled="isItemDisabled(item)"
+                    @mousedown="handleInlineDropdownTriggerMouseDown"
+                  >
+                    <span class="toolbar-inline-dropdown-trigger-value">
+                      {{ fontFamilyDisplayLabel }}
+                    </span>
+                    <span class="toolbar-inline-dropdown-trigger-arrow" aria-hidden="true"></span>
+                  </button>
+                </t-dropdown>
+                <t-dropdown
+                  v-else-if="isFontSizeItem(item)"
+                  trigger="click"
+                  placement="bottom-left"
+                  :disabled="isItemDisabled(item)"
+                  :hide-after-item-click="true"
+                  :options="fontSizeMenuOptions"
+                  :popup-props="{ overlayInnerClassName: 'toolbar-check-dropdown toolbar-font-size-dropdown' }"
+                  @click="handleFontSizeDropdownClick"
+                >
+                  <button
+                    type="button"
+                    class="toolbar-inline-dropdown-trigger toolbar-inline-dropdown-trigger--size"
                     data-toolbar-action="font-size"
                     :disabled="isItemDisabled(item)"
-                    :options="fontSizeOptions"
-                    @change="handleInlineFontSizeChange"
-                  />
-                </div>
+                    :aria-disabled="isItemDisabled(item)"
+                    @mousedown="handleInlineDropdownTriggerMouseDown"
+                  >
+                    <span class="toolbar-inline-dropdown-trigger-value">
+                      {{ fontSizeDisplayLabel }}
+                    </span>
+                    <span class="toolbar-inline-dropdown-trigger-arrow" aria-hidden="true"></span>
+                  </button>
+                </t-dropdown>
+                <t-dropdown
+                  v-else-if="isPageSizeItem(item)"
+                  trigger="click"
+                  placement="bottom-left"
+                  :disabled="isItemDisabled(item)"
+                  :hide-after-item-click="true"
+                  :options="pageSizeMenuOptions"
+                  :popup-props="{ overlayInnerClassName: 'toolbar-page-size-dropdown' }"
+                  @click="handlePageSizeDropdownClick"
+                >
+                  <t-tooltip :content="itemLabel(item)">
+                    <t-button
+                      size="small"
+                      variant="text"
+                      class="icon-btn"
+                      :data-toolbar-action="item.action"
+                      :class="{
+                        'icon-btn--with-label': shouldShowItemDescription(group),
+                        'icon-btn--base': isBaseGridGroup(group),
+                      }"
+                      :disabled="isItemDisabled(item)"
+                      @mousedown.prevent
+                    >
+                      <span
+                        class="icon-btn-content"
+                        :class="{
+                          'icon-btn-content--with-label': shouldShowItemDescription(group),
+                        }"
+                      >
+                        <LumenIcon
+                          v-if="shouldShowItemIcon(item)"
+                          :name="item.icon"
+                          :size="resolveIconSize(group)"
+                        />
+                        <span v-if="shouldShowItemDescription(group)" class="icon-btn-label">{{
+                          itemLabel(item)
+                        }}</span>
+                      </span>
+                    </t-button>
+                  </t-tooltip>
+                </t-dropdown>
+                <t-popup
+                  v-else-if="isTableInsertItem(item)"
+                  trigger="click"
+                  placement="bottom-left"
+                  :disabled="isItemDisabled(item)"
+                  :visible="tableInsertPickerOpen"
+                  overlay-inner-class-name="toolbar-table-insert-popup"
+                  @visible-change="handleTableInsertPopupVisibleChange"
+                >
+                  <template #content>
+                    <div class="table-insert-picker heading-inline-surface" @mouseleave="handleTableInsertGridLeave">
+                      <div class="table-insert-picker-title">{{ tableInsertPickerText }}</div>
+                      <div class="table-insert-picker-grid">
+                        <div
+                          v-for="row in tableInsertGridRows"
+                          :key="`table-grid-row-${row}`"
+                          class="table-insert-picker-row"
+                        >
+                          <button
+                            v-for="col in tableInsertGridCols"
+                            :key="`table-grid-${row}-${col}`"
+                            type="button"
+                            class="table-insert-picker-cell"
+                            :class="{ 'table-insert-picker-cell--active': isTableInsertCellActive(row, col) }"
+                            :data-table-size="`${row}x${col}`"
+                            @mousedown.prevent
+                            @mouseenter="handleTableInsertCellEnter(row, col)"
+                            @focus="handleTableInsertCellEnter(row, col)"
+                            @click="handleTableInsertCellClick(row, col)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <t-tooltip :content="itemLabel(item)">
+                    <button
+                      type="button"
+                      class="icon-btn toolbar-table-picker-trigger"
+                      :data-toolbar-action="item.action"
+                      :class="{
+                        'icon-btn--with-label': shouldShowItemDescription(group),
+                        'icon-btn--base': isBaseGridGroup(group),
+                      }"
+                      :disabled="isItemDisabled(item)"
+                      :aria-disabled="isItemDisabled(item)"
+                      :aria-expanded="tableInsertPickerOpen"
+                      @mousedown.prevent
+                    >
+                      <span
+                        class="icon-btn-content"
+                        :class="{
+                          'icon-btn-content--with-label': shouldShowItemDescription(group),
+                        }"
+                      >
+                        <LumenIcon
+                          v-if="shouldShowItemIcon(item)"
+                          :name="item.icon"
+                          :size="resolveIconSize(group)"
+                        />
+                        <span v-if="shouldShowItemDescription(group)" class="icon-btn-label">{{
+                          itemLabel(item)
+                        }}</span>
+                      </span>
+                    </button>
+                  </t-tooltip>
+                </t-popup>
                 <t-tooltip v-else :content="itemLabel(item)">
                   <t-button
                     size="small"
@@ -298,7 +431,7 @@ import { createExportActions } from "../editor/toolbarActions/exportActions";
 import { createInlineMediaActions } from "../editor/toolbarActions/inlineMediaActions";
 import { createImportActions } from "../editor/toolbarActions/importActions";
 import { createInsertAdvancedActions } from "../editor/toolbarActions/insertAdvancedActions";
-import { createLayoutActions } from "../editor/toolbarActions/layoutActions";
+import { createLayoutActions, PAGE_SIZE_PRESETS } from "../editor/toolbarActions/layoutActions";
 import { createMarkdownActions } from "../editor/toolbarActions/markdownActions";
 import { createQuickInsertActions } from "../editor/toolbarActions/quickInsertActions";
 import { createSearchReplaceActions } from "../editor/toolbarActions/searchReplaceActions";
@@ -689,6 +822,21 @@ const fontSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
   ];
 });
 
+const fontFamilyMenuOptions = computed(() =>
+  mapToolbarDropdownOptions(fontFamilyOptions.value, fontFamilyValue.value)
+);
+const fontSizeMenuOptions = computed(() =>
+  mapToolbarDropdownOptions(fontSizeOptions.value, fontSizeValue.value)
+);
+const fontFamilyDisplayLabel = computed(() => {
+  const value = String(fontFamilyValue.value || "").trim();
+  return value || (localeKey.value === "en-US" ? "Font Family" : "\u5b57\u4f53");
+});
+const fontSizeDisplayLabel = computed(() => {
+  const value = String(fontSizeValue.value || "").trim();
+  return value ? `${value}px` : localeKey.value === "en-US" ? "Font Size" : "\u5b57\u53f7";
+});
+
 const handleInlineFontFamilyChange = (value: unknown) => {
   const next = String(value ?? "").trim();
   fontFamilyValue.value = next;
@@ -916,6 +1064,130 @@ const tableActions = createTableActions({
   requestInputDialog,
 });
 
+const mapToolbarDropdownOptions = (
+  options: ToolbarInputDialogOption[],
+  currentValue: string
+) =>
+  options.map((option) => ({
+    content: option.label,
+    value: option.value,
+    active: option.value === currentValue,
+  }));
+
+const resolveDropdownSelectionValue = (
+  payload: { value?: string | number } | string | number
+) => {
+  const next =
+    payload && typeof payload === "object" && "value" in payload ? payload.value : payload;
+  return String(next ?? "").trim();
+};
+
+const handleInlineDropdownTriggerMouseDown = (event: MouseEvent) => {
+  capturePendingInlineStyleSelection();
+  event.preventDefault();
+};
+
+const pageSizeValue = ref("");
+const resolveCurrentPageSizeValue = () => {
+  const current = layoutActions.getCurrentPageSizeInfo?.();
+  if (!current) {
+    return "";
+  }
+  return current.preset?.value || `custom:${current.width}x${current.height}`;
+};
+const syncPageSizeControl = () => {
+  pageSizeValue.value = resolveCurrentPageSizeValue();
+};
+const pageSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
+  const currentValue = pageSizeValue.value;
+  const current = layoutActions.getCurrentPageSizeInfo?.();
+  const options = PAGE_SIZE_PRESETS.map((preset) => ({
+    label: preset.label[localeKey.value],
+    value: preset.value,
+  }));
+  if (!current?.preset) {
+    const customValue = currentValue || resolveCurrentPageSizeValue();
+    if (customValue) {
+      options.unshift({
+        label:
+          localeKey.value === "en-US"
+            ? `Custom (${current?.width || 0} x ${current?.height || 0})`
+            : `自定义 (${current?.width || 0} x ${current?.height || 0})`,
+        value: customValue,
+      });
+    }
+  }
+  return options;
+});
+const pageSizeMenuOptions = computed(() =>
+  mapToolbarDropdownOptions(pageSizeOptions.value, pageSizeValue.value)
+);
+const handlePageSizeChange = (value: unknown) => {
+  const next = String(value ?? "").trim();
+  if (isViewerSession.value || !next || next.startsWith("custom:")) {
+    syncPageSizeControl();
+    return;
+  }
+  const ok = layoutActions.applyPageSizePreset?.(next);
+  if (!ok) {
+    window.alert(localeKey.value === "en-US" ? "Unable to set page size" : "无法设置纸张大小");
+  }
+  syncPageSizeControl();
+};
+const handlePageSizeDropdownClick = (payload: { value?: string | number } | string | number) => {
+  handlePageSizeChange(resolveDropdownSelectionValue(payload));
+};
+const handleFontFamilyDropdownClick = (payload: { value?: string | number } | string | number) => {
+  handleInlineFontFamilyChange(resolveDropdownSelectionValue(payload));
+};
+const handleFontSizeDropdownClick = (payload: { value?: string | number } | string | number) => {
+  handleInlineFontSizeChange(resolveDropdownSelectionValue(payload));
+};
+
+const TABLE_INSERT_GRID_ROW_COUNT = 8;
+const TABLE_INSERT_GRID_COL_COUNT = 10;
+const tableInsertGridRows = Array.from({ length: TABLE_INSERT_GRID_ROW_COUNT }, (_, index) => index + 1);
+const tableInsertGridCols = Array.from({ length: TABLE_INSERT_GRID_COL_COUNT }, (_, index) => index + 1);
+const tableInsertPickerOpen = ref(false);
+const tableInsertHoverSize = ref<{ rows: number; cols: number } | null>(null);
+const tableInsertLastSize = ref({ rows: 3, cols: 3 });
+const closeTableInsertPicker = () => {
+  tableInsertPickerOpen.value = false;
+  tableInsertHoverSize.value = null;
+};
+const handleTableInsertPopupVisibleChange = (visible: boolean) => {
+  if (!visible) {
+    closeTableInsertPicker();
+    return;
+  }
+  tableInsertHoverSize.value = { ...tableInsertLastSize.value };
+  tableInsertPickerOpen.value = true;
+};
+const handleTableInsertCellEnter = (rows: number, cols: number) => {
+  tableInsertHoverSize.value = { rows, cols };
+};
+const handleTableInsertGridLeave = () => {
+  tableInsertHoverSize.value = { ...tableInsertLastSize.value };
+};
+const isTableInsertCellActive = (rows: number, cols: number) => {
+  const current = tableInsertHoverSize.value || tableInsertLastSize.value;
+  return rows <= current.rows && cols <= current.cols;
+};
+const tableInsertPickerText = computed(() => {
+  const current = tableInsertHoverSize.value || tableInsertLastSize.value;
+  return localeKey.value === "en-US"
+    ? `Insert ${current.rows} x ${current.cols} table`
+    : `插入 ${current.rows} x ${current.cols} 表格`;
+});
+const handleTableInsertCellClick = (rows: number, cols: number) => {
+  const ok = tableActions.insertTableWithSize?.(rows, cols);
+  if (!ok) {
+    return;
+  }
+  tableInsertLastSize.value = { rows, cols };
+  closeTableInsertPicker();
+};
+
 const exportActions = createExportActions({
   getView,
   getLocaleKey: () => localeKey.value,
@@ -1115,6 +1387,8 @@ const {
 
 const isFontFamilyItem = (item: ToolbarItemConfig) => item.action === "font-family";
 const isFontSizeItem = (item: ToolbarItemConfig) => item.action === "font-size";
+const isPageSizeItem = (item: ToolbarItemConfig) => item.action === "page-size";
+const isTableInsertItem = (item: ToolbarItemConfig) => item.action === "table-insert";
 const itemLabel = (item: ToolbarItemConfig) => item.label[localeKey.value] || "";
 const shouldShowItemIcon = (item: ToolbarItemConfig) =>
   Boolean(item.icon) && !isHeadingInlineBoxItem(item);
@@ -1179,7 +1453,7 @@ const handleItemAction = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
     return;
   }
-  if (isFontFamilyItem(item) || isFontSizeItem(item)) {
+  if (isFontFamilyItem(item) || isFontSizeItem(item) || isPageSizeItem(item) || isTableInsertItem(item)) {
     return;
   }
   if (!item.implemented) {
@@ -1189,10 +1463,15 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (isToolbarColorAction(item.action)) {
+    closeTableInsertPicker();
     openColorDialog(item.action);
     return;
   }
+  closeTableInsertPicker();
   toolbarActionHandlers.handleItemAction(item);
+  if (item.action === "page-orientation") {
+    syncPageSizeControl();
+  }
 };
 
 const getTargetElement = (target: EventTarget | null): Element | null => {
@@ -1206,21 +1485,27 @@ const getTargetElement = (target: EventTarget | null): Element | null => {
 };
 
 const handleDocumentPointerDown = (event: PointerEvent) => {
-  if (!headingInlineMoreOpen.value) {
-    return;
-  }
   const targetElement = getTargetElement(event.target);
-  if (!targetElement) {
-    closeHeadingInlineMore();
-    return;
+  if (headingInlineMoreOpen.value) {
+    if (!targetElement) {
+      closeHeadingInlineMore();
+    } else if (
+      !targetElement.closest(".heading-inline-box") &&
+      !targetElement.closest(".heading-inline-more-panel")
+    ) {
+      closeHeadingInlineMore();
+    }
   }
-  if (
-    targetElement.closest(".heading-inline-box") ||
-    targetElement.closest(".heading-inline-more-panel")
-  ) {
-    return;
+  if (tableInsertPickerOpen.value) {
+    if (!targetElement) {
+      closeTableInsertPicker();
+    } else if (
+      !targetElement.closest(".toolbar-table-picker-trigger") &&
+      !targetElement.closest(".table-insert-picker")
+    ) {
+      closeTableInsertPicker();
+    }
   }
-  closeHeadingInlineMore();
 };
 
 const handleWindowResize = () => {
@@ -1235,6 +1520,7 @@ watch(
   () => {
     syncHeadingValueFromSelection();
     syncInlineFontControls();
+    syncPageSizeControl();
   },
   { immediate: true }
 );
@@ -1251,8 +1537,10 @@ watch(
   () => [resolvedActiveMenu.value, localeKey.value, renderGroups.value.length],
   () => {
     closeHeadingInlineMore();
+    closeTableInsertPicker();
     closeColorDialog();
     handleInputDialogCancel();
+    syncPageSizeControl();
     void nextTick(updateToolbarOverflowState);
   }
 );
@@ -1261,9 +1549,11 @@ watch(
   () => resolvedSessionMode.value,
   () => {
     closeHeadingInlineMore();
+    closeTableInsertPicker();
     closeColorDialog();
     handleInputDialogCancel();
     syncInlineFontControls();
+    syncPageSizeControl();
   }
 );
 
@@ -1273,12 +1563,14 @@ onMounted(() => {
   void nextTick(() => {
     updateToolbarOverflowState();
     syncInlineFontControls();
+    syncPageSizeControl();
   });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleWindowResize);
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  closeTableInsertPicker();
   handleInputDialogCancel();
 });
 
@@ -1303,7 +1595,11 @@ const handleToolbarMouseDown = (event: MouseEvent) => {
   if (!target) {
     return;
   }
-  if (target.closest(".t-select") || target.closest(".t-input")) {
+  if (
+    target.closest(".toolbar-inline-dropdown-trigger") ||
+    target.closest(".t-select") ||
+    target.closest(".t-input")
+  ) {
     capturePendingInlineStyleSelection();
     return;
   }
@@ -1323,7 +1619,7 @@ const getFocusableToolbarButtons = (scope: HTMLElement | null) => {
   }
   const buttons = Array.from(
     scope.querySelectorAll<HTMLElement>(
-      ".toolbar-left .t-button, .toolbar-left .heading-inline-option, .toolbar-left .heading-inline-more-btn, .toolbar-left .heading-inline-more-item"
+      ".toolbar-left .t-button, .toolbar-left .toolbar-inline-dropdown-trigger, .toolbar-left .toolbar-page-size-trigger, .toolbar-left .toolbar-table-picker-trigger, .toolbar-left .heading-inline-option, .toolbar-left .heading-inline-more-btn, .toolbar-left .heading-inline-more-item"
     )
   );
   return buttons.filter((button) => {
@@ -1351,7 +1647,7 @@ const handleToolbarKeyDown = (event: KeyboardEvent) => {
   }
   const target = event.target as HTMLElement | null;
   const activeButton = target?.closest?.(
-    ".t-button, .heading-inline-option, .heading-inline-more-btn, .heading-inline-more-item"
+    ".t-button, .toolbar-inline-dropdown-trigger, .toolbar-page-size-trigger, .toolbar-table-picker-trigger, .heading-inline-option, .heading-inline-more-btn, .heading-inline-more-item"
   ) as HTMLElement | null;
   const currentIndex = activeButton ? buttons.indexOf(activeButton) : -1;
   if (currentIndex < 0) {
@@ -1444,25 +1740,50 @@ defineExpose({ statusEl });
   min-width: 0;
 }
 
-.toolbar-inline-select {
-  flex: 0 0 auto;
+.toolbar-inline-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #202124;
+  cursor: pointer;
 }
 
-.toolbar-inline-select--font {
+.toolbar-inline-dropdown-trigger--font {
   width: 154px;
 }
 
-.toolbar-inline-select--size {
+.toolbar-inline-dropdown-trigger--size {
   width: 92px;
 }
 
-.toolbar-inline-select :deep(.t-input__wrap) {
-  min-height: 28px;
-  border-radius: 4px;
+.toolbar-inline-dropdown-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
-.toolbar-inline-select :deep(.t-input__inner) {
+.toolbar-inline-dropdown-trigger-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
+  line-height: 16px;
+  text-align: left;
+}
+
+.toolbar-inline-dropdown-trigger-arrow {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid #5f6368;
 }
 
 .toolbar-left--with-label {
@@ -1577,6 +1898,69 @@ defineExpose({ statusEl });
 
 .heading-inline-more-panel--floating {
   position: fixed;
+}
+
+.toolbar-check-dropdown :deep(.t-dropdown__item) {
+  position: relative;
+  padding-right: 28px;
+}
+
+.toolbar-check-dropdown :deep(.t-dropdown__item--active) {
+  color: #1a73e8;
+}
+
+.toolbar-page-size-dropdown :deep(.t-dropdown__item--active::after) {
+  content: "√";
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: #1a73e8;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.table-insert-picker {
+  position: fixed;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 302px;
+  padding: 10px;
+}
+
+.table-insert-picker-title {
+  font-size: 12px;
+  line-height: 16px;
+  color: #5f6368;
+}
+
+.table-insert-picker-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.table-insert-picker-row {
+  display: flex;
+  gap: 4px;
+}
+
+.table-insert-picker-cell {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid #d2d7df;
+  border-radius: 3px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.table-insert-picker-cell:hover,
+.table-insert-picker-cell--active {
+  border-color: #7aa9ff;
+  background: #e8f0fe;
 }
 
 .heading-inline-more-grid {
