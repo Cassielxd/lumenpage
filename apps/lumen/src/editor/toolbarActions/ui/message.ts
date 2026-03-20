@@ -1,4 +1,4 @@
-import { MessagePlugin } from "tdesign-vue-next";
+import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 
 export type ToolbarMessageTheme = "info" | "success" | "warning" | "error";
 

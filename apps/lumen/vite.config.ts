@@ -3,6 +3,7 @@ import vue from "@vitejs/plugin-vue";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createManualChunks } from "../../vite.chunking";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, "../..");
@@ -117,6 +118,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: createManualChunks,
+        },
+      },
     },
   };
 });

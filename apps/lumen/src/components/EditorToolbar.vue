@@ -414,7 +414,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
-import { MessagePlugin } from "tdesign-vue-next";
+import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { redoDepth, undoDepth } from "lumenpage-history";
 import { TextSelection } from "lumenpage-state";
