@@ -66,6 +66,9 @@ importers:
       lumenpage-extension-columns:
         specifier: workspace:*
         version: link:../../packages/extension-columns
+      lumenpage-extension-comment:
+        specifier: workspace:*
+        version: link:../../packages/extension-comment
       lumenpage-extension-drag-handle:
         specifier: workspace:*
         version: link:../../packages/extension-drag-handle
@@ -126,6 +129,9 @@ importers:
       lumenpage-extension-text-style:
         specifier: workspace:*
         version: link:../../packages/extension-text-style
+      lumenpage-extension-track-change:
+        specifier: workspace:*
+        version: link:../../packages/extension-track-change
       lumenpage-extension-underline:
         specifier: workspace:*
         version: link:../../packages/extension-underline
@@ -520,6 +526,19 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/extension-changeset:
+    dependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../lp/model
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../lp/transform
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/extension-code:
     dependencies:
       lumenpage-core:
@@ -557,6 +576,22 @@ importers:
       lumenpage-render-engine:
         specifier: workspace:*
         version: link:../render-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extension-comment:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -1092,6 +1127,28 @@ importers:
       lumenpage-render-engine:
         specifier: workspace:*
         version: link:../render-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extension-track-change:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-extension-changeset:
+        specifier: workspace:*
+        version: link:../extension-changeset
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../lp/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4

@@ -50,6 +50,12 @@
       "path": "packages/extension-comment"
     },
     {
+      "path": "packages/extension-changeset"
+    },
+    {
+      "path": "packages/extension-track-change"
+    },
+    {
       "path": "packages/extension-document"
     },
     {

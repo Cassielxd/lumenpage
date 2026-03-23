@@ -20,6 +20,12 @@ import {
   getCommentsPluginState,
   normalizeCommentId,
 } from "lumenpage-extension-comment";
+import {
+  getTrackChangePluginState,
+  listTrackChanges,
+  normalizeTrackChangeId,
+  type TrackChangeRecord,
+} from "lumenpage-extension-track-change";
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
@@ -49,6 +55,13 @@ type MountPlaygroundEditorParams = {
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
   onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
+  onTrackChangeStateChange?: ((
+    snapshot: {
+      enabled: boolean;
+      activeChangeId: string | null;
+      changes: TrackChangeRecord[];
+    }
+  ) => void) | null;
   onStatsChange?: ((stats: {
     pageCount: number;
     currentPage: number;
@@ -68,6 +81,15 @@ type MountedPlaygroundEditor = {
   activateCommentThread: (threadId: string | null) => boolean;
   focusCommentThread: (threadId: string) => boolean;
   removeCommentThread: (threadId: string) => boolean;
+  isTrackChangesEnabled: () => boolean;
+  setTrackChangesEnabled: (enabled: boolean) => boolean;
+  getActiveTrackChangeId: () => string | null;
+  activateTrackChange: (changeId: string | null) => boolean;
+  focusTrackChange: (changeId: string) => boolean;
+  acceptTrackChange: (changeId: string) => boolean;
+  rejectTrackChange: (changeId: string) => boolean;
+  acceptAllTrackChanges: () => boolean;
+  rejectAllTrackChanges: () => boolean;
   destroy: () => void;
 };
 
@@ -261,6 +283,7 @@ export const mountPlaygroundEditor = ({
   onTocOutlineChange,
   tocOutlineEnabled,
   onCommentStateChange,
+  onTrackChangeStateChange,
   onStatsChange,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
@@ -505,12 +528,21 @@ export const mountPlaygroundEditor = ({
       activeThreadId: getCommentsPluginState(view?.state).activeThreadId || null,
     });
   };
+  const emitTrackChangeState = () => {
+    const pluginState = getTrackChangePluginState(view?.state);
+    onTrackChangeStateChange?.({
+      enabled: pluginState.enabled === true,
+      activeChangeId: pluginState.activeChangeId || null,
+      changes: listTrackChanges(view?.state),
+    });
+  };
   const baseDispatchTransaction =
     typeof view.dispatchTransaction === "function" ? view.dispatchTransaction.bind(view) : null;
   if (baseDispatchTransaction) {
     view.dispatchTransaction = (transaction: any) => {
       baseDispatchTransaction(transaction);
       emitCommentState();
+      emitTrackChangeState();
     };
   }
   const activateCommentThread = (threadId: string | null) =>
@@ -540,6 +572,17 @@ export const mountPlaygroundEditor = ({
   };
   const removeCommentThread = (threadId: string) =>
     view.commands?.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
+  const setTrackChangesEnabled = (enabled: boolean) => view.commands?.setTrackChanges?.(enabled) === true;
+  const activateTrackChange = (changeId: string | null) =>
+    view.commands?.setActiveTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+  const focusTrackChange = (changeId: string) =>
+    view.commands?.focusTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+  const acceptTrackChange = (changeId: string) =>
+    view.commands?.acceptTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+  const rejectTrackChange = (changeId: string) =>
+    view.commands?.rejectTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+  const acceptAllTrackChanges = () => view.commands?.acceptAllTrackChanges?.() === true;
+  const rejectAllTrackChanges = () => view.commands?.rejectAllTrackChanges?.() === true;
   const inspectCurrentBlock = (blockId: string) => {
     const normalizedBlockId = String(blockId || "");
     if (!normalizedBlockId) {
@@ -751,6 +794,7 @@ export const mountPlaygroundEditor = ({
   scrollArea?.addEventListener?.("scroll", handleScroll, { passive: true });
   scheduleStatsEmit();
   emitCommentState();
+  emitTrackChangeState();
 
   try {
     const currentSelection = view?.state?.selection;
@@ -774,6 +818,15 @@ export const mountPlaygroundEditor = ({
     activateCommentThread,
     focusCommentThread,
     removeCommentThread,
+    isTrackChangesEnabled: () => getTrackChangePluginState(view?.state).enabled === true,
+    setTrackChangesEnabled,
+    getActiveTrackChangeId: () => getTrackChangePluginState(view?.state).activeChangeId || null,
+    activateTrackChange,
+    focusTrackChange,
+    acceptTrackChange,
+    rejectTrackChange,
+    acceptAllTrackChanges,
+    rejectAllTrackChanges,
     destroy: () => {
       if (typeof window !== "undefined") {
         const debugWindow = window as Window & {

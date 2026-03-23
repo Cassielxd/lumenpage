@@ -41,6 +41,7 @@
     "lumenpage-extension-task-item": "workspace:*",
     "lumenpage-extension-task-list": "workspace:*",
     "lumenpage-extension-template": "workspace:*",
+    "lumenpage-extension-track-change": "workspace:*",
     "lumenpage-extension-text-box": "workspace:*",
     "lumenpage-extension-text-style": "workspace:*",
     "lumenpage-extension-underline": "workspace:*",

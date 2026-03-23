@@ -279,8 +279,10 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 
 <style scoped>
 .doc-comments {
-  width: 300px;
+  width: 100%;
+  height: 100%;
   min-width: 0;
+  box-sizing: border-box;
   border-left: 1px solid #e5e7eb;
   background: #ffffff;
   overflow: auto;
@@ -578,7 +580,7 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 
 @media (max-width: 1024px) {
   .doc-comments {
-    width: 280px;
+    width: 100%;
   }
 }
 

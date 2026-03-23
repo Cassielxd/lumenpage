@@ -20,6 +20,7 @@ import { TaskItem } from "lumenpage-extension-task-item";
 import { TaskList } from "lumenpage-extension-task-list";
 import { Tag } from "lumenpage-extension-tag";
 import { Template } from "lumenpage-extension-template";
+import { TrackChanges } from "lumenpage-extension-track-change";
 import { TextBox } from "lumenpage-extension-text-box";
 import { TextStyle } from "lumenpage-extension-text-style";
 import { Underline } from "lumenpage-extension-underline";
@@ -41,6 +42,7 @@ export const lumenDocumentExtensions = [
     store: lumenCommentsStore,
     showResolved: true,
   }),
+  TrackChanges,
   Math,
   OptionBox,
   Signature,

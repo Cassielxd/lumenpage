@@ -25,6 +25,25 @@
         >
           {{ commentButtonLabel }}
         </t-button>
+        <t-button
+          size="small"
+          variant="outline"
+          :theme="trackChangesEnabled ? 'success' : 'default'"
+          :disabled="!canMutateTrackChanges"
+          @mousedown.prevent
+          @click="handleTrackChangesToggle"
+        >
+          {{ trackChangesToggleLabel }}
+        </t-button>
+        <t-button
+          size="small"
+          variant="outline"
+          :disabled="trackChangesButtonDisabled"
+          @mousedown.prevent
+          @click="handleTrackChangesPanelToggle"
+        >
+          {{ trackChangesButtonLabel }}
+        </t-button>
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
         <t-avatar size="small">U</t-avatar>
       </div>
@@ -42,38 +61,58 @@
     />
 
     <t-content class="doc-content">
-      <aside v-if="tocPanelOpen && tocItems.length > 0" class="doc-outline">
-        <div class="doc-outline-header">
-          <span>{{ outlineTitle }}</span>
-          <button type="button" class="doc-outline-close" @click="closeTocPanel">×</button>
-        </div>
-        <button
-          v-for="item in tocItems"
-          :key="item.id"
-          type="button"
-          class="doc-outline-item"
-          :class="{ 'is-active': item.id === activeTocId }"
-          :style="{ '--toc-level': String(item.level) }"
-          @click="handleTocItemClick(item)"
-        >
-          <span class="doc-outline-item-text">{{ item.text }}</span>
-        </button>
-      </aside>
-      <div class="doc-stage">
-        <div ref="editorHost" class="editor-host"></div>
-      </div>
-      <CommentsPanel
-        v-if="commentsPanelOpen"
-        :locale="debugFlags.locale"
-        :threads="commentThreads"
-        :active-thread-id="activeCommentThreadId"
-        :can-manage="canMutateComments"
-        @close="closeCommentsPanel"
-        @select="handleCommentThreadSelect"
-        @toggle-resolved="handleCommentThreadResolved"
-        @reply="handleCommentThreadReply"
-        @delete="handleCommentThreadDelete"
-      />
+      <t-layout class="doc-workspace">
+        <t-aside v-if="tocPanelOpen && tocItems.length > 0" class="doc-outline">
+          <div class="doc-outline-header">
+            <span>{{ outlineTitle }}</span>
+            <button type="button" class="doc-outline-close" @click="closeTocPanel">×</button>
+          </div>
+          <button
+            v-for="item in tocItems"
+            :key="item.id"
+            type="button"
+            class="doc-outline-item"
+            :class="{ 'is-active': item.id === activeTocId }"
+            :style="{ '--toc-level': String(item.level) }"
+            @click="handleTocItemClick(item)"
+          >
+            <span class="doc-outline-item-text">{{ item.text }}</span>
+          </button>
+        </t-aside>
+        <t-content class="doc-main">
+          <div class="doc-stage">
+            <div ref="editorHost" class="editor-host"></div>
+          </div>
+        </t-content>
+        <t-aside v-if="rightSidebarOpen" class="doc-side-panel">
+          <TrackChangesPanel
+            v-if="trackChangesPanelOpen"
+            :locale="debugFlags.locale"
+            :changes="trackChangeRecords"
+            :active-change-id="activeTrackChangeId"
+            :enabled="trackChangesEnabled"
+            :can-manage="canMutateTrackChanges"
+            @close="closeTrackChangesPanel"
+            @select="handleTrackChangeSelect"
+            @accept="handleTrackChangeAccept"
+            @reject="handleTrackChangeReject"
+            @accept-all="handleTrackChangesAcceptAll"
+            @reject-all="handleTrackChangesRejectAll"
+          />
+          <CommentsPanel
+            v-else-if="commentsPanelOpen"
+            :locale="debugFlags.locale"
+            :threads="commentThreads"
+            :active-thread-id="activeCommentThreadId"
+            :can-manage="canMutateComments"
+            @close="closeCommentsPanel"
+            @select="handleCommentThreadSelect"
+            @toggle-resolved="handleCommentThreadResolved"
+            @reply="handleCommentThreadReply"
+            @delete="handleCommentThreadDelete"
+          />
+        </t-aside>
+      </t-layout>
     </t-content>
     <t-footer class="doc-footer">
       <div class="doc-footer-stats">
@@ -115,6 +154,7 @@ import type { CanvasEditorView } from "lumenpage-view-canvas";
 import CommentsPanel from "./components/CommentsPanel.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
+import TrackChangesPanel from "./components/TrackChangesPanel.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { createPlaygroundI18n } from "./editor/i18n";
 import { lumenCommentsStore, type LumenCommentThread } from "./editor/commentsStore";
@@ -128,6 +168,7 @@ import {
 import type { ToolbarMenuKey } from "./editor/toolbarCatalog";
 import type { EditorSessionMode } from "./editor/sessionMode";
 import { findCommentAnchorRanges } from "lumenpage-extension-comment";
+import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
@@ -140,6 +181,10 @@ const view = shallowRef<CanvasEditorView | null>(null);
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
 const commentsPanelOpen = ref(false);
 const activeCommentThreadId = ref<string | null>(null);
+const trackChangesEnabled = ref(false);
+const trackChangeRecords = ref<TrackChangeRecord[]>([]);
+const activeTrackChangeId = ref<string | null>(null);
+const trackChangesPanelManualOpen = ref(false);
 const footerStats = ref({
   pageCount: 0,
   currentPage: 0,
@@ -179,9 +224,38 @@ const commentCount = computed(() => commentThreads.value.length);
 const canMutateComments = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
 );
+const canMutateTrackChanges = computed(
+  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
+);
 const commentButtonDisabled = computed(() => !canMutateComments.value);
 const commentButtonLabel = computed(() =>
   commentCount.value > 0 ? `${i18n.app.comment} (${commentCount.value})` : i18n.app.comment
+);
+const trackChangeCount = computed(() => trackChangeRecords.value.length);
+const trackChangesPanelOpen = computed(
+  () => trackChangesPanelManualOpen.value || !!activeTrackChangeId.value
+);
+const rightSidebarOpen = computed(() => trackChangesPanelOpen.value || commentsPanelOpen.value);
+const trackChangesButtonDisabled = computed(
+  () => !trackChangesEnabled.value && trackChangeCount.value === 0
+);
+const trackChangesToggleLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? trackChangesEnabled.value
+      ? "Tracking On"
+      : "Track Changes"
+    : trackChangesEnabled.value
+      ? "修订中"
+      : "开启修订"
+);
+const trackChangesButtonLabel = computed(() =>
+  debugFlags.locale === "en-US"
+    ? trackChangeCount.value > 0
+      ? `Changes (${trackChangeCount.value})`
+      : "Changes"
+    : trackChangeCount.value > 0
+      ? `修订 (${trackChangeCount.value})`
+      : "修订"
 );
 const footerPageLabel = computed(() =>
   debugFlags.locale === "en-US"
@@ -249,6 +323,13 @@ let detachCommentStore: null | (() => void) = null;
 let activateCommentThreadInEditor: null | ((threadId: string | null) => boolean) = null;
 let focusCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
 let removeCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
+let setTrackChangesEnabledInEditor: null | ((enabled: boolean) => boolean) = null;
+let activateTrackChangeInEditor: null | ((changeId: string | null) => boolean) = null;
+let focusTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
+let acceptTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
+let rejectTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
+let acceptAllTrackChangesInEditor: null | (() => boolean) = null;
+let rejectAllTrackChangesInEditor: null | (() => boolean) = null;
 
 type LumenSelectionSnapshot = {
   from: number;
@@ -361,9 +442,37 @@ const closeTocPanel = () => {
 };
 
 const closeCommentsPanel = () => {
+  const hadActiveThread = !!activeCommentThreadId.value;
   commentsPanelOpen.value = false;
   activeCommentThreadId.value = null;
-  activateCommentThreadInEditor?.(null);
+  if (hadActiveThread) {
+    activateCommentThreadInEditor?.(null);
+  }
+};
+
+const getNextTrackChangeId = (excludeChangeId?: string | null) =>
+  trackChangeRecords.value.find((change) => change.changeId !== excludeChangeId)?.changeId || null;
+
+const closeTrackChangesPanel = () => {
+  const hadActiveChange = !!activeTrackChangeId.value;
+  trackChangesPanelManualOpen.value = false;
+  activeTrackChangeId.value = null;
+  if (hadActiveChange) {
+    activateTrackChangeInEditor?.(null);
+  }
+};
+
+const openTrackChangesPanel = (preferredChangeId?: string | null) => {
+  trackChangesPanelManualOpen.value = true;
+  if (commentsPanelOpen.value || activeCommentThreadId.value) {
+    closeCommentsPanel();
+  }
+  const nextChangeId =
+    preferredChangeId || activeTrackChangeId.value || trackChangeRecords.value[0]?.changeId || null;
+  if (nextChangeId && nextChangeId !== activeTrackChangeId.value) {
+    activeTrackChangeId.value = nextChangeId;
+    activateTrackChangeInEditor?.(nextChangeId);
+  }
 };
 
 const getNextCommentThreadId = (excludeThreadId?: string | null) =>
@@ -412,6 +521,39 @@ const createCommentActionTexts = (_locale: "zh-CN" | "en-US") => ({
   missingAnchor: "Comment anchor no longer exists in the document.",
   removed: "Comment thread removed.",
 });
+
+const createTrackChangeActionTexts = (locale: "zh-CN" | "en-US") =>
+  locale === "en-US"
+    ? {
+        disabled: "Track changes is unavailable in viewer mode.",
+        enableFailed: "Failed to update track changes mode.",
+        enabled: "Track changes enabled.",
+        disabledDone: "Track changes disabled.",
+        focusFailed: "Tracked change range no longer exists.",
+        acceptFailed: "Failed to accept tracked change.",
+        rejectFailed: "Failed to reject tracked change.",
+        accepted: "Tracked change accepted.",
+        rejected: "Tracked change rejected.",
+        acceptAllFailed: "Failed to accept all tracked changes.",
+        rejectAllFailed: "Failed to reject all tracked changes.",
+        acceptedAll: "All tracked changes accepted.",
+        rejectedAll: "All tracked changes rejected.",
+      }
+    : {
+        disabled: "查看模式下无法开启修订。",
+        enableFailed: "修订模式切换失败。",
+        enabled: "已开启修订模式。",
+        disabledDone: "已关闭修订模式。",
+        focusFailed: "对应修订已不存在。",
+        acceptFailed: "接受修订失败。",
+        rejectFailed: "拒绝修订失败。",
+        accepted: "已接受修订。",
+        rejected: "已拒绝修订。",
+        acceptAllFailed: "全部接受失败。",
+        rejectAllFailed: "全部拒绝失败。",
+        acceptedAll: "已接受全部修订。",
+        rejectedAll: "已拒绝全部修订。",
+      };
 
 const createCommentEntityId = (prefix: string) => {
   const randomUuid =
@@ -479,6 +621,7 @@ const syncCommentThreads = () => {
 
 const handleCommentClick = () => {
   const texts = createCommentActionTexts(debugFlags.locale);
+  closeTrackChangesPanel();
   const currentView = view.value;
   const selection = currentView?.state?.selection;
   const hasSelection = !!currentView && selection instanceof TextSelection && selection.empty !== true;
@@ -587,6 +730,82 @@ const handleCommentThreadDelete = (threadId: string) => {
   showToolbarMessage(texts.removed, "success");
 };
 
+const handleTrackChangesToggle = () => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  if (!canMutateTrackChanges.value) {
+    showToolbarMessage(texts.disabled, "warning");
+    return;
+  }
+  const nextEnabled = !trackChangesEnabled.value;
+  const applied = setTrackChangesEnabledInEditor?.(nextEnabled) === true;
+  if (!applied) {
+    showToolbarMessage(texts.enableFailed, "error");
+    return;
+  }
+  if (nextEnabled) {
+    openTrackChangesPanel();
+    showToolbarMessage(texts.enabled, "success");
+    return;
+  }
+  showToolbarMessage(texts.disabledDone, "success");
+};
+
+const handleTrackChangesPanelToggle = () => {
+  if (trackChangesPanelOpen.value && trackChangesPanelManualOpen.value) {
+    closeTrackChangesPanel();
+    return;
+  }
+  openTrackChangesPanel();
+};
+
+const handleTrackChangeSelect = (changeId: string) => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  openTrackChangesPanel(changeId);
+  const focused = focusTrackChangeInEditor?.(changeId) === true;
+  if (!focused) {
+    const activated = activateTrackChangeInEditor?.(changeId) === true;
+    if (!activated) {
+      showToolbarMessage(texts.focusFailed, "warning");
+    }
+  }
+};
+
+const handleTrackChangeAccept = (changeId: string) => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  if (acceptTrackChangeInEditor?.(changeId) !== true) {
+    showToolbarMessage(texts.acceptFailed, "warning");
+    return;
+  }
+  showToolbarMessage(texts.accepted, "success");
+};
+
+const handleTrackChangeReject = (changeId: string) => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  if (rejectTrackChangeInEditor?.(changeId) !== true) {
+    showToolbarMessage(texts.rejectFailed, "warning");
+    return;
+  }
+  showToolbarMessage(texts.rejected, "success");
+};
+
+const handleTrackChangesAcceptAll = () => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  if (acceptAllTrackChangesInEditor?.() !== true) {
+    showToolbarMessage(texts.acceptAllFailed, "warning");
+    return;
+  }
+  showToolbarMessage(texts.acceptedAll, "success");
+};
+
+const handleTrackChangesRejectAll = () => {
+  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  if (rejectAllTrackChangesInEditor?.() !== true) {
+    showToolbarMessage(texts.rejectAllFailed, "warning");
+    return;
+  }
+  showToolbarMessage(texts.rejectedAll, "success");
+};
+
 const handleTocItemClick = (item: TocOutlineItem) => {
   const currentView = view.value;
   if (!currentView?.state?.doc || !currentView?.state?.tr || !item?.id) {
@@ -624,11 +843,34 @@ onMounted(async () => {
       const previousThreadId = activeCommentThreadId.value;
       activeCommentThreadId.value = nextThreadId;
       if (nextThreadId && (!commentsPanelOpen.value || nextThreadId !== previousThreadId)) {
+        closeTrackChangesPanel();
         commentsPanelOpen.value = true;
         return;
       }
       if (!nextThreadId) {
         commentsPanelOpen.value = false;
+      }
+    },
+    onTrackChangeStateChange: ({ enabled, activeChangeId, changes }) => {
+      trackChangesEnabled.value = enabled;
+      trackChangeRecords.value = changes;
+      const nextActiveChangeId =
+        activeChangeId && changes.some((change) => change.changeId === activeChangeId)
+          ? activeChangeId
+          : null;
+      activeTrackChangeId.value = nextActiveChangeId;
+      if (nextActiveChangeId) {
+        if (commentsPanelOpen.value || activeCommentThreadId.value) {
+          closeCommentsPanel();
+        }
+        return;
+      }
+      if (trackChangesPanelManualOpen.value && changes.length > 0) {
+        const fallbackChangeId = getNextTrackChangeId();
+        if (fallbackChangeId) {
+          activeTrackChangeId.value = fallbackChangeId;
+          activateTrackChangeInEditor?.(fallbackChangeId);
+        }
       }
     },
     onStatsChange: handleStatsChange,
@@ -639,6 +881,13 @@ onMounted(async () => {
   activateCommentThreadInEditor = mounted.activateCommentThread;
   focusCommentThreadInEditor = mounted.focusCommentThread;
   removeCommentThreadInEditor = mounted.removeCommentThread;
+  setTrackChangesEnabledInEditor = mounted.setTrackChangesEnabled;
+  activateTrackChangeInEditor = mounted.activateTrackChange;
+  focusTrackChangeInEditor = mounted.focusTrackChange;
+  acceptTrackChangeInEditor = mounted.acceptTrackChange;
+  rejectTrackChangeInEditor = mounted.rejectTrackChange;
+  acceptAllTrackChangesInEditor = mounted.acceptAllTrackChanges;
+  rejectAllTrackChangesInEditor = mounted.rejectAllTrackChanges;
   applySessionModeToView();
   detachEditor = mounted.destroy;
 });
@@ -659,11 +908,22 @@ onBeforeUnmount(() => {
   activateCommentThreadInEditor = null;
   focusCommentThreadInEditor = null;
   removeCommentThreadInEditor = null;
+  setTrackChangesEnabledInEditor = null;
+  activateTrackChangeInEditor = null;
+  focusTrackChangeInEditor = null;
+  acceptTrackChangeInEditor = null;
+  rejectTrackChangeInEditor = null;
+  acceptAllTrackChangesInEditor = null;
+  rejectAllTrackChangesInEditor = null;
   view.value = null;
   syncDebugHandles();
   commentThreads.value = [];
   commentsPanelOpen.value = false;
   activeCommentThreadId.value = null;
+  trackChangesEnabled.value = false;
+  trackChangeRecords.value = [];
+  activeTrackChangeId.value = null;
+  trackChangesPanelManualOpen.value = false;
   tocItems.value = [];
   activeTocId.value = null;
   footerStats.value = {
@@ -744,12 +1004,29 @@ onBeforeUnmount(() => {
 
 .doc-content {
   position: relative;
-  display: flex;
   min-height: 0;
   flex: 1;
   padding: 0;
   overflow: hidden;
   background: #f5f6f8;
+}
+
+.doc-workspace {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: transparent;
+}
+
+.doc-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
 }
 
 .doc-footer {
@@ -870,12 +1147,25 @@ onBeforeUnmount(() => {
 
 .doc-stage {
   position: relative;
-  flex: 1;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   overflow: hidden;
+}
+
+.doc-side-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  min-width: 0;
+  z-index: 8;
+  background: transparent;
+  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.08);
 }
 
 .editor-host {
@@ -951,6 +1241,7 @@ onBeforeUnmount(() => {
 .doc-shell.is-high-contrast .topbar,
 .doc-shell.is-high-contrast .doc-footer,
 .doc-shell.is-high-contrast .doc-stage,
+.doc-shell.is-high-contrast .doc-side-panel,
 .doc-shell.is-high-contrast :deep(.menu-bar),
 .doc-shell.is-high-contrast :deep(.toolbar) {
   background: #000;
@@ -985,6 +1276,12 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
+@media (max-width: 1024px) {
+  .doc-side-panel {
+    width: 280px;
+  }
+}
+
 @media (max-width: 768px) {
   .topbar {
     padding: 0 10px;
@@ -1007,6 +1304,10 @@ onBeforeUnmount(() => {
   }
 
   .doc-outline {
+    display: none;
+  }
+
+  .doc-side-panel {
     display: none;
   }
 }
