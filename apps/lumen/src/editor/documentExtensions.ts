@@ -1,6 +1,7 @@
 import { Bookmark } from "lumenpage-extension-bookmark";
 import { BlockIdExtension } from "lumenpage-extension-block-id";
 import { Callout } from "lumenpage-extension-callout";
+import { Comments } from "lumenpage-extension-comment";
 import { Columns } from "lumenpage-extension-columns";
 import { Audio } from "lumenpage-extension-audio";
 import { EmbedPanel } from "lumenpage-extension-embed-panel";
@@ -25,6 +26,8 @@ import { Underline } from "lumenpage-extension-underline";
 import { Video } from "lumenpage-extension-video";
 import { WebPage } from "lumenpage-extension-web-page";
 
+import { lumenCommentsStore } from "./commentsStore";
+
 export const lumenDocumentExtensions = [
   StarterKit,
   BlockIdExtension,
@@ -34,6 +37,10 @@ export const lumenDocumentExtensions = [
   Bookmark,
   Callout,
   Columns,
+  Comments.configure({
+    store: lumenCommentsStore,
+    showResolved: true,
+  }),
   Math,
   OptionBox,
   Signature,

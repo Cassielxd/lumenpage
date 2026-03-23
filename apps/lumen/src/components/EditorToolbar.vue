@@ -126,9 +126,8 @@
                   @click="handlePageSizeDropdownClick"
                 >
                   <t-tooltip :content="itemLabel(item)">
-                    <t-button
-                      size="small"
-                      variant="text"
+                    <button
+                      type="button"
                       class="icon-btn"
                       :data-toolbar-action="item.action"
                       :class="{
@@ -153,7 +152,7 @@
                           itemLabel(item)
                         }}</span>
                       </span>
-                    </t-button>
+                    </button>
                   </t-tooltip>
                 </t-dropdown>
                 <t-popup
@@ -223,9 +222,8 @@
                   </t-tooltip>
                 </t-popup>
                 <t-tooltip v-else :content="itemLabel(item)">
-                  <t-button
-                    size="small"
-                    variant="text"
+                  <button
+                    type="button"
                     class="icon-btn"
                     :data-toolbar-action="item.action"
                     :class="{
@@ -250,7 +248,7 @@
                         itemLabel(item)
                       }}</span>
                     </span>
-                  </t-button>
+                  </button>
                 </t-tooltip>
               </template>
             </div>
@@ -2034,19 +2032,29 @@ defineExpose({ statusEl });
 }
 
 .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   width: 34px;
   height: 32px;
   padding: 0;
   border: 1px solid transparent !important;
   border-radius: 4px !important;
+  color: #202124;
+  font: inherit;
   background-color: transparent !important;
   box-shadow: none !important;
+  cursor: pointer;
 }
 
 .icon-btn-content {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
 }
 
 .icon-btn--with-label {
@@ -2057,6 +2065,8 @@ defineExpose({ statusEl });
 
 .icon-btn-content--with-label {
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 3px;
 }
 
@@ -2064,6 +2074,11 @@ defineExpose({ statusEl });
   width: 30px;
   height: 28px;
   padding: 0;
+}
+
+.icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .icon-btn-label {

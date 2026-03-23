@@ -47,6 +47,9 @@
       "path": "packages/extension-columns"
     },
     {
+      "path": "packages/extension-comment"
+    },
+    {
       "path": "packages/extension-document"
     },
     {

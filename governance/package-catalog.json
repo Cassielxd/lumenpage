@@ -186,6 +186,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-comment": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-document": {
       "layer": "extensions",
       "visibility": "public",

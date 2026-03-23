@@ -16,7 +16,15 @@
         <t-button size="small" variant="outline" @click="toggleTocPanel">
           {{ tocToggleLabel }}
         </t-button>
-        <t-button size="small" variant="outline">{{ i18n.app.comment }}</t-button>
+        <t-button
+          size="small"
+          variant="outline"
+          :disabled="commentButtonDisabled"
+          @mousedown.prevent
+          @click="handleCommentClick"
+        >
+          {{ commentButtonLabel }}
+        </t-button>
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
         <t-avatar size="small">U</t-avatar>
       </div>
@@ -54,6 +62,18 @@
       <div class="doc-stage">
         <div ref="editorHost" class="editor-host"></div>
       </div>
+      <CommentsPanel
+        v-if="commentsPanelOpen"
+        :locale="debugFlags.locale"
+        :threads="commentThreads"
+        :active-thread-id="activeCommentThreadId"
+        :can-manage="canMutateComments"
+        @close="closeCommentsPanel"
+        @select="handleCommentThreadSelect"
+        @toggle-resolved="handleCommentThreadResolved"
+        @reply="handleCommentThreadReply"
+        @delete="handleCommentThreadDelete"
+      />
     </t-content>
     <t-footer class="doc-footer">
       <div class="doc-footer-stats">
@@ -92,11 +112,14 @@ import {
 } from "vue";
 import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
+import CommentsPanel from "./components/CommentsPanel.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { createPlaygroundI18n } from "./editor/i18n";
+import { lumenCommentsStore, type LumenCommentThread } from "./editor/commentsStore";
 import { mountPlaygroundEditor } from "./editor/editorMount";
+import { showToolbarMessage } from "./editor/toolbarActions/ui/message";
 import {
   findHeadingPosById,
   type TocOutlineItem,
@@ -104,6 +127,7 @@ import {
 } from "./editor/tocOutlinePlugin";
 import type { ToolbarMenuKey } from "./editor/toolbarCatalog";
 import type { EditorSessionMode } from "./editor/sessionMode";
+import { findCommentAnchorRanges } from "lumenpage-extension-comment";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
@@ -113,6 +137,9 @@ type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const view = shallowRef<CanvasEditorView | null>(null);
+const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
+const commentsPanelOpen = ref(false);
+const activeCommentThreadId = ref<string | null>(null);
 const footerStats = ref({
   pageCount: 0,
   currentPage: 0,
@@ -148,6 +175,14 @@ const permissionLabel = computed(() => {
   }
   return i18n.app.permissionEdit;
 });
+const commentCount = computed(() => commentThreads.value.length);
+const canMutateComments = computed(
+  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
+);
+const commentButtonDisabled = computed(() => !canMutateComments.value);
+const commentButtonLabel = computed(() =>
+  commentCount.value > 0 ? `${i18n.app.comment} (${commentCount.value})` : i18n.app.comment
+);
 const footerPageLabel = computed(() =>
   debugFlags.locale === "en-US"
     ? `Pages ${footerStats.value.pageCount}`
@@ -210,6 +245,10 @@ const footerContactLabel = computed(() =>
 );
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
+let detachCommentStore: null | (() => void) = null;
+let activateCommentThreadInEditor: null | ((threadId: string | null) => boolean) = null;
+let focusCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
+let removeCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
 
 type LumenSelectionSnapshot = {
   from: number;
@@ -321,6 +360,24 @@ const closeTocPanel = () => {
   setTocPanelEnabled(false);
 };
 
+const closeCommentsPanel = () => {
+  commentsPanelOpen.value = false;
+  activeCommentThreadId.value = null;
+  activateCommentThreadInEditor?.(null);
+};
+
+const getNextCommentThreadId = (excludeThreadId?: string | null) =>
+  commentThreads.value.find((thread) => thread.id !== excludeThreadId)?.id || null;
+
+const openCommentsPanel = (preferredThreadId?: string | null) => {
+  commentsPanelOpen.value = true;
+  const nextThreadId = preferredThreadId || activeCommentThreadId.value || getNextCommentThreadId();
+  if (nextThreadId && nextThreadId !== activeCommentThreadId.value) {
+    activeCommentThreadId.value = nextThreadId;
+    activateCommentThreadInEditor?.(nextThreadId);
+  }
+};
+
 const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
   tocItems.value = Array.isArray(snapshot?.items) ? snapshot.items : [];
   activeTocId.value = snapshot?.activeId || null;
@@ -346,6 +403,190 @@ const handleStatsChange = (stats: {
   };
 };
 
+const createCommentActionTexts = (_locale: "zh-CN" | "en-US") => ({
+  disabled: "Comments are unavailable in viewer mode.",
+  requiresSelection: "Select text first to create a comment.",
+  failed: "Failed to create comment anchor.",
+  created: "Comment anchor created.",
+  replyFailed: "Failed to add comment reply.",
+  missingAnchor: "Comment anchor no longer exists in the document.",
+  removed: "Comment thread removed.",
+});
+
+const createCommentEntityId = (prefix: string) => {
+  const randomUuid =
+    typeof globalThis.crypto?.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
+  if (randomUuid) {
+    return `${prefix}-${randomUuid}`;
+  }
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const readSelectedCommentQuote = (currentView: CanvasEditorView) => {
+  const state = currentView?.state;
+  const from = Number(state?.selection?.from);
+  const to = Number(state?.selection?.to);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return null;
+  }
+  if (typeof state?.doc?.textBetween !== "function") {
+    return null;
+  }
+  const text = String(state.doc.textBetween(from, to, "\n", "\n") || "").trim();
+  return text || null;
+};
+
+const findSelectedCommentAnchor = (currentView: CanvasEditorView) => {
+  const state = currentView?.state;
+  const selection = state?.selection;
+  const from = Number(selection?.from);
+  const to = Number(selection?.to);
+  if (!(selection instanceof TextSelection) || selection.empty === true) {
+    return null;
+  }
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return null;
+  }
+
+  const ranges = findCommentAnchorRanges(state);
+  if (!Array.isArray(ranges) || ranges.length === 0) {
+    return null;
+  }
+
+  const exactMatch =
+    ranges.find((range) => range.from === from && range.to === to) ||
+    ranges.find((range) => from >= range.from && to <= range.to);
+
+  return exactMatch || null;
+};
+
+const syncCommentThreads = () => {
+  const threads = lumenCommentsStore.listThreads();
+  commentThreads.value = threads;
+  if (threads.length === 0) {
+    commentsPanelOpen.value = false;
+  }
+  const hasActiveThread =
+    !!activeCommentThreadId.value &&
+    threads.some((thread) => thread.id === activeCommentThreadId.value);
+  if (!hasActiveThread) {
+    activeCommentThreadId.value = null;
+    if (commentsPanelOpen.value && threads.length > 0) {
+      openCommentsPanel(threads[0]?.id || null);
+    }
+  }
+};
+
+const handleCommentClick = () => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  const currentView = view.value;
+  const selection = currentView?.state?.selection;
+  const hasSelection = !!currentView && selection instanceof TextSelection && selection.empty !== true;
+
+  if (canMutateComments.value && hasSelection) {
+    const existingAnchor = findSelectedCommentAnchor(currentView);
+    if (existingAnchor) {
+      if (!lumenCommentsStore.getThread(existingAnchor.threadId)) {
+        const now = new Date().toISOString();
+        lumenCommentsStore.upsertThread({
+          id: existingAnchor.threadId,
+          anchorId: existingAnchor.anchorId,
+          quote: readSelectedCommentQuote(currentView),
+          messages: [],
+          status: "open",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      openCommentsPanel(existingAnchor.threadId);
+      focusCommentThreadInEditor?.(existingAnchor.threadId);
+      return;
+    }
+
+    const threadId = createCommentEntityId("thread");
+    const anchorId = createCommentEntityId("anchor");
+    const applied = currentView.commands?.setCommentAnchor?.({ threadId, anchorId }) === true;
+    if (!applied) {
+      showToolbarMessage(texts.failed, "error");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    lumenCommentsStore.upsertThread({
+      id: threadId,
+      anchorId,
+      quote: readSelectedCommentQuote(currentView),
+      messages: [],
+      status: "open",
+      createdAt: now,
+      updatedAt: now,
+    });
+    activateCommentThreadInEditor?.(threadId);
+    openCommentsPanel(threadId);
+    showToolbarMessage(texts.created, "success");
+    return;
+  }
+
+  if (!canMutateComments.value) {
+    showToolbarMessage(texts.disabled, "warning");
+    return;
+  }
+  showToolbarMessage(texts.requiresSelection, "warning");
+};
+
+const handleCommentThreadSelect = (threadId: string) => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  openCommentsPanel(threadId);
+  const focused = focusCommentThreadInEditor?.(threadId) === true;
+  if (!focused) {
+    const activated = activateCommentThreadInEditor?.(threadId) === true;
+    if (!activated) {
+      showToolbarMessage(texts.missingAnchor, "warning");
+    }
+  }
+};
+
+const handleCommentThreadResolved = ({
+  threadId,
+  resolved,
+}: {
+  threadId: string;
+  resolved: boolean;
+}) => {
+  lumenCommentsStore.setResolved(threadId, resolved);
+};
+
+const handleCommentThreadReply = ({
+  threadId,
+  body,
+}: {
+  threadId: string;
+  body: string;
+}) => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  const nextMessage = lumenCommentsStore.addMessage(threadId, {
+    body,
+    authorName: "You",
+  });
+  if (!nextMessage) {
+    showToolbarMessage(texts.replyFailed, "warning");
+    return;
+  }
+  openCommentsPanel(threadId);
+};
+
+const handleCommentThreadDelete = (threadId: string) => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  const nextThreadId = getNextCommentThreadId(threadId);
+  removeCommentThreadInEditor?.(threadId);
+  lumenCommentsStore.removeThread(threadId);
+  if (activeCommentThreadId.value === threadId) {
+    activeCommentThreadId.value = nextThreadId;
+    activateCommentThreadInEditor?.(nextThreadId);
+  }
+  showToolbarMessage(texts.removed, "success");
+};
+
 const handleTocItemClick = (item: TocOutlineItem) => {
   const currentView = view.value;
   if (!currentView?.state?.doc || !currentView?.state?.tr || !item?.id) {
@@ -369,17 +610,35 @@ onMounted(async () => {
     return;
   }
   await nextTick();
+  lumenCommentsStore.clear();
+  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
+  syncCommentThreads();
   const mounted = mountPlaygroundEditor({
     host: editorHost.value,
     statusElement: toolbarRef.value?.statusEl?.value || null,
     flags: debugFlags,
     onTocOutlineChange: handleTocOutlineChange,
     tocOutlineEnabled: tocPanelOpen.value,
+    onCommentStateChange: ({ activeThreadId }) => {
+      const nextThreadId = activeThreadId || null;
+      const previousThreadId = activeCommentThreadId.value;
+      activeCommentThreadId.value = nextThreadId;
+      if (nextThreadId && (!commentsPanelOpen.value || nextThreadId !== previousThreadId)) {
+        commentsPanelOpen.value = true;
+        return;
+      }
+      if (!nextThreadId) {
+        commentsPanelOpen.value = false;
+      }
+    },
     onStatsChange: handleStatsChange,
   });
   view.value = mounted.view;
   syncDebugHandles();
   setTocOutlineEnabled = mounted.setTocOutlineEnabled;
+  activateCommentThreadInEditor = mounted.activateCommentThread;
+  focusCommentThreadInEditor = mounted.focusCommentThread;
+  removeCommentThreadInEditor = mounted.removeCommentThread;
   applySessionModeToView();
   detachEditor = mounted.destroy;
 });
@@ -395,8 +654,16 @@ onBeforeUnmount(() => {
   detachEditor?.();
   detachEditor = null;
   setTocOutlineEnabled = null;
+  detachCommentStore?.();
+  detachCommentStore = null;
+  activateCommentThreadInEditor = null;
+  focusCommentThreadInEditor = null;
+  removeCommentThreadInEditor = null;
   view.value = null;
   syncDebugHandles();
+  commentThreads.value = [];
+  commentsPanelOpen.value = false;
+  activeCommentThreadId.value = null;
   tocItems.value = [];
   activeTocId.value = null;
   footerStats.value = {

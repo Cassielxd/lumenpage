@@ -21,6 +21,7 @@
     "lumenpage-extension-bookmark": "workspace:*",
     "lumenpage-extension-bubble-menu": "workspace:*",
     "lumenpage-extension-callout": "workspace:*",
+    "lumenpage-extension-comment": "workspace:*",
     "lumenpage-extension-columns": "workspace:*",
     "lumenpage-extension-drag-handle": "workspace:*",
     "lumenpage-extension-embed-panel": "workspace:*",

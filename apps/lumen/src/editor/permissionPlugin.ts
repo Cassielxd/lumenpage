@@ -1,4 +1,5 @@
-﻿import { Plugin } from "lumenpage-state";
+import { Plugin } from "lumenpage-state";
+import { COMMENT_MUTATION_META } from "lumenpage-extension-comment";
 
 export type PlaygroundPermissionMode = "full" | "comment" | "readonly";
 
@@ -12,11 +13,14 @@ export const createPlaygroundPermissionPlugin = (mode: PlaygroundPermissionMode)
       if (!tr) {
         return true;
       }
-      // 评论态/只读态禁止文档写入；选区变化与滚动事务允许通过。
-      if (tr.docChanged) {
-        return false;
+      // 只读态禁止所有文档写入；评论态只放行显式标记过的评论事务。
+      if (!tr.docChanged) {
+        return true;
       }
-      return true;
+      if (mode === "comment") {
+        return tr.getMeta?.(COMMENT_MUTATION_META) === true;
+      }
+      return false;
     },
   });
 };

@@ -14,6 +14,12 @@ import {
 } from "lumenpage-view-canvas";
 import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
 import BubbleMenu, { DEFAULT_BUBBLE_MENU_ACTIONS } from "lumenpage-extension-bubble-menu";
+import {
+  CommentsPluginKey,
+  findCommentAnchorRange,
+  getCommentsPluginState,
+  normalizeCommentId,
+} from "lumenpage-extension-comment";
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
@@ -42,6 +48,7 @@ type MountPlaygroundEditorParams = {
   flags: PlaygroundDebugFlags;
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
+  onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
   onStatsChange?: ((stats: {
     pageCount: number;
     currentPage: number;
@@ -57,6 +64,10 @@ type MountedPlaygroundEditor = {
   view: CanvasEditorView;
   setTocOutlineEnabled: (enabled: boolean) => void;
   isTocOutlineEnabled: () => boolean;
+  getActiveCommentThreadId: () => string | null;
+  activateCommentThread: (threadId: string | null) => boolean;
+  focusCommentThread: (threadId: string) => boolean;
+  removeCommentThread: (threadId: string) => boolean;
   destroy: () => void;
 };
 
@@ -249,6 +260,7 @@ export const mountPlaygroundEditor = ({
   flags,
   onTocOutlineChange,
   tocOutlineEnabled,
+  onCommentStateChange,
   onStatsChange,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
@@ -488,6 +500,46 @@ export const mountPlaygroundEditor = ({
     },
   });
   const view = editor.view!;
+  const emitCommentState = () => {
+    onCommentStateChange?.({
+      activeThreadId: getCommentsPluginState(view?.state).activeThreadId || null,
+    });
+  };
+  const baseDispatchTransaction =
+    typeof view.dispatchTransaction === "function" ? view.dispatchTransaction.bind(view) : null;
+  if (baseDispatchTransaction) {
+    view.dispatchTransaction = (transaction: any) => {
+      baseDispatchTransaction(transaction);
+      emitCommentState();
+    };
+  }
+  const activateCommentThread = (threadId: string | null) =>
+    view.commands?.activateCommentThread?.(threadId) === true;
+  const focusCommentThread = (threadId: string) => {
+    const normalizedThreadId = normalizeCommentId(threadId);
+    if (!normalizedThreadId) {
+      return false;
+    }
+    const range = findCommentAnchorRange(view?.state, normalizedThreadId);
+    if (!range || !view?.state?.tr || !view?.state?.doc) {
+      return false;
+    }
+
+    try {
+      const tr = view.state.tr
+        .setSelection(TextSelection.create(view.state.doc, range.from, range.to))
+        .setMeta(CommentsPluginKey, { activeThreadId: normalizedThreadId })
+        .setMeta("addToHistory", false)
+        .scrollIntoView();
+      view.dispatch(tr);
+      view.focus();
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  };
+  const removeCommentThread = (threadId: string) =>
+    view.commands?.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
   const inspectCurrentBlock = (blockId: string) => {
     const normalizedBlockId = String(blockId || "");
     if (!normalizedBlockId) {
@@ -698,6 +750,7 @@ export const mountPlaygroundEditor = ({
   editor.on("transaction", handleEditorTransaction);
   scrollArea?.addEventListener?.("scroll", handleScroll, { passive: true });
   scheduleStatsEmit();
+  emitCommentState();
 
   try {
     const currentSelection = view?.state?.selection;
@@ -717,6 +770,10 @@ export const mountPlaygroundEditor = ({
       tocOutlineController.setEnabled(enabled);
     },
     isTocOutlineEnabled: () => tocOutlineController.isEnabled(),
+    getActiveCommentThreadId: () => getCommentsPluginState(view?.state).activeThreadId || null,
+    activateCommentThread,
+    focusCommentThread,
+    removeCommentThread,
     destroy: () => {
       if (typeof window !== "undefined") {
         const debugWindow = window as Window & {
