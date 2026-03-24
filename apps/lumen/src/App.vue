@@ -349,6 +349,7 @@ let detachCommentStore: null | (() => void) = null;
 let activateCommentThreadInEditor: null | ((threadId: string | null) => boolean) = null;
 let focusCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
 let removeCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
+let isPruningCommentThreads = false;
 let setTrackChangesEnabledInEditor: null | ((enabled: boolean) => boolean) = null;
 let activateTrackChangeInEditor: null | ((changeId: string | null) => boolean) = null;
 let focusTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
@@ -628,7 +629,45 @@ const findSelectedCommentAnchor = (currentView: CanvasEditorView) => {
   return exactMatch || null;
 };
 
+const pruneOrphanCommentThreads = () => {
+  if (isPruningCommentThreads) {
+    return false;
+  }
+  const currentView = view.value;
+  if (!currentView?.state) {
+    return false;
+  }
+  if (debugFlags.collaborationEnabled && !collaborationState.value.synced) {
+    return false;
+  }
+
+  const anchorThreadIds = new Set(
+    findCommentAnchorRanges(currentView.state)
+      .map((range) => range.threadId)
+      .filter((threadId): threadId is string => !!threadId)
+  );
+  const orphanThreadIds = lumenCommentsStore
+    .listThreads()
+    .filter((thread) => !anchorThreadIds.has(thread.id))
+    .map((thread) => thread.id);
+
+  if (orphanThreadIds.length === 0) {
+    return false;
+  }
+
+  isPruningCommentThreads = true;
+  try {
+    for (const threadId of orphanThreadIds) {
+      lumenCommentsStore.removeThread(threadId);
+    }
+  } finally {
+    isPruningCommentThreads = false;
+  }
+  return true;
+};
+
 const syncCommentThreads = () => {
+  pruneOrphanCommentThreads();
   const threads = lumenCommentsStore.listThreads();
   commentThreads.value = threads;
   if (threads.length === 0) {
@@ -735,7 +774,8 @@ const handleCommentThreadReply = ({
   const texts = createCommentActionTexts(debugFlags.locale);
   const nextMessage = lumenCommentsStore.addMessage(threadId, {
     body,
-    authorName: "You",
+    authorName:
+      (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || "You",
   });
   if (!nextMessage) {
     showToolbarMessage(texts.replyFailed, "warning");
@@ -855,15 +895,15 @@ onMounted(async () => {
     return;
   }
   await nextTick();
-  lumenCommentsStore.clear();
-  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
-  syncCommentThreads();
   const mounted = mountPlaygroundEditor({
     host: editorHost.value,
     statusElement: toolbarRef.value?.statusEl?.value || null,
     flags: debugFlags,
     onCollaborationStateChange: (state) => {
       collaborationState.value = state;
+      if (!state.enabled || state.synced) {
+        syncCommentThreads();
+      }
     },
     onTocOutlineChange: handleTocOutlineChange,
     tocOutlineEnabled: tocPanelOpen.value,
@@ -871,12 +911,17 @@ onMounted(async () => {
       const nextThreadId = activeThreadId || null;
       const previousThreadId = activeCommentThreadId.value;
       activeCommentThreadId.value = nextThreadId;
-      if (nextThreadId && (!commentsPanelOpen.value || nextThreadId !== previousThreadId)) {
+      syncCommentThreads();
+      const resolvedThreadId = activeCommentThreadId.value;
+      if (
+        resolvedThreadId &&
+        (!commentsPanelOpen.value || resolvedThreadId !== previousThreadId)
+      ) {
         closeTrackChangesPanel();
         commentsPanelOpen.value = true;
         return;
       }
-      if (!nextThreadId) {
+      if (!resolvedThreadId) {
         commentsPanelOpen.value = false;
       }
     },
@@ -917,6 +962,8 @@ onMounted(async () => {
   rejectTrackChangeInEditor = mounted.rejectTrackChange;
   acceptAllTrackChangesInEditor = mounted.acceptAllTrackChanges;
   rejectAllTrackChangesInEditor = mounted.rejectAllTrackChanges;
+  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
+  syncCommentThreads();
   applySessionModeToView();
   detachEditor = mounted.destroy;
 });

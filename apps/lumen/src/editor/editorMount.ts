@@ -43,6 +43,7 @@ import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { createMentionPluginOptions } from "./mentionCase";
 import { createSlashCommandOptions } from "./slashCommandCase";
+import { lumenCommentsStore } from "./commentsStore";
 import { createTocOutlinePlugin, type TocOutlineSnapshot } from "./tocOutlinePlugin";
 import { createLumenDocumentExtensions } from "./documentExtensions";
 import {
@@ -359,6 +360,10 @@ export const mountPlaygroundEditor = ({
     flags,
     onStateChange: onCollaborationStateChange || null,
   });
+  lumenCommentsStore.useCollaborationStore(
+    collaborationRuntime.provider?.document || null,
+    flags.collaborationField
+  );
 
   const bubbleMenuElement = host.ownerDocument.createElement("div");
 
@@ -873,6 +878,7 @@ export const mountPlaygroundEditor = ({
       paginationDocWorkerClient?.destroy?.();
       collaborationRuntime.destroy();
       editor.destroy();
+      lumenCommentsStore.useLocalStore({ clear: true });
     },
   };
 };
