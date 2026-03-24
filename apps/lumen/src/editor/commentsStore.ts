@@ -408,6 +408,158 @@ const addYMessage = (
   return nextMessage;
 };
 
+const updateLocalMessage = (
+  threadId: string,
+  messageId: string,
+  message: Partial<LumenCommentMessage> & { body: string }
+) => {
+  const normalizedThreadId = normalizeCommentId(threadId);
+  const normalizedMessageId = normalizeCommentId(messageId);
+  if (!normalizedThreadId || !normalizedMessageId) {
+    return null;
+  }
+  const existing = localThreads.get(normalizedThreadId);
+  if (!existing) {
+    return null;
+  }
+  const existingMessage = existing.messages.find((item) => item.id === normalizedMessageId);
+  if (!existingMessage) {
+    return null;
+  }
+  const nextBody = normalizeCommentBody(message.body);
+  if (!nextBody) {
+    return null;
+  }
+  const now = new Date().toISOString();
+  const nextMessage: LumenCommentMessage = {
+    ...existingMessage,
+    authorId:
+      message.authorId !== undefined
+        ? normalizeCommentId(message.authorId) || null
+        : existingMessage.authorId,
+    authorName:
+      message.authorName !== undefined
+        ? String(message.authorName || "").trim() || existingMessage.authorName
+        : existingMessage.authorName,
+    body: nextBody,
+    updatedAt: now,
+  };
+  localThreads.set(normalizedThreadId, {
+    ...existing,
+    messages: existing.messages.map((item) => (item.id === normalizedMessageId ? nextMessage : item)),
+    updatedAt: now,
+  });
+  emitChange();
+  return nextMessage;
+};
+
+const updateYMessage = (
+  threadId: string,
+  messageId: string,
+  message: Partial<LumenCommentMessage> & { body: string }
+) => {
+  const normalizedThreadId = normalizeCommentId(threadId);
+  const normalizedMessageId = normalizeCommentId(messageId);
+  const binding = yjsBinding;
+  if (!binding || !normalizedThreadId || !normalizedMessageId) {
+    return null;
+  }
+  const nextBody = normalizeCommentBody(message.body);
+  if (!nextBody) {
+    return null;
+  }
+
+  let nextMessage: LumenCommentMessage | null = null;
+  binding.doc.transact(() => {
+    const threadMap = binding.threads.get(normalizedThreadId);
+    if (!(threadMap instanceof Y.Map)) {
+      return;
+    }
+    const messagesArray = ensureYMessagesArray(threadMap);
+    const nextIndex = messagesArray
+      .toArray()
+      .findIndex(
+        (item) =>
+          item instanceof Y.Map && normalizeCommentId(item.get("id")) === normalizedMessageId
+      );
+    if (nextIndex < 0) {
+      return;
+    }
+    const messageMap = messagesArray.get(nextIndex);
+    if (!(messageMap instanceof Y.Map)) {
+      return;
+    }
+    const now = new Date().toISOString();
+    if (message.authorId !== undefined) {
+      messageMap.set("authorId", normalizeCommentId(message.authorId) || null);
+    }
+    if (message.authorName !== undefined) {
+      messageMap.set("authorName", String(message.authorName || "").trim() || "You");
+    }
+    messageMap.set("body", nextBody);
+    messageMap.set("updatedAt", now);
+    threadMap.set("updatedAt", now);
+    nextMessage = readYMessage(messageMap);
+  }, "lumen-comments:update-message");
+
+  return nextMessage;
+};
+
+const removeLocalMessage = (threadId: string, messageId: string) => {
+  const normalizedThreadId = normalizeCommentId(threadId);
+  const normalizedMessageId = normalizeCommentId(messageId);
+  if (!normalizedThreadId || !normalizedMessageId) {
+    return false;
+  }
+  const existing = localThreads.get(normalizedThreadId);
+  if (!existing) {
+    return false;
+  }
+  const nextMessages = existing.messages.filter((item) => item.id !== normalizedMessageId);
+  if (nextMessages.length === existing.messages.length) {
+    return false;
+  }
+  localThreads.set(normalizedThreadId, {
+    ...existing,
+    messages: nextMessages,
+    updatedAt: new Date().toISOString(),
+  });
+  emitChange();
+  return true;
+};
+
+const removeYMessage = (threadId: string, messageId: string) => {
+  const normalizedThreadId = normalizeCommentId(threadId);
+  const normalizedMessageId = normalizeCommentId(messageId);
+  const binding = yjsBinding;
+  if (!binding || !normalizedThreadId || !normalizedMessageId) {
+    return false;
+  }
+
+  let removed = false;
+  binding.doc.transact(() => {
+    const threadMap = binding.threads.get(normalizedThreadId);
+    if (!(threadMap instanceof Y.Map)) {
+      return;
+    }
+    const messagesArray = ensureYMessagesArray(threadMap);
+    const nextIndex = messagesArray
+      .toArray()
+      .findIndex(
+        (item) =>
+          item instanceof Y.Map && normalizeCommentId(item.get("id")) === normalizedMessageId
+      );
+    if (nextIndex < 0) {
+      return;
+    }
+    messagesArray.delete(nextIndex, 1);
+    threadMap.set("updatedAt", new Date().toISOString());
+    removed = true;
+  }, "lumen-comments:remove-message");
+
+  return removed;
+};
+
 const removeLocalThread = (threadId: string) => {
   const normalizedThreadId = normalizeCommentId(threadId);
   if (!normalizedThreadId) {
@@ -506,6 +658,12 @@ export const lumenCommentsStore: CommentStoreAdapter & {
     threadId: string,
     message: Partial<LumenCommentMessage> & { body: string }
   ) => LumenCommentMessage | null;
+  updateMessage: (
+    threadId: string,
+    messageId: string,
+    message: Partial<LumenCommentMessage> & { body: string }
+  ) => LumenCommentMessage | null;
+  removeMessage: (threadId: string, messageId: string) => boolean;
   removeThread: (threadId: string) => boolean;
   setResolved: (threadId: string, resolved: boolean) => boolean;
   clear: () => void;
@@ -546,6 +704,16 @@ export const lumenCommentsStore: CommentStoreAdapter & {
   },
   addMessage(threadId, message) {
     return isYjsBacked() ? addYMessage(threadId, message) : addLocalMessage(threadId, message);
+  },
+  updateMessage(threadId, messageId, message) {
+    return isYjsBacked()
+      ? updateYMessage(threadId, messageId, message)
+      : updateLocalMessage(threadId, messageId, message);
+  },
+  removeMessage(threadId, messageId) {
+    return isYjsBacked()
+      ? removeYMessage(threadId, messageId)
+      : removeLocalMessage(threadId, messageId);
   },
   removeThread(threadId) {
     return isYjsBacked() ? removeYThread(threadId) : removeLocalThread(threadId);

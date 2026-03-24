@@ -115,6 +115,51 @@ test("collaboration comments sync and orphan threads are pruned", async ({ brows
       .poll(async () => await alice.locator(".doc-comments-message-body").allInnerTexts())
       .toEqual(["Alice created the thread.", "Bob replied from the second client."]);
 
+    await alice.locator(".doc-comments-message").first().getByRole("button", { name: "Edit" }).click();
+    await alice.locator(".doc-comments-message-editor textarea").fill("Alice edited the opening note.");
+    await alice.locator(".doc-comments-message-editor-actions").getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .poll(async () => await bob.locator(".doc-comments-message-body").allInnerTexts())
+      .toEqual(["Alice edited the opening note.", "Bob replied from the second client."]);
+
+    await bob.locator(".doc-comments-message").last().getByRole("button", { name: "Edit" }).click();
+    await bob.locator(".doc-comments-message-editor textarea").fill("Bob revised the follow-up.");
+    await bob.locator(".doc-comments-message-editor-actions").getByRole("button", { name: "Save" }).click();
+
+    await expect
+      .poll(async () => await alice.locator(".doc-comments-message-body").allInnerTexts())
+      .toEqual(["Alice edited the opening note.", "Bob revised the follow-up."]);
+
+    await alice.locator(".doc-comments-message").first().getByRole("button", { name: "Delete" }).click();
+
+    await expect
+      .poll(async () => await bob.locator(".doc-comments-message-body").allInnerTexts())
+      .toEqual(["Bob revised the follow-up."]);
+    await expect
+      .poll(async () => await bob.locator(".doc-comments-message-author").allInnerTexts())
+      .toEqual(["Bob"]);
+
+    await bob.getByPlaceholder("Search comments").fill("follow-up");
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(1);
+    await bob.getByPlaceholder("Search comments").fill("not-found");
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(0);
+    await bob.getByPlaceholder("Search comments").fill("");
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(1);
+
+    await alice.locator(".doc-comments-detail-actions").getByRole("button", { name: "Resolve" }).click();
+    await expect
+      .poll(async () => await bob.locator(".doc-comments-item").count())
+      .toBe(1);
+    await expect(bob.locator(".doc-comments-item")).toHaveClass(/is-resolved/);
+
+    await bob.getByRole("button", { name: "Resolved (1)" }).click();
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(1);
+    await bob.getByRole("button", { name: "Open (0)" }).click();
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(0);
+    await bob.getByRole("button", { name: "All (1)" }).click();
+    await expect(bob.locator(".doc-comments-item")).toHaveCount(1);
+
     await setParagraphDocument(alice, ["The previous comment anchor has been removed."]);
     await waitForLayoutIdle(alice);
 

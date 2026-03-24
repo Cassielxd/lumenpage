@@ -113,10 +113,13 @@
             :threads="commentThreads"
             :active-thread-id="activeCommentThreadId"
             :can-manage="canMutateComments"
+            :current-user-name="currentCommentUserName"
             @close="closeCommentsPanel"
             @select="handleCommentThreadSelect"
             @toggle-resolved="handleCommentThreadResolved"
             @reply="handleCommentThreadReply"
+            @edit-message="handleCommentMessageEdit"
+            @delete-message="handleCommentMessageDelete"
             @delete="handleCommentThreadDelete"
           />
         </t-aside>
@@ -249,6 +252,9 @@ const permissionLabel = computed(() => {
 const commentCount = computed(() => commentThreads.value.length);
 const canMutateComments = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
+);
+const currentCommentUserName = computed(
+  () => (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || "You"
 );
 const canMutateTrackChanges = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
@@ -539,15 +545,34 @@ const handleStatsChange = (stats: {
   };
 };
 
-const createCommentActionTexts = (_locale: "zh-CN" | "en-US") => ({
-  disabled: "Comments are unavailable in viewer mode.",
-  requiresSelection: "Select text first to create a comment.",
-  failed: "Failed to create comment anchor.",
-  created: "Comment anchor created.",
-  replyFailed: "Failed to add comment reply.",
-  missingAnchor: "Comment anchor no longer exists in the document.",
-  removed: "Comment thread removed.",
-});
+const createCommentActionTexts = (locale: "zh-CN" | "en-US") =>
+  locale === "en-US"
+    ? {
+        disabled: "Comments are unavailable in viewer mode.",
+        requiresSelection: "Select text first to create a comment.",
+        failed: "Failed to create comment anchor.",
+        created: "Comment anchor created.",
+        replyFailed: "Failed to add comment reply.",
+        editFailed: "Failed to update comment message.",
+        edited: "Comment message updated.",
+        deleteMessageFailed: "Failed to delete comment message.",
+        messageRemoved: "Comment message removed.",
+        missingAnchor: "Comment anchor no longer exists in the document.",
+        removed: "Comment thread removed.",
+      }
+    : {
+        disabled: "\u67e5\u770b\u6a21\u5f0f\u4e0b\u65e0\u6cd5\u8bc4\u8bba\u3002",
+        requiresSelection: "\u8bf7\u5148\u9009\u4e2d\u6587\u672c\u518d\u521b\u5efa\u8bc4\u8bba\u3002",
+        failed: "\u521b\u5efa\u8bc4\u8bba\u951a\u70b9\u5931\u8d25\u3002",
+        created: "\u5df2\u521b\u5efa\u8bc4\u8bba\u951a\u70b9\u3002",
+        replyFailed: "\u6dfb\u52a0\u8bc4\u8bba\u56de\u590d\u5931\u8d25\u3002",
+        editFailed: "\u66f4\u65b0\u8bc4\u8bba\u6d88\u606f\u5931\u8d25\u3002",
+        edited: "\u5df2\u66f4\u65b0\u8bc4\u8bba\u6d88\u606f\u3002",
+        deleteMessageFailed: "\u5220\u9664\u8bc4\u8bba\u6d88\u606f\u5931\u8d25\u3002",
+        messageRemoved: "\u5df2\u5220\u9664\u8bc4\u8bba\u6d88\u606f\u3002",
+        missingAnchor: "\u8bc4\u8bba\u951a\u70b9\u5df2\u4e0d\u5b58\u5728\u4e8e\u6587\u6863\u4e2d\u3002",
+        removed: "\u5df2\u5220\u9664\u8bc4\u8bba\u7ebf\u7a0b\u3002",
+      };
 
 const createTrackChangeActionTexts = (locale: "zh-CN" | "en-US") =>
   locale === "en-US"
@@ -774,14 +799,54 @@ const handleCommentThreadReply = ({
   const texts = createCommentActionTexts(debugFlags.locale);
   const nextMessage = lumenCommentsStore.addMessage(threadId, {
     body,
-    authorName:
-      (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || "You",
+    authorId: currentCommentUserName.value,
+    authorName: currentCommentUserName.value,
   });
   if (!nextMessage) {
     showToolbarMessage(texts.replyFailed, "warning");
     return;
   }
   openCommentsPanel(threadId);
+};
+
+const handleCommentMessageEdit = ({
+  threadId,
+  messageId,
+  body,
+}: {
+  threadId: string;
+  messageId: string;
+  body: string;
+}) => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  const nextMessage = lumenCommentsStore.updateMessage(threadId, messageId, {
+    body,
+    authorId: currentCommentUserName.value,
+    authorName: currentCommentUserName.value,
+  });
+  if (!nextMessage) {
+    showToolbarMessage(texts.editFailed, "warning");
+    return;
+  }
+  openCommentsPanel(threadId);
+  showToolbarMessage(texts.edited, "success");
+};
+
+const handleCommentMessageDelete = ({
+  threadId,
+  messageId,
+}: {
+  threadId: string;
+  messageId: string;
+}) => {
+  const texts = createCommentActionTexts(debugFlags.locale);
+  const removed = lumenCommentsStore.removeMessage(threadId, messageId);
+  if (!removed) {
+    showToolbarMessage(texts.deleteMessageFailed, "warning");
+    return;
+  }
+  openCommentsPanel(threadId);
+  showToolbarMessage(texts.messageRemoved, "success");
 };
 
 const handleCommentThreadDelete = (threadId: string) => {

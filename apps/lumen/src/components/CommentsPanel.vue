@@ -13,145 +13,255 @@
     </div>
 
     <template v-else>
-      <div class="doc-comments-list">
-        <button
-          v-for="thread in threads"
-          :key="thread.id"
-          type="button"
-          class="doc-comments-item"
-          :class="{
-            'is-active': thread.id === selectedThreadId,
-            'is-resolved': thread.status === 'resolved',
-          }"
-          @click="$emit('select', thread.id)"
-        >
-          <div class="doc-comments-item-meta">
+      <div class="doc-comments-toolbar">
+        <t-input
+          class="doc-comments-search"
+          size="small"
+          clearable
+          :model-value="searchQuery"
+          :placeholder="texts.searchPlaceholder"
+          @update:model-value="handleSearchQueryChange"
+        />
+        <div class="doc-comments-filters">
+          <t-button
+            size="small"
+            variant="outline"
+            :theme="statusFilter === 'all' ? 'primary' : 'default'"
+            @click="statusFilter = 'all'"
+          >
+            {{ texts.all }} ({{ threads.length }})
+          </t-button>
+          <t-button
+            size="small"
+            variant="outline"
+            :theme="statusFilter === 'open' ? 'primary' : 'default'"
+            @click="statusFilter = 'open'"
+          >
+            {{ texts.open }} ({{ openThreadCount }})
+          </t-button>
+          <t-button
+            size="small"
+            variant="outline"
+            :theme="statusFilter === 'resolved' ? 'primary' : 'default'"
+            @click="statusFilter = 'resolved'"
+          >
+            {{ texts.resolved }} ({{ resolvedThreadCount }})
+          </t-button>
+        </div>
+      </div>
+
+      <div v-if="filteredThreads.length === 0" class="doc-comments-empty is-filtered">
+        {{ texts.filteredEmpty }}
+      </div>
+
+      <template v-else>
+        <div class="doc-comments-list">
+          <div
+            v-for="group in threadGroups"
+            :key="group.key"
+            class="doc-comments-group"
+          >
+            <div class="doc-comments-group-header">
+              <span class="doc-comments-group-title">{{ group.label }}</span>
+              <span class="doc-comments-group-count">{{ group.threads.length }}</span>
+            </div>
+            <button
+              v-for="thread in group.threads"
+              :key="thread.id"
+              type="button"
+              class="doc-comments-item"
+              :class="{
+                'is-active': thread.id === selectedThreadId,
+                'is-resolved': thread.status === 'resolved',
+              }"
+              @click="$emit('select', thread.id)"
+            >
+              <div class="doc-comments-item-meta">
+                <t-tag
+                  size="small"
+                  variant="light"
+                  :theme="thread.status === 'resolved' ? 'default' : 'warning'"
+                >
+                  {{ thread.status === "resolved" ? texts.resolved : texts.open }}
+                </t-tag>
+                <span class="doc-comments-item-time">{{ formatTimestamp(thread.updatedAt) }}</span>
+              </div>
+              <p class="doc-comments-item-quote" :class="{ 'is-empty': !thread.quote }">
+                {{ thread.quote || texts.emptyQuote }}
+              </p>
+              <span class="doc-comments-item-summary">{{ formatMessageCount(thread.messages.length) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="selectedThread" class="doc-comments-detail">
+          <t-divider class="doc-comments-divider" />
+
+          <div class="doc-comments-detail-header">
             <t-tag
               size="small"
               variant="light"
-              :theme="thread.status === 'resolved' ? 'default' : 'warning'"
+              :theme="selectedThread.status === 'resolved' ? 'default' : 'warning'"
             >
-              {{ thread.status === "resolved" ? texts.resolved : texts.open }}
+              {{ selectedThread.status === "resolved" ? texts.resolved : texts.open }}
             </t-tag>
-            <span class="doc-comments-item-time">{{ formatTimestamp(thread.updatedAt) }}</span>
+            <span class="doc-comments-detail-time">{{ formatTimestamp(selectedThread.updatedAt) }}</span>
           </div>
-          <p class="doc-comments-item-quote" :class="{ 'is-empty': !thread.quote }">
-            {{ thread.quote || texts.emptyQuote }}
+
+          <p class="doc-comments-detail-quote" :class="{ 'is-empty': !selectedThread.quote }">
+            {{ selectedThread.quote || texts.emptyQuote }}
           </p>
-          <span class="doc-comments-item-summary">{{ formatMessageCount(thread.messages.length) }}</span>
-        </button>
-      </div>
 
-      <div v-if="selectedThread" class="doc-comments-detail">
-        <t-divider class="doc-comments-divider" />
-
-        <div class="doc-comments-detail-header">
-          <t-tag
-            size="small"
-            variant="light"
-            :theme="selectedThread.status === 'resolved' ? 'default' : 'warning'"
-          >
-            {{ selectedThread.status === "resolved" ? texts.resolved : texts.open }}
-          </t-tag>
-          <span class="doc-comments-detail-time">{{ formatTimestamp(selectedThread.updatedAt) }}</span>
-        </div>
-
-        <p class="doc-comments-detail-quote" :class="{ 'is-empty': !selectedThread.quote }">
-          {{ selectedThread.quote || texts.emptyQuote }}
-        </p>
-
-        <div class="doc-comments-detail-actions">
-          <t-button size="small" variant="outline" @click="$emit('select', selectedThread.id)">
-            {{ texts.jump }}
-          </t-button>
-          <t-button
-            size="small"
-            variant="outline"
-            :disabled="!canManage"
-            @click="
-              $emit('toggle-resolved', {
-                threadId: selectedThread.id,
-                resolved: selectedThread.status !== 'resolved',
-              })
-            "
-          >
-            {{ selectedThread.status === "resolved" ? texts.reopen : texts.resolve }}
-          </t-button>
-          <t-button
-            size="small"
-            theme="danger"
-            variant="outline"
-            :disabled="!canManage"
-            @click="$emit('delete', selectedThread.id)"
-          >
-            {{ texts.delete }}
-          </t-button>
-        </div>
-
-        <div class="doc-comments-message-list">
-          <div v-if="selectedThread.messages.length === 0" class="doc-comments-message-empty">
-            {{ texts.emptyReplies }}
-          </div>
-          <div
-            v-for="message in selectedThread.messages"
-            :key="message.id"
-            class="doc-comments-message"
-          >
-            <div class="doc-comments-message-meta">
-              <span class="doc-comments-message-author">{{ message.authorName }}</span>
-              <span class="doc-comments-message-time">
-                {{ formatTimestamp(message.updatedAt || message.createdAt) }}
-              </span>
-            </div>
-            <p class="doc-comments-message-body">{{ message.body }}</p>
-          </div>
-        </div>
-
-        <t-divider class="doc-comments-divider" />
-
-        <div class="doc-comments-composer">
-          <div class="doc-comments-composer-label">{{ texts.reply }}</div>
-          <t-textarea
-            class="doc-comments-composer-input"
-            :model-value="getReplyDraft(selectedThread.id)"
-            :disabled="isReplyDisabled(selectedThread)"
-            :placeholder="
-              selectedThread.status === 'resolved'
-                ? texts.replyPlaceholderResolved
-                : canManage
-                  ? texts.replyPlaceholder
-                  : texts.replyPlaceholderReadonly
-            "
-            :autosize="{ minRows: 3, maxRows: 6 }"
-            @update:model-value="(value) => setReplyDraft(selectedThread.id, value)"
-            @keydown="handleReplyKeydown($event, selectedThread.id)"
-          />
-          <div class="doc-comments-composer-footer">
-            <span class="doc-comments-composer-hint">{{ texts.replyHint }}</span>
+          <div class="doc-comments-detail-actions">
+            <t-button size="small" variant="outline" @click="$emit('select', selectedThread.id)">
+              {{ texts.jump }}
+            </t-button>
             <t-button
               size="small"
-              theme="primary"
-              :disabled="isReplyDisabled(selectedThread) || !getReplyDraft(selectedThread.id).trim()"
-              @click="submitReply(selectedThread.id)"
+              variant="outline"
+              :disabled="!canManage"
+              @click="
+                $emit('toggle-resolved', {
+                  threadId: selectedThread.id,
+                  resolved: selectedThread.status !== 'resolved',
+                })
+              "
             >
-              {{ texts.reply }}
+              {{ selectedThread.status === "resolved" ? texts.reopen : texts.resolve }}
+            </t-button>
+            <t-button
+              size="small"
+              theme="danger"
+              variant="outline"
+              :disabled="!canManage"
+              @click="$emit('delete', selectedThread.id)"
+            >
+              {{ texts.delete }}
             </t-button>
           </div>
+
+          <div class="doc-comments-message-list">
+            <div v-if="selectedThread.messages.length === 0" class="doc-comments-message-empty">
+              {{ texts.emptyReplies }}
+            </div>
+            <div
+              v-for="message in selectedThread.messages"
+              :key="message.id"
+              class="doc-comments-message"
+            >
+              <div class="doc-comments-message-meta">
+                <div class="doc-comments-message-meta-main">
+                  <span class="doc-comments-message-author">{{ message.authorName }}</span>
+                  <span v-if="isMessageEdited(message)" class="doc-comments-message-edited">
+                    {{ texts.edited }}
+                  </span>
+                </div>
+                <div class="doc-comments-message-meta-side">
+                  <span class="doc-comments-message-time">
+                    {{ formatTimestamp(message.updatedAt || message.createdAt) }}
+                  </span>
+                  <div v-if="canManageMessage(message)" class="doc-comments-message-actions">
+                    <t-button
+                      size="small"
+                      variant="text"
+                      @click="startEditingMessage(message.id, message.body)"
+                    >
+                      {{ texts.edit }}
+                    </t-button>
+                    <t-button
+                      size="small"
+                      theme="danger"
+                      variant="text"
+                      @click="
+                        $emit('delete-message', {
+                          threadId: selectedThread.id,
+                          messageId: message.id,
+                        })
+                      "
+                    >
+                      {{ texts.delete }}
+                    </t-button>
+                  </div>
+                </div>
+              </div>
+              <template v-if="editingMessageId === message.id">
+                <t-textarea
+                  class="doc-comments-message-editor"
+                  :model-value="getMessageDraft(message.id)"
+                  :autosize="{ minRows: 2, maxRows: 6 }"
+                  @update:model-value="(value) => setMessageDraft(message.id, value)"
+                  @keydown="handleMessageEditorKeydown($event, selectedThread.id, message.id)"
+                />
+                <div class="doc-comments-message-editor-footer">
+                  <span class="doc-comments-message-editor-hint">{{ texts.editHint }}</span>
+                  <div class="doc-comments-message-editor-actions">
+                    <t-button size="small" variant="outline" @click="cancelEditingMessage(message.id)">
+                      {{ texts.cancel }}
+                    </t-button>
+                    <t-button
+                      size="small"
+                      theme="primary"
+                      :disabled="!getMessageDraft(message.id).trim()"
+                      @click="submitMessageEdit(selectedThread.id, message.id)"
+                    >
+                      {{ texts.save }}
+                    </t-button>
+                  </div>
+                </div>
+              </template>
+              <p v-else class="doc-comments-message-body">{{ message.body }}</p>
+            </div>
+          </div>
+
+          <t-divider class="doc-comments-divider" />
+
+          <div class="doc-comments-composer">
+            <div class="doc-comments-composer-label">{{ texts.reply }}</div>
+            <t-textarea
+              class="doc-comments-composer-input"
+              :model-value="getReplyDraft(selectedThread.id)"
+              :disabled="isReplyDisabled(selectedThread)"
+              :placeholder="
+                selectedThread.status === 'resolved'
+                  ? texts.replyPlaceholderResolved
+                  : canManage
+                    ? texts.replyPlaceholder
+                    : texts.replyPlaceholderReadonly
+              "
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              @update:model-value="(value) => setReplyDraft(selectedThread.id, value)"
+              @keydown="handleReplyKeydown($event, selectedThread.id)"
+            />
+            <div class="doc-comments-composer-footer">
+              <span class="doc-comments-composer-hint">{{ texts.replyHint }}</span>
+              <t-button
+                size="small"
+                theme="primary"
+                :disabled="isReplyDisabled(selectedThread) || !getReplyDraft(selectedThread.id).trim()"
+                @click="submitReply(selectedThread.id)"
+              >
+                {{ texts.reply }}
+              </t-button>
+            </div>
+          </div>
         </div>
-      </div>
+      </template>
     </template>
   </aside>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive } from "vue";
+import { computed, reactive, ref } from "vue";
 
-import type { LumenCommentThread } from "../editor/commentsStore";
+import type { LumenCommentMessage, LumenCommentThread } from "../editor/commentsStore";
+
+type CommentStatusFilter = "all" | "open" | "resolved";
 
 const props = defineProps<{
   threads: readonly LumenCommentThread[];
   activeThreadId: string | null;
   canManage: boolean;
+  currentUserName: string;
   locale: "zh-CN" | "en-US";
 }>();
 
@@ -161,9 +271,15 @@ const emit = defineEmits<{
   (event: "toggle-resolved", payload: { threadId: string; resolved: boolean }): void;
   (event: "reply", payload: { threadId: string; body: string }): void;
   (event: "delete", threadId: string): void;
+  (event: "edit-message", payload: { threadId: string; messageId: string; body: string }): void;
+  (event: "delete-message", payload: { threadId: string; messageId: string }): void;
 }>();
 
 const replyDrafts = reactive<Record<string, string>>({});
+const messageDrafts = reactive<Record<string, string>>({});
+const editingMessageId = ref<string | null>(null);
+const searchQuery = ref("");
+const statusFilter = ref<CommentStatusFilter>("all");
 
 const texts = computed(() =>
   props.locale === "en-US"
@@ -172,6 +288,9 @@ const texts = computed(() =>
         thread: "thread",
         threads: "threads",
         empty: "No comment threads yet.",
+        filteredEmpty: "No threads match the current filter.",
+        searchPlaceholder: "Search comments",
+        all: "All",
         open: "Open",
         resolved: "Resolved",
         emptyQuote: "No quoted text",
@@ -179,12 +298,17 @@ const texts = computed(() =>
         resolve: "Resolve",
         reopen: "Reopen",
         delete: "Delete",
+        edit: "Edit",
+        save: "Save",
+        cancel: "Cancel",
+        edited: "Edited",
         emptyReplies: "No replies yet.",
         reply: "Reply",
         replyPlaceholder: "Write a reply",
         replyPlaceholderResolved: "Reopen the thread to reply.",
         replyPlaceholderReadonly: "Comments are unavailable in viewer mode.",
         replyHint: "Ctrl+Enter to reply",
+        editHint: "Ctrl+Enter to save",
         noMessages: "No messages",
         oneMessage: "1 message",
       }
@@ -193,6 +317,9 @@ const texts = computed(() =>
         thread: "\u6761\u7ebf\u7a0b",
         threads: "\u6761\u7ebf\u7a0b",
         empty: "\u6682\u65e0\u8bc4\u8bba\u7ebf\u7a0b",
+        filteredEmpty: "\u5f53\u524d\u7b5b\u9009\u6761\u4ef6\u4e0b\u6ca1\u6709\u5339\u914d\u7684\u7ebf\u7a0b",
+        searchPlaceholder: "\u641c\u7d22\u8bc4\u8bba",
+        all: "\u5168\u90e8",
         open: "\u8fdb\u884c\u4e2d",
         resolved: "\u5df2\u89e3\u51b3",
         emptyQuote: "\u65e0\u5f15\u7528\u6587\u672c",
@@ -200,28 +327,97 @@ const texts = computed(() =>
         resolve: "\u89e3\u51b3",
         reopen: "\u91cd\u65b0\u6253\u5f00",
         delete: "\u5220\u9664",
+        edit: "\u7f16\u8f91",
+        save: "\u4fdd\u5b58",
+        cancel: "\u53d6\u6d88",
+        edited: "\u5df2\u7f16\u8f91",
         emptyReplies: "\u6682\u65e0\u56de\u590d",
         reply: "\u56de\u590d",
         replyPlaceholder: "\u8f93\u5165\u56de\u590d",
         replyPlaceholderResolved: "\u5148\u91cd\u65b0\u6253\u5f00\u7ebf\u7a0b\u518d\u56de\u590d",
         replyPlaceholderReadonly: "\u67e5\u770b\u6a21\u5f0f\u4e0b\u65e0\u6cd5\u8bc4\u8bba",
         replyHint: "Ctrl+Enter \u53d1\u9001",
+        editHint: "Ctrl+Enter \u4fdd\u5b58",
         noMessages: "\u6682\u65e0\u6d88\u606f",
         oneMessage: "1 \u6761\u6d88\u606f",
       }
 );
 
-const summaryLabel = computed(() => {
-  const count = props.threads.length;
-  if (count === 1) {
-    return `1 ${texts.value.thread}`;
+const normalizeSearchValue = (value: unknown) => String(value || "").trim().toLowerCase();
+
+const doesThreadMatchSearch = (thread: LumenCommentThread, query: string) => {
+  if (!query) {
+    return true;
   }
-  return `${count} ${texts.value.threads}`;
+  const searchFields = [
+    thread.quote,
+    thread.anchorId,
+    ...thread.messages.flatMap((message) => [message.authorName, message.body]),
+  ];
+  return searchFields.some((field) => normalizeSearchValue(field).includes(query));
+};
+
+const openThreadCount = computed(
+  () => props.threads.filter((thread) => thread.status !== "resolved").length
+);
+const resolvedThreadCount = computed(
+  () => props.threads.filter((thread) => thread.status === "resolved").length
+);
+
+const filteredThreads = computed(() => {
+  const query = normalizeSearchValue(searchQuery.value);
+  return props.threads.filter((thread) => {
+    if (statusFilter.value !== "all" && thread.status !== statusFilter.value) {
+      return false;
+    }
+    return doesThreadMatchSearch(thread, query);
+  });
 });
 
-const selectedThreadId = computed(() => props.activeThreadId || props.threads[0]?.id || null);
+const summaryLabel = computed(() => {
+  const totalCount = props.threads.length;
+  const visibleCount = filteredThreads.value.length;
+  if (visibleCount === totalCount) {
+    if (totalCount === 1) {
+      return `1 ${texts.value.thread}`;
+    }
+    return `${totalCount} ${texts.value.threads}`;
+  }
+  return props.locale === "en-US"
+    ? `${visibleCount} of ${totalCount} ${texts.value.threads}`
+    : `\u663e\u793a ${visibleCount} / ${totalCount} ${texts.value.threads}`;
+});
+
+const threadGroups = computed(() => {
+  const groups: Array<{ key: string; label: string; threads: LumenCommentThread[] }> = [];
+  const visibleThreads = filteredThreads.value;
+  if (statusFilter.value === "all") {
+    const openThreads = visibleThreads.filter((thread) => thread.status !== "resolved");
+    const resolvedThreads = visibleThreads.filter((thread) => thread.status === "resolved");
+    if (openThreads.length > 0) {
+      groups.push({ key: "open", label: texts.value.open, threads: openThreads });
+    }
+    if (resolvedThreads.length > 0) {
+      groups.push({ key: "resolved", label: texts.value.resolved, threads: resolvedThreads });
+    }
+    return groups;
+  }
+  if (visibleThreads.length > 0) {
+    groups.push({
+      key: statusFilter.value,
+      label: statusFilter.value === "resolved" ? texts.value.resolved : texts.value.open,
+      threads: visibleThreads,
+    });
+  }
+  return groups;
+});
+
+const selectedThreadId = computed(() => props.activeThreadId || filteredThreads.value[0]?.id || null);
 const selectedThread = computed(
-  () => props.threads.find((thread) => thread.id === selectedThreadId.value) || props.threads[0] || null
+  () =>
+    filteredThreads.value.find((thread) => thread.id === selectedThreadId.value) ||
+    filteredThreads.value[0] ||
+    null
 );
 
 const formatTimestamp = (value: string | null | undefined) => {
@@ -260,6 +456,65 @@ const setReplyDraft = (threadId: string, value: string | number) => {
 const isReplyDisabled = (thread: LumenCommentThread) =>
   !props.canManage || thread.status === "resolved";
 
+const normalizeUserName = (value: string | null | undefined) => String(value || "").trim().toLowerCase();
+
+const canManageMessage = (message: LumenCommentMessage) => {
+  if (!props.canManage) {
+    return false;
+  }
+  const currentUser = normalizeUserName(props.currentUserName);
+  if (!currentUser) {
+    return true;
+  }
+  return normalizeUserName(message.authorName) === currentUser;
+};
+
+const isMessageEdited = (message: LumenCommentMessage) =>
+  String(message.updatedAt || "") > String(message.createdAt || "");
+
+const getMessageDraft = (messageId: string) => messageDrafts[messageId] || "";
+
+const setMessageDraft = (messageId: string, value: string | number) => {
+  messageDrafts[messageId] = String(value ?? "");
+};
+
+const startEditingMessage = (messageId: string, body: string) => {
+  editingMessageId.value = messageId;
+  setMessageDraft(messageId, body);
+};
+
+const cancelEditingMessage = (messageId: string) => {
+  if (editingMessageId.value === messageId) {
+    editingMessageId.value = null;
+  }
+  delete messageDrafts[messageId];
+};
+
+const submitMessageEdit = (threadId: string, messageId: string) => {
+  const body = getMessageDraft(messageId).trim();
+  if (!body) {
+    return;
+  }
+  emit("edit-message", { threadId, messageId, body });
+  cancelEditingMessage(messageId);
+};
+
+const handleMessageEditorKeydown = (
+  event: KeyboardEvent,
+  threadId: string,
+  messageId: string
+) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    submitMessageEdit(threadId, messageId);
+    return;
+  }
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelEditingMessage(messageId);
+  }
+};
+
 const submitReply = (threadId: string) => {
   const body = getReplyDraft(threadId).trim();
   if (!body) {
@@ -274,6 +529,10 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
     event.preventDefault();
     submitReply(threadId);
   }
+};
+
+const handleSearchQueryChange = (value: string | number) => {
+  searchQuery.value = String(value ?? "");
 };
 </script>
 
@@ -331,6 +590,23 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
   color: #111827;
 }
 
+.doc-comments-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 4px 10px;
+}
+
+.doc-comments-search {
+  width: 100%;
+}
+
+.doc-comments-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .doc-comments-empty {
   display: flex;
   align-items: center;
@@ -344,10 +620,43 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
   padding: 16px 12px;
 }
 
+.doc-comments-empty.is-filtered {
+  min-height: 72px;
+  margin: 0 4px;
+}
+
 .doc-comments-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.doc-comments-group {
+  display: flex;
+  flex-direction: column;
   gap: 2px;
+}
+
+.doc-comments-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 4px 2px;
+}
+
+.doc-comments-group-title {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.doc-comments-group-count {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .doc-comments-item {
@@ -476,15 +785,34 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 
 .doc-comments-message-meta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 4px;
 }
 
+.doc-comments-message-meta-main,
+.doc-comments-message-meta-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.doc-comments-message-meta-side {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .doc-comments-message-author {
   color: #111827;
   font-size: 12px;
+  font-weight: 600;
+}
+
+.doc-comments-message-edited {
+  color: #2563eb;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -494,6 +822,12 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
   white-space: nowrap;
 }
 
+.doc-comments-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .doc-comments-message-body {
   margin: 0;
   color: #1f2937;
@@ -501,6 +835,29 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.doc-comments-message-editor {
+  width: 100%;
+}
+
+.doc-comments-message-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.doc-comments-message-editor-hint {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.doc-comments-message-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .doc-comments-composer-label {
@@ -543,10 +900,14 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 
 :global(.doc-shell.is-high-contrast) .doc-comments-summary,
 :global(.doc-shell.is-high-contrast) .doc-comments-close,
+:global(.doc-shell.is-high-contrast) .doc-comments-group-title,
+:global(.doc-shell.is-high-contrast) .doc-comments-group-count,
 :global(.doc-shell.is-high-contrast) .doc-comments-item-time,
 :global(.doc-shell.is-high-contrast) .doc-comments-item-summary,
 :global(.doc-shell.is-high-contrast) .doc-comments-detail-time,
 :global(.doc-shell.is-high-contrast) .doc-comments-message-time,
+:global(.doc-shell.is-high-contrast) .doc-comments-message-edited,
+:global(.doc-shell.is-high-contrast) .doc-comments-message-editor-hint,
 :global(.doc-shell.is-high-contrast) .doc-comments-composer-label,
 :global(.doc-shell.is-high-contrast) .doc-comments-composer-hint,
 :global(.doc-shell.is-high-contrast) .doc-comments-empty,
@@ -559,6 +920,7 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 :global(.doc-shell.is-high-contrast) .doc-comments-item.is-resolved,
 :global(.doc-shell.is-high-contrast) .doc-comments-item.is-active.is-resolved,
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-button),
+:global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-input__wrap),
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-textarea__inner) {
   background: #000;
 }
@@ -567,12 +929,14 @@ const handleReplyKeydown = (event: KeyboardEvent, threadId: string) => {
 :global(.doc-shell.is-high-contrast) .doc-comments-message-empty,
 :global(.doc-shell.is-high-contrast) .doc-comments-message,
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-button),
+:global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-input__wrap),
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-textarea__inner),
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-divider) {
   border-color: #4b5563;
 }
 
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-button),
+:global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-input__inner),
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-textarea__inner),
 :global(.doc-shell.is-high-contrast) .doc-comments :deep(.t-tag) {
   color: #fff;
