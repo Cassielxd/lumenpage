@@ -9,6 +9,11 @@ import { File } from "lumenpage-extension-file";
 import { Math } from "lumenpage-extension-math";
 import { OptionBox } from "lumenpage-extension-option-box";
 import { Signature } from "lumenpage-extension-signature";
+import { Collaboration } from "lumenpage-extension-collaboration";
+import {
+  CollaborationCaret,
+  type CollaborationCaretUser,
+} from "lumenpage-extension-collaboration-caret";
 import { StarterKit } from "lumenpage-starter-kit";
 import { Image } from "lumenpage-extension-image";
 import { Link } from "lumenpage-extension-link";
@@ -29,8 +34,15 @@ import { WebPage } from "lumenpage-extension-web-page";
 
 import { lumenCommentsStore } from "./commentsStore";
 
-export const lumenDocumentExtensions = [
-  StarterKit,
+export type LumenCollaborationExtensionsOptions = {
+  document: any;
+  field?: string;
+  provider: any;
+  user: Record<string, any>;
+  onUsersChange?: (users: CollaborationCaretUser[]) => void;
+};
+
+const baseDocumentExtensions = [
   BlockIdExtension,
   Audio,
   EmbedPanel,
@@ -65,3 +77,32 @@ export const lumenDocumentExtensions = [
   TaskList,
   TaskItem,
 ] as const;
+
+export const createLumenDocumentExtensions = (
+  options: {
+    collaboration?: LumenCollaborationExtensionsOptions | null;
+  } = {}
+) => {
+  const collaboration = options.collaboration ?? null;
+  const starterKit = collaboration ? StarterKit.configure({ undoRedo: false }) : StarterKit;
+  const extensions = [starterKit, ...baseDocumentExtensions];
+
+  if (collaboration) {
+    extensions.push(
+      Collaboration.configure({
+        document: collaboration.document,
+        field: collaboration.field || "default",
+        provider: collaboration.provider,
+      }),
+      CollaborationCaret.configure({
+        provider: collaboration.provider,
+        user: collaboration.user,
+        onUpdate: collaboration.onUsersChange || (() => undefined),
+      })
+    );
+  }
+
+  return extensions;
+};
+
+export const lumenDocumentExtensions = createLumenDocumentExtensions();

@@ -1,0 +1,40 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "references": [
+    {
+      "path": "../core"
+    },
+    {
+      "path": "../../extensions/extension-image"
+    },
+    {
+      "path": "../../extensions/extension-link"
+    },
+    {
+      "path": "../../extensions/extension-table"
+    },
+    {
+      "path": "../../extensions/extension-underline"
+    },
+    {
+      "path": "../../extensions/extension-video"
+    },
+    {
+      "path": "../link"
+    },
+    {
+      "path": "../../lp/model"
+    },
+    {
+      "path": "../starter-kit"
+    }
+  ]
+}

@@ -32,10 +32,10 @@ pnpm changeset:publish
 ## Notes
 
 - `apps/*` are ignored by changesets: `lumenpage-lumen`, `lumenpage-playground`.
-- Only `packages/*` are expected to be versioned/published.
+- Only `packages/core/*`, `packages/engine/*`, `packages/extensions/*`, and `packages/lp/*` are expected to be versioned/published.
 - Pre-commit hook can enforce version/changelog update on each package commit.
 - In this repo hook flow, all bumps are normalized to `patch` (minimal increment).
-- If `packages/*` changed and no pending changeset exists, hook auto-generates a patch changeset.
+- If a workspace package changed and no pending changeset exists, the hook auto-generates a patch changeset.
 
 ## Enable Git Hook
 

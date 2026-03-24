@@ -7,8 +7,12 @@
     "declarationMap": true,
     "composite": true
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../model" }
+    {
+      "path": "../model"
+    }
   ]
 }

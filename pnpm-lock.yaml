@@ -7,6 +7,13 @@ settings:
 importers:
 
   .:
+    dependencies:
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.30)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
     devDependencies:
       '@changesets/cli':
         specifier: ^2.29.7
@@ -20,6 +27,15 @@ importers:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+
+  apps/collab-server:
+    dependencies:
+      '@hocuspocus/server':
+        specifier: ^3.4.3
+        version: 3.4.4(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
 
   apps/docs:
     dependencies:
@@ -36,6 +52,9 @@ importers:
 
   apps/lumen:
     dependencies:
+      '@hocuspocus/provider':
+        specifier: ^3.4.3
+        version: 3.4.4(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)
       docx:
         specifier: ^9.6.1
         version: 9.6.1
@@ -44,103 +63,109 @@ importers:
         version: link:../../packages/lp/commands
       lumenpage-core:
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../../packages/core/core
       lumenpage-extension-active-block:
         specifier: workspace:*
-        version: link:../../packages/extension-active-block
+        version: link:../../packages/extensions/extension-active-block
       lumenpage-extension-audio:
         specifier: workspace:*
-        version: link:../../packages/extension-audio
+        version: link:../../packages/extensions/extension-audio
       lumenpage-extension-block-id:
         specifier: workspace:*
-        version: link:../../packages/extension-block-id
+        version: link:../../packages/extensions/extension-block-id
       lumenpage-extension-bookmark:
         specifier: workspace:*
-        version: link:../../packages/extension-bookmark
+        version: link:../../packages/extensions/extension-bookmark
       lumenpage-extension-bubble-menu:
         specifier: workspace:*
-        version: link:../../packages/extension-bubble-menu
+        version: link:../../packages/extensions/extension-bubble-menu
       lumenpage-extension-callout:
         specifier: workspace:*
-        version: link:../../packages/extension-callout
+        version: link:../../packages/extensions/extension-callout
+      lumenpage-extension-collaboration:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-collaboration
+      lumenpage-extension-collaboration-caret:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-collaboration-caret
       lumenpage-extension-columns:
         specifier: workspace:*
-        version: link:../../packages/extension-columns
+        version: link:../../packages/extensions/extension-columns
       lumenpage-extension-comment:
         specifier: workspace:*
-        version: link:../../packages/extension-comment
+        version: link:../../packages/extensions/extension-comment
       lumenpage-extension-drag-handle:
         specifier: workspace:*
-        version: link:../../packages/extension-drag-handle
+        version: link:../../packages/extensions/extension-drag-handle
       lumenpage-extension-embed-panel:
         specifier: workspace:*
-        version: link:../../packages/extension-embed-panel
+        version: link:../../packages/extensions/extension-embed-panel
       lumenpage-extension-file:
         specifier: workspace:*
-        version: link:../../packages/extension-file
+        version: link:../../packages/extensions/extension-file
       lumenpage-extension-image:
         specifier: workspace:*
-        version: link:../../packages/extension-image
+        version: link:../../packages/extensions/extension-image
       lumenpage-extension-link:
         specifier: workspace:*
-        version: link:../../packages/extension-link
+        version: link:../../packages/extensions/extension-link
       lumenpage-extension-math:
         specifier: workspace:*
-        version: link:../../packages/extension-math
+        version: link:../../packages/extensions/extension-math
       lumenpage-extension-mention:
         specifier: workspace:*
-        version: link:../../packages/extension-mention
+        version: link:../../packages/extensions/extension-mention
       lumenpage-extension-option-box:
         specifier: workspace:*
-        version: link:../../packages/extension-option-box
+        version: link:../../packages/extensions/extension-option-box
       lumenpage-extension-page-break:
         specifier: workspace:*
-        version: link:../../packages/extension-page-break
+        version: link:../../packages/extensions/extension-page-break
       lumenpage-extension-signature:
         specifier: workspace:*
-        version: link:../../packages/extension-signature
+        version: link:../../packages/extensions/extension-signature
       lumenpage-extension-slash-command:
         specifier: workspace:*
-        version: link:../../packages/extension-slash-command
+        version: link:../../packages/extensions/extension-slash-command
       lumenpage-extension-subscript:
         specifier: workspace:*
-        version: link:../../packages/extension-subscript
+        version: link:../../packages/extensions/extension-subscript
       lumenpage-extension-superscript:
         specifier: workspace:*
-        version: link:../../packages/extension-superscript
+        version: link:../../packages/extensions/extension-superscript
       lumenpage-extension-table:
         specifier: workspace:*
-        version: link:../../packages/extension-table
+        version: link:../../packages/extensions/extension-table
       lumenpage-extension-tag:
         specifier: workspace:*
-        version: link:../../packages/extension-tag
+        version: link:../../packages/extensions/extension-tag
       lumenpage-extension-task-item:
         specifier: workspace:*
-        version: link:../../packages/extension-task-item
+        version: link:../../packages/extensions/extension-task-item
       lumenpage-extension-task-list:
         specifier: workspace:*
-        version: link:../../packages/extension-task-list
+        version: link:../../packages/extensions/extension-task-list
       lumenpage-extension-template:
         specifier: workspace:*
-        version: link:../../packages/extension-template
+        version: link:../../packages/extensions/extension-template
       lumenpage-extension-text-box:
         specifier: workspace:*
-        version: link:../../packages/extension-text-box
+        version: link:../../packages/extensions/extension-text-box
       lumenpage-extension-text-style:
         specifier: workspace:*
-        version: link:../../packages/extension-text-style
+        version: link:../../packages/extensions/extension-text-style
       lumenpage-extension-track-change:
         specifier: workspace:*
-        version: link:../../packages/extension-track-change
+        version: link:../../packages/extensions/extension-track-change
       lumenpage-extension-underline:
         specifier: workspace:*
-        version: link:../../packages/extension-underline
+        version: link:../../packages/extensions/extension-underline
       lumenpage-extension-video:
         specifier: workspace:*
-        version: link:../../packages/extension-video
+        version: link:../../packages/extensions/extension-video
       lumenpage-extension-web-page:
         specifier: workspace:*
-        version: link:../../packages/extension-web-page
+        version: link:../../packages/extensions/extension-web-page
       lumenpage-history:
         specifier: workspace:*
         version: link:../../packages/lp/history
@@ -152,19 +177,19 @@ importers:
         version: link:../../packages/lp/keymap
       lumenpage-layout-engine:
         specifier: workspace:*
-        version: link:../../packages/layout-engine
+        version: link:../../packages/engine/layout-engine
       lumenpage-link:
         specifier: workspace:*
-        version: link:../../packages/link
+        version: link:../../packages/core/link
       lumenpage-markdown:
         specifier: workspace:*
-        version: link:../../packages/markdown
+        version: link:../../packages/core/markdown
       lumenpage-model:
         specifier: workspace:*
         version: link:../../packages/lp/model
       lumenpage-starter-kit:
         specifier: workspace:*
-        version: link:../../packages/starter-kit
+        version: link:../../packages/core/starter-kit
       lumenpage-state:
         specifier: workspace:*
         version: link:../../packages/lp/state
@@ -173,10 +198,10 @@ importers:
         version: link:../../packages/lp/transform
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../../packages/view-canvas
+        version: link:../../packages/engine/view-canvas
       lumenpage-view-runtime:
         specifier: workspace:*
-        version: link:../../packages/view-runtime
+        version: link:../../packages/engine/view-runtime
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
@@ -189,6 +214,9 @@ importers:
       vue:
         specifier: ^3.5.0
         version: 3.5.28(typescript@5.9.3)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
     devDependencies:
       '@playwright/test':
         specifier: ^1.53.2
@@ -205,39 +233,48 @@ importers:
 
   apps/playground:
     dependencies:
+      '@hocuspocus/provider':
+        specifier: ^3.4.3
+        version: 3.4.4(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)
       lumenpage-commands:
         specifier: workspace:*
         version: link:../../packages/lp/commands
       lumenpage-core:
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../../packages/core/core
       lumenpage-dev-tools:
         specifier: workspace:*
-        version: link:../../packages/dev-tools
+        version: link:../../packages/core/dev-tools
       lumenpage-extension-active-block:
         specifier: workspace:*
-        version: link:../../packages/extension-active-block
+        version: link:../../packages/extensions/extension-active-block
       lumenpage-extension-block-id:
         specifier: workspace:*
-        version: link:../../packages/extension-block-id
+        version: link:../../packages/extensions/extension-block-id
+      lumenpage-extension-collaboration:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-collaboration
+      lumenpage-extension-collaboration-caret:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-collaboration-caret
       lumenpage-extension-drag-handle:
         specifier: workspace:*
-        version: link:../../packages/extension-drag-handle
+        version: link:../../packages/extensions/extension-drag-handle
       lumenpage-extension-image:
         specifier: workspace:*
-        version: link:../../packages/extension-image
+        version: link:../../packages/extensions/extension-image
       lumenpage-extension-link:
         specifier: workspace:*
-        version: link:../../packages/extension-link
+        version: link:../../packages/extensions/extension-link
       lumenpage-extension-table:
         specifier: workspace:*
-        version: link:../../packages/extension-table
+        version: link:../../packages/extensions/extension-table
       lumenpage-extension-underline:
         specifier: workspace:*
-        version: link:../../packages/extension-underline
+        version: link:../../packages/extensions/extension-underline
       lumenpage-extension-video:
         specifier: workspace:*
-        version: link:../../packages/extension-video
+        version: link:../../packages/extensions/extension-video
       lumenpage-history:
         specifier: workspace:*
         version: link:../../packages/lp/history
@@ -249,19 +286,19 @@ importers:
         version: link:../../packages/lp/keymap
       lumenpage-layout-engine:
         specifier: workspace:*
-        version: link:../../packages/layout-engine
+        version: link:../../packages/engine/layout-engine
       lumenpage-link:
         specifier: workspace:*
-        version: link:../../packages/link
+        version: link:../../packages/core/link
       lumenpage-markdown:
         specifier: workspace:*
-        version: link:../../packages/markdown
+        version: link:../../packages/core/markdown
       lumenpage-model:
         specifier: workspace:*
         version: link:../../packages/lp/model
       lumenpage-starter-kit:
         specifier: workspace:*
-        version: link:../../packages/starter-kit
+        version: link:../../packages/core/starter-kit
       lumenpage-state:
         specifier: workspace:*
         version: link:../../packages/lp/state
@@ -270,10 +307,10 @@ importers:
         version: link:../../packages/lp/transform
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../../packages/view-canvas
+        version: link:../../packages/engine/view-canvas
       lumenpage-view-runtime:
         specifier: workspace:*
-        version: link:../../packages/view-runtime
+        version: link:../../packages/engine/view-runtime
       tdesign-icons-vue-next:
         specifier: ^0.3.4
         version: 0.3.7(vue@3.5.28(typescript@5.9.3))
@@ -283,6 +320,9 @@ importers:
       vue:
         specifier: ^3.5.0
         version: 3.5.28(typescript@5.9.3)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: ^5.2.0
@@ -294,35 +334,35 @@ importers:
         specifier: ^5.4.3
         version: 5.4.21(@types/node@25.5.0)
 
-  packages/core:
+  packages/core/core:
     dependencies:
       lumenpage-inputrules:
         specifier: workspace:*
-        version: link:../lp/inputrules
+        version: link:../../lp/inputrules
       lumenpage-keymap:
         specifier: workspace:*
-        version: link:../lp/keymap
+        version: link:../../lp/keymap
       lumenpage-layout-engine:
         specifier: workspace:*
-        version: link:../layout-engine
+        version: link:../../engine/layout-engine
       lumenpage-link:
         specifier: workspace:*
         version: link:../link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/dev-tools:
+  packages/core/dev-tools:
     dependencies:
       html:
         specifier: ^1.0.0
@@ -332,13 +372,13 @@ importers:
         version: 0.7.3
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-types:
         specifier: workspace:*
-        version: link:../lp/view-types
+        version: link:../../lp/view-types
       nanoid:
         specifier: ^5.1.6
         version: 5.1.6
@@ -353,171 +393,353 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-active-block:
+  packages/core/link:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/core/markdown:
+    dependencies:
+      '@types/markdown-it':
+        specifier: ^14.0.0
+        version: 14.1.2
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-extension-image:
+        specifier: workspace:*
+        version: link:../../extensions/extension-image
+      lumenpage-extension-link:
+        specifier: workspace:*
+        version: link:../../extensions/extension-link
+      lumenpage-extension-table:
+        specifier: workspace:*
+        version: link:../../extensions/extension-table
+      lumenpage-extension-underline:
+        specifier: workspace:*
+        version: link:../../extensions/extension-underline
+      lumenpage-extension-video:
+        specifier: workspace:*
+        version: link:../../extensions/extension-video
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../lp/model
+      lumenpage-starter-kit:
+        specifier: workspace:*
+        version: link:../starter-kit
+      markdown-it:
+        specifier: ^14.0.0
+        version: 14.1.1
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/core/starter-kit:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../core
+      lumenpage-extension-base-keymap:
+        specifier: workspace:*
+        version: link:../../extensions/extension-base-keymap
+      lumenpage-extension-blockquote:
+        specifier: workspace:*
+        version: link:../../extensions/extension-blockquote
+      lumenpage-extension-bold:
+        specifier: workspace:*
+        version: link:../../extensions/extension-bold
+      lumenpage-extension-bullet-list:
+        specifier: workspace:*
+        version: link:../../extensions/extension-bullet-list
+      lumenpage-extension-canvas-keymap:
+        specifier: workspace:*
+        version: link:../../extensions/extension-canvas-keymap
+      lumenpage-extension-code:
+        specifier: workspace:*
+        version: link:../../extensions/extension-code
+      lumenpage-extension-code-block:
+        specifier: workspace:*
+        version: link:../../extensions/extension-code-block
+      lumenpage-extension-document:
+        specifier: workspace:*
+        version: link:../../extensions/extension-document
+      lumenpage-extension-editing-commands:
+        specifier: workspace:*
+        version: link:../../extensions/extension-editing-commands
+      lumenpage-extension-hard-break:
+        specifier: workspace:*
+        version: link:../../extensions/extension-hard-break
+      lumenpage-extension-heading:
+        specifier: workspace:*
+        version: link:../../extensions/extension-heading
+      lumenpage-extension-horizontal-rule:
+        specifier: workspace:*
+        version: link:../../extensions/extension-horizontal-rule
+      lumenpage-extension-italic:
+        specifier: workspace:*
+        version: link:../../extensions/extension-italic
+      lumenpage-extension-list-item:
+        specifier: workspace:*
+        version: link:../../extensions/extension-list-item
+      lumenpage-extension-ordered-list:
+        specifier: workspace:*
+        version: link:../../extensions/extension-ordered-list
+      lumenpage-extension-paragraph:
+        specifier: workspace:*
+        version: link:../../extensions/extension-paragraph
+      lumenpage-extension-smart-input-rules:
+        specifier: workspace:*
+        version: link:../../extensions/extension-smart-input-rules
+      lumenpage-extension-strike:
+        specifier: workspace:*
+        version: link:../../extensions/extension-strike
+      lumenpage-extension-text:
+        specifier: workspace:*
+        version: link:../../extensions/extension-text
+      lumenpage-extension-undo-redo:
+        specifier: workspace:*
+        version: link:../../extensions/extension-undo-redo
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/core/suggestion:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
         version: link:../core
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-audio:
+  packages/engine/layout-engine:
     dependencies:
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../core
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
         version: link:../render-engine
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-base-keymap:
+  packages/engine/render-engine:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/engine/view-canvas:
+    dependencies:
+      lumenpage-layout-engine:
+        specifier: workspace:*
+        version: link:../layout-engine
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../render-engine
+      lumenpage-view-runtime:
+        specifier: workspace:*
+        version: link:../view-runtime
+    devDependencies:
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../lp/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../lp/state
+      lumenpage-transform:
+        specifier: workspace:*
+        version: link:../../lp/transform
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/engine/view-runtime:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-active-block:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-audio:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      lumenpage-link:
+        specifier: workspace:*
+        version: link:../../core/link
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../lp/model
+      lumenpage-render-engine:
+        specifier: workspace:*
+        version: link:../../engine/render-engine
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-base-keymap:
     dependencies:
       lumenpage-commands:
         specifier: workspace:*
-        version: link:../lp/commands
+        version: link:../../lp/commands
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-block-id:
+  packages/extensions/extension-block-id:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-blockquote:
+  packages/extensions/extension-blockquote:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-bold:
+  packages/extensions/extension-bold:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-bookmark:
+  packages/extensions/extension-bookmark:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-bubble-menu:
+  packages/extensions/extension-bubble-menu:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-popup:
         specifier: workspace:*
         version: link:../extension-popup
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-bullet-list:
+  packages/extensions/extension-bullet-list:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-callout:
+  packages/extensions/extension-callout:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-canvas-keymap:
+  packages/extensions/extension-canvas-keymap:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-editing-commands:
         specifier: workspace:*
         version: link:../extension-editing-commands
@@ -526,111 +748,155 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-changeset:
+  packages/extensions/extension-changeset:
     dependencies:
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-transform:
         specifier: workspace:*
-        version: link:../lp/transform
+        version: link:../../lp/transform
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-code:
+  packages/extensions/extension-code:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-code-block:
+  packages/extensions/extension-code-block:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-columns:
+  packages/extensions/extension-collaboration:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../lp/state
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-collaboration-caret:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      lumenpage-extension-collaboration:
+        specifier: workspace:*
+        version: link:../extension-collaboration
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.30)
+      yjs:
+        specifier: ^13.6.30
+        version: 13.6.30
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-columns:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      lumenpage-model:
+        specifier: workspace:*
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-comment:
+  packages/extensions/extension-comment:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-document:
+  packages/extensions/extension-document:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-drag-handle:
+  packages/extensions/extension-drag-handle:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-editing-commands:
+  packages/extensions/extension-editing-commands:
     dependencies:
       lumenpage-commands:
         specifier: workspace:*
-        version: link:../lp/commands
+        version: link:../../lp/commands
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
@@ -642,32 +908,32 @@ importers:
         version: link:../extension-task-item
       lumenpage-history:
         specifier: workspace:*
-        version: link:../lp/history
+        version: link:../../lp/history
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-transform:
         specifier: workspace:*
-        version: link:../lp/transform
+        version: link:../../lp/transform
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-embed-panel:
+  packages/extensions/extension-embed-panel:
     dependencies:
       echarts:
         specifier: ^6.0.0
         version: 6.0.0
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       mermaid:
         specifier: ^11.13.0
         version: 11.13.0
@@ -676,243 +942,243 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-file:
+  packages/extensions/extension-file:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-hard-break:
+  packages/extensions/extension-hard-break:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-heading:
+  packages/extensions/extension-heading:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-horizontal-rule:
+  packages/extensions/extension-horizontal-rule:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-image:
+  packages/extensions/extension-image:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-italic:
+  packages/extensions/extension-italic:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-link:
+  packages/extensions/extension-link:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-list-item:
+  packages/extensions/extension-list-item:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-transform:
         specifier: workspace:*
-        version: link:../lp/transform
+        version: link:../../lp/transform
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-math:
+  packages/extensions/extension-math:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-mention:
+  packages/extensions/extension-mention:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-popup:
         specifier: workspace:*
         version: link:../extension-popup
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-suggestion:
         specifier: workspace:*
-        version: link:../suggestion
+        version: link:../../core/suggestion
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-option-box:
+  packages/extensions/extension-option-box:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-ordered-list:
+  packages/extensions/extension-ordered-list:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-page-break:
+  packages/extensions/extension-page-break:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-paragraph:
+  packages/extensions/extension-paragraph:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-popup:
+  packages/extensions/extension-popup:
     dependencies:
       '@floating-ui/dom':
         specifier: 1.7.4
@@ -922,137 +1188,137 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-seal:
+  packages/extensions/extension-seal:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-signature:
+  packages/extensions/extension-signature:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-slash-command:
+  packages/extensions/extension-slash-command:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-popup:
         specifier: workspace:*
         version: link:../extension-popup
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-suggestion:
         specifier: workspace:*
-        version: link:../suggestion
+        version: link:../../core/suggestion
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-smart-input-rules:
+  packages/extensions/extension-smart-input-rules:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-inputrules:
         specifier: workspace:*
-        version: link:../lp/inputrules
+        version: link:../../lp/inputrules
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-strike:
+  packages/extensions/extension-strike:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-subscript:
+  packages/extensions/extension-subscript:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-superscript:
+  packages/extensions/extension-superscript:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-table:
+  packages/extensions/extension-table:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-tag:
+  packages/extensions/extension-tag:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-task-item:
+  packages/extensions/extension-task-item:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
@@ -1061,177 +1327,161 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-task-list:
+  packages/extensions/extension-task-list:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-list-item:
         specifier: workspace:*
         version: link:../extension-list-item
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-template:
+  packages/extensions/extension-template:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-text:
+  packages/extensions/extension-text:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-text-box:
+  packages/extensions/extension-text-box:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-text-style:
+  packages/extensions/extension-text-style:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-track-change:
+  packages/extensions/extension-track-change:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-extension-changeset:
         specifier: workspace:*
         version: link:../extension-changeset
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-state:
         specifier: workspace:*
-        version: link:../lp/state
+        version: link:../../lp/state
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-underline:
+  packages/extensions/extension-underline:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-undo-redo:
+  packages/extensions/extension-undo-redo:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-history:
         specifier: workspace:*
-        version: link:../lp/history
+        version: link:../../lp/history
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-video:
+  packages/extensions/extension-video:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extension-web-page:
+  packages/extensions/extension-web-page:
     dependencies:
       lumenpage-core:
         specifier: workspace:*
-        version: link:../core
+        version: link:../../core/core
       lumenpage-link:
         specifier: workspace:*
-        version: link:../link
+        version: link:../../core/link
       lumenpage-model:
         specifier: workspace:*
-        version: link:../lp/model
+        version: link:../../lp/model
       lumenpage-render-engine:
         specifier: workspace:*
-        version: link:../render-engine
+        version: link:../../engine/render-engine
       lumenpage-view-canvas:
         specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/layout-engine:
-    dependencies:
-      lumenpage-render-engine:
-        specifier: workspace:*
-        version: link:../render-engine
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/link:
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -1336,172 +1586,6 @@ importers:
         version: link:../model
 
   packages/lp/view-types:
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/markdown:
-    dependencies:
-      '@types/markdown-it':
-        specifier: ^14.0.0
-        version: 14.1.2
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../core
-      lumenpage-extension-image:
-        specifier: workspace:*
-        version: link:../extension-image
-      lumenpage-extension-link:
-        specifier: workspace:*
-        version: link:../extension-link
-      lumenpage-extension-table:
-        specifier: workspace:*
-        version: link:../extension-table
-      lumenpage-extension-underline:
-        specifier: workspace:*
-        version: link:../extension-underline
-      lumenpage-extension-video:
-        specifier: workspace:*
-        version: link:../extension-video
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../lp/model
-      lumenpage-starter-kit:
-        specifier: workspace:*
-        version: link:../starter-kit
-      markdown-it:
-        specifier: ^14.0.0
-        version: 14.1.1
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/render-engine:
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/starter-kit:
-    dependencies:
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../core
-      lumenpage-extension-base-keymap:
-        specifier: workspace:*
-        version: link:../extension-base-keymap
-      lumenpage-extension-blockquote:
-        specifier: workspace:*
-        version: link:../extension-blockquote
-      lumenpage-extension-bold:
-        specifier: workspace:*
-        version: link:../extension-bold
-      lumenpage-extension-bullet-list:
-        specifier: workspace:*
-        version: link:../extension-bullet-list
-      lumenpage-extension-canvas-keymap:
-        specifier: workspace:*
-        version: link:../extension-canvas-keymap
-      lumenpage-extension-code:
-        specifier: workspace:*
-        version: link:../extension-code
-      lumenpage-extension-code-block:
-        specifier: workspace:*
-        version: link:../extension-code-block
-      lumenpage-extension-document:
-        specifier: workspace:*
-        version: link:../extension-document
-      lumenpage-extension-editing-commands:
-        specifier: workspace:*
-        version: link:../extension-editing-commands
-      lumenpage-extension-hard-break:
-        specifier: workspace:*
-        version: link:../extension-hard-break
-      lumenpage-extension-heading:
-        specifier: workspace:*
-        version: link:../extension-heading
-      lumenpage-extension-horizontal-rule:
-        specifier: workspace:*
-        version: link:../extension-horizontal-rule
-      lumenpage-extension-italic:
-        specifier: workspace:*
-        version: link:../extension-italic
-      lumenpage-extension-list-item:
-        specifier: workspace:*
-        version: link:../extension-list-item
-      lumenpage-extension-ordered-list:
-        specifier: workspace:*
-        version: link:../extension-ordered-list
-      lumenpage-extension-paragraph:
-        specifier: workspace:*
-        version: link:../extension-paragraph
-      lumenpage-extension-smart-input-rules:
-        specifier: workspace:*
-        version: link:../extension-smart-input-rules
-      lumenpage-extension-strike:
-        specifier: workspace:*
-        version: link:../extension-strike
-      lumenpage-extension-text:
-        specifier: workspace:*
-        version: link:../extension-text
-      lumenpage-extension-undo-redo:
-        specifier: workspace:*
-        version: link:../extension-undo-redo
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/suggestion:
-    dependencies:
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../core
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../lp/state
-      lumenpage-view-canvas:
-        specifier: workspace:*
-        version: link:../view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/view-canvas:
-    dependencies:
-      lumenpage-layout-engine:
-        specifier: workspace:*
-        version: link:../layout-engine
-      lumenpage-link:
-        specifier: workspace:*
-        version: link:../link
-      lumenpage-render-engine:
-        specifier: workspace:*
-        version: link:../render-engine
-      lumenpage-view-runtime:
-        specifier: workspace:*
-        version: link:../view-runtime
-    devDependencies:
-      lumenpage-model:
-        specifier: workspace:*
-        version: link:../lp/model
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../lp/state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../lp/transform
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/view-runtime:
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -1855,6 +1939,21 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
+  '@hocuspocus/common@3.4.4':
+    resolution: {integrity: sha512-RykIJ0tsHHMP4Xk+4UCbc7SO5LgGxGUSTdbh6anJEsaALAyqinf1Nn5HYuMjLPolAmsar1v++m9zufR09NLpXA==}
+
+  '@hocuspocus/provider@3.4.4':
+    resolution: {integrity: sha512-KbsMAfdYcIJD8eMU/5QnpXcSOvIWAcCNI33FSRSaKCIpYBFtAwkYIwWnZJmPZ8a1BMAtqQc+uvy9+UQf7GHnGQ==}
+    peerDependencies:
+      y-protocols: ^1.0.6
+      yjs: ^13.6.8
+
+  '@hocuspocus/server@3.4.4':
+    resolution: {integrity: sha512-UV+oaONAejOzeYgUygNcgsc8RdZvSokVvAxluZJIisLACpRO/VsseQ5lWKDRwLd7Fn6+rHWDH3hGuQ1fdX1Ycg==}
+    peerDependencies:
+      y-protocols: ^1.0.6
+      yjs: ^13.6.8
+
   '@iconify-json/simple-icons@1.2.73':
     resolution: {integrity: sha512-nQZTwul4c2zBqH/aLP4zMOiElj93T6HawbrP+sFQKpxmBdS5x1duCK3cAnkj6dntHz84EYkzaQRM83V2pj4qxA==}
 
@@ -1875,6 +1974,9 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@lifeomic/attempt@3.1.0':
+    resolution: {integrity: sha512-QZqem4QuAnAyzfz+Gj5/+SLxqwCAw2qmt7732ZXodr6VDWGeYLG6w1i/vYLa55JQM9wRuBKLmXmiZ2P0LtE5rw==}
 
   '@manypkg/find-root@1.1.0':
     resolution: {integrity: sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA==}
@@ -2366,6 +2468,12 @@ packages:
   array-union@2.1.0:
     resolution: {integrity: sha512-HGyxoOTYUyCM6stUe6EJgnd4EoewAI7zMdfqO+kGjnlZmBDz/cR5pf8r/cR4Wq60sL/p0IkcjUEEPwS3GFrIyw==}
     engines: {node: '>=8'}
+
+  async-lock@1.4.1:
+    resolution: {integrity: sha512-Az2ZTpuytrtqENulXwO3GGv1Bztugx6TT37NIo7imr/Qo0gsYiGtSdBa2B6fsXhTpVZDNfu1Qn3pk531e3q+nQ==}
+
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
@@ -2930,6 +3038,9 @@ packages:
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
 
+  isomorphic.js@0.2.5:
+    resolution: {integrity: sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw==}
+
   js-yaml@3.14.2:
     resolution: {integrity: sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg==}
     hasBin: true
@@ -2965,6 +3076,10 @@ packages:
   khroma@2.1.0:
     resolution: {integrity: sha512-Ls993zuzfayK269Svk9hzpeGUKob/sIgZzyHYdjQoAdQetRKpOLj+k/QQQ/6Qi0Yz65mlROrfd+Ev+1+7dz9Kw==}
 
+  kleur@4.1.5:
+    resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
+    engines: {node: '>=6'}
+
   langium@4.2.1:
     resolution: {integrity: sha512-zu9QWmjpzJcomzdJQAHgDVhLGq5bLosVak1KVa40NzQHXfqr4eAHupvnPOVXEoLkg6Ocefvf/93d//SB7du4YQ==}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
@@ -2974,6 +3089,11 @@ packages:
 
   layout-base@2.0.1:
     resolution: {integrity: sha512-dp3s92+uNI1hWIpPGH3jK2kxE2lMjdXdr+DH8ynZHpd6PUlH6x6cbuXnoMmiNumznqaNO31xu9e79F0uuZ0JFg==}
+
+  lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
 
   lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
@@ -3438,6 +3558,9 @@ packages:
   tslib@2.3.0:
     resolution: {integrity: sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==}
 
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
   typedarray@0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
@@ -3635,6 +3758,16 @@ packages:
 
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
+
+  y-protocols@1.0.7:
+    resolution: {integrity: sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
+    peerDependencies:
+      yjs: ^13.0.0
+
+  yjs@13.6.30:
+    resolution: {integrity: sha512-vv/9h42eCMC81ZHDFswuu/MKzkl/vyq1BhaNGfHyOonwlG4CJbQF4oiBBJPvfdeCt/PlVDWh7Nov9D34YY09uQ==}
+    engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   zrender@6.0.0:
     resolution: {integrity: sha512-41dFXEEXuJpNecuUQq6JlbybmnHaqqpGlbH1yxnA5V9MMP4SbohSVZsJIwz+zdjQXSSlR1Vc34EgH1zxyTDvhg==}
@@ -4045,6 +4178,36 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
+  '@hocuspocus/common@3.4.4':
+    dependencies:
+      lib0: 0.2.117
+
+  '@hocuspocus/provider@3.4.4(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)':
+    dependencies:
+      '@hocuspocus/common': 3.4.4
+      '@lifeomic/attempt': 3.1.0
+      lib0: 0.2.117
+      ws: 8.19.0
+      y-protocols: 1.0.7(yjs@13.6.30)
+      yjs: 13.6.30
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  '@hocuspocus/server@3.4.4(y-protocols@1.0.7(yjs@13.6.30))(yjs@13.6.30)':
+    dependencies:
+      '@hocuspocus/common': 3.4.4
+      async-lock: 1.4.1
+      async-mutex: 0.5.0
+      kleur: 4.1.5
+      lib0: 0.2.117
+      ws: 8.19.0
+      y-protocols: 1.0.7(yjs@13.6.30)
+      yjs: 13.6.30
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
   '@iconify-json/simple-icons@1.2.73':
     dependencies:
       '@iconify/types': 2.0.0
@@ -4065,6 +4228,8 @@ snapshots:
       '@types/node': 25.5.0
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@lifeomic/attempt@3.1.0': {}
 
   '@manypkg/find-root@1.1.0':
     dependencies:
@@ -4507,7 +4672,7 @@ snapshots:
 
   acorn-walk@8.3.4:
     dependencies:
-      acorn: 8.15.0
+      acorn: 8.16.0
 
   acorn@8.15.0: {}
 
@@ -4547,6 +4712,12 @@ snapshots:
   argparse@2.0.1: {}
 
   array-union@2.1.0: {}
+
+  async-lock@1.4.1: {}
+
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.8.1
 
   asynckit@0.4.0: {}
 
@@ -5158,6 +5329,8 @@ snapshots:
 
   isexe@2.0.0: {}
 
+  isomorphic.js@0.2.5: {}
+
   js-yaml@3.14.2:
     dependencies:
       argparse: 1.0.10
@@ -5221,6 +5394,8 @@ snapshots:
 
   khroma@2.1.0: {}
 
+  kleur@4.1.5: {}
+
   langium@4.2.1:
     dependencies:
       chevrotain: 11.1.2
@@ -5232,6 +5407,10 @@ snapshots:
   layout-base@1.0.2: {}
 
   layout-base@2.0.1: {}
+
+  lib0@0.2.117:
+    dependencies:
+      isomorphic.js: 0.2.5
 
   lie@3.3.0:
     dependencies:
@@ -5726,6 +5905,8 @@ snapshots:
 
   tslib@2.3.0: {}
 
+  tslib@2.8.1: {}
+
   typedarray@0.0.6: {}
 
   typescript@5.9.3: {}
@@ -5911,6 +6092,15 @@ snapshots:
   xmlbuilder@10.1.1: {}
 
   xmlchars@2.2.0: {}
+
+  y-protocols@1.0.7(yjs@13.6.30):
+    dependencies:
+      lib0: 0.2.117
+      yjs: 13.6.30
+
+  yjs@13.6.30:
+    dependencies:
+      lib0: 0.2.117
 
   zrender@6.0.0:
     dependencies:

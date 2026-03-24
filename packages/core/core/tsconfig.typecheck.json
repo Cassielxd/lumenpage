@@ -1,0 +1,34 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "baseUrl": "../../..",
+    "rootDir": "../../..",
+    "paths": {
+      "lumenpage-inputrules": [
+        "packages/lp/inputrules/src/index.ts"
+      ],
+      "lumenpage-keymap": [
+        "packages/lp/keymap/src/index.ts"
+      ],
+      "lumenpage-layout-engine": [
+        "packages/engine/layout-engine/src/index.ts"
+      ],
+      "lumenpage-link": [
+        "packages/core/link/src/index.ts"
+      ],
+      "lumenpage-model": [
+        "packages/lp/model/src/index.ts"
+      ],
+      "lumenpage-state": [
+        "packages/lp/state/src/index.ts"
+      ],
+      "lumenpage-view-canvas": [
+        "packages/engine/view-canvas/src/index.ts"
+      ],
+      "lumenpage-view-runtime": [
+        "packages/engine/view-runtime/src/index.ts"
+      ]
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "lumenpage-collab-server",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "node --watch src/server.mjs",
+    "start": "node src/server.mjs",
+    "build": "node --check src/server.mjs",
+    "typecheck": "node --check src/server.mjs"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^3.4.3",
+    "yjs": "^13.6.30"
+  }
+}

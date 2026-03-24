@@ -7,11 +7,21 @@
     "declarationMap": true,
     "composite": true
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../model" },
-    { "path": "../state" },
-    { "path": "../transform" },
-    { "path": "../view-types" }
+    {
+      "path": "../model"
+    },
+    {
+      "path": "../state"
+    },
+    {
+      "path": "../transform"
+    },
+    {
+      "path": "../view-types"
+    }
   ]
 }

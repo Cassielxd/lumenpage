@@ -24,19 +24,19 @@
 
 - `packages/lp/*`
   - ProseMirror 风格底层内核：model、state、transform、commands、history、keymap、inputrules、collab
-- `packages/core`
+- `packages/core/core`
   - `Editor`、扩展系统、schema 装配、命令与事件门面
-- `packages/layout-engine`
+- `packages/engine/layout-engine`
   - 布局、断行、分页、片段清理
-- `packages/render-engine`
+- `packages/engine/render-engine`
   - Node/Mark 默认渲染与适配器注册
-- `packages/view-runtime`
+- `packages/engine/view-runtime`
   - 光标、命中测试、定位、虚拟化、选区移动
-- `packages/view-canvas`
+- `packages/engine/view-canvas`
   - Canvas 视图装配、输入事件、绘制与 overlay 驱动
-- `packages/extension-*`
+- `packages/extensions/extension-*`
   - 功能扩展
-- `packages/starter-kit`
+- `packages/core/starter-kit`
   - 默认扩展集合
 - `apps/*`
   - 产品壳与示例应用

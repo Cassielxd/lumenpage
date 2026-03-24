@@ -1,4 +1,5 @@
 import { createLinebreakSegmentText } from "lumenpage-view-runtime";
+
 import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
 
 export type PlaygroundDebugFlags = {
@@ -43,7 +44,31 @@ export type PlaygroundDebugFlags = {
   debugPerf: boolean;
   enablePaginationWorker: boolean;
   forcePaginationWorker: boolean;
+  collaborationEnabled: boolean;
+  collaborationUrl: string;
+  collaborationDocument: string;
+  collaborationField: string;
+  collaborationToken: string;
+  collaborationUserName: string;
+  collaborationUserColor: string;
 };
+
+const STORAGE_KEYS = {
+  collaborationUserName: "lumenpage-playground-collab-user-name",
+  collaborationUserColor: "lumenpage-playground-collab-user-color",
+} as const;
+
+const DEFAULT_COLLABORATION_URL = "ws://127.0.0.1:1234";
+const DEFAULT_COLLABORATION_DOCUMENT = "playground-demo";
+const DEFAULT_COLLABORATION_FIELD = "default";
+const COLLABORATION_COLORS = [
+  "#2563eb",
+  "#dc2626",
+  "#059669",
+  "#d97706",
+  "#7c3aed",
+  "#0891b2",
+] as const;
 
 const resolveQueryParam = (key: string) => {
   if (typeof window === "undefined") {
@@ -51,10 +76,43 @@ const resolveQueryParam = (key: string) => {
   }
   const params = new URLSearchParams(window.location.search);
   const value = params.get(key);
-  if (value == null) {
+  return value == null ? null : value.trim();
+};
+
+const readLocalStorage = (key: string) => {
+  if (typeof window === "undefined") {
     return null;
   }
-  return value.trim();
+
+  try {
+    const value = window.localStorage.getItem(key);
+    return value == null ? null : value.trim() || null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const writeLocalStorage = (key: string, value: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (_error) {
+    // Ignore storage failures in private mode or restricted environments.
+  }
+};
+
+const resolveStoredValue = (key: string, fallbackFactory: () => string) => {
+  const stored = readLocalStorage(key);
+  if (stored) {
+    return stored;
+  }
+
+  const fallback = fallbackFactory();
+  writeLocalStorage(key, fallback);
+  return fallback;
 };
 
 const resolvePermissionMode = (): "full" | "comment" | "readonly" => {
@@ -74,12 +132,12 @@ export const resolveDebugFlag = (key: string) => {
   if (!value) {
     return false;
   }
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.toLowerCase();
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
 
 const resolveHighContrast = () => {
-  const contrast = (resolveQueryParam("contrast") || "").trim().toLowerCase();
+  const contrast = (resolveQueryParam("contrast") || "").toLowerCase();
   if (contrast === "high") {
     return true;
   }
@@ -104,11 +162,46 @@ const resolveWorkerEnabled = () => {
   if (paginationWorkerParam != null || workerUsedParam != null) {
     return resolveDebugFlag("paginationWorker") || resolveDebugFlag("workerUsed");
   }
-  // Default on: can still be explicitly disabled by ?paginationWorker=0
   return true;
 };
 
-// Playground 调试开关集中管理，避免散落在页面组件中。
+const resolveCollaborationEnabled = () => {
+  const flag = resolveQueryParam("collab");
+  if (flag != null) {
+    return resolveDebugFlag("collab");
+  }
+
+  return ["collabUrl", "collabDoc", "collabField", "collabToken", "collabUser", "collabColor"].some(
+    (key) => resolveQueryParam(key) != null
+  );
+};
+
+const resolveCollaborationUserName = () => {
+  const explicit = resolveQueryParam("collabUser");
+  if (explicit) {
+    writeLocalStorage(STORAGE_KEYS.collaborationUserName, explicit);
+    return explicit;
+  }
+
+  return resolveStoredValue(STORAGE_KEYS.collaborationUserName, () => {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    return `User-${suffix}`;
+  });
+};
+
+const resolveCollaborationUserColor = () => {
+  const explicit = resolveQueryParam("collabColor");
+  if (explicit) {
+    writeLocalStorage(STORAGE_KEYS.collaborationUserColor, explicit);
+    return explicit;
+  }
+
+  return resolveStoredValue(STORAGE_KEYS.collaborationUserColor, () => {
+    const index = Math.floor(Math.random() * COLLABORATION_COLORS.length);
+    return COLLABORATION_COLORS[index];
+  });
+};
+
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   locale: resolvePlaygroundLocale(),
   highContrast: resolveHighContrast(),
@@ -151,9 +244,15 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugPerf: resolveDebugFlag("debugPerf"),
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveDebugFlag("paginationWorkerForce"),
+  collaborationEnabled: resolveCollaborationEnabled(),
+  collaborationUrl: resolveQueryParam("collabUrl") || DEFAULT_COLLABORATION_URL,
+  collaborationDocument: resolveQueryParam("collabDoc") || DEFAULT_COLLABORATION_DOCUMENT,
+  collaborationField: resolveQueryParam("collabField") || DEFAULT_COLLABORATION_FIELD,
+  collaborationToken: resolveQueryParam("collabToken") || "",
+  collaborationUserName: resolveCollaborationUserName(),
+  collaborationUserColor: resolveCollaborationUserColor(),
 });
 
-// 编辑器布局配置集中到单独函数，便于复用和后续扩展。
 export const createCanvasSettings = (
   debugPerf: boolean,
   enablePaginationWorker = false,
@@ -164,59 +263,57 @@ export const createCanvasSettings = (
   const incrementalEnabled = resolveDebugFlag("paginationIncremental")
     ? true
     : resolveDebugFlag("paginationIncrementalOff")
-    ? false
-    : true;
+      ? false
+      : true;
   const incrementalMaxPages = Math.max(4, Math.floor(resolveNumberParam("paginationMaxPages", 24)));
-  const incrementalSettleDelayMs = Math.max(
-    0,
-    Math.floor(resolveNumberParam("paginationSettleMs", 120))
-  );
+  const incrementalSettleDelayMs = Math.max(0, Math.floor(resolveNumberParam("paginationSettleMs", 120)));
   const pageReuseProbeRadius = Math.max(2, Math.floor(resolveNumberParam("pageReuseProbe", 8)));
   const pageReuseRootIndexProbeRadius = Math.max(
     0,
     Math.floor(resolveNumberParam("pageReuseRootProbe", 2))
   );
+
   return {
-  pageWidth: 794,
-  pageHeight: 1123,
-  pageGap: 24,
-  margin: {
-    top: 72,
-    right: 72,
-    bottom: 72,
-    left: 72,
-  },
-  lineHeight: 26,
-  blockSpacing: 8,
-  paragraphSpacingBefore: 0,
-  paragraphSpacingAfter: 8,
-  font: "16px Arial",
-  textLocale: locale,
-  highContrast,
-  segmentText: createLinebreakSegmentText({ locale }),
-  wrapTolerance: 2,
-  pageBuffer: 1,
-  maxPageCache: 32,
-  debugPerf,
-  pageReuseProbeRadius,
-  pageReuseRootIndexProbeRadius,
-  disablePageReuse: false,
-  paginationWorker: (enablePaginationWorker
-    ? {
-        enabled: true,
-        mode: "experimental-runs",
-        timeoutMs: 5000,
-        force: forcePaginationWorker,
-        useForDocChanged: true,
-        useForInitial: false,
-        incremental: {
-          enabled: incrementalEnabled,
-          maxPages: incrementalMaxPages,
-          settleDelayMs: incrementalSettleDelayMs,
-        },
-      }
-    : {
-        enabled: false,
-      }) as any,
+    pageWidth: 794,
+    pageHeight: 1123,
+    pageGap: 24,
+    margin: {
+      top: 72,
+      right: 72,
+      bottom: 72,
+      left: 72,
+    },
+    lineHeight: 26,
+    blockSpacing: 8,
+    paragraphSpacingBefore: 0,
+    paragraphSpacingAfter: 8,
+    font: "16px Arial",
+    textLocale: locale,
+    highContrast,
+    segmentText: createLinebreakSegmentText({ locale }),
+    wrapTolerance: 2,
+    pageBuffer: 1,
+    maxPageCache: 32,
+    debugPerf,
+    pageReuseProbeRadius,
+    pageReuseRootIndexProbeRadius,
+    disablePageReuse: false,
+    paginationWorker: (enablePaginationWorker
+      ? {
+          enabled: true,
+          mode: "experimental-runs",
+          timeoutMs: 5000,
+          force: forcePaginationWorker,
+          useForDocChanged: true,
+          useForInitial: false,
+          incremental: {
+            enabled: incrementalEnabled,
+            maxPages: incrementalMaxPages,
+            settleDelayMs: incrementalSettleDelayMs,
+          },
+        }
+      : {
+          enabled: false,
+        }) as any,
   };
 };

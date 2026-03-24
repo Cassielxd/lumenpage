@@ -14,7 +14,7 @@
 
 ### 1. 视图层
 
-- ProseMirror 默认 DOM 视图；LumenPage 使用 `packages/view-canvas` 提供 Canvas 分页视图。
+- ProseMirror 默认 DOM 视图；LumenPage 使用 `packages/engine/view-canvas` 提供 Canvas 分页视图。
 - 额外引入 `docPos <-> textOffset <-> coords` 三向映射，支持光标与命中定位。
 
 ### 2. 布局模型
@@ -51,7 +51,7 @@
 
 - legacy 策略入口持续收敛到 `EditorProps / Plugin props`。
 - `legacyPolicy.strict=true` 时禁止旧入口，避免多通道并存。
-- 安全策略（链接/媒体）已下沉到 `packages/link`，在解析与导入链路统一生效。
+- 安全策略（链接/媒体）已下沉到 `packages/core/link`，在解析与导入链路统一生效。
 
 ## 参考文档
 

@@ -33,6 +33,10 @@ import { SlashCommandExtension } from "lumenpage-extension-slash-command";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { createCanvasSettings } from "./config";
+import {
+  createLumenCollaborationRuntime,
+  type LumenCollaborationState,
+} from "./collaboration";
 import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
@@ -40,7 +44,7 @@ import { shouldOpenLinkOnClick } from "./linkPolicy";
 import { createMentionPluginOptions } from "./mentionCase";
 import { createSlashCommandOptions } from "./slashCommandCase";
 import { createTocOutlinePlugin, type TocOutlineSnapshot } from "./tocOutlinePlugin";
-import { lumenDocumentExtensions } from "./documentExtensions";
+import { createLumenDocumentExtensions } from "./documentExtensions";
 import {
   configurePlaygroundSecurityPolicy,
   normalizePastedText,
@@ -52,6 +56,7 @@ type MountPlaygroundEditorParams = {
   host: HTMLElement;
   statusElement?: HTMLElement | null;
   flags: PlaygroundDebugFlags;
+  onCollaborationStateChange?: ((state: LumenCollaborationState) => void) | null;
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
   onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
@@ -280,6 +285,7 @@ export const mountPlaygroundEditor = ({
   host,
   statusElement,
   flags,
+  onCollaborationStateChange,
   onTocOutlineChange,
   tocOutlineEnabled,
   onCommentStateChange,
@@ -349,11 +355,28 @@ export const mountPlaygroundEditor = ({
       provider: paginationDocWorkerClient,
     };
   }
+  const collaborationRuntime = createLumenCollaborationRuntime({
+    flags,
+    onStateChange: onCollaborationStateChange || null,
+  });
 
   const bubbleMenuElement = host.ownerDocument.createElement("div");
 
   const extensions = [
-    ...lumenDocumentExtensions,
+    ...createLumenDocumentExtensions({
+      collaboration: collaborationRuntime.provider
+        ? {
+            document: collaborationRuntime.provider.document,
+            field: flags.collaborationField,
+            provider: collaborationRuntime.provider,
+            user: {
+              name: flags.collaborationUserName,
+              color: flags.collaborationUserColor,
+            },
+            onUsersChange: collaborationRuntime.updateUsers,
+          }
+        : null,
+    }),
     EmbedPanelBrowserViewExtension,
     ActiveBlockSelectionExtension,
     MentionExtension.configure(createMentionPluginOptions()),
@@ -510,7 +533,7 @@ export const mountPlaygroundEditor = ({
   const editor = new Editor({
     element: host,
     extensions: [...extensions, ...runtimeExtensions],
-      content: initialDocMinimalJson,
+    content: collaborationRuntime.provider ? "" : initialDocMinimalJson,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,
@@ -848,6 +871,7 @@ export const mountPlaygroundEditor = ({
       }
       configurePlaygroundSecurityPolicy({ enableAudit: false });
       paginationDocWorkerClient?.destroy?.();
+      collaborationRuntime.destroy();
       editor.destroy();
     },
   };

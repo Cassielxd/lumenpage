@@ -10,7 +10,7 @@ const workspaceRoot = path.resolve(__dirname, "../..");
 
 export default defineConfig(({ mode }) => {
   const useSrc = true;
-  const packageScopes = ["lp"] as const;
+  const packageScopes = ["lp", "core", "engine", "extensions"] as const;
   const resolvePackageDir = (pkg: string) => {
     for (const scope of packageScopes) {
       const scoped = path.resolve(workspaceRoot, `packages/${scope}/${pkg}`);
@@ -44,11 +44,11 @@ export default defineConfig(({ mode }) => {
         { find: /^lumenpage-collab$/, replacement: entry("collab") },
         {
           find: /^lumenpage-extension-embed-panel\/browser$/,
-          replacement: path.resolve(workspaceRoot, "packages/extension-embed-panel/src/browser.ts"),
+          replacement: path.resolve(workspaceRoot, "packages/extensions/extension-embed-panel/src/browser.ts"),
         },
         {
           find: /^lumenpage-extension-(.+)$/,
-          replacement: path.resolve(workspaceRoot, "packages/extension-$1/src/index.ts"),
+          replacement: path.resolve(workspaceRoot, "packages/extensions/extension-$1/src/index.ts"),
         },
         { find: /^lumenpage-extension-active-block$/, replacement: entry("extension-active-block") },
         { find: /^lumenpage-extension-block-id$/, replacement: entry("extension-block-id") },
@@ -106,6 +106,8 @@ export default defineConfig(({ mode }) => {
         "lumenpage-collab",
         "lumenpage-extension-active-block",
         "lumenpage-extension-block-id",
+        "lumenpage-extension-collaboration",
+        "lumenpage-extension-collaboration-caret",
         "lumenpage-extension-drag-handle",
         "lumenpage-link",
         "lumenpage-view-runtime",

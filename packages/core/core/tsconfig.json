@@ -1,0 +1,35 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "composite": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "references": [
+    {
+      "path": "../../lp/inputrules"
+    },
+    {
+      "path": "../../lp/keymap"
+    },
+    {
+      "path": "../link"
+    },
+    {
+      "path": "../../lp/model"
+    },
+    {
+      "path": "../../lp/state"
+    },
+    {
+      "path": "../../engine/view-canvas"
+    },
+    {
+      "path": "../../engine/layout-engine"
+    }
+  ]
+}

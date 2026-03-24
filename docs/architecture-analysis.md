@@ -13,12 +13,12 @@
 - 当前包含：`model`、`state`、`transform`、`commands`、`keymap`、`inputrules`、`history`、`collab`、`view-types`。
 - 这一层只放通用编辑模型与事务基础，不放 Lumen 自己的分页和渲染引擎。
 
-### `packages/core`
+### `packages/core/core`
 
 - 对外提供 `LumenEditor`、`ExtensionManager`、schema 组装、运行时装配。
 - 这一层的角色对齐 Tiptap 的 `core`：公开编辑器门面和扩展定义。
 
-### `packages/layout-engine` / `packages/view-runtime` / `packages/view-canvas`
+### `packages/engine/layout-engine` / `packages/engine/view-runtime` / `packages/engine/view-canvas`
 
 - 这是 Lumen 自己的引擎层。
 - `layout-engine` 负责分页布局和复用。
@@ -26,7 +26,7 @@
 - `view-canvas` 负责 Canvas 渲染、输入桥接、overlay 调度。
 - 这一层不放到 `lp/*` 下面，因为它不是通用编辑内核，而是 Lumen 特有的页面化和 Canvas 运行时。
 
-### `packages/node-*` / `packages/extension-*` / `packages/starter-kit`
+### `packages/node-*` / `packages/extensions/extension-*` / `packages/core/starter-kit`
 
 - 扩展层。
 - 节点扩展、交互扩展、StarterKit 风格组合包都留在这里。

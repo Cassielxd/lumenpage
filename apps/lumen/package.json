@@ -12,6 +12,7 @@
     "test:e2e:headed": "pnpm build && playwright test --headed"
   },
   "dependencies": {
+    "@hocuspocus/provider": "^3.4.3",
     "docx": "^9.6.1",
     "lumenpage-commands": "workspace:*",
     "lumenpage-core": "workspace:*",
@@ -23,6 +24,8 @@
     "lumenpage-extension-callout": "workspace:*",
     "lumenpage-extension-comment": "workspace:*",
     "lumenpage-extension-columns": "workspace:*",
+    "lumenpage-extension-collaboration": "workspace:*",
+    "lumenpage-extension-collaboration-caret": "workspace:*",
     "lumenpage-extension-drag-handle": "workspace:*",
     "lumenpage-extension-embed-panel": "workspace:*",
     "lumenpage-extension-file": "workspace:*",
@@ -62,7 +65,8 @@
     "mammoth": "^1.12.0",
     "tdesign-icons-vue-next": "^0.3.4",
     "tdesign-vue-next": "^1.8.0",
-    "vue": "^3.5.0"
+    "vue": "^3.5.0",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
     "@playwright/test": "^1.53.2",

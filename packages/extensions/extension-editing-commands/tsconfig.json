@@ -1,0 +1,39 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../core/core"
+    },
+    {
+      "path": "../../lp/commands"
+    },
+    {
+      "path": "../extension-list-item"
+    },
+    {
+      "path": "../extension-table"
+    },
+    {
+      "path": "../extension-task-item"
+    },
+    {
+      "path": "../../lp/history"
+    },
+    {
+      "path": "../../lp/state"
+    },
+    {
+      "path": "../../lp/transform"
+    }
+  ]
+}

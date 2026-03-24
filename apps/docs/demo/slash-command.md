@@ -39,5 +39,5 @@ const editor = new Editor({
 
 ## 相关源码
 
-- `packages/extension-slash-command/src/`
+- `packages/extensions/extension-slash-command/src/`
 - `apps/lumen/src/editor/slashCommandCase.ts`

@@ -10,7 +10,31 @@ export type PlaygroundDebugFlags = {
   debugGhostTrace: boolean;
   enablePaginationWorker: boolean;
   forcePaginationWorker: boolean;
+  collaborationEnabled: boolean;
+  collaborationUrl: string;
+  collaborationDocument: string;
+  collaborationField: string;
+  collaborationToken: string;
+  collaborationUserName: string;
+  collaborationUserColor: string;
 };
+
+const STORAGE_KEYS = {
+  collaborationUserName: "lumenpage-lumen-collab-user-name",
+  collaborationUserColor: "lumenpage-lumen-collab-user-color",
+} as const;
+
+const DEFAULT_COLLABORATION_URL = "ws://127.0.0.1:1234";
+const DEFAULT_COLLABORATION_DOCUMENT = "lumen-demo";
+const DEFAULT_COLLABORATION_FIELD = "default";
+const COLLABORATION_COLORS = [
+  "#2563eb",
+  "#dc2626",
+  "#059669",
+  "#d97706",
+  "#7c3aed",
+  "#0891b2",
+] as const;
 
 const resolveQueryParam = (key: string) => {
   if (typeof window === "undefined") {
@@ -22,6 +46,42 @@ const resolveQueryParam = (key: string) => {
     return null;
   }
   return value.trim();
+};
+
+const readLocalStorage = (key: string) => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const value = window.localStorage.getItem(key);
+    return value == null ? null : value.trim() || null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const writeLocalStorage = (key: string, value: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(key, value);
+  } catch (_error) {
+    // Ignore storage failures in private mode or restricted environments.
+  }
+};
+
+const resolveStoredValue = (key: string, fallbackFactory: () => string) => {
+  const stored = readLocalStorage(key);
+  if (stored) {
+    return stored;
+  }
+
+  const fallback = fallbackFactory();
+  writeLocalStorage(key, fallback);
+  return fallback;
 };
 
 const resolvePermissionMode = (): "full" | "comment" | "readonly" => {
@@ -72,6 +132,43 @@ const resolveWorkerEnabled = () => {
   return true;
 };
 
+const resolveCollaborationEnabled = () => {
+  const flag = resolveQueryParam("collab");
+  if (flag != null) {
+    return resolveBooleanParam("collab");
+  }
+
+  return ["collabUrl", "collabDoc", "collabField", "collabToken", "collabUser", "collabColor"].some(
+    (key) => resolveQueryParam(key) != null
+  );
+};
+
+const resolveCollaborationUserName = () => {
+  const explicit = resolveQueryParam("collabUser");
+  if (explicit) {
+    writeLocalStorage(STORAGE_KEYS.collaborationUserName, explicit);
+    return explicit;
+  }
+
+  return resolveStoredValue(STORAGE_KEYS.collaborationUserName, () => {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    return `User-${suffix}`;
+  });
+};
+
+const resolveCollaborationUserColor = () => {
+  const explicit = resolveQueryParam("collabColor");
+  if (explicit) {
+    writeLocalStorage(STORAGE_KEYS.collaborationUserColor, explicit);
+    return explicit;
+  }
+
+  return resolveStoredValue(STORAGE_KEYS.collaborationUserColor, () => {
+    const index = Math.floor(Math.random() * COLLABORATION_COLORS.length);
+    return COLLABORATION_COLORS[index];
+  });
+};
+
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   locale: resolvePlaygroundLocale(),
   highContrast: resolveHighContrast(),
@@ -81,6 +178,13 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   debugGhostTrace: resolveBooleanParam("debugGhostTrace"),
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveBooleanParam("paginationWorkerForce"),
+  collaborationEnabled: resolveCollaborationEnabled(),
+  collaborationUrl: resolveQueryParam("collabUrl") || DEFAULT_COLLABORATION_URL,
+  collaborationDocument: resolveQueryParam("collabDoc") || DEFAULT_COLLABORATION_DOCUMENT,
+  collaborationField: resolveQueryParam("collabField") || DEFAULT_COLLABORATION_FIELD,
+  collaborationToken: resolveQueryParam("collabToken") || "",
+  collaborationUserName: resolveCollaborationUserName(),
+  collaborationUserColor: resolveCollaborationUserColor(),
 });
 
 export const createCanvasSettings = (

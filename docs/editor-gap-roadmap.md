@@ -30,9 +30,9 @@
 ### 1. 分层与模块边界
 
 - `packages/model` / `packages/state` / `packages/transform` / `packages/commands`：ProseMirror 思想的 headless 核心能力。
-- `packages/view-canvas`：Canvas 视图实现，负责输入、布局、渲染、命中、坐标映射。
-- `packages/starter-kit` + `packages/extension-*`：默认 schema、命令、节点/mark/交互扩展注册。
-- `packages/extension-*`：节点级与交互级扩展（paragraph、heading、list、table、image、video 等）。
+- `packages/engine/view-canvas`：Canvas 视图实现，负责输入、布局、渲染、命中、坐标映射。
+- `packages/core/starter-kit` + `packages/extensions/extension-*`：默认 schema、命令、节点/mark/交互扩展注册。
+- `packages/extensions/extension-*`：节点级与交互级扩展（paragraph、heading、list、table、image、video 等）。
 - `apps/playground`：集成入口、调试面板、Smoke 触发与回归汇总。
 
 ### 2. 关键数据流
@@ -119,11 +119,11 @@
 
 相关实现位置：
 
-- `packages/render-engine/src/defaultRenderers/list.ts`
-- `packages/render-engine/src/defaultRenderers/table.ts`
-- `packages/render-engine/src/defaultRenderers/codeBlock.ts`
-- `packages/view-canvas/src/view/renderer.ts`
-- `packages/view-canvas/src/defaultRenderers/tablePagination/split.ts`
+- `packages/engine/render-engine/src/defaultRenderers/list.ts`
+- `packages/engine/render-engine/src/defaultRenderers/table.ts`
+- `packages/engine/render-engine/src/defaultRenderers/codeBlock.ts`
+- `packages/engine/view-canvas/src/view/renderer.ts`
+- `packages/engine/view-canvas/src/defaultRenderers/tablePagination/split.ts`
 
 ### P0.y 参考 HTML 分层的 box/fragment 迁移清单（进行中，2026-03-15）
 
@@ -270,8 +270,8 @@
 - 已新增 `securitySmoke`（粘贴清洗、URL 协议白名单、危险 payload 回归）。
 - 已强化 `pastePolicy`：移除事件属性与 `style`，并对 `href/src` 启用协议白名单。
 - 已下沉到解析层：`schema-basic` link mark、`node-image`、`node-video`、`markdown from_markdown` 均做协议过滤。
-- 已抽取统一安全工具到 `packages/link`，策略从“多处重复实现”收敛为“单点维护”。
-- 已将粘贴清洗核心能力下沉到 `packages/link`（`sanitizePastedHtml` / `normalizePastedText`），并支持可配置策略参数。
+- 已抽取统一安全工具到 `packages/core/link`，策略从“多处重复实现”收敛为“单点维护”。
+- 已将粘贴清洗核心能力下沉到 `packages/core/link`（`sanitizePastedHtml` / `normalizePastedText`），并支持可配置策略参数。
 - 已新增 `sanitizeDocJson` 并接入 `CanvasEditorView.setJSON` 与 `createCanvasState`，JSON 导入路径纳入统一 URL 安全策略。
 - 已将 Markdown 导入路径显式接入统一策略上下文（source=markdown），并与 HTML/JSON 共用同一 URL 策略面。
 - 已新增安全审计事件流（drop/sanitize/source/target），playground 可按需开启并用于 `securitySmoke` 回归断言。
@@ -353,9 +353,9 @@ http://localhost:5173/?devTools=1&perfBudgetSmoke=1
 关键实现位置：
 
 - `apps/playground/src/editor/paginationDocWorkerClient.ts`
-- `packages/view-canvas/src/view/input/handlers.ts`
-- `packages/view-canvas/src/view/renderSync.ts`
-- `packages/view-canvas/src/view/caret.ts`
-- `packages/view-canvas/src/view/posIndex.ts`
-- `packages/view-canvas/src/view/renderer.ts`
-- `packages/view-canvas/src/core/editor/editorOps.ts`
+- `packages/engine/view-canvas/src/view/input/handlers.ts`
+- `packages/engine/view-canvas/src/view/renderSync.ts`
+- `packages/engine/view-canvas/src/view/caret.ts`
+- `packages/engine/view-canvas/src/view/posIndex.ts`
+- `packages/engine/view-canvas/src/view/renderer.ts`
+- `packages/engine/view-canvas/src/core/editor/editorOps.ts`

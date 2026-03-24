@@ -11,6 +11,14 @@
         />
         <t-tag size="small" theme="success" variant="light">{{ i18n.app.saved }}</t-tag>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
+        <t-tag
+          v-if="debugFlags.collaborationEnabled"
+          size="small"
+          theme="primary"
+          variant="light"
+        >
+          {{ collaborationState.documentName }}
+        </t-tag>
       </div>
       <div class="topbar-right">
         <t-button size="small" variant="outline" @click="toggleTocPanel">
@@ -45,7 +53,7 @@
           {{ trackChangesButtonLabel }}
         </t-button>
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
-        <t-avatar size="small">U</t-avatar>
+        <t-avatar v-if="!debugFlags.collaborationEnabled" size="small">U</t-avatar>
       </div>
     </t-header>
 
@@ -130,9 +138,17 @@
         <span class="doc-footer-divider">·</span>
         <span class="doc-footer-stat">{{ footerPluginLabel }}</span>
       </div>
-      <div class="doc-footer-contact">
-        <span class="doc-footer-contact-label">{{ footerContactLabel }}</span>
-        <a class="doc-footer-contact-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
+      <div class="doc-footer-right">
+        <CollaborationPresence
+          v-if="debugFlags.collaborationEnabled"
+          :state="collaborationState"
+          :locale="debugFlags.locale"
+          compact
+        />
+        <div class="doc-footer-contact">
+          <span class="doc-footer-contact-label">{{ footerContactLabel }}</span>
+          <a class="doc-footer-contact-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
+        </div>
       </div>
     </t-footer>
   </t-layout>
@@ -152,9 +168,14 @@ import {
 import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import CommentsPanel from "./components/CommentsPanel.vue";
+import CollaborationPresence from "./components/CollaborationPresence.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import TrackChangesPanel from "./components/TrackChangesPanel.vue";
+import {
+  createInitialLumenCollaborationState,
+  type LumenCollaborationState,
+} from "./editor/collaboration";
 import { createPlaygroundDebugFlags } from "./editor/config";
 import { createPlaygroundI18n } from "./editor/i18n";
 import { lumenCommentsStore, type LumenCommentThread } from "./editor/commentsStore";
@@ -172,12 +193,17 @@ import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
-const docTitle = ref(i18n.app.defaultDocTitle);
+const docTitle = ref(
+  debugFlags.collaborationEnabled ? debugFlags.collaborationDocument : i18n.app.defaultDocTitle
+);
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const view = shallowRef<CanvasEditorView | null>(null);
+const collaborationState = ref<LumenCollaborationState>(
+  createInitialLumenCollaborationState(debugFlags)
+);
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
 const commentsPanelOpen = ref(false);
 const activeCommentThreadId = ref<string | null>(null);
@@ -836,6 +862,9 @@ onMounted(async () => {
     host: editorHost.value,
     statusElement: toolbarRef.value?.statusEl?.value || null,
     flags: debugFlags,
+    onCollaborationStateChange: (state) => {
+      collaborationState.value = state;
+    },
     onTocOutlineChange: handleTocOutlineChange,
     tocOutlineEnabled: tocPanelOpen.value,
     onCommentStateChange: ({ activeThreadId }) => {
@@ -924,6 +953,7 @@ onBeforeUnmount(() => {
   trackChangeRecords.value = [];
   activeTrackChangeId.value = null;
   trackChangesPanelManualOpen.value = false;
+  collaborationState.value = createInitialLumenCollaborationState(debugFlags);
   tocItems.value = [];
   activeTocId.value = null;
   footerStats.value = {
@@ -1056,6 +1086,14 @@ onBeforeUnmount(() => {
 
 .doc-footer-divider {
   color: #c0c4cc;
+}
+
+.doc-footer-right {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
 }
 
 .doc-footer-contact {
@@ -1301,6 +1339,10 @@ onBeforeUnmount(() => {
 
   .doc-footer-contact-label {
     display: none;
+  }
+
+  .doc-footer-right {
+    gap: 8px;
   }
 
   .doc-outline {

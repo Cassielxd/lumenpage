@@ -13,9 +13,9 @@
 
 位置：
 
-- `packages/extension-popup/src/popupLifecycle.ts`
-- `packages/extension-popup/src/popupController.ts`
-- `packages/extension-popup/src/coords.ts`
+- `packages/extensions/extension-popup/src/popupLifecycle.ts`
+- `packages/extensions/extension-popup/src/popupController.ts`
+- `packages/extensions/extension-popup/src/coords.ts`
 
 核心能力：
 
@@ -40,8 +40,8 @@
 
 位置：
 
-- `packages/extension-mention/src/mention.ts`
-- `packages/suggestion/*`
+- `packages/extensions/extension-mention/src/mention.ts`
+- `packages/core/suggestion/*`
 
 说明：
 
@@ -53,8 +53,8 @@
 
 位置：
 
-- `packages/extension-bubble-menu/src/bubble-menu.ts`
-- `packages/extension-bubble-menu/src/bubble-menu-plugin.ts`
+- `packages/extensions/extension-bubble-menu/src/bubble-menu.ts`
+- `packages/extensions/extension-bubble-menu/src/bubble-menu-plugin.ts`
 
 说明：
 

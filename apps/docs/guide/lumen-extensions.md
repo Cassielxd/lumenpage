@@ -66,6 +66,6 @@
 
 如果你要新增业务块：
 
-1. 先做 `packages/extension-xxx`
+1. 先做 `packages/extensions/extension-xxx`
 2. 再加到 `documentExtensions.ts`
 3. 如果它需要浏览器态增强，再在 `editorMount.ts` 追加运行时扩展

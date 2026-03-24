@@ -695,7 +695,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/view-canvas`：Canvas 视图层（输入、选区、渲染、分页、事件编排）"
+                  "text": "`packages/engine/view-canvas`：Canvas 视图层（输入、选区、渲染、分页、事件编排）"
                 }
               ]
             }
@@ -709,7 +709,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/starter-kit`：默认 schema、命令与节点渲染注册"
+                  "text": "`packages/core/starter-kit`：默认 schema、命令与节点渲染注册"
                 }
               ]
             }
@@ -1687,7 +1687,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/view-canvas`：Canvas EditorView 与分页布局引擎"
+                  "text": "`packages/engine/view-canvas`：Canvas EditorView 与分页布局引擎"
                 }
               ]
             }
@@ -1701,7 +1701,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/starter-kit` + `packages/extension-*`：统一默认 schema 与扩展装配"
+                  "text": "`packages/core/starter-kit` + `packages/extensions/extension-*`：统一默认 schema 与扩展装配"
                 }
               ]
             }
@@ -1715,7 +1715,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/starter-kit`：默认 schema + commands + registry"
+                  "text": "`packages/core/starter-kit`：默认 schema + commands + registry"
                 }
               ]
             }
@@ -1743,7 +1743,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`packages/link`：链接解析与安全跳转工具"
+                  "text": "`packages/core/link`：链接解析与安全跳转工具"
                 }
               ]
             }

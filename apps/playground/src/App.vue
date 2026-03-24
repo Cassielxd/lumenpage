@@ -7,11 +7,31 @@
         <t-input v-model="docTitle" class="title-input" size="small" />
         <t-tag size="small" theme="success" variant="light">{{ i18n.app.saved }}</t-tag>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
+        <t-tag
+          v-if="debugFlags.collaborationEnabled"
+          size="small"
+          theme="primary"
+          variant="light"
+        >
+          {{ collaborationState.documentName }}
+        </t-tag>
+        <t-tag
+          v-if="debugFlags.collaborationEnabled"
+          size="small"
+          variant="light"
+        >
+          {{ collaborationStatusLabel }}
+        </t-tag>
       </div>
       <div class="topbar-right">
+        <CollaborationPresence
+          v-if="debugFlags.collaborationEnabled"
+          :state="collaborationState"
+          :locale="debugFlags.locale"
+        />
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
         <t-button size="small" variant="outline">{{ i18n.app.comment }}</t-button>
-        <t-avatar size="small">U</t-avatar>
+        <t-avatar v-if="!debugFlags.collaborationEnabled" size="small">{{ collaborationAvatarLabel }}</t-avatar>
       </div>
     </t-header>
 
@@ -33,21 +53,31 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { applyLumenDevTools } from "lumenpage-dev-tools";
+import CollaborationPresence from "./components/CollaborationPresence.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import { createPlaygroundDebugFlags } from "./editor/config";
+import {
+  createInitialPlaygroundCollaborationState,
+  type PlaygroundCollaborationState,
+} from "./editor/collaboration";
 import { createPlaygroundI18n } from "./editor/i18n";
 import { mountPlaygroundEditor } from "./editor/editorMount";
 
 const debugFlags = createPlaygroundDebugFlags();
 const i18n = createPlaygroundI18n(debugFlags.locale);
-const docTitle = ref(i18n.app.defaultDocTitle);
+const docTitle = ref(
+  debugFlags.collaborationEnabled ? debugFlags.collaborationDocument : i18n.app.defaultDocTitle
+);
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
 const tableDebugPanel = ref<HTMLElement | null>(null);
 const debugTablePagination = debugFlags.debugTablePagination;
+const collaborationState = ref<PlaygroundCollaborationState>(
+  createInitialPlaygroundCollaborationState(debugFlags)
+);
 const permissionLabel = computed(() => {
   if (debugFlags.permissionMode === "readonly") {
     return i18n.app.permissionReadonly;
@@ -56,6 +86,29 @@ const permissionLabel = computed(() => {
     return i18n.app.permissionComment;
   }
   return i18n.app.permissionEdit;
+});
+const collaborationStatusLabel = computed(() => {
+  const state = collaborationState.value;
+  if (!state.enabled) {
+    return "Collab off";
+  }
+  if (state.error) {
+    return "Auth failed";
+  }
+  if (state.synced) {
+    return "Synced";
+  }
+  if (state.status === "connected") {
+    return "Syncing";
+  }
+  if (state.status === "connecting") {
+    return "Connecting";
+  }
+  return "Disconnected";
+});
+const collaborationAvatarLabel = computed(() => {
+  const name = String(collaborationState.value.userName || "").trim();
+  return (name[0] || "U").toUpperCase();
 });
 let detachEditor: null | (() => void) = null;
 let detachDevTools: null | (() => void) = null;
@@ -70,6 +123,9 @@ onMounted(async () => {
     statusElement: toolbarRef.value?.statusEl?.value || null,
     tableDebugPanelElement: tableDebugPanel.value,
     flags: debugFlags,
+    onCollaborationStateChange: (state) => {
+      collaborationState.value = state;
+    },
   });
   view.value = mounted.view;
   if (debugFlags.enableDevTools && mounted.view) {

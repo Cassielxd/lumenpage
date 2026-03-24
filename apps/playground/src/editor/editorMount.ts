@@ -21,7 +21,11 @@ import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
 import { shouldOpenLinkOnClick } from "./linkPolicy";
-import { playgroundDocumentExtensions } from "./documentExtensions";
+import { createPlaygroundDocumentExtensions } from "./documentExtensions";
+import {
+  createPlaygroundCollaborationRuntime,
+  type PlaygroundCollaborationState,
+} from "./collaboration";
 import {
   configurePlaygroundSecurityPolicy,
   normalizePastedText,
@@ -64,6 +68,7 @@ type MountPlaygroundEditorParams = {
   statusElement?: HTMLElement | null;
   tableDebugPanelElement?: HTMLElement | null;
   flags: PlaygroundDebugFlags;
+  onCollaborationStateChange?: ((state: PlaygroundCollaborationState) => void) | null;
 };
 
 type MountedPlaygroundEditor = {
@@ -135,6 +140,7 @@ export const mountPlaygroundEditor = ({
   statusElement,
   tableDebugPanelElement,
   flags,
+  onCollaborationStateChange,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   clearLegacyConfigHits();
   const i18n = createPlaygroundI18n(flags.locale);
@@ -157,8 +163,25 @@ export const mountPlaygroundEditor = ({
       provider: paginationDocWorkerClient,
     };
   }
+  const collaborationRuntime = createPlaygroundCollaborationRuntime({
+    flags,
+    onStateChange: onCollaborationStateChange || null,
+  });
   const extensions = [
-    ...playgroundDocumentExtensions,
+    ...createPlaygroundDocumentExtensions({
+      collaboration: collaborationRuntime.provider
+        ? {
+            document: collaborationRuntime.provider.document,
+            field: flags.collaborationField,
+            provider: collaborationRuntime.provider,
+            user: {
+              name: flags.collaborationUserName,
+              color: flags.collaborationUserColor,
+            },
+            onUsersChange: collaborationRuntime.updateUsers,
+          }
+        : null,
+    }),
     ActiveBlockSelectionExtension,
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
@@ -175,11 +198,13 @@ export const mountPlaygroundEditor = ({
       ]
     : [];
 
-  const initialDoc = flags.usePerfDoc
-    ? initialDocPerfJson
-    : shouldUseSmokeDoc(flags)
-      ? initialDocSmokeJson
-      : initialDocJson;
+  const initialDoc = collaborationRuntime.provider
+    ? ""
+    : flags.usePerfDoc
+      ? initialDocPerfJson
+      : shouldUseSmokeDoc(flags)
+        ? initialDocSmokeJson
+        : initialDocJson;
 
   const isInNodeTypeAtPos = (state: any, pos: number, typeName: string) => {
     if (!state?.doc || !Number.isFinite(pos) || !typeName) {
@@ -618,6 +643,7 @@ export const mountPlaygroundEditor = ({
       configurePlaygroundSecurityPolicy({ enableAudit: false });
       paginationDocWorkerClient?.destroy?.();
       editor.destroy();
+      collaborationRuntime.destroy();
     },
   };
 };

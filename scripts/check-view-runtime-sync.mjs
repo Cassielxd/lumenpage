@@ -9,38 +9,38 @@ const MIRRORED_FILE_PAIRS = [];
 
 const REDIRECTED_FILES = [
   {
-    source: "packages/view-canvas/src/view/segmenter.ts",
+    source: "packages/engine/view-canvas/src/view/segmenter.ts",
     expected:
       'export type { SegmenterOptions } from "lumenpage-view-runtime";\nexport { createLinebreakSegmentText, createSegmentText } from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/virtualization.ts",
+    source: "packages/engine/view-canvas/src/view/virtualization.ts",
     expected: 'export { getVisiblePages } from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/pageAlign.ts",
+    source: "packages/engine/view-canvas/src/view/pageAlign.ts",
     expected: 'export { getPageX } from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/measure.ts",
+    source: "packages/engine/view-canvas/src/view/measure.ts",
     expected: 'export { getFontSize, measureTextWidth } from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/posIndex.ts",
+    source: "packages/engine/view-canvas/src/view/posIndex.ts",
     expected: 'export { coordsAtPos, posAtCoords } from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/caret.ts",
+    source: "packages/engine/view-canvas/src/view/caret.ts",
     expected:
       'export {\n  findLineForOffset,\n  getCaretFromPoint,\n  getCaretRect,\n  offsetAtX,\n} from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/layoutIndex.ts",
+    source: "packages/engine/view-canvas/src/view/layoutIndex.ts",
     expected:
       'export {\n  buildLayoutIndex,\n  findLineForOffsetIndexed,\n  getFirstLineForBlockId,\n  getLineAtOffset,\n  offsetAtXIndexed,\n  posAtCoordsIndexed,\n} from "lumenpage-view-runtime";',
   },
   {
-    source: "packages/view-canvas/src/view/selectionMovement.ts",
+    source: "packages/engine/view-canvas/src/view/selectionMovement.ts",
     expected: 'export { createSelectionMovement } from "lumenpage-view-runtime";',
   },
 ];

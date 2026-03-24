@@ -36,12 +36,19 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "dev:app": "pnpm -C apps/playground dev"
+    "dev:app": "pnpm -C apps/playground dev",
+    "dev:collab": "pnpm -C apps/collab-server dev",
+    "start:collab": "pnpm -C apps/collab-server start",
+    "build:collab": "pnpm -C apps/collab-server build"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",
     "orderedmap": "2.1.1",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.30"
   }
 }

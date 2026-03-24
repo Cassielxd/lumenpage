@@ -22,24 +22,24 @@
 
 ### 当前包结构
 
-- `packages/core`
+- `packages/core/core`
   - `Editor`、扩展系统、schema 装配门面
 - `packages/lp/*`
   - `model`、`state`、`transform`、`commands`、`keymap`、`history`、`inputrules`、`collab`、`view-types`
   - 职责：底层编辑模型和事务能力
-- `packages/layout-engine`
+- `packages/engine/layout-engine`
   - 断行、分页、片段清理、布局复用
-- `packages/render-engine`
+- `packages/engine/render-engine`
   - Node/Mark 渲染适配器与默认渲染实现
-- `packages/view-runtime`
+- `packages/engine/view-runtime`
   - 几何、定位、虚拟化、选区移动
-- `packages/view-canvas`
+- `packages/engine/view-canvas`
   - Canvas 视图装配、输入桥接、绘制与 overlay
-- `packages/extension-*`
+- `packages/extensions/extension-*`
   - 功能扩展
-- `packages/starter-kit`
+- `packages/core/starter-kit`
   - 默认扩展集合
-- `packages/dev-tools`
+- `packages/core/dev-tools`
   - 调试面板
 
 治理约束：
@@ -53,28 +53,28 @@
    - 页面壳与编辑器挂载
 2. `apps/lumen/src/editor/editorMount.ts`
    - 装配扩展、canvas settings、worker、toolbar 等
-3. `packages/core`
+3. `packages/core/core`
    - 创建 `Editor`、扩展管理器、schema
-4. `packages/view-canvas`
+4. `packages/engine/view-canvas`
    - 建立输入管线、事务流、布局渲染同步、NodeView 生命周期
-5. `packages/layout-engine`
+5. `packages/engine/layout-engine`
    - 从 doc 计算分页布局
-6. `packages/render-engine`
+6. `packages/engine/render-engine`
    - 根据 Node/Mark 渲染契约输出 canvas 绘制结果
-7. `packages/view-runtime`
+7. `packages/engine/view-runtime`
    - 命中测试、选区几何、坐标映射、虚拟化
 
 ## 4. 编辑器运行主链路
 
 ### 输入到渲染闭环
 
-1. 输入桥接：`packages/view-canvas/src/view/input/*`
-2. 事务派发：`packages/view-canvas/src/view/editorView/stateFlow.ts`
-3. 变更摘要：`packages/view-canvas/src/core/editor/changeSummary.ts`
-4. 布局计算：`packages/layout-engine/src/engine.ts`
-5. 渲染同步：`packages/view-canvas/src/view/renderSync.ts`
-6. 页面绘制：`packages/view-canvas/src/view/renderer.ts`
-7. 坐标与选区：`packages/view-runtime/*`
+1. 输入桥接：`packages/engine/view-canvas/src/view/input/*`
+2. 事务派发：`packages/engine/view-canvas/src/view/editorView/stateFlow.ts`
+3. 变更摘要：`packages/engine/view-canvas/src/core/editor/changeSummary.ts`
+4. 布局计算：`packages/engine/layout-engine/src/engine.ts`
+5. 渲染同步：`packages/engine/view-canvas/src/view/renderSync.ts`
+6. 页面绘制：`packages/engine/view-canvas/src/view/renderer.ts`
+7. 坐标与选区：`packages/engine/view-runtime/*`
 
 ### 分页与缓存
 
@@ -129,15 +129,15 @@
 ## 8. 常用排查入口
 
 1. 表格分页、合并、续接问题
-   - `packages/extension-table/src/*`
-   - `packages/layout-engine/src/engine.ts`
+   - `packages/extensions/extension-table/src/*`
+   - `packages/engine/layout-engine/src/engine.ts`
 2. 浮层、mention、bubble-menu 问题
-   - `packages/extension-popup/src/*`
-   - `packages/extension-mention/src/*`
-   - `packages/extension-bubble-menu/src/*`
+   - `packages/extensions/extension-popup/src/*`
+   - `packages/extensions/extension-mention/src/*`
+   - `packages/extensions/extension-bubble-menu/src/*`
 3. 默认 canvas 渲染问题
-   - `packages/render-engine/src/*`
-   - `packages/view-canvas/src/view/renderer.ts`
+   - `packages/engine/render-engine/src/*`
+   - `packages/engine/view-canvas/src/view/renderer.ts`
 4. 工具栏接线问题
    - `apps/lumen/src/editor/toolbarCatalog.ts`
    - `apps/lumen/src/editor/toolbarActions/*`

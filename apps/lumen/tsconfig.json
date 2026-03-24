@@ -1,44 +1,94 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "lumenpage-collab": ["../../packages/lp/collab/src/index.ts"],
-      "lumenpage-commands": ["../../packages/lp/commands/src/index.ts"],
-      "lumenpage-core": ["../../packages/core/src/index.ts"],
-      "lumenpage-dev-tools": ["../../packages/dev-tools/src/index.ts"],
-      "lumenpage-extension-*": ["../../packages/extension-*/src/index.ts"],
-      "lumenpage-extension-embed-panel/browser": [
-        "../../packages/extension-embed-panel/src/browser.ts"
+      "lumenpage-collab": [
+        "../../packages/lp/collab/src/index.ts"
       ],
-      "lumenpage-extension-active-block": ["../../packages/extension-active-block/src/index.ts"],
-      "lumenpage-extension-bubble-menu": ["../../packages/extension-bubble-menu/src/index.ts"],
-      "lumenpage-extension-block-id": ["../../packages/extension-block-id/src/index.ts"],
-      "lumenpage-extension-drag-handle": ["../../packages/extension-drag-handle/src/index.ts"],
-      "lumenpage-extension-mention": ["../../packages/extension-mention/src/index.ts"],
-      "lumenpage-history": ["../../packages/lp/history/src/index.ts"],
-      "lumenpage-inputrules": ["../../packages/lp/inputrules/src/index.ts"],
-      "lumenpage-keymap": ["../../packages/lp/keymap/src/index.ts"],
-      "lumenpage-starter-kit": ["../../packages/starter-kit/src/index.ts"],
-      "lumenpage-link": ["../../packages/link/src/index.ts"],
-      "lumenpage-layout-engine": ["../../packages/layout-engine/src/index.ts"],
-      "lumenpage-render-engine": ["../../packages/render-engine/src/index.ts"],
-      "lumenpage-suggestion": ["../../packages/suggestion/src/index.ts"],
-      "lumenpage-view-runtime": ["../../packages/view-runtime/src/index.ts"],
-      "lumenpage-markdown": ["../../packages/markdown/src/index.ts"],
-      "lumenpage-model": ["../../packages/lp/model/src/index.ts"],
-      "lumenpage-state": ["../../packages/lp/state/src/index.ts"],
-      "lumenpage-transform": ["../../packages/lp/transform/src/index.ts"],
-      "lumenpage-view-canvas": ["../../packages/view-canvas/src/index.ts"],
-      "lumenpage-view-types": ["../../packages/lp/view-types/src/index.ts"]
+      "lumenpage-commands": [
+        "../../packages/lp/commands/src/index.ts"
+      ],
+      "lumenpage-core": [
+        "../../packages/core/core/src/index.ts"
+      ],
+      "lumenpage-dev-tools": [
+        "../../packages/core/dev-tools/src/index.ts"
+      ],
+      "lumenpage-extension-*": [
+        "../../packages/extensions/extension-*/src/index.ts"
+      ],
+      "lumenpage-extension-embed-panel/browser": [
+        "../../packages/extensions/extension-embed-panel/src/browser.ts"
+      ],
+      "lumenpage-extension-active-block": [
+        "../../packages/extensions/extension-active-block/src/index.ts"
+      ],
+      "lumenpage-extension-bubble-menu": [
+        "../../packages/extensions/extension-bubble-menu/src/index.ts"
+      ],
+      "lumenpage-extension-block-id": [
+        "../../packages/extensions/extension-block-id/src/index.ts"
+      ],
+      "lumenpage-extension-drag-handle": [
+        "../../packages/extensions/extension-drag-handle/src/index.ts"
+      ],
+      "lumenpage-extension-mention": [
+        "../../packages/extensions/extension-mention/src/index.ts"
+      ],
+      "lumenpage-history": [
+        "../../packages/lp/history/src/index.ts"
+      ],
+      "lumenpage-inputrules": [
+        "../../packages/lp/inputrules/src/index.ts"
+      ],
+      "lumenpage-keymap": [
+        "../../packages/lp/keymap/src/index.ts"
+      ],
+      "lumenpage-starter-kit": [
+        "../../packages/core/starter-kit/src/index.ts"
+      ],
+      "lumenpage-link": [
+        "../../packages/core/link/src/index.ts"
+      ],
+      "lumenpage-layout-engine": [
+        "../../packages/engine/layout-engine/src/index.ts"
+      ],
+      "lumenpage-render-engine": [
+        "../../packages/engine/render-engine/src/index.ts"
+      ],
+      "lumenpage-suggestion": [
+        "../../packages/core/suggestion/src/index.ts"
+      ],
+      "lumenpage-view-runtime": [
+        "../../packages/engine/view-runtime/src/index.ts"
+      ],
+      "lumenpage-markdown": [
+        "../../packages/core/markdown/src/index.ts"
+      ],
+      "lumenpage-model": [
+        "../../packages/lp/model/src/index.ts"
+      ],
+      "lumenpage-state": [
+        "../../packages/lp/state/src/index.ts"
+      ],
+      "lumenpage-transform": [
+        "../../packages/lp/transform/src/index.ts"
+      ],
+      "lumenpage-view-canvas": [
+        "../../packages/engine/view-canvas/src/index.ts"
+      ],
+      "lumenpage-view-types": [
+        "../../packages/lp/view-types/src/index.ts"
+      ]
     }
   },
-  "include": ["src", "src/**/*.vue"]
+  "include": [
+    "src",
+    "src/**/*.vue"
+  ]
 }
-
-
-
-
-

@@ -4,7 +4,7 @@
 
 ## 范围
 
-- 分析 `packages/view-canvas` 中 hook 注入点、调用链和职责边界
+- 分析 `packages/engine/view-canvas` 中 hook 注入点、调用链和职责边界
 - 明确“扩展负责什么”与“渲染/视图运行时负责什么”
 - 对齐当前真实目录：`view-canvas`、`layout-engine`、`render-engine`、`view-runtime`
 
@@ -12,7 +12,7 @@
 
 ### 1.1 统一收集入口
 
-- 入口位于 `packages/view-canvas/src/view/editorView/plugins.ts`
+- 入口位于 `packages/engine/view-canvas/src/view/editorView/plugins.ts`
 - `getEditorPropsList` 会按顺序收集：
   1. `CanvasEditorViewProps`
   2. `state.plugins[*].props`
@@ -100,7 +100,7 @@
 
 ### 3.1 Node 渲染
 
-定义核心位于 `packages/render-engine` 与 `packages/layout-engine` 的注册表。
+定义核心位于 `packages/engine/render-engine` 与 `packages/engine/layout-engine` 的注册表。
 
 常见职责：
 
@@ -137,7 +137,7 @@
 
 ### 3.3 视图运行时
 
-`packages/view-runtime` 负责：
+`packages/engine/view-runtime` 负责：
 
 - 光标几何
 - 位置信息索引
@@ -159,10 +159,10 @@
 
 典型扩展：
 
-- `packages/extension-mention`
-- `packages/extension-bubble-menu`
-- `packages/extension-drag-handle`
-- `packages/extension-link`
+- `packages/extensions/extension-mention`
+- `packages/extensions/extension-bubble-menu`
+- `packages/extensions/extension-drag-handle`
+- `packages/extensions/extension-link`
 
 ### 4.2 渲染层负责什么
 

@@ -30,7 +30,7 @@
 
 文件：
 
-- `packages/extension-table/src/table/specs.ts`
+- `packages/extensions/extension-table/src/table/specs.ts`
 
 结果：
 
@@ -42,9 +42,9 @@
 
 文件：
 
-- `packages/view-canvas/src/view/editorView/drag/helpers.ts`
-- `packages/view-canvas/src/view/editorView/drag/internalDrag.ts`
-- `packages/view-canvas/src/view/editorView/drag/domHandlers.ts`
+- `packages/engine/view-canvas/src/view/editorView/drag/helpers.ts`
+- `packages/engine/view-canvas/src/view/editorView/drag/internalDrag.ts`
+- `packages/engine/view-canvas/src/view/editorView/drag/domHandlers.ts`
 
 结果：
 

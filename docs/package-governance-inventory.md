@@ -115,6 +115,6 @@
 ## 当前结论
 
 - 底层编辑模型保持 `packages/lp/*` 分层。
-- 对外门面集中在 `packages/core`。
+- 对外门面集中在 `packages/core/core`。
 - 渲染链路拆为 `layout-engine`、`render-engine`、`view-runtime`、`view-canvas`。
 - 功能扩展统一采用 `extension-*` 平铺目录，尽量向 tiptap 的认知模型靠拢。

@@ -6,19 +6,19 @@
 
 ## 当前包结构
 
-- `packages/core`
+- `packages/core/core`
   - `LumenEditor`
   - `ExtensionManager`
   - schema 与运行时门面
 - `packages/lp/*`
   - 底层编辑内核：`model/state/transform/commands/keymap/inputrules/history/collab/view-types`
-- `packages/layout-engine`
+- `packages/engine/layout-engine`
   - 分页布局与页复用
-- `packages/view-runtime`
+- `packages/engine/view-runtime`
   - 几何索引、坐标、selection movement、命中测试
-- `packages/view-canvas`
+- `packages/engine/view-canvas`
   - Canvas 渲染、输入桥接、overlay 调度
-- `packages/extension-*` / `packages/starter-kit`
+- `packages/extensions/extension-*` / `packages/core/starter-kit`
   - 扩展层
 - `apps/*`
   - 产品壳

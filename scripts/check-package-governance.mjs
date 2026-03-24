@@ -22,18 +22,15 @@ const layerFromRelativePath = (relativePath) => {
   }
 
   const segments = normalized.split("/");
-  const pkgDir = segments[1];
-  if (pkgDir === "core" || pkgDir === "link") return "core";
-  if (
-    pkgDir === "layout-engine" ||
-    pkgDir === "render-engine" ||
-    pkgDir === "view-canvas" ||
-    pkgDir === "view-runtime"
-  ) {
-    return "engine";
+  const scopeDir = segments[1];
+  const pkgDir = segments[2];
+  if (scopeDir === "core") {
+    if (pkgDir === "dev-tools") return "tooling";
+    return "core";
   }
-  if (pkgDir === "dev-tools") return "tooling";
-  if (pkgDir) return "extensions";
+  if (scopeDir === "engine") return "engine";
+  if (scopeDir === "extensions") return "extensions";
+  if (scopeDir === "lp") return "lp";
   return "unknown";
 };
 
