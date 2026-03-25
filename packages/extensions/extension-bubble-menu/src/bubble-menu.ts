@@ -10,6 +10,7 @@ export const BubbleMenu = Extension.create<BubbleMenuOptions>({
   addOptions() {
     return {
       element: null,
+      render: null,
       pluginKey: "bubbleMenu",
       updateDelay: 250,
       resizeDelay: 60,

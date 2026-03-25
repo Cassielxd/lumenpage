@@ -13,7 +13,7 @@ import {
   type CanvasEditorViewProps,
 } from "lumenpage-view-canvas";
 import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
-import BubbleMenu, { DEFAULT_BUBBLE_MENU_ACTIONS } from "lumenpage-extension-bubble-menu";
+import BubbleMenu from "lumenpage-extension-bubble-menu";
 import {
   CommentsPluginKey,
   findCommentAnchorRange,
@@ -32,6 +32,7 @@ import { MentionExtension } from "lumenpage-extension-mention";
 import { SlashCommandExtension } from "lumenpage-extension-slash-command";
 
 import type { PlaygroundDebugFlags } from "./config";
+import { LUMEN_BUBBLE_MENU_ACTIONS, createLumenBubbleMenuRenderer } from "./bubbleMenuRenderer";
 import { createCanvasSettings } from "./config";
 import {
   createLumenCollaborationRuntime,
@@ -366,6 +367,7 @@ export const mountPlaygroundEditor = ({
   );
 
   const bubbleMenuElement = host.ownerDocument.createElement("div");
+  const bubbleMenuRenderer = createLumenBubbleMenuRenderer({ locale: flags.locale });
 
   const extensions = [
     ...createLumenDocumentExtensions({
@@ -388,13 +390,14 @@ export const mountPlaygroundEditor = ({
     SlashCommandExtension.configure(createSlashCommandOptions(flags.locale)),
     BubbleMenu.configure({
       element: bubbleMenuElement,
-      actions: DEFAULT_BUBBLE_MENU_ACTIONS,
+      render: bubbleMenuRenderer,
+      actions: LUMEN_BUBBLE_MENU_ACTIONS,
     }),
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
   const tocOutlineController = createTocOutlinePlugin({
     onChange: onTocOutlineChange ?? undefined,
-    emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "无标题",
+    emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "\u65e0\u6807\u9898",
     initialEnabled: tocOutlineEnabled !== false,
   });
   const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
@@ -882,5 +885,7 @@ export const mountPlaygroundEditor = ({
     },
   };
 };
+
+
 
 

@@ -2,10 +2,13 @@ import type { Editor } from "lumenpage-core";
 import { NodeSelection, Plugin, PluginKey } from "lumenpage-state";
 import {
   createPopupController,
+  createPopupRenderRuntime,
   toPopupRect,
   toViewportPopupRect,
   type PopupController,
   type PopupControllerOptions,
+  type PopupRenderLifecycle,
+  type PopupRenderRuntime,
   type PopupRect,
   type PopupReference,
 } from "lumenpage-extension-popup";
@@ -15,12 +18,17 @@ export type BubbleMenuAction = {
   label: string;
   command: string;
   args?: unknown[];
+  icon?: string;
   markName?: string;
 };
 
 export type BubbleMenuRenderProps = {
   editor: Editor;
   view: any;
+  state: any;
+  element: HTMLElement;
+  from: number;
+  to: number;
   rect: PopupRect;
   ownerDocument: Document;
   popup: PopupController;
@@ -29,6 +37,8 @@ export type BubbleMenuRenderProps = {
   canRunAction: (action: BubbleMenuAction) => boolean;
   isActionActive: (action: BubbleMenuAction) => boolean;
 };
+
+export type BubbleMenuRenderLifecycle = PopupRenderLifecycle<BubbleMenuRenderProps>;
 
 type BubbleMenuVirtualElement = {
   getBoundingClientRect: () => DOMRect | null;
@@ -50,6 +60,7 @@ export type BubbleMenuPluginProps = {
   editor: Editor;
   pluginKey?: string | PluginKey;
   element?: HTMLElement | null;
+  render?: (() => BubbleMenuRenderLifecycle) | null;
   updateDelay?: number;
   resizeDelay?: number;
   appendTo?: HTMLElement | (() => HTMLElement | null | undefined);
@@ -61,26 +72,13 @@ export type BubbleMenuPluginProps = {
 };
 
 export type BubbleMenuUpdateOptions = Partial<
-  Omit<BubbleMenuPluginProps, "editor" | "pluginKey" | "element">
+  Omit<BubbleMenuPluginProps, "editor" | "pluginKey" | "element" | "render">
 >;
 
 type BubbleMenuViewProps = BubbleMenuPluginProps & {
   view: any;
   pluginKeyRef: string | PluginKey;
 };
-
-type DefaultBubbleMenuElement = {
-  element: HTMLElement;
-  update: (props: BubbleMenuRenderProps) => void;
-};
-
-export const DEFAULT_BUBBLE_MENU_ACTIONS: BubbleMenuAction[] = [
-  { id: "bold", label: "B", command: "toggleBold", markName: "bold" },
-  { id: "italic", label: "I", command: "toggleItalic", markName: "italic" },
-  { id: "underline", label: "U", command: "toggleUnderline", markName: "underline" },
-  { id: "strike", label: "S", command: "toggleStrike", markName: "strike" },
-  { id: "inline-code", label: "</>", command: "toggleInlineCode", markName: "code" },
-];
 
 const DEFAULT_PLUGIN_KEY = "bubbleMenu";
 
@@ -176,8 +174,7 @@ const isTextRangeSelection = (selection: any) => {
 };
 
 const normalizeActions = (actions?: BubbleMenuAction[]) => {
-  const source =
-    Array.isArray(actions) && actions.length > 0 ? actions : DEFAULT_BUBBLE_MENU_ACTIONS;
+  const source = Array.isArray(actions) ? actions : [];
   const normalized: BubbleMenuAction[] = [];
 
   for (const action of source) {
@@ -193,11 +190,12 @@ const normalizeActions = (actions?: BubbleMenuAction[]) => {
       label,
       command,
       args: Array.isArray(action.args) ? action.args : [],
+      icon: String(action?.icon || "").trim() || undefined,
       markName: String(action?.markName || "").trim() || undefined,
     });
   }
 
-  return normalized.length > 0 ? normalized : DEFAULT_BUBBLE_MENU_ACTIONS;
+  return normalized;
 };
 
 const canRunActionByView = (view: any, action: BubbleMenuAction) => {
@@ -264,101 +262,6 @@ const isActionMarkActiveByView = (view: any, action: BubbleMenuAction) => {
   return active;
 };
 
-const createBubbleButton = (
-  ownerDocument: Document,
-  action: BubbleMenuAction,
-  props: BubbleMenuRenderProps
-) => {
-  const button = ownerDocument.createElement("button");
-  button.type = "button";
-  button.textContent = action.label;
-  button.style.width = "30px";
-  button.style.height = "30px";
-  button.style.border = "1px solid transparent";
-  button.style.borderRadius = "6px";
-  button.style.background = "transparent";
-  button.style.color = "#0f172a";
-  button.style.fontSize = action.label.length > 2 ? "11px" : "13px";
-  button.style.fontWeight = "600";
-  button.style.fontFamily = "inherit";
-  button.style.lineHeight = "1";
-  button.style.cursor = "pointer";
-  button.style.display = "inline-flex";
-  button.style.alignItems = "center";
-  button.style.justifyContent = "center";
-  button.style.padding = "0";
-  button.style.userSelect = "none";
-
-  const enabled = props.canRunAction(action);
-  const active = props.isActionActive(action);
-  if (!enabled) {
-    button.disabled = true;
-    button.style.opacity = "0.4";
-    button.style.cursor = "not-allowed";
-  } else if (active) {
-    button.style.background = "#dbeafe";
-    button.style.borderColor = "#93c5fd";
-    button.style.color = "#1d4ed8";
-  }
-
-  button.addEventListener("mouseenter", () => {
-    if (!button.disabled && !active) {
-      button.style.background = "#f1f5f9";
-      button.style.borderColor = "#cbd5e1";
-    }
-  });
-  button.addEventListener("mouseleave", () => {
-    if (!button.disabled && !active) {
-      button.style.background = "transparent";
-      button.style.borderColor = "transparent";
-    }
-  });
-  button.addEventListener("mousedown", (event) => {
-    event.preventDefault();
-  });
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    if (button.disabled) {
-      return;
-    }
-    props.runAction(action);
-  });
-
-  return button;
-};
-
-const createDefaultBubbleMenuElement = ({
-  ownerDocument,
-  className,
-  element,
-}: {
-  ownerDocument: Document;
-  className?: string;
-  element?: HTMLElement | null;
-}): DefaultBubbleMenuElement => {
-  const menuEl = element || ownerDocument.createElement("div");
-  menuEl.className = className || "lumen-bubble-menu";
-  menuEl.style.display = "inline-flex";
-  menuEl.style.alignItems = "center";
-  menuEl.style.gap = "4px";
-  menuEl.style.padding = "6px";
-  menuEl.style.borderRadius = "10px";
-  menuEl.style.background = "#ffffff";
-  menuEl.style.border = "1px solid rgba(148, 163, 184, 0.35)";
-  menuEl.style.boxShadow = "0 10px 30px rgba(15, 23, 42, 0.18)";
-  menuEl.style.minHeight = "42px";
-
-  return {
-    element: menuEl,
-    update(props) {
-      menuEl.innerHTML = "";
-      for (const action of props.actions) {
-        menuEl.appendChild(createBubbleButton(ownerDocument, action, props));
-      }
-    },
-  };
-};
-
 const defaultShouldShow = ({
   editor,
   element,
@@ -393,7 +296,6 @@ export class BubbleMenuView {
   updateDelay: number;
   resizeDelay: number;
   pluginKeyRef: string | PluginKey;
-  defaultElementRuntime: DefaultBubbleMenuElement | null;
   actions: BubbleMenuAction[];
   className?: string;
 
@@ -402,12 +304,14 @@ export class BubbleMenuView {
   private preventHide = false;
   private isVisible = false;
   private readonly ownerDocument: Document;
-  private readonly useDefaultRenderer: boolean;
+  private readonly ownsElement: boolean;
+  private readonly renderRuntime: PopupRenderRuntime<BubbleMenuRenderProps>;
 
   constructor({
     editor,
     view,
     element,
+    render,
     pluginKeyRef,
     actions,
     className,
@@ -425,18 +329,13 @@ export class BubbleMenuView {
     this.resizeDelay = Math.max(0, toFiniteNumber(resizeDelay, 60));
     this.getReferencedVirtualElement = getReferencedVirtualElement;
     this.ownerDocument = view?.dom?.ownerDocument || document;
-    this.useDefaultRenderer = !element || Array.isArray(actions);
-    this.actions = this.useDefaultRenderer ? normalizeActions(actions) : [];
     this.className = className;
-
-    this.defaultElementRuntime = this.useDefaultRenderer
-      ? createDefaultBubbleMenuElement({
-          ownerDocument: this.ownerDocument,
-          className,
-          element: element || undefined,
-        })
-      : null;
-    this.element = this.defaultElementRuntime?.element || element!;
+    this.actions = normalizeActions(actions);
+    this.ownsElement = !element;
+    this.element = element || this.ownerDocument.createElement("div");
+    if (this.ownsElement) {
+      this.element.className = this.className || "";
+    }
     this.element.tabIndex = 0;
 
     this.shouldShow = shouldShow || defaultShouldShow;
@@ -444,6 +343,10 @@ export class BubbleMenuView {
       ...DEFAULT_POPUP_OPTIONS,
       ...(options || {}),
       appendTo,
+    });
+
+    this.renderRuntime = createPopupRenderRuntime(render?.() || {}, () => {
+      this.popup.hide();
     });
 
     this.element.addEventListener("mousedown", this.mousedownHandler, true);
@@ -468,13 +371,16 @@ export class BubbleMenuView {
   };
 
   private documentPointerDownHandler = (event: Event) => {
-    if (this.element.contains(event.target as Node | null)) {
+    if (this.renderRuntime.isEventInside(event) || this.element.contains(event.target as Node | null)) {
       return;
     }
     this.hide();
   };
 
   private documentKeyDownHandler = (event: KeyboardEvent) => {
+    if (this.renderRuntime.handleKeyDown(event)) {
+      return;
+    }
     if (event.key === "Escape") {
       this.hide();
     }
@@ -541,9 +447,17 @@ export class BubbleMenuView {
   };
 
   private createRenderProps(rect: PopupRect): BubbleMenuRenderProps {
+    const state = this.view?.state;
+    const selection = state?.selection;
+    const { from, to } = getSelectionRange(selection);
+
     return {
       editor: this.editor,
       view: this.view,
+      state,
+      element: this.element,
+      from,
+      to,
       rect,
       ownerDocument: this.ownerDocument,
       popup: this.popup,
@@ -594,15 +508,8 @@ export class BubbleMenuView {
     });
   }
 
-  private updateElement(rect: PopupRect) {
-    if (!this.defaultElementRuntime) {
-      return;
-    }
-    this.defaultElementRuntime.update(this.createRenderProps(rect));
-  }
-
   private show(reference: PopupReference, rect: PopupRect) {
-    this.updateElement(rect);
+    this.renderRuntime.update(this.createRenderProps(rect));
     this.popup.show(reference, this.element);
     this.isVisible = true;
   }
@@ -611,6 +518,7 @@ export class BubbleMenuView {
     if (!this.isVisible) {
       return;
     }
+    this.renderRuntime.clear();
     this.popup.hide();
     this.isVisible = false;
   }
@@ -718,11 +626,11 @@ export class BubbleMenuView {
     }
     if (newOptions.className !== undefined) {
       this.className = newOptions.className;
-      if (this.defaultElementRuntime) {
-        this.element.className = this.className || "lumen-bubble-menu";
+      if (this.ownsElement) {
+        this.element.className = this.className || "";
       }
     }
-    if (newOptions.actions !== undefined && this.useDefaultRenderer) {
+    if (newOptions.actions !== undefined) {
       this.actions = normalizeActions(newOptions.actions);
     }
 
@@ -767,6 +675,7 @@ export class BubbleMenuView {
     this.editor.off("focus", this.focusHandler);
     this.editor.off("blur", this.blurHandler);
     this.editor.off("transaction", this.transactionHandler);
+    this.renderRuntime.destroy();
     this.popup.destroy();
   }
 }
