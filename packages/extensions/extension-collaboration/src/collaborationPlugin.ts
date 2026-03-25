@@ -16,6 +16,8 @@ export type CollaborationPluginTransactionMeta = {
   refresh?: boolean;
 };
 
+const CHANGE_SUMMARY_HINT_META = "lumenpageChangeSummaryHint";
+
 export type CollaborationPluginState = {
   binding: CollaborationBinding;
   fragment: Y.XmlFragment;
@@ -36,6 +38,53 @@ const createFallbackTransactor = () => ({
     fn();
   },
 });
+
+const resolveRootIndexFromEventTarget = (fragment: Y.XmlFragment, target: any) => {
+  let current = target;
+
+  while (current && current !== fragment) {
+    const item = current?._item ?? null;
+    const parent = item?.parent ?? null;
+    if (parent === fragment) {
+      let index = 0;
+      let probe = (fragment as any)._start ?? null;
+      while (probe && probe !== item) {
+        if (!probe.deleted && probe.countable) {
+          index += probe.length;
+        }
+        probe = probe.right;
+      }
+      return probe === item ? index : null;
+    }
+    current = parent;
+  }
+
+  return null;
+};
+
+const normalizeChangedRootIndices = (fragment: Y.XmlFragment, events: any[]) => {
+  const indices = new Set<number>();
+
+  for (const event of Array.isArray(events) ? events : []) {
+    const path = Array.isArray(event?.path) ? event.path : [];
+    const pathRootIndex = path.find((step) => Number.isFinite(step));
+    if (Number.isFinite(pathRootIndex)) {
+      indices.add(Number(pathRootIndex));
+      continue;
+    }
+
+    const targetRootIndex = resolveRootIndexFromEventTarget(fragment, event?.target);
+    if (Number.isFinite(targetRootIndex)) {
+      indices.add(Number(targetRootIndex));
+    }
+  }
+
+  if (indices.size === 0) {
+    return null;
+  }
+
+  return Array.from(indices.values()).sort((left, right) => left - right);
+};
 
 type CollaborationBindingOptions = {
   onFirstRender?: (() => void) | null;
@@ -145,7 +194,7 @@ export class CollaborationBinding {
     }
   }
 
-  private handleYjsUpdate(_events: any[], transaction: any) {
+  private handleYjsUpdate(events: any[], transaction: any) {
     if (!this.view || this.isDisabled?.() === true || transaction?.origin === this.localOrigin) {
       return;
     }
@@ -166,6 +215,8 @@ export class CollaborationBinding {
       return;
     }
 
+    const changedRootIndices = normalizeChangedRootIndices(this.fragment, events);
+
     let tr = state.tr
       .replaceWith(0, state.doc.content.size, nextDoc.content)
       .setMeta("addToHistory", false)
@@ -174,6 +225,12 @@ export class CollaborationBinding {
         isUndoRedoOperation: this.undoManager != null && transaction?.origin === this.undoManager,
         refresh: true,
       } satisfies CollaborationPluginTransactionMeta);
+
+    if (changedRootIndices?.length) {
+      tr = tr.setMeta(CHANGE_SUMMARY_HINT_META, {
+        rootIndices: changedRootIndices,
+      });
+    }
 
     try {
       const nextSelection = this.doc
@@ -269,3 +326,6 @@ export const createCollaborationPlugin = ({
       };
     },
   });
+
+
+

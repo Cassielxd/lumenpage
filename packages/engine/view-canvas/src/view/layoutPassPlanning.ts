@@ -89,8 +89,55 @@ export const findPageIndexForOffset = (layout: any, offset: number, layoutIndex:
   return layout.pages.length - 1;
 };
 
+const findPageIndexForChangedBlocks = (layout: any, changeSummary: any) => {
+  if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
+    return null;
+  }
+
+  const candidates = [
+    changeSummary?.blocks?.before?.fromIndex,
+    changeSummary?.blocks?.before?.toIndex,
+    changeSummary?.blocks?.after?.fromIndex,
+    changeSummary?.blocks?.after?.toIndex,
+  ].filter((value) => Number.isFinite(value)) as number[];
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const targetRootIndex = Math.max(0, Math.min(...candidates.map((value) => Number(value))));
+
+  for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
+    const page = layout.pages[pageIndex];
+    const rootIndexMax = Number.isFinite(page?.rootIndexMax) ? Number(page.rootIndexMax) : null;
+    if (rootIndexMax != null && rootIndexMax >= targetRootIndex) {
+      return pageIndex;
+    }
+  }
+
+  return null;
+};
+
+const isWholeDocumentChangeSummary = (changeSummary: any, doc: any) => {
+  if (changeSummary?.docChanged !== true || !doc?.childCount) {
+    return false;
+  }
+
+  const before = changeSummary?.blocks?.before || {};
+  const after = changeSummary?.blocks?.after || {};
+  const maxRootIndex = Math.max(0, Number(doc.childCount) - 1);
+
+  return (
+    Number(before.fromIndex) === 0 &&
+    Number(after.fromIndex) === 0 &&
+    Number(before.toIndex) >= maxRootIndex &&
+    Number(after.toIndex) >= maxRootIndex
+  );
+};
+
 export const resolveCascadePaginationPlan = ({
   prevLayout,
+  changeSummary,
   docChanged,
   incrementalEnabled,
   runForceFullPass,
@@ -101,6 +148,7 @@ export const resolveCascadePaginationPlan = ({
   getLayoutIndex,
 }: {
   prevLayout: any;
+  changeSummary: any;
   docChanged: boolean;
   incrementalEnabled: boolean;
   runForceFullPass: boolean;
@@ -113,16 +161,29 @@ export const resolveCascadePaginationPlan = ({
   let cascadeFromPageIndex: number | null = null;
   let useCascadePagination = false;
   if (prevLayout && docChanged && incrementalEnabled && !runForceFullPass) {
-    const headPos = editorState?.selection?.head;
-    const headOffset = Number.isFinite(headPos)
-      ? clampOffset(docPosToTextOffset(doc, Number(headPos)))
-      : null;
-    const prevLayoutIndex = getLayoutIndex?.() ?? null;
-    if (headOffset != null) {
-      const headPageIndex = findPageIndexForOffset(prevLayout, Number(headOffset), prevLayoutIndex);
-      if (Number.isFinite(headPageIndex)) {
-        cascadeFromPageIndex = Number(headPageIndex);
-        useCascadePagination = true;
+    if (isWholeDocumentChangeSummary(changeSummary, doc)) {
+      return {
+        cascadeFromPageIndex: null,
+        useCascadePagination: false,
+      };
+    }
+    const changedPageIndex = findPageIndexForChangedBlocks(prevLayout, changeSummary);
+    if (Number.isFinite(changedPageIndex)) {
+      cascadeFromPageIndex = Number(changedPageIndex);
+      useCascadePagination = true;
+    }
+    if (cascadeFromPageIndex === null) {
+      const headPos = editorState?.selection?.head;
+      const headOffset = Number.isFinite(headPos)
+        ? clampOffset(docPosToTextOffset(doc, Number(headPos)))
+        : null;
+      const prevLayoutIndex = getLayoutIndex?.() ?? null;
+      if (headOffset != null) {
+        const headPageIndex = findPageIndexForOffset(prevLayout, Number(headOffset), prevLayoutIndex);
+        if (Number.isFinite(headPageIndex)) {
+          cascadeFromPageIndex = Number(headPageIndex);
+          useCascadePagination = true;
+        }
       }
     }
     if (cascadeFromPageIndex === null) {

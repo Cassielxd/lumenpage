@@ -78,13 +78,14 @@ export const createLayoutPassCoordinator = ({
   const updateLayout = () => {
     const passStartedAt = now();
     const changeSummary = getPendingChangeSummary?.() ?? null;
+    const runForceFullPass = progressiveLayoutController.consumeForceFullPass();
     const nextPageWidth = resolvePageWidth?.();
     const layoutSettingsForPass = resolveLayoutSettingsForPass(layoutPipeline?.settings, nextPageWidth);
     const layoutSettingsSignature = getLayoutSettingsSignature(layoutSettingsForPass);
     const settingsChanged = layoutSettingsSignature !== lastLayoutSettingsSignature;
     const prevLayout = getLayout?.() ?? null;
 
-    if (prevLayout && !settingsChanged && changeSummary?.docChanged !== true) {
+    if (prevLayout && !settingsChanged && changeSummary?.docChanged !== true && !runForceFullPass) {
       clearPendingChangeSummary?.();
       clearPendingSteps?.();
       onSkipLayoutPass();
@@ -109,7 +110,6 @@ export const createLayoutPassCoordinator = ({
 
     const workerConfigIncremental = layoutPipeline?.settings?.paginationWorker?.incremental;
     const incrementalEnabled = workerConfigIncremental !== false;
-    const runForceFullPass = progressiveLayoutController.consumeForceFullPass();
     const settleDelayMs = Number.isFinite(workerConfigIncremental?.settleDelayMs)
       ? Math.max(120, Number(workerConfigIncremental?.settleDelayMs))
       : 120;
@@ -120,6 +120,7 @@ export const createLayoutPassCoordinator = ({
 
     const { cascadeFromPageIndex, useCascadePagination } = resolveCascadePaginationPlan({
       prevLayout,
+      changeSummary,
       docChanged,
       incrementalEnabled,
       runForceFullPass,
