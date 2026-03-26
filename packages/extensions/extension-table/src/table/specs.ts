@@ -249,6 +249,7 @@ const tableOffsetMapping = {
 export const tableNodeSpecs: Record<string, NodeSpec> = {
   table: {
     group: "block",
+    selectable: true,
     content: "tableRow+",
     attrs: {
       id: { default: null },
@@ -357,4 +358,3 @@ export const tableNodeSpecs: Record<string, NodeSpec> = {
     },
   },
 };
-

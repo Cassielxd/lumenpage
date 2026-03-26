@@ -5,7 +5,6 @@ import {
   focusEditor,
   getDocumentSnapshot,
   getParagraphDocPos,
-  getSelectionRange,
   openToolbarMenu,
   setDocumentJson,
   setParagraphDocument,
@@ -93,6 +92,30 @@ const buildTableDoc = () => ({
   ],
 });
 
+const buildTableBoundaryDeleteDoc = () => ({
+  type: "doc",
+  content: [
+    {
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            {
+              type: "tableCell",
+              content: [{ type: "paragraph", content: [{ type: "text", text: "A1" }] }],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: "paragraph",
+      content: [{ type: "text", text: "Paragraph after table" }],
+    },
+  ],
+});
+
 const selectFirstParagraphRange = async (page: Page, fromOffset: number, toOffset: number) => {
   const from = await getParagraphDocPos(page, 0, fromOffset);
   const to = await getParagraphDocPos(page, 0, toOffset);
@@ -111,6 +134,73 @@ const prepareTableCellSelection = async (page: Page) => {
   await focusEditor(page);
   await selectFirstParagraphRange(page, 0, 0);
 };
+
+const getSelectionTypeFromView = async (page: Page) =>
+  page.evaluate(() => {
+    const globalView = (globalThis as typeof globalThis & { __lumenView?: unknown }).__lumenView;
+    const app = document.querySelector("#app") as
+      | (Element & {
+          __vue_app__?: {
+            _instance?: {
+              setupState?: Record<string, unknown>;
+            };
+          };
+        })
+      | null;
+    const view = (globalView ?? app?.__vue_app__?._instance?.setupState?.view) as
+      | {
+          state?: {
+            selection?: {
+              toJSON?: () => { type?: string } | null;
+              constructor?: { name?: string };
+            };
+          };
+        }
+      | undefined;
+    const selection = view?.state?.selection;
+    if (!selection) {
+      return null;
+    }
+    const jsonType = selection.toJSON?.()?.type ?? null;
+    if (jsonType === "node") {
+      return "NodeSelection";
+    }
+    if (jsonType === "text") {
+      return "TextSelection";
+    }
+    if (jsonType === "all") {
+      return "AllSelection";
+    }
+    return selection.constructor?.name ?? null;
+  });
+
+test("backspace at paragraph start below table selects the table before joining", async ({
+  page,
+}) => {
+  const guards = attachConsoleGuards(page);
+
+  await page.goto("/", { waitUntil: "networkidle" });
+  await setDocumentJson(page, buildTableBoundaryDeleteDoc());
+  await waitForLayoutIdle(page);
+  await focusEditor(page);
+
+  const paragraphStart = await getParagraphDocPos(page, 1, 0);
+  expect(paragraphStart).not.toBeNull();
+  await setTextSelection(page, Number(paragraphStart), Number(paragraphStart));
+  await page.locator(".lumenpage-input").focus();
+
+  const beforeDoc = await getDocumentSnapshot(page);
+  await page.keyboard.press("Backspace");
+  await waitForLayoutIdle(page);
+
+  const selectionType = await getSelectionTypeFromView(page);
+  const afterDoc = await getDocumentSnapshot(page);
+
+  expect(selectionType).toBe("NodeSelection");
+  expect(afterDoc.json).toEqual(beforeDoc.json);
+
+  guards.assertClean();
+});
 
 const cases: AuditCase[] = [
   {
