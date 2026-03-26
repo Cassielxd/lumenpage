@@ -5,6 +5,12 @@
     "baseUrl": "../../..",
     "rootDir": "../../..",
     "paths": {
+      "lumenpage-core": [
+        "packages/core/core/src/index.ts"
+      ],
+      "lumenpage-commands": [
+        "packages/lp/commands/src/index.ts"
+      ],
       "lumenpage-inputrules": [
         "packages/lp/inputrules/src/index.ts"
       ],
@@ -22,6 +28,9 @@
       ],
       "lumenpage-state": [
         "packages/lp/state/src/index.ts"
+      ],
+      "lumenpage-transform": [
+        "packages/lp/transform/src/index.ts"
       ],
       "lumenpage-view-canvas": [
         "packages/engine/view-canvas/src/index.ts"

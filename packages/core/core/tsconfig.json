@@ -1,6 +1,18 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "lumenpage-commands": [
+        "../../lp/commands/dist/index.d.ts"
+      ],
+      "lumenpage-core": [
+        "src/index.ts"
+      ],
+      "lumenpage-transform": [
+        "../../lp/transform/dist/index.d.ts"
+      ]
+    },
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
@@ -10,6 +22,9 @@
     "src/**/*"
   ],
   "references": [
+    {
+      "path": "../../lp/commands"
+    },
     {
       "path": "../../lp/inputrules"
     },
@@ -24,6 +39,9 @@
     },
     {
       "path": "../../lp/state"
+    },
+    {
+      "path": "../../lp/transform"
     },
     {
       "path": "../../engine/view-canvas"

@@ -1,6 +1,7 @@
 import type { PlaygroundLocale } from "../i18n";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
 type SetPageBackgroundColor = (color: string | null) => boolean;
 type SetTableCellBackgroundColor = (color: string | null) => boolean;
 
@@ -61,22 +62,27 @@ export const getToolbarColorDialogTitle = (action: ToolbarColorAction, locale: P
 export const applyToolbarColorAction = ({
   action,
   color,
-  run,
+  getEditorCommands,
   setPageBackgroundColor,
   setTableCellBackgroundColor,
 }: {
   action: ToolbarColorAction;
   color: string | null;
-  run: RunCommand;
+  getEditorCommands: GetEditorCommandMap;
   setPageBackgroundColor: SetPageBackgroundColor;
   setTableCellBackgroundColor: SetTableCellBackgroundColor;
 }) => {
   const nextColor = normalizeColor(color);
+  const commands = getEditorCommands();
   if (action === "color") {
-    return nextColor ? run("setTextColor", nextColor) : run("clearTextColor");
+    return nextColor
+      ? invokeCommand(commands?.setTextColor, nextColor)
+      : invokeCommand(commands?.clearTextColor);
   }
   if (action === "background-color" || action === "highlight") {
-    return nextColor ? run("setTextBackground", nextColor) : run("clearTextBackground");
+    return nextColor
+      ? invokeCommand(commands?.setTextBackground, nextColor)
+      : invokeCommand(commands?.clearTextBackground);
   }
   if (action === "page-background") {
     return setPageBackgroundColor(nextColor);

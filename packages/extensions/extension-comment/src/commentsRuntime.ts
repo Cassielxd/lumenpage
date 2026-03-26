@@ -7,6 +7,17 @@ import {
   type CommentsOptions,
 } from "./types";
 
+type CommentCommandMethods<ReturnType> = {
+  activateCommentThread: (threadId: string | null) => ReturnType;
+  refreshComments: () => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    commentsRuntime: CommentCommandMethods<ReturnType>;
+  }
+}
+
 const createActivateCommentThreadCommand =
   (threadId: string | null) =>
   (state: any, dispatch?: (tr: any) => void) => {

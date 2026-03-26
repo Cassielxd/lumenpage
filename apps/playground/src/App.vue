@@ -36,7 +36,7 @@
     </t-header>
 
     <EditorMenuBar :editorView="view" :locale="debugFlags.locale" />
-    <EditorToolbar ref="toolbarRef" :editorView="view" :locale="debugFlags.locale" />
+    <EditorToolbar ref="toolbarRef" :editor="editor" :editorView="view" :locale="debugFlags.locale" />
 
   <t-content class="editor-area">
     <div ref="editorHost" class="editor-host"></div>
@@ -51,6 +51,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, type Ref } from "vue";
+import type { Editor as LumenEditor } from "lumenpage-core";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { applyLumenDevTools } from "lumenpage-dev-tools";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
@@ -72,6 +73,7 @@ const docTitle = ref(
 const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
+const editor = shallowRef<LumenEditor | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
 const tableDebugPanel = ref<HTMLElement | null>(null);
 const debugTablePagination = debugFlags.debugTablePagination;
@@ -127,6 +129,7 @@ onMounted(async () => {
       collaborationState.value = state;
     },
   });
+  editor.value = mounted.editor;
   view.value = mounted.view;
   if (debugFlags.enableDevTools && mounted.view) {
     detachDevTools = applyLumenDevTools(mounted.view, {
@@ -141,6 +144,7 @@ onBeforeUnmount(() => {
   detachDevTools = null;
   detachEditor?.();
   detachEditor = null;
+  editor.value = null;
   view.value = null;
 });
 </script>

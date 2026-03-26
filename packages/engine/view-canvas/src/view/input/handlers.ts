@@ -1,10 +1,6 @@
 export const createInputHandlers = ({
   getEditorState,
   dispatchTransaction,
-  runCommand,
-  basicCommands,
-  runKeymap,
-  enableBuiltInKeyFallback = true,
   insertText,
   insertTextWithBreaks,
   deleteText,
@@ -32,6 +28,12 @@ export const createInputHandlers = ({
   let lastCompositionCommitText = "";
   let lastCompositionCommitAt = 0;
   let lastEnterHandledAt = 0;
+  let lastDeleteHandledAt = 0;
+  let lastDeleteRequestedAt = 0;
+  let lastDeleteDirection = null;
+  let deleteBurstCount = 0;
+  let lastRepeatedDeleteKeyAt = 0;
+  let lastRepeatedDeleteDirection = null;
   const markCompositionCommit = (text) => {
     if (!text) {
       return;
@@ -51,19 +53,87 @@ export const createInputHandlers = ({
 
   const runTextInputHandler = (from, to, text, deflt) =>
     !!editorHandlers?.handleTextInput?.(from, to, text, deflt);
-  const runUndo = () => {
-    runCommand(basicCommands.undo, getEditorState(), dispatchTransaction);
-  };
-
-  const runRedo = () => {
-    runCommand(basicCommands.redo, getEditorState(), dispatchTransaction);
-  };
   const markEnterHandled = (source) => {
     void source;
     lastEnterHandledAt = Date.now();
   };
   const wasEnterHandledRecently = () => Date.now() - lastEnterHandledAt <= 120;
-  const runEnterCommand = (state) => runCommand(basicCommands.enter, state, dispatchTransaction);
+  const markDeleteHandled = (source) => {
+    void source;
+    lastDeleteHandledAt = Date.now();
+  };
+  const wasDeleteHandledRecently = () => Date.now() - lastDeleteHandledAt <= 120;
+  const markRepeatedDeleteKey = (direction) => {
+    lastRepeatedDeleteKeyAt = Date.now();
+    lastRepeatedDeleteDirection = direction;
+  };
+  const wasRepeatedDeleteKeyRecently = (direction) =>
+    lastRepeatedDeleteDirection === direction && Date.now() - lastRepeatedDeleteKeyAt <= 96;
+  const resolveDeleteDirection = (inputType) =>
+    String(inputType || "").toLowerCase().includes("backward") ? "backward" : "forward";
+  const resolveDeleteBurstAmount = (direction, repeated = false) => {
+    const now = Date.now();
+    const sameBurst = lastDeleteDirection === direction && now - lastDeleteRequestedAt <= 72;
+    deleteBurstCount = sameBurst ? deleteBurstCount + 1 : 1;
+    lastDeleteDirection = direction;
+    lastDeleteRequestedAt = now;
+
+    if (!(repeated || deleteBurstCount >= 3)) {
+      return 1;
+    }
+    if (deleteBurstCount >= 12) {
+      return 6;
+    }
+    if (deleteBurstCount >= 6) {
+      return 4;
+    }
+    return 2;
+  };
+  const applyDeleteFallback = (direction, amount = 1) => {
+    const state = getEditorState();
+    const selection = state?.selection;
+    if (!state?.tr || !selection) {
+      return false;
+    }
+    if (!selection.empty) {
+      setPendingPreferredUpdate(true);
+      dispatchTransaction(state.tr.deleteSelection());
+      return true;
+    }
+
+    if (direction === "backward") {
+      const parent = selection.$from?.parent;
+      const parentOffset = Number(selection.$from?.parentOffset);
+      if (!Number.isFinite(parentOffset) || parentOffset <= 0 || selection.from <= 0) {
+        return false;
+      }
+      const deleteCount =
+        parent?.isTextblock === true
+          ? Math.max(1, Math.min(Math.round(amount), parentOffset))
+          : 1;
+      setPendingPreferredUpdate(true);
+      dispatchTransaction(state.tr.delete(selection.from - deleteCount, selection.from));
+      return true;
+    }
+
+    const parent = selection.$to?.parent;
+    const parentContentSize = Number(selection.$to?.parent?.content?.size);
+    const parentOffset = Number(selection.$to?.parentOffset);
+    if (
+      !Number.isFinite(parentOffset) ||
+      !Number.isFinite(parentContentSize) ||
+      parentOffset >= parentContentSize
+    ) {
+      return false;
+    }
+    const deleteCount =
+      parent?.isTextblock === true
+        ? Math.max(1, Math.min(Math.round(amount), parentContentSize - parentOffset))
+        : 1;
+    setPendingPreferredUpdate(true);
+    dispatchTransaction(state.tr.delete(selection.to, selection.to + deleteCount));
+    return true;
+  };
 
   const handleBeforeInput = (event) => {
     if (isReadOnly()) {
@@ -154,18 +224,11 @@ export const createInputHandlers = ({
         break;
       case "insertLineBreak":
       case "insertParagraph":
-        {
-          const state = getEditorState();
-          if (wasEnterHandledRecently()) {
-            event.preventDefault();
-            return;
-          }
-          const handled = runEnterCommand(state);
+        if (wasEnterHandledRecently()) {
           event.preventDefault();
-          if (!handled) {
-            insertText("\n");
-          }
+          return;
         }
+        event.preventDefault();
         break;
       case "insertFromPaste":
       case "insertFromDrop":
@@ -173,17 +236,27 @@ export const createInputHandlers = ({
         event.preventDefault();
         break;
       case "historyUndo":
-        event.preventDefault();
-        runUndo();
-        break;
       case "historyRedo":
         event.preventDefault();
-        runRedo();
         break;
       default:
         if (event.inputType && event.inputType.startsWith("delete")) {
+          if (wasDeleteHandledRecently()) {
+            event.preventDefault();
+            return;
+          }
+          const direction = resolveDeleteDirection(event.inputType);
+          const burstAmount = resolveDeleteBurstAmount(
+            direction,
+            wasRepeatedDeleteKeyRecently(direction)
+          );
+          const handled =
+            (typeof deleteText === "function" && deleteText(direction, burstAmount) !== false) ||
+            applyDeleteFallback(direction, burstAmount);
+          if (handled) {
+            markDeleteHandled("beforeinput");
+          }
           event.preventDefault();
-          deleteText(event.inputType === "deleteContentForward" ? "forward" : "backward");
         }
         break;
     }
@@ -211,9 +284,18 @@ export const createInputHandlers = ({
     if (event.defaultPrevented) {
       return;
     }
+    if (event?.key === "Backspace" || event?.key === "Delete") {
+      const direction = event.key === "Backspace" ? "backward" : "forward";
+      if (event.repeat === true) {
+        markRepeatedDeleteKey(direction);
+      }
+    }
     if (editorHandlers?.handleKeyDown?.(event)) {
       if (event?.key === "Enter") {
         markEnterHandled("editor-handlers");
+      }
+      if (event?.key === "Backspace" || event?.key === "Delete") {
+        markDeleteHandled("editor-handlers");
       }
       event.preventDefault();
       return;
@@ -222,47 +304,7 @@ export const createInputHandlers = ({
       return;
     }
     // 先走外部 keymap（PM 风格），未命中时再回退到内置按键行为。
-    if (typeof runKeymap === "function" && runKeymap(event)) {
-      if (event.key === "Enter") {
-        markEnterHandled("keydown:keymap");
-      }
-      event.preventDefault();
-      return;
-    }
-
-    if (enableBuiltInKeyFallback === false) {
-      return;
-    }
-
     const metaKey = event.ctrlKey || event.metaKey;
-
-    if (metaKey && !event.altKey) {
-      const key = (event.key || "").toLowerCase();
-      if (key === "z") {
-        event.preventDefault();
-        if (event.shiftKey) {
-          runRedo();
-        } else {
-          runUndo();
-        }
-        return;
-      }
-      if (key === "y") {
-        event.preventDefault();
-        runRedo();
-        return;
-      }
-    }
-    if (!metaKey && !event.altKey && event.key === "Enter") {
-      event.preventDefault();
-      markEnterHandled("keydown");
-      const state = getEditorState();
-      const handled = runEnterCommand(state);
-      if (!handled) {
-        insertText("\n");
-      }
-      return;
-    }
 
     switch (event.key) {
       case "ArrowLeft": {
@@ -331,15 +373,29 @@ export const createInputHandlers = ({
 
     if (!supportsBeforeInput && !metaKey && !event.altKey) {
       if (event.key === "Backspace") {
+        const burstAmount = resolveDeleteBurstAmount("backward", event.repeat === true);
+        if (
+          (typeof deleteText === "function" && deleteText("backward", burstAmount) !== false) ||
+          applyDeleteFallback("backward", burstAmount)
+        ) {
+          markDeleteHandled("keydown-fallback");
+        }
         event.preventDefault();
-        deleteText("backward");
         return;
       }
-
       if (event.key === "Delete") {
+        const burstAmount = resolveDeleteBurstAmount("forward", event.repeat === true);
+        if (
+          (typeof deleteText === "function" && deleteText("forward", burstAmount) !== false) ||
+          applyDeleteFallback("forward", burstAmount)
+        ) {
+          markDeleteHandled("keydown-fallback");
+        }
         event.preventDefault();
-        deleteText("forward");
         return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
       }
     }
   };

@@ -5,8 +5,23 @@ import { textBoxNodeSpec } from "./textBox";
 export { textBoxNodeSpec, serializeTextBoxToText } from "./textBox";
 export { textBoxRenderer } from "./renderer";
 
+type InsertTextBoxOptions = {
+  title?: string;
+  text: string;
+};
+
+type TextBoxCommandMethods<ReturnType> = {
+  insertTextBox: (attrs: InsertTextBoxOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    textBox: TextBoxCommandMethods<ReturnType>;
+  }
+}
+
 const insertTextBoxCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertTextBoxOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.textBox;
     if (!type) {
@@ -38,7 +53,7 @@ export const TextBox = Node.create({
   },
   addCommands() {
     return {
-      insertTextBox: (attrs?: Record<string, unknown>) => insertTextBoxCommand(attrs),
+      insertTextBox: (attrs: InsertTextBoxOptions) => insertTextBoxCommand(attrs),
     };
   },
   canvas() {

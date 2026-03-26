@@ -1,102 +1,212 @@
-import type { CanvasViewConfig } from "../canvasConfig";
+import type { DOMParser as PMDOMParser, Node as PMNode, ResolvedPos, Slice } from "lumenpage-model";
+import type { EditorState, Selection, Transaction } from "lumenpage-state";
 
-export type CanvasCommands = {
-  basicCommands?: Record<string, any>;
-  runCommand?: (command: any, state: any, dispatch: any, view?: any) => boolean;
-  setBlockAlign?: (...args: any[]) => any;
-  keymap?: Record<string, any>;
-  fallbackKeyHandling?: boolean;
-  viewCommands?: Record<string, any>;
-};
+import type { CanvasViewConfig } from "../canvasConfig";
+import type { CanvasEditorView } from "../editorView";
+import type { CanvasDecoration, DecorationSet } from "../decorations";
+import type { NodeViewFactory } from "../nodeView";
+
+export type CanvasEditorViewHandle = CanvasEditorView;
 
 export type NodeSelectionTargetArgs = {
-  node: any;
+  node: PMNode;
   pos: number;
-  hit?: any;
+  hit?: unknown;
   event?: Event | null;
 };
 
-export type HookArgsWithoutView<T> = T extends (view: any, ...args: infer A) => any ? A : any[];
-export type HookReturn<T> = T extends (...args: any[]) => infer R ? R : T;
+export type CanvasViewAttributes = Record<string, unknown>;
+export type CanvasSelectionRange = {
+  from: number;
+  to: number;
+};
+export type CanvasSelectionRect = {
+  left?: number;
+  top?: number;
+  right?: number;
+  bottom?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  borderOnly?: boolean;
+  [key: string]: unknown;
+};
+export type CanvasSelectionGeometryDecisionContext = {
+  editorState: EditorState;
+  selection: CanvasSelectionRange;
+};
+export type CanvasSelectionGeometryResolveContext = CanvasSelectionGeometryDecisionContext & {
+  layout: unknown;
+  scrollTop: number;
+  viewportWidth: number;
+  layoutIndex: unknown;
+  docPosToTextOffset: (doc: PMNode, pos: number) => number;
+};
+export type CanvasTableCellSelectionRectsResolver = (
+  ctx: CanvasSelectionGeometryResolveContext & {
+    doc: PMNode;
+    selection: Selection;
+  }
+) => CanvasSelectionRect[] | null | undefined;
+export type CanvasTableRangeSelectionRectsResolver = (
+  ctx: Omit<CanvasSelectionGeometryResolveContext, "selection"> & {
+    fromOffset: number;
+    toOffset: number;
+  }
+) => CanvasSelectionRect[] | null | undefined;
+export type CanvasSelectionGeometry = {
+  shouldComputeSelectionRects?: (ctx: CanvasSelectionGeometryDecisionContext) => boolean;
+  shouldRenderBorderOnly?: (ctx: CanvasSelectionGeometryDecisionContext) => boolean;
+  resolveSelectionRects?: (
+    ctx: CanvasSelectionGeometryResolveContext
+  ) => CanvasSelectionRect[] | null | undefined;
+  tableCellSelectionToRects?: CanvasTableCellSelectionRectsResolver;
+  tableRangeSelectionToCellRects?: CanvasTableRangeSelectionRectsResolver;
+};
+export type CanvasSelectionGeometryProp =
+  | CanvasSelectionGeometry
+  | ((view: CanvasEditorViewHandle) => CanvasSelectionGeometry | null | undefined);
+
+export type CanvasDecorations = DecorationSet | CanvasDecoration[];
+export type CanvasClipboardSerializer = {
+  serializeFragment: (fragment: PMNode["content"]) => Node;
+};
+export type CanvasClipboardParser = {
+  parseSlice: (content: ParentNode | globalThis.Node | unknown) => Slice | null | undefined;
+};
+export type CanvasSelectionFactory = (
+  view: CanvasEditorViewHandle,
+  anchor: ResolvedPos,
+  head: ResolvedPos
+) => Selection | null | undefined;
+export type CanvasStateChangeSelection = {
+  from: number;
+  to: number;
+  anchor: number;
+  head: number;
+};
+export type CanvasStateChangeEvent = {
+  transaction: Transaction;
+  state: EditorState;
+  oldState?: EditorState;
+  transactions: Transaction[];
+  appendedTransactions: Transaction[];
+  source: string;
+  docChanged: boolean;
+  selectionChanged: boolean;
+  steps: unknown[];
+  selection: CanvasStateChangeSelection | null;
+  summary: unknown;
+  timestamp: number;
+};
+export type CanvasAutoAdvanceArgs = {
+  prevState: EditorState;
+  nextState: EditorState;
+  prevHead: number;
+};
+
+export type HookArgsWithoutView<T> = T extends (view: CanvasEditorViewHandle, ...args: infer A) => unknown
+  ? A
+  : [];
+export type HookReturn<T> = T extends (...args: unknown[]) => infer R ? R : T;
 
 export type CanvasEditorViewProps = {
-  state: any;
+  state: EditorState;
   canvasViewConfig?: CanvasViewConfig;
-  commands?: CanvasCommands | null;
-  dispatchTransaction?: (tr: any) => void;
-  editable?: boolean | ((view: any) => boolean);
-  attributes?: Record<string, any> | ((state: any) => Record<string, any>);
+  dispatchTransaction?: (tr: Transaction) => void;
+  editable?: boolean | ((view: CanvasEditorViewHandle) => boolean);
+  attributes?: CanvasViewAttributes | ((state: EditorState) => CanvasViewAttributes);
   formatStatusText?: (
-    view: any,
+    view: CanvasEditorViewHandle,
     args: { pageCount: number; focused: "typing" | "idle"; inputFocused: boolean }
   ) => string | null;
   onBeforeTransaction?: (
-    view: any,
-    args: { transaction: any; nextState: any }
+    view: CanvasEditorViewHandle,
+    args: { transaction: Transaction; nextState: EditorState }
   ) => void;
-  onChange?: (view: any, event: any) => void;
+  onChange?: (view: CanvasEditorViewHandle, event: CanvasStateChangeEvent) => void;
   nodeSelectionTypes?: string[];
-  isNodeSelectionTarget?: (view: any, args: NodeSelectionTargetArgs) => boolean | null;
-  isInSpecialStructureAtPos?: (view: any, state: any, pos: number) => boolean;
-  shouldAutoAdvanceAfterEnter?: (view: any, args: any) => boolean | null;
-  getText?: (view: any, doc: any) => string;
-  getTextLength?: (view: any, doc: any) => number;
-  parseHtmlToSlice?: (view: any, html: string) => any;
-  transformCopied?: (view: any, slice: any) => any;
-  transformCopiedHTML?: (view: any, html: string, slice: any) => string;
-  transformPasted?: (view: any, slice: any) => any;
-  transformPastedText?: (view: any, text: string, plain: boolean) => string;
-  transformPastedHTML?: (view: any, html: string) => string;
-  clipboardTextSerializer?: (view: any, slice: any) => string | null;
-  clipboardTextParser?: (view: any, text: string, context: any, plain: boolean) => any;
-  clipboardSerializer?: any;
-  clipboardParser?: any;
-  domParser?: any;
-  createSelectionBetween?: (view: any, anchor: any, head: any) => any;
-  selectionGeometry?: (view: any, args: any) => any;
-  handleBeforeInput?: (view: any, event: InputEvent) => boolean;
-  handleInput?: (view: any, event: InputEvent) => boolean;
-  handleKeyDown?: (view: any, event: KeyboardEvent) => boolean;
-  handleKeyPress?: (view: any, event: KeyboardEvent) => boolean;
-  handleTextInput?: (view: any, from: number, to: number, text: string, deflt: any) => boolean;
-  handleCompositionStart?: (view: any, event: CompositionEvent) => boolean;
-  handleCompositionUpdate?: (view: any, event: CompositionEvent) => boolean;
-  handleCompositionEnd?: (view: any, event: CompositionEvent) => boolean;
-  handlePaste?: (view: any, event: ClipboardEvent, slice: any) => boolean;
-  handleDrop?: (view: any, event: DragEvent, slice: any, moved: boolean) => boolean;
-  handleCopy?: (view: any, event: ClipboardEvent) => boolean;
-  handleCut?: (view: any, event: ClipboardEvent) => boolean;
+  isNodeSelectionTarget?: (view: CanvasEditorViewHandle, args: NodeSelectionTargetArgs) => boolean | null;
+  isInSpecialStructureAtPos?: (view: CanvasEditorViewHandle, state: EditorState, pos: number) => boolean;
+  shouldAutoAdvanceAfterEnter?: (
+    view: CanvasEditorViewHandle,
+    args: CanvasAutoAdvanceArgs
+  ) => boolean | null;
+  getText?: (view: CanvasEditorViewHandle, doc: PMNode) => string;
+  getTextLength?: (view: CanvasEditorViewHandle, doc: PMNode) => number;
+  parseHtmlToSlice?: (view: CanvasEditorViewHandle, html: string) => Slice | null | undefined;
+  transformCopied?: (view: CanvasEditorViewHandle, slice: Slice) => Slice | null | undefined;
+  transformCopiedHTML?: (view: CanvasEditorViewHandle, html: string, slice?: Slice) => string;
+  transformPasted?: (view: CanvasEditorViewHandle, slice: Slice) => Slice | null | undefined;
+  transformPastedText?: (view: CanvasEditorViewHandle, text: string, plain: boolean) => string;
+  transformPastedHTML?: (view: CanvasEditorViewHandle, html: string) => string;
+  clipboardTextSerializer?: (view: CanvasEditorViewHandle, slice: Slice) => string | null;
+  clipboardTextParser?: (
+    view: CanvasEditorViewHandle,
+    text: string,
+    context: ResolvedPos | null | undefined,
+    plain: boolean
+  ) => Slice | null | undefined;
+  clipboardSerializer?: CanvasClipboardSerializer | null;
+  clipboardParser?: CanvasClipboardParser | null;
+  domParser?: Pick<PMDOMParser, "parseSlice"> | null;
+  createSelectionBetween?: CanvasSelectionFactory;
+  selectionGeometry?: CanvasSelectionGeometryProp;
+  handleBeforeInput?: (view: CanvasEditorViewHandle, event: InputEvent) => boolean;
+  handleInput?: (view: CanvasEditorViewHandle, event: InputEvent) => boolean;
+  handleKeyDown?: (view: CanvasEditorViewHandle, event: KeyboardEvent) => boolean;
+  handleKeyPress?: (view: CanvasEditorViewHandle, event: KeyboardEvent) => boolean;
+  handleTextInput?: (
+    view: CanvasEditorViewHandle,
+    from: number,
+    to: number,
+    text: string,
+    deflt: () => boolean
+  ) => boolean;
+  handleCompositionStart?: (view: CanvasEditorViewHandle, event: CompositionEvent) => boolean;
+  handleCompositionUpdate?: (view: CanvasEditorViewHandle, event: CompositionEvent) => boolean;
+  handleCompositionEnd?: (view: CanvasEditorViewHandle, event: CompositionEvent) => boolean;
+  handlePaste?: (view: CanvasEditorViewHandle, event: ClipboardEvent, slice: Slice) => boolean;
+  handleDrop?: (
+    view: CanvasEditorViewHandle,
+    event: DragEvent,
+    slice: Slice,
+    moved: boolean
+  ) => boolean;
+  handleCopy?: (view: CanvasEditorViewHandle, event: ClipboardEvent) => boolean;
+  handleCut?: (view: CanvasEditorViewHandle, event: ClipboardEvent) => boolean;
   handleClickOn?: (
-    view: any,
+    view: CanvasEditorViewHandle,
     pos: number,
-    node: any,
+    node: PMNode,
     nodePos: number,
     event: MouseEvent,
     direct: boolean
   ) => boolean;
-  handleClick?: (view: any, pos: number, event: MouseEvent) => boolean;
+  handleClick?: (view: CanvasEditorViewHandle, pos: number, event: MouseEvent) => boolean;
   handleDoubleClickOn?: (
-    view: any,
+    view: CanvasEditorViewHandle,
     pos: number,
-    node: any,
+    node: PMNode,
     nodePos: number,
     event: MouseEvent,
     direct: boolean
   ) => boolean;
-  handleDoubleClick?: (view: any, pos: number, event: MouseEvent) => boolean;
+  handleDoubleClick?: (view: CanvasEditorViewHandle, pos: number, event: MouseEvent) => boolean;
   handleTripleClickOn?: (
-    view: any,
+    view: CanvasEditorViewHandle,
     pos: number,
-    node: any,
+    node: PMNode,
     nodePos: number,
     event: MouseEvent,
     direct: boolean
   ) => boolean;
-  handleTripleClick?: (view: any, pos: number, event: MouseEvent) => boolean;
-  decorations?: (state: any) => any;
-  nodeViews?: Record<string, any>;
-  handleDOMEvents?: Record<string, (view: any, event: Event) => boolean>;
-  [key: string]: any;
+  handleTripleClick?: (view: CanvasEditorViewHandle, pos: number, event: MouseEvent) => boolean;
+  decorations?: CanvasDecorations | ((state: EditorState) => CanvasDecorations | null | undefined);
+  nodeViews?: Record<string, NodeViewFactory>;
+  handleDOMEvents?: Record<string, (view: CanvasEditorViewHandle, event: Event) => boolean>;
+  [key: string]: unknown;
 };
 
 export type QueryEditorProp = <K extends keyof CanvasEditorViewProps & string>(

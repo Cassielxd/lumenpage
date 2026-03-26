@@ -6,6 +6,17 @@ import {
   type CommentAnchorAttrs,
 } from "./types";
 
+type CommentAnchorCommandMethods<ReturnType> = {
+  setCommentAnchor: (attrs?: Partial<CommentAnchorAttrs>) => ReturnType;
+  unsetCommentAnchor: (threadId?: string | null) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    commentAnchor: CommentAnchorCommandMethods<ReturnType>;
+  }
+}
+
 export type CommentAnchorRange = CommentAnchorAttrs & {
   from: number;
   to: number;

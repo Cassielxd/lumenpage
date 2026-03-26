@@ -3,9 +3,10 @@ import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import type { RequestToolbarSignatureDialog } from "./ui/signatureDialog";
 import { resolveImageInsertAttrs } from "./mediaDimensions";
 import { showToolbarMessage } from "./ui/message";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
 type GetView = () => any;
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
 
 type ChineseCaseMode = "lower" | "upper";
 
@@ -286,13 +287,13 @@ const convertNumberToChineseCase = (value: string, mode: ChineseCaseMode) => {
 
 export const createToolsActions = ({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey,
   requestInputDialog,
   requestSignatureDialog,
 }: {
   getView: GetView;
-  run: RunCommand;
+  getEditorCommands: GetEditorCommandMap;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
   requestSignatureDialog: RequestToolbarSignatureDialog;
@@ -344,7 +345,7 @@ export const createToolsActions = ({
     const src = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
       content
     )}`;
-            const inserted = run("insertImage", {
+    const inserted = invokeCommand(getEditorCommands()?.insertImage, {
       src,
       alt: `QR: ${content.slice(0, 32)}`,
       width: 256,
@@ -368,7 +369,7 @@ export const createToolsActions = ({
       return false;
     }
     const src = `https://bwipjs-api.metafloor.com/?bcid=code128&text=${encodeURIComponent(content)}`;
-            const inserted = run("insertImage", {
+    const inserted = invokeCommand(getEditorCommands()?.insertImage, {
       src,
       alt: `BARCODE: ${content.slice(0, 32)}`,
       width: 360,
@@ -388,7 +389,7 @@ export const createToolsActions = ({
     if (!result) {
       return false;
     }
-    if (run("insertSignature", result)) {
+    if (invokeCommand(getEditorCommands()?.insertSignature, result)) {
       return true;
     }
     return insertText(getView, `[${texts.labelSignature}] ${result.signer} (${result.signedAt})`);
@@ -406,7 +407,7 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
-    if (run("insertEmbedPanel", { kind: "diagram", title: "Diagram", source })) {
+    if (invokeCommand(getEditorCommands()?.insertEmbedPanel, { kind: "diagram", title: "Diagram", source })) {
       return true;
     }
     return insertCodeBlock(getView, source);
@@ -424,7 +425,7 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
-    if (run("insertEmbedPanel", { kind: "echarts", title: "ECharts", source })) {
+    if (invokeCommand(getEditorCommands()?.insertEmbedPanel, { kind: "echarts", title: "ECharts", source })) {
       return true;
     }
     return insertCodeBlock(getView, source);
@@ -442,7 +443,7 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
-    if (run("insertEmbedPanel", { kind: "mermaid", title: "Mermaid", source })) {
+    if (invokeCommand(getEditorCommands()?.insertEmbedPanel, { kind: "mermaid", title: "Mermaid", source })) {
       return true;
     }
     return insertCodeBlock(getView, source);
@@ -460,7 +461,7 @@ export const createToolsActions = ({
     if (!source) {
       return false;
     }
-    if (run("insertEmbedPanel", { kind: "mindMap", title: "Mind Map", source })) {
+    if (invokeCommand(getEditorCommands()?.insertEmbedPanel, { kind: "mindMap", title: "Mind Map", source })) {
       return true;
     }
     return insertCodeBlock(getView, source);

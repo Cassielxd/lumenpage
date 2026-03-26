@@ -1,10 +1,12 @@
+import type { EditorState, Transaction } from "lumenpage-state";
+
 export const createChainableState = ({
   state,
   transaction,
 }: {
-  state: any;
-  transaction: any;
-}) => {
+  state: EditorState;
+  transaction: Transaction;
+}): EditorState => {
   let { selection } = transaction;
   let { doc } = transaction;
   let { storedMarks } = transaction;
@@ -32,5 +34,5 @@ export const createChainableState = ({
       storedMarks = transaction.storedMarks;
       return transaction;
     },
-  };
+  } as EditorState;
 };

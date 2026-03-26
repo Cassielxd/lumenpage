@@ -1,8 +1,8 @@
 import { computed, nextTick, ref } from "vue";
 import type { ToolbarItemConfig } from "../toolbarCatalog";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
-type CanRunCommand = (name: string, ...args: unknown[]) => boolean;
 type GetView = () => any;
 
 type MaybeElementRef = HTMLElement | HTMLElement[] | null;
@@ -79,13 +79,13 @@ const resolveTypographyClass = (value: HeadingInlineValue) => {
 
 export const createHeadingInlineActions = ({
   getView,
-  run,
-  canRun,
+  getEditorCommands,
+  getEditorCanCommands,
   resolveOptionLabel,
 }: {
   getView: GetView;
-  run: RunCommand;
-  canRun: CanRunCommand;
+  getEditorCommands: GetEditorCommandMap;
+  getEditorCanCommands: GetEditorCommandMap;
   resolveOptionLabel: (value: HeadingInlineValue) => string;
 }) => {
   const headingValue = ref<HeadingInlineValue>("paragraph");
@@ -103,25 +103,27 @@ export const createHeadingInlineActions = ({
   const hasHeadingInlineOverflow = computed(() => headingInlineOverflowOptions.value.length > 0);
 
   const canApplyHeadingInlineValue = (value: HeadingInlineValue) => {
+    const commands = getEditorCanCommands();
     if (value === "paragraph") {
-      return canRun("setBlockType", "paragraph");
+      return invokeCommand(commands?.setParagraph);
     }
     const level = Number(value);
     if (!Number.isFinite(level)) {
       return false;
     }
-    return canRun("setBlockType", "heading", level);
+    return invokeCommand(commands?.setHeading, level);
   };
 
   const applyHeadingInlineValue = (value: HeadingInlineValue) => {
+    const commands = getEditorCommands();
     if (value === "paragraph") {
-      return run("setBlockType", "paragraph");
+      return invokeCommand(commands?.setParagraph);
     }
     const level = Number(value);
     if (!Number.isFinite(level)) {
       return false;
     }
-    return run("setBlockType", "heading", level);
+    return invokeCommand(commands?.setHeading, level);
   };
 
   const isHeadingInlineOptionActive = (value: HeadingInlineValue) =>

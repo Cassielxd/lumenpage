@@ -1,14 +1,16 @@
 import type { ToolbarActionContext, ToolbarHandlerRecord } from "./types";
 import { showToolbarMessage } from "../ui/message";
+import { invokeCommand } from "../commandUtils";
 
 export const createTableActionHandlers = ({
-  runWithNotice,
+  getEditorCommands,
+  notifyCommandFailure,
   getToolbarTexts,
   layoutActions,
   tableActions,
 }: ToolbarActionContext): ToolbarHandlerRecord => {
-  const withTableCellNotice = (name: string) =>
-    runWithNotice(name, getToolbarTexts().alertTableCellRequired);
+  const withTableCellNotice = (ok: boolean) =>
+    notifyCommandFailure(ok, getToolbarTexts().alertTableCellRequired);
 
   return {
     "table-fix": () => {
@@ -18,34 +20,40 @@ export const createTableActionHandlers = ({
       tableActions.applyCellAlignmentSetting();
     },
     "add-row-after": () => {
-      withTableCellNotice("addTableRowAfter");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.addTableRowAfter));
     },
     "add-row-before": () => {
-      withTableCellNotice("addTableRowBefore");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.addTableRowBefore));
     },
     "add-column-after": () => {
-      withTableCellNotice("addTableColumnAfter");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.addTableColumnAfter));
     },
     "add-column-before": () => {
-      withTableCellNotice("addTableColumnBefore");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.addTableColumnBefore));
     },
     "delete-row": () => {
-      withTableCellNotice("deleteTableRow");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.deleteTableRow));
     },
     "delete-column": () => {
-      withTableCellNotice("deleteTableColumn");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.deleteTableColumn));
     },
     "merge-cells": () => {
-      runWithNotice("mergeTableCellRight", getToolbarTexts().alertMergeRightUnavailable);
+      notifyCommandFailure(
+        invokeCommand(getEditorCommands()?.mergeTableCellRight),
+        getToolbarTexts().alertMergeRightUnavailable
+      );
     },
     "split-cell": () => {
-      runWithNotice("splitTableCell", getToolbarTexts().alertSplitCellUnavailable);
+      notifyCommandFailure(
+        invokeCommand(getEditorCommands()?.splitTableCell),
+        getToolbarTexts().alertSplitCellUnavailable
+      );
     },
     "next-cell": () => {
-      withTableCellNotice("goToNextTableCell");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.goToNextTableCell));
     },
     "previous-cell": () => {
-      withTableCellNotice("goToPreviousTableCell");
+      withTableCellNotice(invokeCommand(getEditorCommands()?.goToPreviousTableCell));
     },
     "toggle-header-row": () => {
       if (!tableActions.toggleHeaderRow()) {

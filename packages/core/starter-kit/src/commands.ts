@@ -1,1 +1,1 @@
-export * from "lumenpage-extension-editing-commands";
+export {};

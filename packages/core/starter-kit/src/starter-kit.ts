@@ -1,14 +1,11 @@
 import { Extension } from "lumenpage-core";
 import {
-  BaseKeymap,
   Blockquote,
   Bold,
   BulletList,
-  CanvasKeymap,
   Code,
   CodeBlock,
   Document,
-  EditingCommands,
   HardBreak,
   Heading,
   HorizontalRule,
@@ -89,9 +86,6 @@ export const StarterKit = Extension.create<StarterKitOptions>({
     if (this.options.code !== false) extensions.push(configureExtension(Code, this.options.code));
     if (this.options.strike !== false) extensions.push(configureExtension(Strike, this.options.strike));
     if (this.options.undoRedo !== false) extensions.push(configureExtension(UndoRedo, this.options.undoRedo));
-    extensions.push(configureExtension(EditingCommands, {}));
-    extensions.push(configureExtension(BaseKeymap, {}));
-    extensions.push(configureExtension(CanvasKeymap, {}));
     extensions.push(configureExtension(SmartInputRules, {}));
 
     return extensions;

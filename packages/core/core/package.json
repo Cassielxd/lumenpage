@@ -22,12 +22,14 @@
     "typecheck": "tsc -p tsconfig.typecheck.json --pretty false --noEmit"
   },
   "dependencies": {
+    "lumenpage-commands": "workspace:*",
     "lumenpage-inputrules": "workspace:*",
     "lumenpage-keymap": "workspace:*",
     "lumenpage-layout-engine": "workspace:*",
     "lumenpage-link": "workspace:*",
     "lumenpage-model": "workspace:*",
     "lumenpage-state": "workspace:*",
+    "lumenpage-transform": "workspace:*",
     "lumenpage-view-canvas": "workspace:*"
   },
   "devDependencies": {

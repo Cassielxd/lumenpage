@@ -1,4 +1,5 @@
-import { PluginKey, TextSelection } from "lumenpage-state";
+import type { Editor } from "lumenpage-core";
+import { PluginKey, TextSelection, type EditorState } from "lumenpage-state";
 import {
   createPopupController,
   type PopupController,
@@ -8,6 +9,7 @@ import {
 import {
   Suggestion,
   exitSuggestion,
+  type SuggestionEditorView,
   type SuggestionOptions,
   type SuggestionPluginState,
   type SuggestionProps,
@@ -19,9 +21,19 @@ export type MentionItem = {
   value?: string;
 };
 
+type MentionItemInput =
+  | MentionItem
+  | string
+  | {
+      id?: unknown;
+      label?: unknown;
+      value?: unknown;
+    };
+
 type MentionItemsSource =
-  | MentionItem[]
-  | ((args: { query: string; state: any; editor: any }) => MentionItem[] | Promise<MentionItem[]>);
+  | MentionItemInput[]
+  | ((args: { query: string; state: EditorState | null; editor: Editor }) =>
+      MentionItemInput[] | Promise<MentionItemInput[]>);
 
 export type MentionPluginOptions = {
   items: MentionItemsSource;
@@ -36,7 +48,7 @@ export type MentionPluginOptions = {
   >;
   render?: () => MentionRenderLifecycle;
   onSelect?: (args: {
-    view: any;
+    view: SuggestionEditorView;
     item: MentionItem;
     query: string;
     range: { from: number; to: number };
@@ -53,7 +65,7 @@ type MentionRenderState = {
 };
 
 export type MentionRenderProps = SuggestionProps<MentionItem, MentionItem> & {
-  view: any;
+  view: SuggestionEditorView | null;
   state: MentionRenderState;
   trigger: string;
   rect: PopupRect | null;
@@ -83,6 +95,9 @@ const DEFAULT_POPUP_OPTIONS: PopupControllerOptions = {
 
 export const mentionPluginKey = new PluginKey<SuggestionPluginState>("lumen-mention");
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 const clampIndex = (value: number, length: number) => {
   if (!Number.isFinite(value) || length <= 0) {
     return 0;
@@ -94,7 +109,7 @@ const clampIndex = (value: number, length: number) => {
   return normalized % length;
 };
 
-const normalizeMentionItem = (value: any): MentionItem | null => {
+const normalizeMentionItem = (value: MentionItemInput | null | undefined): MentionItem | null => {
   if (!value) {
     return null;
   }
@@ -105,6 +120,10 @@ const normalizeMentionItem = (value: any): MentionItem | null => {
     }
     return { id: text.toLowerCase(), label: text, value: text };
   }
+  if (!isRecord(value)) {
+    return null;
+  }
+
   const label = String(value.label || value.value || "").trim();
   if (!label) {
     return null;
@@ -120,10 +139,18 @@ const normalizeMentionItem = (value: any): MentionItem | null => {
 const resolveMentionItems = async (
   source: MentionItemsSource,
   query: string,
-  editor: any,
+  editor: Editor,
   maxItems: number
 ) => {
-  const raw = Array.isArray(source) ? source : await Promise.resolve(source({ query, state: editor?.state, editor }));
+  const raw = Array.isArray(source)
+    ? source
+    : await Promise.resolve(
+        source({
+          query,
+          state: (editor.state as EditorState | null) ?? null,
+          editor,
+        })
+      );
   const normalized = (Array.isArray(raw) ? raw : [])
     .map((item) => normalizeMentionItem(item))
     .filter((item): item is MentionItem => !!item);
@@ -135,8 +162,8 @@ const resolveMentionItems = async (
       ? normalized
       : normalized.filter((item) => {
           const label = item.label.toLowerCase();
-          const value = String(item.value || "").toLowerCase();
-          return label.includes(keyword) || value.includes(keyword);
+          const itemValue = String(item.value || "").toLowerCase();
+          return label.includes(keyword) || itemValue.includes(keyword);
         });
   return filtered.slice(0, Math.max(1, maxItems));
 };
@@ -155,8 +182,8 @@ const toPopupRectFromClientRect = (value: DOMRect | null | undefined): PopupRect
   return { left, top, right, bottom };
 };
 
-const closeMentionPopup = (editor: any) => {
-  if (!editor?.view) {
+const closeMentionPopup = (editor: Editor) => {
+  if (!editor.view) {
     return false;
   }
   exitSuggestion(editor.view, mentionPluginKey);
@@ -164,28 +191,29 @@ const closeMentionPopup = (editor: any) => {
 };
 
 const applyMentionSelection = (
-  editor: any,
+  editor: Editor,
   options: MentionPluginOptions,
   selected: MentionItem,
   range: { from: number; to: number },
   trigger: string
 ) => {
-  if (!editor?.view?.state?.tr || typeof editor.view.dispatch !== "function") {
+  if (!editor.view?.state?.tr || typeof editor.view.dispatch !== "function") {
     return false;
   }
 
-  const mentionState = mentionPluginKey.getState(editor.view.state);
+  const view = editor.view;
+  const mentionState = mentionPluginKey.getState(view.state);
   const mentionText = `${trigger}${String(selected.value || selected.label || "").trim()}`;
   const appendSpace = options.appendSpace !== false;
   const insertedText = appendSpace ? `${mentionText} ` : mentionText;
-  const tr = editor.view.state.tr.insertText(insertedText, range.from, range.to);
+  const tr = view.state.tr.insertText(insertedText, range.from, range.to);
   const cursorPos = range.from + insertedText.length;
 
   tr.setSelection(TextSelection.create(tr.doc, cursorPos));
-  editor.view.dispatch(tr.scrollIntoView());
+  view.dispatch(tr.scrollIntoView());
 
   options.onSelect?.({
-    view: editor.view,
+    view,
     item: selected,
     query: mentionState?.query || "",
     range,
@@ -255,8 +283,7 @@ const createDefaultMentionRenderer = ({
   };
 
   const removePointerDownHandler = () => {
-    if (!pointerDownHandler) {
-    } else {
+    if (pointerDownHandler) {
       ownerDocument.removeEventListener("pointerdown", pointerDownHandler, true);
       pointerDownHandler = null;
     }
@@ -388,11 +415,11 @@ const createDefaultMentionRenderer = ({
 };
 
 const createMentionRenderer = (
-  editor: any,
+  editor: Editor,
   options: MentionPluginOptions,
   trigger: string
 ): SuggestionOptions<MentionItem, MentionItem>["render"] => {
-  const ownerDocument = editor?.view?.dom?.ownerDocument || document;
+  const ownerDocument = editor.view?.dom?.ownerDocument || document;
   let popup: PopupController | null = null;
   let selectedIndex = 0;
   let currentSuggestionProps: SuggestionProps<MentionItem, MentionItem> | null = null;
@@ -452,7 +479,7 @@ const createMentionRenderer = (
 
     return {
       ...suggestionProps,
-      view: editor?.view || null,
+      view: editor.view || null,
       state: {
         active: true,
         from: suggestionProps.range.from,
@@ -500,16 +527,21 @@ const createMentionRenderer = (
       if (!currentMentionProps) {
         return false;
       }
-      return renderer.onKeyDown?.({
-        ...currentMentionProps,
-        event,
-      }) === true;
+      return (
+        renderer.onKeyDown?.({
+          ...currentMentionProps,
+          event,
+        }) === true
+      );
     },
   });
 };
 
-export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
-  if (!view?.state?.tr || typeof view?.dispatch !== "function") {
+export const openMentionPicker = (
+  view: Pick<SuggestionEditorView, "state" | "dispatch"> | null | undefined,
+  trigger = DEFAULT_TRIGGER
+) => {
+  if (!view?.state?.tr || typeof view.dispatch !== "function") {
     return false;
   }
   const selection = view.state.selection;
@@ -522,7 +554,7 @@ export const openMentionPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
   return true;
 };
 
-export const createMentionPlugin = (editor: any, options: MentionPluginOptions) => {
+export const createMentionPlugin = (editor: Editor, options: MentionPluginOptions) => {
   const trigger = options.trigger || DEFAULT_TRIGGER;
   const maxItems = Number.isFinite(options.maxItems)
     ? Math.max(1, Math.trunc(Number(options.maxItems)))

@@ -5,8 +5,23 @@ import { columnsNodeSpec } from "./columns";
 export { columnsNodeSpec, serializeColumnsToText } from "./columns";
 export { columnsRenderer } from "./renderer";
 
+type InsertColumnsOptions = {
+  count?: number;
+  labels?: string | string[];
+};
+
+type ColumnsCommandMethods<ReturnType> = {
+  insertColumns: (attrs?: InsertColumnsOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    columns: ColumnsCommandMethods<ReturnType>;
+  }
+}
+
 const insertColumnsCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertColumnsOptions = {}) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.columns;
     if (!type) {
@@ -36,7 +51,7 @@ export const Columns = Node.create({
   },
   addCommands() {
     return {
-      insertColumns: (attrs?: Record<string, unknown>) => insertColumnsCommand(attrs),
+      insertColumns: (attrs?: InsertColumnsOptions) => insertColumnsCommand(attrs),
     };
   },
   canvas() {

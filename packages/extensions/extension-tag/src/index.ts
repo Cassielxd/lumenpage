@@ -4,6 +4,23 @@ const DEFAULT_TAG_BACKGROUND = "#e0f2fe";
 const DEFAULT_TAG_COLOR = "#0f4c81";
 const DEFAULT_TAG_PREFIX = "#";
 
+type InsertTagOptions = {
+  label: string;
+  backgroundColor?: string;
+  textColor?: string;
+  prefix?: string;
+};
+
+type TagCommandMethods<ReturnType> = {
+  insertTag: (attrs: InsertTagOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    tag: TagCommandMethods<ReturnType>;
+  }
+}
+
 const normalizeString = (value: unknown) => {
   const text = typeof value === "string" ? value.trim() : "";
   return text || null;
@@ -38,7 +55,7 @@ const createTagAttrs = (attrs: Record<string, unknown> | null | undefined) => {
 };
 
 const insertTagCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertTagOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.marks?.tag;
     if (!type) {
@@ -75,7 +92,7 @@ export const Tag = Mark.create({
   excludes: "tag",
   addCommands() {
     return {
-      insertTag: (attrs?: Record<string, unknown>) => insertTagCommand(attrs),
+      insertTag: (attrs: InsertTagOptions) => insertTagCommand(attrs),
     };
   },
   addMarkAdapter() {

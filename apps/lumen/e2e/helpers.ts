@@ -134,9 +134,19 @@ export const probeTablePixels = async (page: Page) =>
         }
       | undefined;
     const layout = view?._internals?.getLayout?.();
-    const page0 = layout?.pages?.[0];
-    const fragment = page0?.fragments?.find((item) => item?.type === "table");
-    const entry = view?._internals?.renderer?.pageCache?.get(0);
+    const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+    let fragment: { type?: string; x: number; y: number; width: number; height: number } | null = null;
+    let entry: { canvas?: HTMLCanvasElement } | null = null;
+    for (let pageIndex = 0; pageIndex < pages.length; pageIndex += 1) {
+      const page = pages[pageIndex];
+      const pageFragment = page?.fragments?.find((item) => item?.type === "table");
+      const pageEntry = view?._internals?.renderer?.pageCache?.get(pageIndex) ?? null;
+      if (pageFragment && pageEntry?.canvas) {
+        fragment = pageFragment;
+        entry = pageEntry;
+        break;
+      }
+    }
     if (!fragment || !entry?.canvas) {
       return null;
     }
@@ -446,11 +456,19 @@ export const getSelectionRange = async (page: Page) =>
     if (!selection) {
       return null;
     }
+    const jsonType = selection.toJSON?.()?.type ?? null;
     return {
       from: selection.from,
       to: selection.to,
       empty: selection.empty === true,
-      type: selection.constructor?.name ?? null,
+      type:
+        jsonType === "node"
+          ? "NodeSelection"
+          : jsonType === "text"
+            ? "TextSelection"
+            : jsonType === "all"
+              ? "AllSelection"
+              : selection.constructor?.name ?? null,
     };
   });
 

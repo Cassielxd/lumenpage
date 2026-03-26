@@ -1,8 +1,27 @@
 import { Mark } from "lumenpage-core";
 
+type StrikeCommands<ReturnType> = {
+  setStrike: () => ReturnType;
+  toggleStrike: () => ReturnType;
+  unsetStrike: () => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    strike: StrikeCommands<ReturnType>;
+  }
+}
+
 export const Strike = Mark.create({
   name: "strike",
   priority: 100,
+  addCommands() {
+    return {
+      setStrike: () => ({ commands }) => commands.setMark(this.name),
+      toggleStrike: () => ({ commands }) => commands.toggleMark(this.name),
+      unsetStrike: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
   parseHTML() {
     return [
       { tag: "s" },

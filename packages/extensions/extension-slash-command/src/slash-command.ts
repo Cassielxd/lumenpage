@@ -1,4 +1,5 @@
-import { PluginKey, TextSelection } from "lumenpage-state";
+import type { Editor } from "lumenpage-core";
+import { PluginKey, TextSelection, type EditorState } from "lumenpage-state";
 import {
   createPopupController,
   type PopupController,
@@ -8,14 +9,15 @@ import {
 import {
   Suggestion,
   exitSuggestion,
+  type SuggestionEditorView,
   type SuggestionOptions,
   type SuggestionPluginState,
   type SuggestionProps,
 } from "lumenpage-suggestion";
 
 export type SlashCommandCommandArgs = {
-  editor: any;
-  view: any;
+  editor: Editor;
+  view: SuggestionEditorView;
   range: { from: number; to: number };
   query: string;
 };
@@ -27,12 +29,29 @@ export type SlashCommandItem = {
   aliases?: string[];
   keywords?: string[];
   command: (args: SlashCommandCommandArgs) => boolean;
-  isEnabled?: (args: { editor: any; state: any; view: any }) => boolean;
+  isEnabled?: (args: {
+    editor: Editor;
+    state: EditorState | null;
+    view: SuggestionEditorView | null;
+  }) => boolean;
 };
 
+type SlashCommandItemInput =
+  | SlashCommandItem
+  | {
+      id?: unknown;
+      title?: unknown;
+      description?: unknown;
+      aliases?: unknown;
+      keywords?: unknown;
+      command?: unknown;
+      isEnabled?: unknown;
+    };
+
 export type SlashCommandItemSource =
-  | SlashCommandItem[]
-  | ((args: { query: string; state: any; editor: any }) => SlashCommandItem[] | Promise<SlashCommandItem[]>);
+  | SlashCommandItemInput[]
+  | ((args: { query: string; state: EditorState | null; editor: Editor }) =>
+      SlashCommandItemInput[] | Promise<SlashCommandItemInput[]>);
 
 export type SlashCommandOptions = {
   items: SlashCommandItemSource;
@@ -46,7 +65,7 @@ export type SlashCommandOptions = {
   >;
   render?: () => SlashCommandRenderLifecycle;
   onSelect?: (args: {
-    view: any;
+    view: SuggestionEditorView;
     item: SlashCommandItem;
     query: string;
     range: { from: number; to: number };
@@ -63,7 +82,7 @@ type SlashCommandRenderState = {
 };
 
 export type SlashCommandRenderProps = SuggestionProps<SlashCommandItem, SlashCommandItem> & {
-  view: any;
+  view: SuggestionEditorView | null;
   state: SlashCommandRenderState;
   trigger: string;
   rect: PopupRect | null;
@@ -93,6 +112,9 @@ const DEFAULT_POPUP_OPTIONS: PopupControllerOptions = {
 
 export const slashCommandPluginKey = new PluginKey<SuggestionPluginState>("lumen-slash-command");
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 const clampIndex = (value: number, length: number) => {
   if (!Number.isFinite(value) || length <= 0) {
     return 0;
@@ -104,8 +126,8 @@ const clampIndex = (value: number, length: number) => {
   return normalized % length;
 };
 
-const normalizeSlashCommandItem = (value: any): SlashCommandItem | null => {
-  if (!value || typeof value !== "object" || typeof value.command !== "function") {
+const normalizeSlashCommandItem = (value: SlashCommandItemInput | null | undefined): SlashCommandItem | null => {
+  if (!isRecord(value) || typeof value.command !== "function") {
     return null;
   }
 
@@ -125,8 +147,8 @@ const normalizeSlashCommandItem = (value: any): SlashCommandItem | null => {
     keywords: Array.isArray(value.keywords)
       ? value.keywords.map((item: unknown) => String(item || "").trim()).filter(Boolean)
       : [],
-    command: value.command,
-    isEnabled: typeof value.isEnabled === "function" ? value.isEnabled : undefined,
+    command: value.command as SlashCommandItem["command"],
+    isEnabled: typeof value.isEnabled === "function" ? (value.isEnabled as SlashCommandItem["isEnabled"]) : undefined,
   };
 };
 
@@ -144,14 +166,24 @@ const buildSearchText = (item: SlashCommandItem) =>
 const resolveSlashItems = async (
   source: SlashCommandItemSource,
   query: string,
-  editor: any,
+  editor: Editor,
   maxItems: number
 ) => {
-  const raw = Array.isArray(source) ? source : await Promise.resolve(source({ query, state: editor?.state, editor }));
+  const state = (editor.state as EditorState | null) ?? null;
+  const view = editor.view || null;
+  const raw = Array.isArray(source)
+    ? source
+    : await Promise.resolve(
+        source({
+          query,
+          state,
+          editor,
+        })
+      );
   const normalized = (Array.isArray(raw) ? raw : [])
     .map((item) => normalizeSlashCommandItem(item))
     .filter((item): item is SlashCommandItem => !!item)
-    .filter((item) => item.isEnabled?.({ editor, state: editor?.state, view: editor?.view }) !== false);
+    .filter((item) => item.isEnabled?.({ editor, state, view }) !== false);
 
   const keyword = String(query || "")
     .trim()
@@ -178,16 +210,16 @@ const toPopupRectFromClientRect = (value: DOMRect | null | undefined): PopupRect
   return { left, top, right, bottom };
 };
 
-const closeSlashPopup = (editor: any) => {
-  if (!editor?.view) {
+const closeSlashPopup = (editor: Editor) => {
+  if (!editor.view) {
     return false;
   }
   exitSuggestion(editor.view, slashCommandPluginKey);
   return true;
 };
 
-const removeSlashQuery = (editor: any, range: { from: number; to: number }) => {
-  const view = editor?.view;
+const removeSlashQuery = (editor: Editor, range: { from: number; to: number }) => {
+  const view = editor.view;
   if (!view?.state?.tr || typeof view.dispatch !== "function") {
     return false;
   }
@@ -199,13 +231,14 @@ const removeSlashQuery = (editor: any, range: { from: number; to: number }) => {
 };
 
 const applySlashSelection = (
-  editor: any,
+  editor: Editor,
   options: SlashCommandOptions,
   selected: SlashCommandItem,
   range: { from: number; to: number },
   query: string
 ) => {
-  if (!editor?.view) {
+  const view = editor.view;
+  if (!view) {
     return false;
   }
 
@@ -216,14 +249,14 @@ const applySlashSelection = (
   const handled =
     selected.command({
       editor,
-      view: editor.view,
+      view,
       range,
       query,
     }) === true;
 
   if (handled) {
     options.onSelect?.({
-      view: editor.view,
+      view,
       item: selected,
       query,
       range,
@@ -409,11 +442,11 @@ const createDefaultSlashRenderer = ({
 };
 
 const createSlashRenderer = (
-  editor: any,
+  editor: Editor,
   options: SlashCommandOptions,
   trigger: string
 ): SuggestionOptions<SlashCommandItem, SlashCommandItem>["render"] => {
-  const ownerDocument = editor?.view?.dom?.ownerDocument || document;
+  const ownerDocument = editor.view?.dom?.ownerDocument || document;
   let popup: PopupController | null = null;
   let selectedIndex = 0;
   let currentSuggestionProps: SuggestionProps<SlashCommandItem, SlashCommandItem> | null = null;
@@ -473,7 +506,7 @@ const createSlashRenderer = (
 
     return {
       ...suggestionProps,
-      view: editor?.view || null,
+      view: editor.view || null,
       state: {
         active: true,
         from: suggestionProps.range.from,
@@ -521,16 +554,18 @@ const createSlashRenderer = (
       if (!currentSlashProps) {
         return false;
       }
-      return renderer.onKeyDown?.({
-        ...currentSlashProps,
-        event,
-      }) === true;
+      return (
+        renderer.onKeyDown?.({
+          ...currentSlashProps,
+          event,
+        }) === true
+      );
     },
   });
 };
 
-const allowSlashCommand = ({ state, range }: { state: any; range: { from: number; to: number } }) => {
-  const selection = state?.selection;
+const allowSlashCommand = ({ state, range }: { state: EditorState; range: { from: number; to: number } }) => {
+  const selection = state.selection;
   const $from = selection?.$from;
   const parent = $from?.parent;
   if (!selection?.empty || !parent || parent.type?.name !== "paragraph") {
@@ -542,8 +577,11 @@ const allowSlashCommand = ({ state, range }: { state: any; range: { from: number
   return range.from === $from.start();
 };
 
-export const openSlashCommandPicker = (view: any, trigger = DEFAULT_TRIGGER) => {
-  if (!view?.state?.tr || typeof view?.dispatch !== "function") {
+export const openSlashCommandPicker = (
+  view: Pick<SuggestionEditorView, "state" | "dispatch"> | null | undefined,
+  trigger = DEFAULT_TRIGGER
+) => {
+  if (!view?.state?.tr || typeof view.dispatch !== "function") {
     return false;
   }
   const selection = view.state.selection;
@@ -556,7 +594,7 @@ export const openSlashCommandPicker = (view: any, trigger = DEFAULT_TRIGGER) => 
   return true;
 };
 
-export const createSlashCommandPlugin = (editor: any, options: SlashCommandOptions) => {
+export const createSlashCommandPlugin = (editor: Editor, options: SlashCommandOptions) => {
   const trigger = options.trigger || DEFAULT_TRIGGER;
   const maxItems = Number.isFinite(options.maxItems)
     ? Math.max(1, Math.trunc(Number(options.maxItems)))
@@ -571,7 +609,11 @@ export const createSlashCommandPlugin = (editor: any, options: SlashCommandOptio
       resolveSlashItems(options.items, query, currentEditor, maxItems),
     allow: ({ state, range }) => allowSlashCommand({ state, range }),
     command: ({ editor: currentEditor, range, props }) => {
-      const slashState = slashCommandPluginKey.getState(currentEditor.view.state);
+      const view = currentEditor.view;
+      if (!view) {
+        return false;
+      }
+      const slashState = slashCommandPluginKey.getState(view.state);
       const query = slashState?.query || "";
       return applySlashSelection(currentEditor, options, props, range, query);
     },

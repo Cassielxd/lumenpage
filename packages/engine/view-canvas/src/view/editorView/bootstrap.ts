@@ -9,7 +9,6 @@ import {
 } from "./dom";
 
 const LEGACY_STRATEGY_KEYS = [
-  "commands",
   "getText",
   "parseHtmlToSlice",
   "isInSpecialStructureAtPos",

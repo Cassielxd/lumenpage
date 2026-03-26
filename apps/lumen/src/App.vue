@@ -60,6 +60,7 @@
     <EditorMenuBar v-model:active-menu="activeToolbarMenu" :locale="debugFlags.locale" />
     <EditorToolbar
       ref="toolbarRef"
+      :editor="editor"
       :editorView="view"
       :locale="debugFlags.locale"
       :active-menu="activeToolbarMenu"
@@ -168,6 +169,7 @@ import {
   watch,
   type Ref,
 } from "vue";
+import type { Editor as LumenEditor } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import CommentsPanel from "./components/CommentsPanel.vue";
@@ -203,6 +205,7 @@ const editorHost = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
+const editor = shallowRef<LumenEditor | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
 const collaborationState = ref<LumenCollaborationState>(
   createInitialLumenCollaborationState(debugFlags)
@@ -352,6 +355,7 @@ const footerContactLabel = computed(() =>
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 let detachCommentStore: null | (() => void) = null;
+let setCommentAnchorInEditor: null | ((options: { threadId: string; anchorId: string }) => boolean) = null;
 let activateCommentThreadInEditor: null | ((threadId: string | null) => boolean) = null;
 let focusCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
 let removeCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
@@ -396,11 +400,23 @@ const readSelectionSnapshot = (currentView: CanvasEditorView | null): LumenSelec
   if (!selection) {
     return null;
   }
+  const jsonType = selection.toJSON?.()?.type ?? null;
   return {
     from: Number(selection.from),
     to: Number(selection.to),
     empty: selection.empty === true,
-    type: selection.constructor?.name ?? null,
+    type:
+      selection instanceof NodeSelection
+        ? "NodeSelection"
+        : selection instanceof TextSelection
+          ? "TextSelection"
+          : jsonType === "all"
+            ? "AllSelection"
+            : jsonType === "node"
+              ? "NodeSelection"
+              : jsonType === "text"
+                ? "TextSelection"
+                : jsonType,
   };
 };
 
@@ -738,7 +754,7 @@ const handleCommentClick = () => {
 
     const threadId = createCommentEntityId("thread");
     const anchorId = createCommentEntityId("anchor");
-    const applied = currentView.commands?.setCommentAnchor?.({ threadId, anchorId }) === true;
+    const applied = setCommentAnchorInEditor?.({ threadId, anchorId }) === true;
     if (!applied) {
       showToolbarMessage(texts.failed, "error");
       return;
@@ -1014,9 +1030,11 @@ onMounted(async () => {
     },
     onStatsChange: handleStatsChange,
   });
+  editor.value = mounted.editor;
   view.value = mounted.view;
   syncDebugHandles();
   setTocOutlineEnabled = mounted.setTocOutlineEnabled;
+  setCommentAnchorInEditor = mounted.setCommentAnchor;
   activateCommentThreadInEditor = mounted.activateCommentThread;
   focusCommentThreadInEditor = mounted.focusCommentThread;
   removeCommentThreadInEditor = mounted.removeCommentThread;
@@ -1046,6 +1064,7 @@ onBeforeUnmount(() => {
   setTocOutlineEnabled = null;
   detachCommentStore?.();
   detachCommentStore = null;
+  setCommentAnchorInEditor = null;
   activateCommentThreadInEditor = null;
   focusCommentThreadInEditor = null;
   removeCommentThreadInEditor = null;
@@ -1056,6 +1075,7 @@ onBeforeUnmount(() => {
   rejectTrackChangeInEditor = null;
   acceptAllTrackChangesInEditor = null;
   rejectAllTrackChangesInEditor = null;
+  editor.value = null;
   view.value = null;
   syncDebugHandles();
   commentThreads.value = [];

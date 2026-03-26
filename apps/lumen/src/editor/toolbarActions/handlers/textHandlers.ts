@@ -1,8 +1,9 @@
 import type { ToolbarActionContext, ToolbarHandlerRecord } from "./types";
+import { invokeCommand } from "../commandUtils";
 
 export const createTextActionHandlers = ({
-  run,
-  runWithNotice,
+  getEditorCommands,
+  notifyCommandFailure,
   getToolbarTexts,
   layoutActions,
   tableActions,
@@ -15,34 +16,36 @@ export const createTextActionHandlers = ({
   quickInsertActions,
 }: ToolbarActionContext): ToolbarHandlerRecord => ({
   undo: () => {
-    runWithNotice("undo", getToolbarTexts().alertCannotUndo);
+    const commands = getEditorCommands();
+    notifyCommandFailure(invokeCommand(commands?.undo), getToolbarTexts().alertCannotUndo);
   },
   redo: () => {
-    runWithNotice("redo", getToolbarTexts().alertCannotRedo);
+    const commands = getEditorCommands();
+    notifyCommandFailure(invokeCommand(commands?.redo), getToolbarTexts().alertCannotRedo);
   },
   "format-painter": () => {
     textFormatActions.toggleFormatPainter();
   },
   bold: () => {
-    run("toggleBold");
+    invokeCommand(getEditorCommands()?.toggleBold);
   },
   italic: () => {
-    run("toggleItalic");
+    invokeCommand(getEditorCommands()?.toggleItalic);
   },
   underline: () => {
-    run("toggleUnderline");
+    invokeCommand(getEditorCommands()?.toggleUnderline);
   },
   strike: () => {
-    run("toggleStrike");
+    invokeCommand(getEditorCommands()?.toggleStrike);
   },
   subscript: () => {
-    run("toggleSubscript");
+    invokeCommand(getEditorCommands()?.toggleSubscript);
   },
   superscript: () => {
-    run("toggleSuperscript");
+    invokeCommand(getEditorCommands()?.toggleSuperscript);
   },
   "inline-code": () => {
-    run("toggleInlineCode");
+    invokeCommand(getEditorCommands()?.toggleInlineCode);
   },
   "clear-format": () => {
     textFormatActions.clearFormat();
@@ -63,19 +66,19 @@ export const createTextActionHandlers = ({
     textStyleActions.highlightSelection();
   },
   "ordered-list": () => {
-    run("toggleOrderedList");
+    invokeCommand(getEditorCommands()?.toggleOrderedList);
   },
   "bullet-list": () => {
-    run("toggleBulletList");
+    invokeCommand(getEditorCommands()?.toggleBulletList);
   },
   "task-list": () => {
-    run("toggleTaskList");
+    invokeCommand(getEditorCommands()?.toggleTaskList);
   },
   indent: () => {
-    run("indent");
+    invokeCommand(getEditorCommands()?.indent);
   },
   outdent: () => {
-    run("outdent");
+    invokeCommand(getEditorCommands()?.outdent);
   },
   "line-height": () => {
     layoutActions.applyLineHeightSetting();
@@ -84,22 +87,22 @@ export const createTextActionHandlers = ({
     layoutActions.applyParagraphSpacingSetting();
   },
   "align-left": () => {
-    run("alignLeft");
+    invokeCommand(getEditorCommands()?.alignLeft);
   },
   "align-center": () => {
-    run("alignCenter");
+    invokeCommand(getEditorCommands()?.alignCenter);
   },
   "align-right": () => {
-    run("alignRight");
+    invokeCommand(getEditorCommands()?.alignRight);
   },
   "align-justify": () => {
-    run("alignJustify");
+    invokeCommand(getEditorCommands()?.alignJustify);
   },
   "align-distributed": () => {
-    run("alignDistributed");
+    invokeCommand(getEditorCommands()?.alignDistributed);
   },
   quote: () => {
-    run("toggleBlockquote");
+    invokeCommand(getEditorCommands()?.toggleBlockquote);
   },
   markdown: async () => {
     await markdownActions.handleMarkdownAction();
@@ -114,8 +117,9 @@ export const createTextActionHandlers = ({
     inlineMediaActions.toggleLink();
   },
   "code-block": () => {
-    if (!run("toggleCodeBlock")) {
-      run("setBlockType", "codeBlock");
+    const commands = getEditorCommands();
+    if (!invokeCommand(commands?.toggleCodeBlock)) {
+      invokeCommand(commands?.setCodeBlock);
     }
   },
   image: () => {
@@ -134,13 +138,13 @@ export const createTextActionHandlers = ({
     quickInsertActions.insertChineseDate();
   },
   hr: () => {
-    run("insertHorizontalRule");
+    invokeCommand(getEditorCommands()?.insertHorizontalRule);
   },
   "hard-break": () => {
-    run("insertHardBreak");
+    invokeCommand(getEditorCommands()?.insertHardBreak);
   },
   "page-break": () => {
-    run("insertPageBreak");
+    invokeCommand(getEditorCommands()?.insertPageBreak);
   },
   "table-insert": () => {
     tableActions.insertTable();

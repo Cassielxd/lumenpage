@@ -15,7 +15,6 @@ import { createRenderSync } from "../renderSync";
 import { Renderer } from "../renderer";
 import { createA11yStatusUpdater } from "./a11y";
 import { initEditorViewEnvironment } from "./bootstrap";
-import { createCommandRuntime } from "./commandRuntime";
 import { createCoordinateHelpers } from "./coords";
 import { createDecorationResolver } from "./decorations";
 import { applyDefaultA11y } from "./dom";
@@ -36,7 +35,6 @@ export type CanvasEditorViewSetupResult = {
   state: any;
   domRoot: any;
   overlayHost: any;
-  commands: any;
   dispatchTransaction: (tr: any) => void;
   internals: any;
   composing: boolean;
@@ -88,13 +86,6 @@ export const setupCanvasEditorView = ({
 
   const onChange = resolveCanvasConfig("onChange", null);
   const strictLegacy = resolveCanvasConfig("legacyPolicy", null)?.strict === true;
-  const { commands, runCommand, basicCommands, runKeymap, enableBuiltInKeyFallback } =
-    createCommandRuntime({
-      view,
-      schema,
-      resolveCanvasConfig,
-      commandsFromProps: viewProps?.commands ?? null,
-    });
 
   const configuredNodeSelectionTypes = resolveCanvasConfig("nodeSelectionTypes", null);
   const getDefaultNodeSelectionTypes = () => {
@@ -139,14 +130,12 @@ export const setupCanvasEditorView = ({
     getText,
     getTextLength,
     setInputPosition,
-    isInSpecialStructureAtPos,
-    shouldAutoAdvanceAfterEnter,
   } = createRuntimeHelpers({
     dom,
     basePageWidth,
     settings,
     resolveCanvasConfig,
-    queryEditorProp: (name, ...args) => runtimeState.queryEditorProp(name, ...args),
+    queryEditorProp: runtimeState.queryEditorProp,
     getState: () => view.state,
     docToOffsetText,
     getDocTextLength,
@@ -162,7 +151,7 @@ export const setupCanvasEditorView = ({
     posAtCoords,
   });
 
-  const { logSelection, logDelete, debugLog } = createDebugLoggers({
+  const { logSelection, debugLog } = createDebugLoggers({
     debugConfig,
     getText,
     docPosToTextOffset,
@@ -317,17 +306,10 @@ export const setupCanvasEditorView = ({
     getTextLength,
     setSelectionOffsets,
     dispatchEditorProp,
-    runCommand,
-    basicCommands,
-    runKeymap,
-    enableBuiltInKeyFallback,
     dispatchTransaction: dispatchViaView,
     textOffsetToDocPos,
     docPosToTextOffset,
     clampOffset,
-    logDelete,
-    isInSpecialStructureAtPos,
-    shouldAutoAdvanceAfterEnter,
     updateStatus,
     updateCaret,
     scheduleRender,
@@ -368,11 +350,7 @@ export const setupCanvasEditorView = ({
       setEditorProps: runtimeState.setEditorProps,
       setPendingChangeSummary: setPendingChangeSummaryValue,
     },
-    commandRuntime: {
-      commands,
-      runCommand,
-      basicCommands,
-      runKeymap,
+    interactionRuntime: {
       dispatchTransaction: dispatchViaView,
       dispatchTransactionBase,
       setNodeSelectionAtPos,
@@ -450,7 +428,6 @@ export const setupCanvasEditorView = ({
     state: view.state,
     domRoot: view.dom,
     overlayHost: view.overlayHost,
-    commands: view.commands,
     dispatchTransaction: applyDispatchTransaction,
     internals,
     composing: view.composing,

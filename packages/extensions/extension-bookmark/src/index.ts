@@ -7,8 +7,24 @@ import { bookmarkNodeSpec } from "./bookmark";
 export { bookmarkNodeSpec, serializeBookmarkToText } from "./bookmark";
 export { bookmarkRenderer } from "./renderer";
 
+type InsertBookmarkOptions = {
+  href: string;
+  title?: string;
+  description?: string;
+};
+
+type BookmarkCommandMethods<ReturnType> = {
+  insertBookmark: (attrs: InsertBookmarkOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    bookmark: BookmarkCommandMethods<ReturnType>;
+  }
+}
+
 const insertBookmarkCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertBookmarkOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.bookmark;
     if (!type) {
@@ -44,7 +60,7 @@ export const Bookmark = Node.create({
   },
   addCommands() {
     return {
-      insertBookmark: (attrs?: Record<string, unknown>) => insertBookmarkCommand(attrs)
+      insertBookmark: (attrs: InsertBookmarkOptions) => insertBookmarkCommand(attrs)
     };
   },
   canvas() {

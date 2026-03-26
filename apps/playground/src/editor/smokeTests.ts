@@ -140,7 +140,9 @@ const getBasicCommand = (editorView: any, name: string) =>
   getCommandRuntime(editorView)?.basicCommands?.[name] ?? null;
 
 const getKeymapCommand = (editorView: any, name: string) =>
-  getCommandRuntime(editorView)?.commands?.keymap?.[name] ?? null;
+  getCommandRuntime(editorView)?.keymap?.[name] ?? null;
+
+const getEditorCommands = (editor: any) => editor?.commands ?? null;
 
 const runViewCommand = (editorView: any, command: any) => {
   if (typeof command !== "function") {
@@ -158,8 +160,8 @@ const runViewCommand = (editorView: any, command: any) => {
   return command(editorView?.state, (tr: any) => editorView.dispatch(tr), editorView);
 };
 
-export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
-  const commands = editorView?.commands;
+export const runTableNavigationSmoke = (editorView: any, editor: any, debugPanelEl: HTMLElement | null) => {
+  const commands = getEditorCommands(editor);
   if (!commands) {
     return;
   }
@@ -366,9 +368,9 @@ export const runTableNavigationSmoke = (editorView: any, debugPanelEl: HTMLEleme
   appendDebugLine(debugPanelEl, text);
 };
 
-export const runTableBehaviorStrictSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
-  const commands = editorView?.commands;
-  const keymap = (getCommandRuntime(editorView)?.commands?.keymap ?? {}) as Record<string, any>;
+export const runTableBehaviorStrictSmoke = (editorView: any, editor: any, debugPanelEl: HTMLElement | null) => {
+  const commands = getEditorCommands(editor);
+  const keymap = (getCommandRuntime(editorView)?.keymap ?? {}) as Record<string, any>;
   if (!commands || !keymap) {
     return;
   }
@@ -1120,8 +1122,8 @@ const countListItemsInCurrentList = (selection: any) => {
   return Number.isFinite(list.childCount) ? list.childCount : null;
 };
 
-export const runListBehaviorSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
-  const commands = editorView?.commands;
+export const runListBehaviorSmoke = (editorView: any, editor: any, debugPanelEl: HTMLElement | null) => {
+  const commands = getEditorCommands(editor);
   if (!commands) {
     return;
   }
@@ -2048,8 +2050,8 @@ export const runSelectionBoundarySmoke = (editorView: any, debugPanelEl: HTMLEle
   appendDebugLine(debugPanelEl, text);
 };
 
-export const runToolCommandSmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
-  const commands = editorView?.commands;
+export const runToolCommandSmoke = (editorView: any, editor: any, debugPanelEl: HTMLElement | null) => {
+  const commands = getEditorCommands(editor);
   if (!commands) {
     return;
   }
@@ -2299,8 +2301,8 @@ export const runPasteActionSmoke = (editorView: any, debugPanelEl: HTMLElement |
   appendDebugLine(debugPanelEl, text);
 };
 
-export const runHistorySmoke = (editorView: any, debugPanelEl: HTMLElement | null) => {
-  const commands = editorView?.commands;
+export const runHistorySmoke = (editorView: any, editor: any, debugPanelEl: HTMLElement | null) => {
+  const commands = getEditorCommands(editor);
   if (!commands) {
     return;
   }

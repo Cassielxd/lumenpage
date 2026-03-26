@@ -7,8 +7,25 @@ import { fileNodeSpec } from "./file";
 export { fileNodeSpec, serializeFileToText } from "./file";
 export { fileRenderer } from "./renderer";
 
+type InsertFileOptions = {
+  href: string;
+  name?: string;
+  size?: string;
+  mimeType?: string;
+};
+
+type FileCommandMethods<ReturnType> = {
+  insertFile: (attrs: InsertFileOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    file: FileCommandMethods<ReturnType>;
+  }
+}
+
 const insertFileCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertFileOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.file;
     if (!type) {
@@ -45,7 +62,7 @@ export const File = Node.create({
   },
   addCommands() {
     return {
-      insertFile: (attrs?: Record<string, unknown>) => insertFileCommand(attrs),
+      insertFile: (attrs: InsertFileOptions) => insertFileCommand(attrs),
     };
   },
   canvas() {

@@ -1,4 +1,4 @@
-﻿# 插件总览 API
+# 插件总览 API
 
 这一页集中说明当前仓库的 `extension-*` 包，按用途分组，并给出典型使用案例。
 
@@ -320,18 +320,6 @@ const extensions = [DragHandleExtension.configure({ onlyTopLevel: true })];
 ### `lumenpage-extension-popup`
 
 - 作用：弹层基础设施
-
-### `lumenpage-extension-base-keymap`
-
-- 作用：基础快捷键
-
-### `lumenpage-extension-canvas-keymap`
-
-- 作用：Canvas 视图快捷键
-
-### `lumenpage-extension-editing-commands`
-
-- 作用：编辑命令集合
 
 ### `lumenpage-extension-smart-input-rules`
 

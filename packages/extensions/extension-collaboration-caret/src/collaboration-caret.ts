@@ -34,6 +34,17 @@ export interface CollaborationCaretOptions {
   onUpdate?: (users: CollaborationCaretUser[]) => void;
 }
 
+type CollaborationCaretCommandMethods<ReturnType> = {
+  updateUser: (attributes: Record<string, any>) => ReturnType;
+  user: (attributes: Record<string, any>) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    collaborationCaret: CollaborationCaretCommandMethods<ReturnType>;
+  }
+}
+
 const noop = () => undefined;
 
 export const CollaborationCaret = Extension.create<CollaborationCaretOptions, CollaborationCaretStorage>({
@@ -73,7 +84,7 @@ export const CollaborationCaret = Extension.create<CollaborationCaretOptions, Co
         },
       user:
         (attributes: Record<string, any>) =>
-        ({ editor }: any) => editor.commands.updateUser(attributes),
+        () => this.editor?.commands.updateUser?.(attributes) === true,
     };
   },
   addPlugins() {

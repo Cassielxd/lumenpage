@@ -5,8 +5,23 @@ import { mathNodeSpec } from "./math";
 export { mathNodeSpec, serializeMathToText } from "./math";
 export { mathRenderer } from "./renderer";
 
+type InsertMathOptions = {
+  source: string;
+  displayMode?: "inline" | "block";
+};
+
+type MathCommandMethods<ReturnType> = {
+  insertMath: (attrs: InsertMathOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    math: MathCommandMethods<ReturnType>;
+  }
+}
+
 const insertMathCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertMathOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.math;
     if (!type) {
@@ -38,7 +53,7 @@ export const Math = Node.create({
   },
   addCommands() {
     return {
-      insertMath: (attrs?: Record<string, unknown>) => insertMathCommand(attrs)
+      insertMath: (attrs: InsertMathOptions) => insertMathCommand(attrs)
     };
   },
   canvas() {

@@ -86,9 +86,6 @@
 
 ### 编辑行为类
 
-- `extension-base-keymap`
-- `extension-canvas-keymap`
-- `extension-editing-commands`
 - `extension-smart-input-rules`
 - `extension-undo-redo`
 - `extension-link`

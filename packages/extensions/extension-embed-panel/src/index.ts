@@ -5,6 +5,24 @@ import { embedPanelNodeSpec, resolveEmbedPanelDefaultSize } from "./embedPanel";
 export { embedPanelNodeSpec, resolveEmbedPanelDefaultSize, serializeEmbedPanelToText } from "./embedPanel";
 export { embedPanelRenderer } from "./renderer";
 
+type InsertEmbedPanelOptions = {
+  source: string;
+  kind?: string;
+  title?: string;
+  width?: number;
+  height?: number;
+};
+
+type EmbedPanelCommandMethods<ReturnType> = {
+  insertEmbedPanel: (attrs: InsertEmbedPanelOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    embedPanel: EmbedPanelCommandMethods<ReturnType>;
+  }
+}
+
 const resolvePositiveDimension = (value: unknown) => {
   if (value == null) {
     return null;
@@ -17,7 +35,7 @@ const resolvePositiveDimension = (value: unknown) => {
 };
 
 const insertEmbedPanelCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertEmbedPanelOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.embedPanel;
     if (!type) {
@@ -54,7 +72,7 @@ export const EmbedPanel = Node.create({
   },
   addCommands() {
     return {
-      insertEmbedPanel: (attrs?: Record<string, unknown>) => insertEmbedPanelCommand(attrs),
+      insertEmbedPanel: (attrs: InsertEmbedPanelOptions) => insertEmbedPanelCommand(attrs),
     };
   },
   canvas() {

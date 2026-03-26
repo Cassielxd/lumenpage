@@ -6,15 +6,39 @@ import {
   getDefaultMarkRenderAdapter,
 } from "lumenpage-render-engine";
 
+type LinkCommandMethods<ReturnType> = {
+  setLink: (attributes: { href?: string | null; title?: string | null }) => ReturnType;
+  toggleLink: (attributes: { href?: string | null; title?: string | null }) => ReturnType;
+  unsetLink: () => ReturnType;
+  deleteLinkBackward: () => ReturnType;
+  deleteLinkForward: () => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    link: LinkCommandMethods<ReturnType>;
+  }
+}
+
 const getLinkMarkFromSet = (marks: readonly any[] | null | undefined, linkType: any) =>
   Array.isArray(marks) ? marks.find((mark) => mark?.type === linkType) || null : null;
 
 const hasEquivalentLinkMark = (marks: readonly any[] | null | undefined, targetMark: any) =>
   Array.isArray(marks) ? marks.some((mark) => typeof targetMark?.eq === "function" && targetMark.eq(mark)) : false;
 
-// link 仍然保持 mark 语义，不改成 inline atom node。
-// 这里单独补“整段删除”能力：当光标落在 link 内或 link 边界上时，
-// Backspace/Delete 会先解析出当前连续的 link mark 范围，再整体删除。
+const normalizeLinkAttributes = (attributes: { href?: string | null; title?: string | null } | null | undefined) => {
+  const href = sanitizeLinkHref(attributes?.href) || null;
+
+  if (!href) {
+    return null;
+  }
+
+  return {
+    href,
+    title: attributes?.title || null,
+  };
+};
+
 const getLinkMarkNearCursor = (state: any, direction: "backward" | "forward") => {
   const selection = state?.selection;
   const $from = selection?.$from;
@@ -38,9 +62,6 @@ const getLinkMarkNearCursor = (state: any, direction: "backward" | "forward") =>
   return null;
 };
 
-// 在当前 textblock 内，把“同一个 link mark 的连续片段”聚成 cluster。
-// backward 只匹配光标左侧贴住的 link，forward 只匹配右侧贴住的 link，
-// 这样可以保证删除方向和原生编辑体验一致。
 const resolveLinkDeletionRange = (state: any, direction: "backward" | "forward") => {
   const selection = state?.selection;
   const $from = selection?.$from;
@@ -104,13 +125,11 @@ const resolveLinkDeletionRange = (state: any, direction: "backward" | "forward")
     from: parentStart + matched.start,
     to: parentStart + matched.end,
   };
-  };
+};
 
 const createDeleteLinkCommand =
   (direction: "backward" | "forward"): Command =>
   (state, dispatch) => {
-    // 返回 false 时，外层 keymap/chainCommands 会继续走后面的默认删除逻辑，
-    // 因此这里不会吞掉普通文本删除。
     const range = resolveLinkDeletionRange(state, direction);
     if (!range) {
       return false;
@@ -127,6 +146,15 @@ export const Link = Mark.create({
   inclusive: false,
   addCommands() {
     return {
+      setLink: (attributes) => ({ commands }) => {
+        const next = normalizeLinkAttributes(attributes);
+        return next ? commands.setMark(this.name, next) : false;
+      },
+      toggleLink: (attributes) => ({ commands }) => {
+        const next = normalizeLinkAttributes(attributes);
+        return next ? commands.toggleMark(this.name, next) : commands.unsetMark(this.name);
+      },
+      unsetLink: () => ({ commands }) => commands.unsetMark(this.name),
       deleteLinkBackward: () => createDeleteLinkCommand("backward"),
       deleteLinkForward: () => createDeleteLinkCommand("forward"),
     };
@@ -199,7 +227,7 @@ export const Link = Mark.create({
       delete attrs.title;
     }
     return ["a", attrs, 0];
-  }
+  },
 });
 
 export default Link;

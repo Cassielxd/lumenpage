@@ -1,12 +1,10 @@
-import { createEditorOpsRuntime } from "./editingRuntime/editorOpsRuntime";
 import { createSelectionMovementRuntime } from "./editingRuntime/selectionRuntime";
+import { createTextOpsRuntime } from "./textOpsRuntime";
 
 // 编辑运行时：组装编辑操作与光标移动，保持原有依赖注入与执行顺序。
 export const createEditingRuntime = ({
   getState,
   dispatchTransaction,
-  runCommand,
-  basicCommands,
   setPendingPreferredUpdate,
   getCaretOffset,
   getText,
@@ -25,24 +23,21 @@ export const createEditingRuntime = ({
   scrollArea,
   getSelectionAnchorOffset,
 }) => {
-  const { setCaretOffset, insertText, insertTextWithBreaks, deleteSelectionIfNeeded, deleteText } =
-    createEditorOpsRuntime({
-      getState,
-      dispatchTransaction,
-      runCommand,
-      basicCommands,
-      setPendingPreferredUpdate,
-      getCaretOffset,
-      getText,
-      getTextLength,
-      setSelectionOffsets,
-      docPosToTextOffset,
-      textOffsetToDocPos,
-      createSelectionStateAtOffset,
-      logDelete,
-      isInSpecialStructureAtPos,
-      shouldAutoAdvanceAfterEnter,
-    });
+  const { setCaretOffset, insertText, insertTextWithBreaks, deleteText } = createTextOpsRuntime({
+    getState,
+    dispatchTransaction,
+    setPendingPreferredUpdate,
+    getCaretOffset,
+    getText,
+    getTextLength,
+    setSelectionOffsets,
+    docPosToTextOffset,
+    textOffsetToDocPos,
+    createSelectionStateAtOffset,
+    logDelete,
+    isInSpecialStructureAtPos,
+    shouldAutoAdvanceAfterEnter,
+  });
 
   const {
     computeLineEdgeOffset,
@@ -68,7 +63,6 @@ export const createEditingRuntime = ({
     setCaretOffset,
     insertText,
     insertTextWithBreaks,
-    deleteSelectionIfNeeded,
     deleteText,
     computeLineEdgeOffset,
     computeVerticalOffset,

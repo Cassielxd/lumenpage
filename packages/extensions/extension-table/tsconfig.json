@@ -1,30 +1,23 @@
 {
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true,
-    "composite": true
-  },
-  "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../../core/core"
-    },
-    {
-      "path": "../../lp/model"
-    },
-    {
-      "path": "../../engine/render-engine"
-    },
-    {
-      "path": "../../lp/state"
-    },
-    {
-      "path": "../../engine/view-canvas"
-    }
-  ]
+    "extends":  "../../../tsconfig.package.json",
+    "include":  [
+                    "src"
+                ],
+    "references":  [
+                       {
+                           "path":  "../../core/core"
+                       },
+                       {
+                           "path":  "../../lp/model"
+                       },
+                       {
+                           "path":  "../../engine/render-engine"
+                       },
+                       {
+                           "path":  "../../lp/state"
+                       },
+                       {
+                           "path":  "../../engine/view-canvas"
+                       }
+                   ]
 }

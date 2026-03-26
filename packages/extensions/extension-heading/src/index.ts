@@ -3,11 +3,42 @@ import { Node } from "lumenpage-core";
 export { headingNodeSpec } from "./heading";
 export { defaultHeadingRenderer as headingRenderer } from "lumenpage-render-engine";
 
+type HeadingAttributes = number | { level?: number; [key: string]: unknown };
+
+type HeadingCommands<ReturnType> = {
+  setHeading: (attributes?: HeadingAttributes) => ReturnType;
+  toggleHeading: (attributes?: HeadingAttributes) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    heading: HeadingCommands<ReturnType>;
+  }
+}
+
+const resolveHeadingAttributes = (attributes?: HeadingAttributes) => {
+  if (typeof attributes === "number") {
+    return { level: attributes };
+  }
+
+  return {
+    level: 1,
+    ...(attributes || {}),
+  };
+};
+
 export const Heading = Node.create({
   name: "heading",
   priority: 100,
   content: "inline*",
   group: "block",
+  addCommands() {
+    return {
+      setHeading: (attributes) => ({ commands }) => commands.setNode(this.name, resolveHeadingAttributes(attributes)),
+      toggleHeading: (attributes) => ({ commands }) =>
+        commands.toggleNode(this.name, "paragraph", resolveHeadingAttributes(attributes)),
+    };
+  },
   addAttributes() {
     return {
       level: {

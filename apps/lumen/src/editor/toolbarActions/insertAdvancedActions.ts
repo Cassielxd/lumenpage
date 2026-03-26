@@ -3,6 +3,8 @@ import { openMentionPicker } from "lumenpage-extension-mention";
 import { sanitizeLinkHref } from "lumenpage-link";
 import { TextSelection } from "lumenpage-state";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
 type GetView = () => any;
 
@@ -365,12 +367,12 @@ const parseListItemsInput = (raw: string) =>
 
 export const createInsertAdvancedActions = ({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey,
   requestInputDialog,
 }: {
   getView: GetView;
-  run: (name: string, ...args: unknown[]) => boolean;
+  getEditorCommands: GetEditorCommandMap;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
@@ -434,7 +436,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultAudioTitle;
-    if (run("insertAudio", { src: href, title })) {
+    if (invokeCommand(getEditorCommands()?.insertAudio, { src: href, title })) {
       return true;
     }
     return insertReference(getView, texts.insertAudioPrefix, title, href);
@@ -467,7 +469,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const name = String(result.name || "").trim() || texts.defaultFileName;
-    if (run("insertFile", { href, name })) {
+    if (invokeCommand(getEditorCommands()?.insertFile, { href, name })) {
       return true;
     }
     return insertReference(getView, texts.insertFilePrefix, name, href);
@@ -488,7 +490,7 @@ export const createInsertAdvancedActions = ({
     if (!tag) {
       return false;
     }
-    if (run("insertTag", { label: tag })) {
+    if (invokeCommand(getEditorCommands()?.insertTag, { label: tag })) {
       return true;
     }
     return insertText(getView, `#${tag}`);
@@ -510,7 +512,13 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const content = raw || texts.defaultCallout;
-    if (run("insertCallout", { title: texts.insertCalloutPrefix, text: content, tone: "info" })) {
+    if (
+      invokeCommand(getEditorCommands()?.insertCallout, {
+        title: texts.insertCalloutPrefix,
+        text: content,
+        tone: "info",
+      })
+    ) {
       return true;
     }
     const schema = payload.state.schema;
@@ -556,7 +564,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultBookmarkTitle;
-    if (run("insertBookmark", { href, title })) {
+    if (invokeCommand(getEditorCommands()?.insertBookmark, { href, title })) {
       return true;
     }
     return insertReference(getView, texts.insertBookmarkPrefix, title, href);
@@ -579,7 +587,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const items = parseListItemsInput(raw);
-    if (run("insertOptionBox", { title: "Options", items })) {
+    if (invokeCommand(getEditorCommands()?.insertOptionBox, { title: "Options", items })) {
       return true;
     }
     const taskListNode = createTaskListNode(payload.state.schema, items);
@@ -616,7 +624,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const title = String(result.title || "").trim() || texts.defaultWebPageTitle;
-    if (run("insertWebPage", { href, title })) {
+    if (invokeCommand(getEditorCommands()?.insertWebPage, { href, title })) {
       return true;
     }
     return insertReference(getView, texts.insertWebPagePrefix, title, href);
@@ -668,7 +676,7 @@ export const createInsertAdvancedActions = ({
     const title = String(result.title || "").trim() || texts.defaultTemplateTitle;
     const summary = String(result.summary || "").trim() || texts.defaultTemplateSummary;
     const items = parseListItemsInput(String(result.items || ""));
-    if (run("insertTemplate", { title, summary, items })) {
+    if (invokeCommand(getEditorCommands()?.insertTemplate, { title, summary, items })) {
       return true;
     }
     const headingNode = createHeadingNode(payload.state.schema, title, 2);

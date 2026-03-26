@@ -413,6 +413,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
+import type { Editor as LumenEditor } from "lumenpage-core";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { redoDepth, undoDepth } from "lumenpage-history";
 import { TextSelection } from "lumenpage-state";
@@ -437,6 +438,7 @@ import createTableActions from "../editor/toolbarActions/tableActions";
 import { createTextFormatActions } from "../editor/toolbarActions/textFormatActions";
 import { createTextStyleActions } from "../editor/toolbarActions/textStyleActions";
 import { createToolsActions } from "../editor/toolbarActions/toolsActions";
+import { invokeCommand, type EditorCommandMap } from "../editor/toolbarActions/commandUtils";
 import { showToolbarMessage } from "../editor/toolbarActions/ui/message";
 import type {
   RequestToolbarInputDialog,
@@ -466,6 +468,7 @@ import {
 } from "../editor/toolbarCatalog";
 
 const props = defineProps<{
+  editor?: LumenEditor | null;
   editorView: CanvasEditorView | null;
   locale?: PlaygroundLocale;
   activeMenu?: ToolbarMenuKey;
@@ -614,27 +617,29 @@ const scrollToolbarRight = () => {
 };
 
 const getView = () => (props.editorView ? toRaw(props.editorView) : null);
-const getCommands = () => props.editorView?.commands || null;
+const getEditor = () => (props.editor ? toRaw(props.editor) : null);
+const getEditorCommands = () => (getEditor()?.commands || null) as EditorCommandMap | null;
+const getEditorCanCommands = () => (getEditor()?.can?.() || null) as EditorCommandMap | null;
 
 const run = (name: string, ...args: unknown[]) => {
-  const commands = getCommands();
+  const commands = getEditorCommands();
   const command = commands?.[name];
   if (typeof command !== "function") {
     return false;
   }
-  return command(...args);
+  return (command as (...commandArgs: unknown[]) => boolean)(...args);
 };
 
 const canRun = (name: string, ...args: unknown[]) => {
-  const commands = getCommands();
-  if (typeof commands?.can === "function") {
-    return commands.can(name, ...args) === true;
+  const commands = getEditorCanCommands();
+  const command = commands?.[name];
+  if (typeof command !== "function") {
+    return false;
   }
-  return true;
+  return (command as (...commandArgs: unknown[]) => boolean)(...args) === true;
 };
 
-const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
-  const ok = run(name, ...args);
+const notifyCommandFailure = (ok: boolean, message: string) => {
   if (!ok) {
     showToolbarMessage(message, "warning");
   }
@@ -844,7 +849,10 @@ const handleInlineFontFamilyChange = (value: unknown) => {
     return;
   }
   restorePendingInlineStyleSelection();
-  const ok = !next ? run("clearTextFontFamily") : run("setTextFontFamily", next);
+  const commands = getEditorCommands();
+  const ok = !next
+    ? invokeCommand(commands?.clearTextFontFamily)
+    : invokeCommand(commands?.setTextFontFamily, next);
   pendingInlineStyleSelection.value = null;
   if (!ok) {
     showToolbarMessage(
@@ -866,7 +874,7 @@ const handleInlineFontSizeChange = (value: unknown) => {
   }
   restorePendingInlineStyleSelection();
   if (!next) {
-    const ok = run("clearTextFontSize");
+    const ok = invokeCommand(getEditorCommands()?.clearTextFontSize);
     pendingInlineStyleSelection.value = null;
     if (!ok) {
       showToolbarMessage(
@@ -888,7 +896,7 @@ const handleInlineFontSizeChange = (value: unknown) => {
     syncInlineFontControls();
     return;
   }
-  const ok = run("setTextFontSize", Math.round(size));
+  const ok = invokeCommand(getEditorCommands()?.setTextFontSize, Math.round(size));
   pendingInlineStyleSelection.value = null;
   if (!ok) {
     showToolbarMessage(
@@ -1056,7 +1064,7 @@ const handleSignatureDialogCancel = () => {
 
 const layoutActions = createLayoutActions({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
 });
@@ -1209,7 +1217,7 @@ const markdownActions = createMarkdownActions({
 
 const inlineMediaActions = createInlineMediaActions({
   getView,
-  run,
+  getEditorCommands,
   getToolbarTexts: () => i18n.value.toolbar,
   requestInputDialog,
 });
@@ -1222,7 +1230,7 @@ const textFormatActions = createTextFormatActions({
   getLocaleKey: () => localeKey.value,
 });
 const textStyleActions = createTextStyleActions({
-  run,
+  getEditorCommands,
   getView,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
@@ -1239,13 +1247,13 @@ const quickInsertActions = createQuickInsertActions({
 });
 const insertAdvancedActions = createInsertAdvancedActions({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
 });
 const toolsActions = createToolsActions({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey: () => localeKey.value,
   requestInputDialog,
   requestSignatureDialog,
@@ -1335,7 +1343,7 @@ const handleColorDialogConfirm = () => {
   const ok = applyToolbarColorAction({
     action,
     color: colorDialogPendingValue.value,
-    run,
+    getEditorCommands,
     setPageBackgroundColor: layoutActions.setPageBackgroundColor,
     setTableCellBackgroundColor: tableActions.setCurrentCellBackgroundColor,
   });
@@ -1370,8 +1378,8 @@ const resolveHeadingOptionLabel = (value: string | number) => {
 
 const headingInlineActions = createHeadingInlineActions({
   getView,
-  run,
-  canRun,
+  getEditorCommands,
+  getEditorCanCommands,
   resolveOptionLabel: resolveHeadingOptionLabel,
 });
 const {
@@ -1432,7 +1440,9 @@ const isItemDisabled = (item: ToolbarItemConfig) => {
 
 const toolbarActionHandlers = createToolbarActionHandlers({
   run,
-  runWithNotice,
+  getEditorCommands,
+  getEditorCanCommands,
+  notifyCommandFailure,
   getToolbarTexts: () => i18n.value.toolbar,
   toggleTocPanel: () => emit("toggle-toc"),
   getSessionMode: () => resolvedSessionMode.value,

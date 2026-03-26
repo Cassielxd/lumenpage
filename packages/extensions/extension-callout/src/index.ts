@@ -5,6 +5,16 @@ import { calloutNodeSpec } from "./callout";
 export { calloutNodeSpec, serializeCalloutToText } from "./callout";
 export { calloutRenderer } from "./renderer";
 
+type CalloutCommandMethods<ReturnType> = {
+  insertCallout: (attrs?: Record<string, unknown>) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    callout: CalloutCommandMethods<ReturnType>;
+  }
+}
+
 const insertCalloutCommand =
   (attrs: Record<string, unknown> | null | undefined = {}) =>
   (state: any, dispatch?: (tr: any) => void) => {

@@ -1,12 +1,25 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "noEmit": true
-  },
-  "include": [
-    "src"
-  ]
+    "extends":  "./tsconfig.json",
+    "compilerOptions":  {
+                            "composite":  false,
+                            "declaration":  false,
+                            "declarationMap":  false,
+                            "noEmit":  true,
+                            "baseUrl":  "../../..",
+                            "rootDir":  "../../..",
+                            "paths":  {
+                                          "lumenpage-commands":  [
+                                                                     "packages/lp/commands/src/index.ts"
+                                                                 ],
+                                          "lumenpage-core":  [
+                                                                 "packages/core/core/src/index.ts"
+                                                             ],
+                                          "lumenpage-suggestion":  [
+                                                                       "packages/core/suggestion/src/index.ts"
+                                                                   ]
+                                      }
+                        },
+    "include":  [
+                    "src"
+                ]
 }

@@ -1,8 +1,9 @@
 import type { PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog, ToolbarInputDialogOption } from "./ui/inputDialog";
 import { showToolbarMessage } from "./ui/message";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
 type GetView = () => any;
 
 type TextStyleTexts = {
@@ -173,12 +174,12 @@ const buildFontSizeOptions = (current: number, texts: TextStyleTexts): ToolbarIn
 };
 
 export const createTextStyleActions = ({
-  run,
+  getEditorCommands,
   getView,
   getLocaleKey,
   requestInputDialog,
 }: {
-  run: RunCommand;
+  getEditorCommands: GetEditorCommandMap;
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
@@ -206,9 +207,9 @@ export const createTextStyleActions = ({
     }
     const value = String(result.value || "").trim();
     if (!value) {
-      return run("clearTextFontFamily");
+      return invokeCommand(getEditorCommands()?.clearTextFontFamily);
     }
-    return run("setTextFontFamily", value);
+    return invokeCommand(getEditorCommands()?.setTextFontFamily, value);
   };
 
   const applyFontSizeSetting = async () => {
@@ -232,14 +233,14 @@ export const createTextStyleActions = ({
     }
     const value = String(result.value || "").trim();
     if (!value) {
-      return run("clearTextFontSize");
+      return invokeCommand(getEditorCommands()?.clearTextFontSize);
     }
     const size = Number(value);
     if (!Number.isFinite(size) || size <= 0) {
       showToolbarMessage(texts.alertInvalidFontSize, "warning");
       return false;
     }
-    return run("setTextFontSize", Math.round(size));
+    return invokeCommand(getEditorCommands()?.setTextFontSize, Math.round(size));
   };
 
   const applyTextColorSetting = async () => {
@@ -258,13 +259,13 @@ export const createTextStyleActions = ({
     }
     const value = String(result.value || "").trim();
     if (!value) {
-      return run("clearTextColor");
+      return invokeCommand(getEditorCommands()?.clearTextColor);
     }
     if (!isValidCssColor(value)) {
       showToolbarMessage(getTexts().alertInvalidColor, "warning");
       return false;
     }
-    return run("setTextColor", value);
+    return invokeCommand(getEditorCommands()?.setTextColor, value);
   };
 
   const applyTextBackgroundSetting = async () => {
@@ -283,16 +284,17 @@ export const createTextStyleActions = ({
     }
     const value = String(result.value || "").trim();
     if (!value) {
-      return run("clearTextBackground");
+      return invokeCommand(getEditorCommands()?.clearTextBackground);
     }
     if (!isValidCssColor(value)) {
       showToolbarMessage(getTexts().alertInvalidColor, "warning");
       return false;
     }
-    return run("setTextBackground", value);
+    return invokeCommand(getEditorCommands()?.setTextBackground, value);
   };
 
-  const highlightSelection = () => run("setTextBackground", DEFAULT_HIGHLIGHT_COLOR);
+  const highlightSelection = () =>
+    invokeCommand(getEditorCommands()?.setTextBackground, DEFAULT_HIGHLIGHT_COLOR);
 
   return {
     applyFontFamilySetting,

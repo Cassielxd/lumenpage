@@ -9,13 +9,23 @@ export type SuggestionMatch = {
   text: string;
 } | null;
 
+export type SuggestionResolvedTextNode = {
+  isText?: boolean;
+  text?: string | null;
+};
+
+export type SuggestionResolvedPosition = {
+  pos: number;
+  nodeBefore?: SuggestionResolvedTextNode | null;
+};
+
 export type SuggestionMatchTrigger = {
   char: string;
   allowSpaces: boolean;
   allowToIncludeChar: boolean;
   allowedPrefixes: string[] | null;
   startOfLine: boolean;
-  $position: any;
+  $position: SuggestionResolvedPosition | null | undefined;
 };
 
 const escapeForRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

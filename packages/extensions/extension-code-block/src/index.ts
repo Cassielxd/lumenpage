@@ -1,5 +1,17 @@
 import { Node } from "lumenpage-core";
 
+type CodeBlockCommands<ReturnType> = {
+  setCodeBlock: () => ReturnType;
+  toggleCodeBlock: () => ReturnType;
+  unsetCodeBlock: () => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    codeBlock: CodeBlockCommands<ReturnType>;
+  }
+}
+
 export { codeBlockNodeSpec } from "./codeBlock";
 export { defaultCodeBlockRenderer as codeBlockRenderer } from "lumenpage-render-engine";
 
@@ -10,6 +22,13 @@ export const CodeBlock = Node.create({
   group: "block",
   marks: "",
   code: true,
+  addCommands() {
+    return {
+      setCodeBlock: () => ({ commands }) => commands.setNode(this.name),
+      toggleCodeBlock: () => ({ commands }) => commands.toggleNode(this.name, "paragraph"),
+      unsetCodeBlock: () => ({ commands }) => commands.setNode("paragraph"),
+    };
+  },
   parseHTML() {
     return [
       {

@@ -1,10 +1,24 @@
+import type {
+  AttributeSpec,
+  DOMOutputSpec,
+  Mark as PMMark,
+  MarkSpec,
+  Node as PMNode,
+  NodeSpec,
+  ParseRule,
+  TagParseRule,
+} from "lumenpage-model";
+
 import { getExtensionField, mergeDeep } from "./Extendable";
 import type {
   AttributeConfigs,
   ExtensionContext,
   ExtensionInstance,
   GlobalAttributes,
+  HTMLAttributes,
+  ParseHTMLSource,
   ResolvedStructure,
+  UnknownRecord,
 } from "./types";
 
 const callConfigValue = <Value>(value: Value | (() => Value) | undefined, fallback: Value) => {
@@ -21,76 +35,120 @@ const resolveConfigField = <Value>(
   fallback: Value
 ) => callConfigValue(getExtensionField<Value | (() => Value)>(instance.extension, field, ctx), fallback);
 
-const buildAttrsSpec = (attributeConfigs: AttributeConfigs | null) => {
+const isRecord = (value: unknown): value is UnknownRecord =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+const isStyleRule = (rule: ParseRule): rule is Extract<ParseRule, { style: string }> =>
+  typeof (rule as { style?: unknown }).style === "string";
+
+type AttributeSpecMap = Record<string, AttributeSpec>;
+type GeneratedNodeSpec = NodeSpec & { topNode?: boolean };
+
+const buildAttrsSpec = (attributeConfigs: AttributeConfigs | null): AttributeSpecMap | null => {
   if (!attributeConfigs || Object.keys(attributeConfigs).length === 0) {
     return null;
   }
-  const attrs: Record<string, any> = {};
+
+  const attrs: AttributeSpecMap = {};
   for (const [name, config] of Object.entries(attributeConfigs)) {
     attrs[name] =
       config && Object.prototype.hasOwnProperty.call(config, "default")
         ? { default: config.default }
         : {};
   }
+
   return attrs;
 };
 
-const collectParsedAttributes = (attributeConfigs: AttributeConfigs | null, source: any) => {
+const collectParsedAttributes = (
+  attributeConfigs: AttributeConfigs | null,
+  source: ParseHTMLSource
+): HTMLAttributes | null => {
   if (!attributeConfigs) {
     return null;
   }
-  const attrs: Record<string, any> = {};
+
+  const attrs: HTMLAttributes = {};
   for (const [name, config] of Object.entries(attributeConfigs)) {
     if (typeof config?.parseHTML !== "function") {
       continue;
     }
+
     const value = config.parseHTML(source);
     if (value !== undefined) {
       attrs[name] = value;
     }
   }
+
   return Object.keys(attrs).length > 0 ? attrs : null;
 };
 
-const buildParseDOM = (rules: any[], attributeConfigs: AttributeConfigs | null) => {
+const buildParseDOM = <Rule extends ParseRule>(
+  rules: readonly Rule[],
+  attributeConfigs: AttributeConfigs | null
+): Rule[] | null => {
   if (!Array.isArray(rules) || rules.length === 0) {
     return null;
   }
+
   return rules.map((rule) => {
     if (!rule || typeof rule !== "object") {
       return rule;
     }
-    const staticAttrs = rule.attrs && typeof rule.attrs === "object" ? rule.attrs : null;
-    const originalGetAttrs = typeof rule.getAttrs === "function" ? rule.getAttrs : null;
+
+    const staticAttrs = isRecord(rule.attrs) ? rule.attrs : null;
+    const originalGetAttrs =
+      typeof rule.getAttrs === "function"
+        ? (rule.getAttrs as (value: string | HTMLElement) => unknown)
+        : null;
+
     if (!originalGetAttrs && !staticAttrs && !attributeConfigs) {
       return rule;
     }
-    const nextRule = { ...rule };
-    delete nextRule.attrs;
-    nextRule.getAttrs = (value: any) => {
-      const parsedAttrs = collectParsedAttributes(attributeConfigs, value);
-      const ruleAttrs = originalGetAttrs ? originalGetAttrs(value) : staticAttrs;
+
+    const nextRule = { ...rule } as Rule;
+    const mutableRule = nextRule as unknown as UnknownRecord;
+    delete mutableRule.attrs;
+    mutableRule.getAttrs = (rawValue: string | HTMLElement) => {
+      const parsedAttrs = isStyleRule(rule)
+        ? null
+        : collectParsedAttributes(attributeConfigs, rawValue as ParseHTMLSource);
+      const ruleAttrs = originalGetAttrs
+        ? isStyleRule(rule)
+          ? originalGetAttrs(rawValue as string)
+          : originalGetAttrs(rawValue as HTMLElement)
+        : staticAttrs;
+
       if (ruleAttrs === false) {
         return false;
       }
-      return {
+
+      const mergedAttrs: HTMLAttributes = {
         ...(parsedAttrs || {}),
-        ...((ruleAttrs && typeof ruleAttrs === "object") ? ruleAttrs : {}),
+        ...(isRecord(ruleAttrs) ? ruleAttrs : {}),
       };
+
+      return Object.keys(mergedAttrs).length > 0 ? mergedAttrs : null;
     };
+
     return nextRule;
   });
 };
 
-const buildHTMLAttributes = (attributeConfigs: AttributeConfigs | null, attrs: Record<string, any>) => {
-  const htmlAttributes: Record<string, any> = {};
+const buildHTMLAttributes = (
+  attributeConfigs: AttributeConfigs | null,
+  attrs: HTMLAttributes | null | undefined
+): HTMLAttributes => {
+  const htmlAttributes: HTMLAttributes = {};
+
   if (!attributeConfigs) {
     return htmlAttributes;
   }
+
   for (const [name, config] of Object.entries(attributeConfigs)) {
     if (typeof config?.renderHTML === "function") {
       const rendered = config.renderHTML(attrs || {});
-      if (rendered && typeof rendered === "object") {
+      if (isRecord(rendered)) {
         for (const [key, value] of Object.entries(rendered)) {
           if (key === "style" && htmlAttributes.style && value) {
             htmlAttributes.style = `${String(htmlAttributes.style)};${String(value)}`;
@@ -101,19 +159,21 @@ const buildHTMLAttributes = (attributeConfigs: AttributeConfigs | null, attrs: R
       }
       continue;
     }
+
     const value = attrs?.[name];
     if (value !== null && value !== undefined) {
       htmlAttributes[name] = value;
     }
   }
+
   return htmlAttributes;
 };
 
 const mergeHTMLAttributes = (
-  baseAttributes: Record<string, any> | null | undefined,
-  nextAttributes: Record<string, any> | null | undefined
-) => {
-  const merged = {
+  baseAttributes: HTMLAttributes | null | undefined,
+  nextAttributes: HTMLAttributes | null | undefined
+): HTMLAttributes => {
+  const merged: HTMLAttributes = {
     ...(baseAttributes || {}),
     ...(nextAttributes || {}),
   };
@@ -125,10 +185,13 @@ const mergeHTMLAttributes = (
   return merged;
 };
 
-const isPlainAttributesObject = (value: any) =>
-  !!value && typeof value === "object" && !Array.isArray(value) && typeof value.nodeType !== "number";
+const isPlainAttributesObject = (value: unknown): value is UnknownRecord =>
+  isRecord(value) && typeof value.nodeType !== "number";
 
-const injectHTMLAttributesIntoDOMOutput = (output: any, htmlAttributes: Record<string, any>) => {
+const injectHTMLAttributesIntoDOMOutput = (
+  output: DOMOutputSpec,
+  htmlAttributes: HTMLAttributes
+): DOMOutputSpec => {
   if (!Array.isArray(output) || Object.keys(htmlAttributes).length === 0) {
     return output;
   }
@@ -139,7 +202,7 @@ const injectHTMLAttributesIntoDOMOutput = (output: any, htmlAttributes: Record<s
     return [tag, mergeHTMLAttributes(maybeAttrs, htmlAttributes), ...rest];
   }
 
-  const nextOutput = [tag, htmlAttributes];
+  const nextOutput: [string, ...unknown[]] = [tag, htmlAttributes];
   if (maybeAttrs !== undefined) {
     nextOutput.push(maybeAttrs);
   }
@@ -147,37 +210,43 @@ const injectHTMLAttributesIntoDOMOutput = (output: any, htmlAttributes: Record<s
   return nextOutput;
 };
 
-const mergeSchemaSpec = (generated: Record<string, any> | null, explicit: Record<string, any> | null) => {
+const mergeSchemaSpec = <T extends NodeSpec | MarkSpec>(generated: T | null, explicit: T | null): T | null => {
   if (generated && explicit) {
     return mergeDeep(generated, explicit);
   }
   return generated || explicit || null;
 };
 
-const buildNodeSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => {
-  const attributeConfigs = resolveConfigField<AttributeConfigs | null>(instance, ctx, "addAttributes", null);
-  const parseHTML = resolveConfigField<any[]>(instance, ctx, "parseHTML", []);
-  const renderHTML = getExtensionField<any>(instance.extension, "renderHTML", ctx);
-  const spec: Record<string, any> = {};
+const NODE_SCHEMA_FIELDS = [
+  "topNode",
+  "content",
+  "marks",
+  "group",
+  "inline",
+  "atom",
+  "selectable",
+  "draggable",
+  "code",
+  "whitespace",
+  "isolating",
+  "defining",
+  "linebreakReplacement",
+] as const;
 
-  for (const field of [
-    "topNode",
-    "content",
-    "marks",
-    "group",
-    "inline",
-    "atom",
-    "selectable",
-    "draggable",
-    "code",
-    "whitespace",
-    "isolating",
-    "defining",
-    "linebreakReplacement",
-  ]) {
-    const value = resolveConfigField<any>(instance, ctx, field, undefined);
+const MARK_SCHEMA_FIELDS = ["inclusive", "excludes", "group", "spanning", "code"] as const;
+
+const buildNodeSchema = (instance: ExtensionInstance, ctx: ExtensionContext): GeneratedNodeSpec | null => {
+  const attributeConfigs = resolveConfigField<AttributeConfigs | null>(instance, ctx, "addAttributes", null);
+  const parseHTML = resolveConfigField<readonly TagParseRule[]>(instance, ctx, "parseHTML", []);
+  const renderHTML = getExtensionField<
+    ((props: { node: PMNode; HTMLAttributes: HTMLAttributes }) => DOMOutputSpec) | undefined
+  >(instance.extension, "renderHTML", ctx);
+  const spec: GeneratedNodeSpec = {};
+
+  for (const field of NODE_SCHEMA_FIELDS) {
+    const value = resolveConfigField<unknown>(instance, ctx, field, undefined);
     if (value !== undefined && value !== null) {
-      spec[field] = value;
+      (spec as Record<string, unknown>)[field] = value;
     }
   }
 
@@ -192,26 +261,28 @@ const buildNodeSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => 
   }
 
   if (typeof renderHTML === "function") {
-    spec.toDOM = (node: any) =>
+    spec.toDOM = (node: PMNode) =>
       renderHTML({
         node,
-        HTMLAttributes: buildHTMLAttributes(attributeConfigs, node?.attrs || {}),
+        HTMLAttributes: buildHTMLAttributes(attributeConfigs, node.attrs as HTMLAttributes | undefined),
       });
   }
 
   return Object.keys(spec).length > 0 ? spec : null;
 };
 
-const buildMarkSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => {
+const buildMarkSchema = (instance: ExtensionInstance, ctx: ExtensionContext): MarkSpec | null => {
   const attributeConfigs = resolveConfigField<AttributeConfigs | null>(instance, ctx, "addAttributes", null);
-  const parseHTML = resolveConfigField<any[]>(instance, ctx, "parseHTML", []);
-  const renderHTML = getExtensionField<any>(instance.extension, "renderHTML", ctx);
-  const spec: Record<string, any> = {};
+  const parseHTML = resolveConfigField<readonly ParseRule[]>(instance, ctx, "parseHTML", []);
+  const renderHTML = getExtensionField<
+    ((props: { mark: PMMark; HTMLAttributes: HTMLAttributes }) => DOMOutputSpec) | undefined
+  >(instance.extension, "renderHTML", ctx);
+  const spec: MarkSpec = {};
 
-  for (const field of ["inclusive", "excludes", "group", "spanning", "code"]) {
-    const value = resolveConfigField<any>(instance, ctx, field, undefined);
+  for (const field of MARK_SCHEMA_FIELDS) {
+    const value = resolveConfigField<unknown>(instance, ctx, field, undefined);
     if (value !== undefined && value !== null) {
-      spec[field] = value;
+      (spec as Record<string, unknown>)[field] = value;
     }
   }
 
@@ -226,10 +297,10 @@ const buildMarkSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => 
   }
 
   if (typeof renderHTML === "function") {
-    spec.toDOM = (mark: any) =>
+    spec.toDOM = (mark: PMMark, inline: boolean) =>
       renderHTML({
         mark,
-        HTMLAttributes: buildHTMLAttributes(attributeConfigs, mark?.attrs || {}),
+        HTMLAttributes: buildHTMLAttributes(attributeConfigs, mark.attrs as HTMLAttributes | undefined),
       });
   }
 
@@ -237,17 +308,26 @@ const buildMarkSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => 
 };
 
 export const resolveExtensionSchema = (instance: ExtensionInstance, ctx: ExtensionContext) => {
-  if (instance.type !== "node" && instance.type !== "mark") {
-    return null;
+  if (instance.type === "node") {
+    const generated = buildNodeSchema(instance, ctx);
+    const explicit = resolveConfigField<NodeSpec | null>(instance, ctx, "schema", null);
+    return mergeSchemaSpec(generated, explicit);
   }
-  const generated =
-    instance.type === "node" ? buildNodeSchema(instance, ctx) : buildMarkSchema(instance, ctx);
-  const explicit = resolveConfigField<Record<string, any> | null>(instance, ctx, "schema", null);
-  return mergeSchemaSpec(generated, explicit);
+
+  if (instance.type === "mark") {
+    const generated = buildMarkSchema(instance, ctx);
+    const explicit = resolveConfigField<MarkSpec | null>(instance, ctx, "schema", null);
+    return mergeSchemaSpec(generated, explicit);
+  }
+
+  return null;
 };
 
-const applyAttributeConfigsToSpec = (spec: Record<string, any>, attributeConfigs: AttributeConfigs) => {
-  const nextSpec = { ...spec };
+const applyAttributeConfigsToNodeSpec = (
+  spec: NodeSpec,
+  attributeConfigs: AttributeConfigs
+): NodeSpec => {
+  const nextSpec: NodeSpec = { ...spec };
   const attrs = buildAttrsSpec(attributeConfigs);
   if (attrs) {
     nextSpec.attrs = mergeDeep(attrs, nextSpec.attrs || {});
@@ -260,10 +340,37 @@ const applyAttributeConfigsToSpec = (spec: Record<string, any>, attributeConfigs
 
   if (typeof nextSpec.toDOM === "function") {
     const originalToDOM = nextSpec.toDOM;
-    nextSpec.toDOM = (nodeOrMark: any) =>
+    nextSpec.toDOM = (node: PMNode) =>
       injectHTMLAttributesIntoDOMOutput(
-        originalToDOM(nodeOrMark),
-        buildHTMLAttributes(attributeConfigs, nodeOrMark?.attrs || {})
+        originalToDOM(node),
+        buildHTMLAttributes(attributeConfigs, node.attrs as HTMLAttributes | undefined)
+      );
+  }
+
+  return nextSpec;
+};
+
+const applyAttributeConfigsToMarkSpec = (
+  spec: MarkSpec,
+  attributeConfigs: AttributeConfigs
+): MarkSpec => {
+  const nextSpec: MarkSpec = { ...spec };
+  const attrs = buildAttrsSpec(attributeConfigs);
+  if (attrs) {
+    nextSpec.attrs = mergeDeep(attrs, nextSpec.attrs || {});
+  }
+
+  const parseDOM = buildParseDOM(nextSpec.parseDOM || [], attributeConfigs);
+  if (parseDOM) {
+    nextSpec.parseDOM = parseDOM;
+  }
+
+  if (typeof nextSpec.toDOM === "function") {
+    const originalToDOM = nextSpec.toDOM;
+    nextSpec.toDOM = (mark: PMMark, inline: boolean) =>
+      injectHTMLAttributesIntoDOMOutput(
+        originalToDOM(mark, inline),
+        buildHTMLAttributes(attributeConfigs, mark.attrs as HTMLAttributes | undefined)
       );
   }
 
@@ -281,11 +388,11 @@ export const applyGlobalAttributesToSchema = (
 
     for (const typeName of entry.types) {
       if (typeName in schema.nodes) {
-        schema.nodes[typeName] = applyAttributeConfigsToSpec(schema.nodes[typeName], entry.attributes);
+        schema.nodes[typeName] = applyAttributeConfigsToNodeSpec(schema.nodes[typeName], entry.attributes);
         continue;
       }
       if (typeName in schema.marks) {
-        schema.marks[typeName] = applyAttributeConfigsToSpec(schema.marks[typeName], entry.attributes);
+        schema.marks[typeName] = applyAttributeConfigsToMarkSpec(schema.marks[typeName], entry.attributes);
       }
     }
   }

@@ -18,8 +18,8 @@ export const createEditorViewRuntimeState = (initialEditorProps: CanvasEditorVie
   let getDecorationsAccessor: (() => any) | null = null;
   let dragHandlers: any = null;
 
-  const queryEditorProp: QueryEditorProp = ((name: any, ...args: any[]) =>
-    currentQueryEditorProp(name, ...args)) as QueryEditorProp;
+  const queryEditorProp: QueryEditorProp = ((name: string, ...args: unknown[]) =>
+    Reflect.apply(currentQueryEditorProp as (...input: unknown[]) => unknown, null, [name, ...args])) as QueryEditorProp;
 
   return {
     getLayout: () => layout,

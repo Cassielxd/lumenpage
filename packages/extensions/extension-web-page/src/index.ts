@@ -6,8 +6,25 @@ import { sanitizeWebPageHref, webPageNodeSpec } from "./webPage";
 export { sanitizeWebPageHref, webPageNodeSpec, serializeWebPageToText } from "./webPage";
 export { webPageRenderer } from "./renderer";
 
+type InsertWebPageOptions = {
+  href: string;
+  title?: string;
+  width?: number;
+  height?: number;
+};
+
+type WebPageCommandMethods<ReturnType> = {
+  insertWebPage: (attrs: InsertWebPageOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    webPage: WebPageCommandMethods<ReturnType>;
+  }
+}
+
 const insertWebPageCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertWebPageOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.webPage;
     if (!type) {
@@ -46,7 +63,7 @@ export const WebPage = Node.create({
   },
   addCommands() {
     return {
-      insertWebPage: (attrs?: Record<string, unknown>) => insertWebPageCommand(attrs)
+      insertWebPage: (attrs: InsertWebPageOptions) => insertWebPageCommand(attrs)
     };
   },
   canvas() {

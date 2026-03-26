@@ -5,13 +5,30 @@ import { templateNodeSpec } from "./template";
 export { templateNodeSpec, serializeTemplateToText } from "./template";
 export { templateRenderer } from "./renderer";
 
+type InsertTemplateOptions = {
+  title?: string;
+  summary?: string;
+  items?: string | string[];
+  itemsText?: string;
+};
+
+type TemplateCommandMethods<ReturnType> = {
+  insertTemplate: (attrs: InsertTemplateOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    templateBlock: TemplateCommandMethods<ReturnType>;
+  }
+}
+
 const normalizeItemsText = (value: unknown) =>
   Array.isArray(value)
     ? value.map((item) => String(item || "").trim()).filter(Boolean).join("\n")
     : String(value || "").trim();
 
 const insertTemplateCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertTemplateOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.templateBlock;
     if (!type) {
@@ -42,7 +59,7 @@ export const Template = Node.create({
   },
   addCommands() {
     return {
-      insertTemplate: (attrs?: Record<string, unknown>) => insertTemplateCommand(attrs),
+      insertTemplate: (attrs: InsertTemplateOptions) => insertTemplateCommand(attrs),
     };
   },
   canvas() {

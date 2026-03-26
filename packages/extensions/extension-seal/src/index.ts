@@ -5,8 +5,22 @@ import { sealNodeSpec } from "./seal";
 export { sealNodeSpec, serializeSealToText } from "./seal";
 export { sealRenderer } from "./renderer";
 
+type InsertSealOptions = {
+  text: string;
+};
+
+type SealCommandMethods<ReturnType> = {
+  insertSeal: (attrs: InsertSealOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    seal: SealCommandMethods<ReturnType>;
+  }
+}
+
 const insertSealCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertSealOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.seal;
     if (!type) {
@@ -35,7 +49,7 @@ export const Seal = Node.create({
   },
   addCommands() {
     return {
-      insertSeal: (attrs?: Record<string, unknown>) => insertSealCommand(attrs),
+      insertSeal: (attrs: InsertSealOptions) => insertSealCommand(attrs),
     };
   },
   canvas() {

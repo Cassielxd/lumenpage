@@ -1,8 +1,12 @@
 export { Editor } from "./Editor";
 export type { EditorOptions } from "./Editor";
 export { CommandManager } from "./CommandManager";
+export * from "./commands";
 export { createChainableState } from "./createChainableState";
 export { createDocument } from "./createDocument";
+export type { EditorContent, EditorJSONContent, EditorJSONMark } from "./createDocument";
+export { BeforeInput, Commands, FocusEvents, Keymap, basicCommands, focusEventsPluginKey } from "./extensions";
+export { Drop, Paste, dropPluginKey, pastePluginKey } from "./extensions";
 export { EventEmitter } from "./EventEmitter";
 export { Extension } from "./Extension";
 export { ExtensionManager } from "./ExtensionManager";
@@ -28,14 +32,24 @@ export {
   type PaginationDocWorkerClientRequest,
 } from "./paginationWorkerClient";
 
+export interface Commands<ReturnType = boolean> {}
+
 export type {
   AttributeConfig,
   AttributeConfigs,
+  AnyCommand,
   AnyExtension,
   AnyExtensionInput,
+  CanCommands,
   CanvasHooks,
   CanvasSelectionGeometry,
+  ChainedCommands,
+  CommandDispatch,
+  CommandMap,
+  CommandNameInvoker,
+  CommandProps,
   DispatchTransactionProps,
+  EditorCommand,
   EnableRules,
   EditorBaseEvent,
   EditorBeforeTransactionEvent,
@@ -50,13 +64,17 @@ export type {
   ExtensionLike,
   ExtensionType,
   Extensions,
+  FocusPosition,
   GlobalAttribute,
   GlobalAttributes,
   HTMLAttributes,
   LayoutHooks,
+  LegacyCommand,
   MarkAdapter,
   MarkAdapterContextLike,
   MarkAdapterMap,
+  NormalizeCommandMethod,
+  NormalizeCommandMethods,
   MarkAnnotationLike,
   MarkAnnotationResolver,
   MarkAnnotationResolverMap,
@@ -64,7 +82,10 @@ export type {
   NodeConfig,
   PaginationPolicy,
   ResolvedExtensions,
+  ResolvedCommand,
   ResolvedState,
   ResolvedStructure,
   SchemaSpec,
+  SingleCommands,
 } from "./types";
+

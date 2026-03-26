@@ -1,10 +1,11 @@
 import { TextSelection } from "lumenpage-state";
 import type { PlaygroundLocale } from "../i18n";
 import { createPageAppearanceActions } from "./pageAppearanceActions";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 
 type GetView = () => any;
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
 const TOC_PLACEHOLDER = "[[TOC]]";
 
 const TOC_MARKERS = new Set([TOC_PLACEHOLDER, "[TOC]"]);
@@ -73,12 +74,12 @@ const findPageSizePreset = (width: number, height: number) => {
 
 export const createLayoutActions = ({
   getView,
-  run,
+  getEditorCommands,
   getLocaleKey,
   requestInputDialog,
 }: {
   getView: GetView;
-  run: RunCommand;
+  getEditorCommands: GetEditorCommandMap;
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
@@ -209,8 +210,9 @@ export const createLayoutActions = ({
     if (!Number.isFinite(next) || next < 0) {
       return false;
     }
-    const beforeOk = run("setParagraphSpacingBefore", next);
-    const afterOk = run("setParagraphSpacingAfter", next);
+    const commands = getEditorCommands();
+    const beforeOk = invokeCommand(commands?.setParagraphSpacingBefore, next);
+    const afterOk = invokeCommand(commands?.setParagraphSpacingAfter, next);
     return beforeOk || afterOk;
   };
 

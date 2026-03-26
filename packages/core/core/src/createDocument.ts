@@ -1,20 +1,37 @@
-import { DOMParser as PMDOMParser } from "lumenpage-model";
+import { DOMParser as PMDOMParser, type Node as PMNode, type Schema } from "lumenpage-model";
 import { sanitizeDocJson } from "lumenpage-link";
 
-const isNodeContent = (content: any) =>
+export type EditorJSONMark = {
+  type: string;
+  attrs?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+export type EditorJSONContent = {
+  type?: string;
+  attrs?: Record<string, unknown>;
+  content?: EditorJSONContent[];
+  marks?: EditorJSONMark[];
+  text?: string;
+  [key: string]: unknown;
+};
+
+export type EditorContent = string | PMNode | EditorJSONContent | null;
+
+const isNodeContent = (content: unknown): content is PMNode =>
   !!content &&
   typeof content === "object" &&
-  typeof content.toJSON === "function" &&
-  Number.isFinite(content.nodeSize);
+  typeof (content as { toJSON?: unknown }).toJSON === "function" &&
+  Number.isFinite((content as { nodeSize?: unknown }).nodeSize);
 
-const isJsonContent = (content: any) =>
+const isJsonContent = (content: unknown): content is EditorJSONContent =>
   !!content &&
   typeof content === "object" &&
   !Array.isArray(content) &&
   !isNodeContent(content);
 
-const createEmptyDocument = (schema: any) => {
-  const emptyDoc = schema?.topNodeType?.createAndFill?.();
+const createEmptyDocument = (schema: Schema): PMNode => {
+  const emptyDoc = schema.topNodeType?.createAndFill?.();
   if (!emptyDoc) {
     throw new Error("Unable to create an empty document for the current schema.");
   }
@@ -25,9 +42,9 @@ export const createDocument = ({
   content,
   schema,
 }: {
-  content?: any;
-  schema: any;
-}) => {
+  content?: EditorContent;
+  schema: Schema;
+}): PMNode => {
   if (!schema) {
     throw new Error("schema is required to create a document.");
   }
@@ -51,9 +68,9 @@ export const createDocument = ({
 
   if (isJsonContent(content)) {
     const normalized =
-      sanitizeDocJson(content, {
+      (sanitizeDocJson(content, {
         source: "core.createDocument",
-      }) ?? content;
+      }) as EditorJSONContent | null) ?? content;
     return schema.nodeFromJSON(normalized);
   }
 

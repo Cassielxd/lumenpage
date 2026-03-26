@@ -1,8 +1,9 @@
 import type { ToolbarItemConfig } from "../../toolbarCatalog";
 import type { EditorSessionMode } from "../../sessionMode";
+import type { GetEditorCommandMap } from "../commandUtils";
 
 export type RunCommand = (name: string, ...args: unknown[]) => boolean;
-export type RunWithNotice = (name: string, message: string, ...args: unknown[]) => boolean;
+export type NotifyCommandFailure = (ok: boolean, message: string) => boolean;
 export type ToolbarActionResult = boolean | Promise<boolean>;
 
 export type ToolbarTexts = {
@@ -115,7 +116,9 @@ export type ToolbarActionHandler = () => void | Promise<void>;
 
 export type ToolbarActionContext = {
   run: RunCommand;
-  runWithNotice: RunWithNotice;
+  getEditorCommands: GetEditorCommandMap;
+  getEditorCanCommands: GetEditorCommandMap;
+  notifyCommandFailure: NotifyCommandFailure;
   getToolbarTexts: () => ToolbarTexts;
   toggleTocPanel: () => void;
   getSessionMode: () => EditorSessionMode;

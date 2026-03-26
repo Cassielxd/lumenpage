@@ -1,4 +1,4 @@
-﻿# lumenpage-starter-kit
+# lumenpage-starter-kit
 
 > 目录：`packages/core/starter-kit`
 
@@ -22,15 +22,12 @@
 ## 依赖关系
 ### Workspace 依赖
 - `lumenpage-core`
-- `lumenpage-extension-base-keymap`
 - `lumenpage-extension-blockquote`
 - `lumenpage-extension-bold`
 - `lumenpage-extension-bullet-list`
-- `lumenpage-extension-canvas-keymap`
 - `lumenpage-extension-code`
 - `lumenpage-extension-code-block`
 - `lumenpage-extension-document`
-- `lumenpage-extension-editing-commands`
 - `lumenpage-extension-hard-break`
 - `lumenpage-extension-heading`
 - `lumenpage-extension-horizontal-rule`

@@ -25,6 +25,19 @@ export interface CollaborationOptions {
   onFirstRender?: (() => void) | null;
 }
 
+type CollaborationCommandMethods<ReturnType> = {
+  undo: () => ReturnType;
+  redo: () => ReturnType;
+  disableCollaboration: () => ReturnType;
+  enableCollaboration: () => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    collaboration: CollaborationCommandMethods<ReturnType>;
+  }
+}
+
 const createUndoManager = (fragment: Y.XmlFragment, binding: CollaborationBinding) => {
   const undoManager = new Y.UndoManager(fragment, {
     trackedOrigins: new Set([binding.localOrigin]),

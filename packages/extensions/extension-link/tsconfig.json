@@ -1,27 +1,20 @@
 {
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true,
-    "composite": true
-  },
-  "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../../core/core"
-    },
-    {
-      "path": "../../core/link"
-    },
-    {
-      "path": "../../engine/render-engine"
-    },
-    {
-      "path": "../../lp/state"
-    }
-  ]
+    "extends":  "../../../tsconfig.package.json",
+    "include":  [
+                    "src"
+                ],
+    "references":  [
+                       {
+                           "path":  "../../core/core"
+                       },
+                       {
+                           "path":  "../../core/link"
+                       },
+                       {
+                           "path":  "../../engine/render-engine"
+                       },
+                       {
+                           "path":  "../../lp/state"
+                       }
+                   ]
 }

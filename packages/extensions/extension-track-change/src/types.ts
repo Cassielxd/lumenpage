@@ -8,6 +8,14 @@ export type TrackChangeAttrs = {
   createdAt?: string | null;
 };
 
+export type TrackChangeAttrsInput = {
+  changeId?: unknown;
+  kind?: unknown;
+  userId?: unknown;
+  userName?: unknown;
+  createdAt?: unknown;
+};
+
 export type TrackChangeRange = TrackChangeAttrs & {
   from: number;
   to: number;
@@ -65,7 +73,7 @@ export const normalizeTrackChangeKind = (value: unknown): TrackChangeKind | null
 };
 
 export const normalizeTrackChangeAttrs = (
-  attrs: Partial<TrackChangeAttrs> | null | undefined
+  attrs: TrackChangeAttrsInput | null | undefined
 ): TrackChangeAttrs | null => {
   const changeId = normalizeTrackChangeId(attrs?.changeId);
   const kind = normalizeTrackChangeKind(attrs?.kind);

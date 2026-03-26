@@ -1,10 +1,14 @@
-import { canSplit } from "lumenpage-transform";
 import { Selection } from "lumenpage-state";
+import { liftTarget } from "lumenpage-transform";
+import { canSplit } from "lumenpage-transform";
 
 const isListNodeType = (name) =>
   name === "bulletList" || name === "orderedList" || name === "taskList";
 
 const isListItemType = (name) => name === "listItem" || name === "taskItem";
+
+const getExpectedItemTypeNameForList = (listTypeName) =>
+  listTypeName === "taskList" ? "taskItem" : "listItem";
 
 const findAncestorDepthByType = ($pos, typeName) => {
   if (!$pos || !typeName) {
@@ -28,6 +32,31 @@ const findAncestorDepthByTypes = ($pos, typeNames) => {
     }
   }
   return -1;
+};
+
+const convertListItemsForListType = (tr, schema, listPos, listNode, targetListTypeName) => {
+  const targetItemTypeName = getExpectedItemTypeNameForList(targetListTypeName);
+  const targetItemType = schema.nodes[targetItemTypeName];
+
+  if (!targetItemType) {
+    return tr;
+  }
+
+  listNode.forEach((child, childOffset) => {
+    if (!isListItemType(child.type?.name) || child.type === targetItemType) {
+      return;
+    }
+
+    const childPos = listPos + 1 + childOffset;
+    const nextAttrs =
+      targetItemTypeName === "taskItem"
+        ? { ...(child.attrs || {}), checked: child.attrs?.checked === true }
+        : Object.fromEntries(Object.entries(child.attrs || {}).filter(([key]) => key !== "checked"));
+
+    tr = tr.setNodeMarkup(childPos, targetItemType, nextAttrs, child.marks);
+  });
+
+  return tr;
 };
 
 export const splitListItem = (state, dispatch) => {
@@ -171,3 +200,68 @@ export const toggleTaskItemChecked =
     dispatch(tr.scrollIntoView());
     return true;
   };
+
+export const createToggleListCommand = (listTypeName) => ({ state, dispatch, commands }) => {
+  const type = state.schema.nodes[listTypeName];
+
+  if (!type) {
+    return false;
+  }
+
+  const { $from, $to } = state.selection;
+  let range = null;
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+
+    if (!isListItemType(node.type.name)) {
+      continue;
+    }
+
+    const parent = $from.node(depth - 1);
+
+    if (
+      parent &&
+      parent.type?.name !== listTypeName &&
+      isListNodeType(parent.type?.name)
+    ) {
+      if (!dispatch) {
+        return true;
+      }
+
+      const listPos = $from.before(depth - 1);
+      const nextAttrs =
+        listTypeName === "orderedList"
+          ? { ...(parent.attrs || {}), order: Number(parent.attrs?.order) || 1 }
+          : { id: parent.attrs?.id ?? null };
+
+      let tr = state.tr.setNodeMarkup(listPos, type, nextAttrs, parent.marks);
+      tr = convertListItemsForListType(tr, state.schema, listPos, parent, listTypeName);
+      dispatch(tr.scrollIntoView());
+      return true;
+    }
+
+    if (parent?.type?.name !== listTypeName) {
+      continue;
+    }
+
+    range = $from.blockRange($to, (current) => isListItemType(current.type.name));
+    break;
+  }
+
+  if (range) {
+    const target = liftTarget(range);
+
+    if (target == null) {
+      return false;
+    }
+
+    if (dispatch) {
+      dispatch(state.tr.lift(range, target).scrollIntoView());
+    }
+
+    return true;
+  }
+
+  return commands.wrapIn(type);
+};

@@ -1,5 +1,13 @@
 import type { Editor } from "lumenpage-core";
-import { NodeSelection, Plugin, PluginKey } from "lumenpage-state";
+import {
+  NodeSelection,
+  Plugin,
+  PluginKey,
+  type EditorState,
+  type Selection,
+  type SelectionRange,
+  type Transaction,
+} from "lumenpage-state";
 import {
   createPopupController,
   createPopupRenderRuntime,
@@ -22,10 +30,48 @@ export type BubbleMenuAction = {
   markName?: string;
 };
 
+type BubbleMenuCommandHandler = (...args: unknown[]) => boolean;
+
+type BubbleMenuMarkType = {
+  isInSet: (marks: readonly unknown[]) => unknown;
+};
+
+type BubbleMenuMark = {
+  type?: BubbleMenuMarkType | null;
+};
+
+type BubbleMenuTextNode = {
+  isText?: boolean;
+  marks?: readonly unknown[] | null;
+};
+
+type BubbleMenuCommands = Record<string, BubbleMenuCommandHandler | unknown> & {
+  can?: (command: string, ...args: unknown[]) => boolean;
+};
+
+const getBubbleMenuCommands = (editor: Editor | null | undefined) =>
+  (editor?.commands ?? null) as BubbleMenuCommands | null;
+
+export type BubbleMenuEditorView = {
+  state: EditorState;
+  dom: HTMLElement;
+  dispatch: (transaction: Transaction) => void;
+  coordsAtPos?: (pos: number) => { left: number; right: number; top: number; bottom: number } | null;
+  hasFocus?: () => boolean;
+  focus?: () => void;
+};
+
+type BubbleMenuUpdateMeta = {
+  type: "updateOptions";
+  options?: BubbleMenuUpdateOptions;
+};
+
+type BubbleMenuTransactionMeta = "updatePosition" | BubbleMenuUpdateMeta;
+
 export type BubbleMenuRenderProps = {
   editor: Editor;
-  view: any;
-  state: any;
+  view: BubbleMenuEditorView;
+  state: EditorState;
   element: HTMLElement;
   from: number;
   to: number;
@@ -48,9 +94,9 @@ type BubbleMenuVirtualElement = {
 export type BubbleMenuShouldShowProps = {
   editor: Editor;
   element: HTMLElement;
-  view: any;
-  state: any;
-  oldState?: any;
+  view: BubbleMenuEditorView;
+  state: EditorState;
+  oldState?: EditorState;
   from: number;
   to: number;
   rect: PopupRect | null;
@@ -76,7 +122,7 @@ export type BubbleMenuUpdateOptions = Partial<
 >;
 
 type BubbleMenuViewProps = BubbleMenuPluginProps & {
-  view: any;
+  view: BubbleMenuEditorView;
   pluginKeyRef: string | PluginKey;
 };
 
@@ -96,7 +142,7 @@ const toFiniteNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(next) ? next : fallback;
 };
 
-const safeCoordsAtPos = (view: any, pos: number) => {
+const safeCoordsAtPos = (view: BubbleMenuEditorView, pos: number) => {
   if (!view || typeof view.coordsAtPos !== "function" || !Number.isFinite(pos)) {
     return null;
   }
@@ -124,22 +170,25 @@ const combinePopupRects = (leftRect: PopupRect | null, rightRect: PopupRect | nu
   };
 };
 
-const getSelectionRange = (selection: any) => {
-  const ranges = Array.isArray(selection?.ranges) && selection.ranges.length > 0 ? selection.ranges : null;
+const getSelectionRange = (selection: Selection) => {
+  const ranges =
+    Array.isArray(selection.ranges) && selection.ranges.length > 0
+      ? (selection.ranges as readonly SelectionRange[])
+      : null;
   if (ranges) {
     return {
-      from: Math.min(...ranges.map((range: any) => Number(range?.$from?.pos) || 0)),
-      to: Math.max(...ranges.map((range: any) => Number(range?.$to?.pos) || 0)),
+      from: Math.min(...ranges.map((range) => Number(range.$from?.pos) || 0)),
+      to: Math.max(...ranges.map((range) => Number(range.$to?.pos) || 0)),
     };
   }
 
-  const from = Number.isFinite(selection?.from) ? Number(selection.from) : 0;
-  const to = Number.isFinite(selection?.to) ? Number(selection.to) : from;
+  const from = Number.isFinite(selection.from) ? Number(selection.from) : 0;
+  const to = Number.isFinite(selection.to) ? Number(selection.to) : from;
   return { from, to };
 };
 
-const resolveSelectionRect = (view: any): PopupRect | null => {
-  const selection = view?.state?.selection;
+const resolveSelectionRect = (view: BubbleMenuEditorView): PopupRect | null => {
+  const selection = view.state.selection;
   if (!selection || selection.empty) {
     return null;
   }
@@ -152,7 +201,7 @@ const resolveSelectionRect = (view: any): PopupRect | null => {
   return toViewportPopupRect(view, combinedRect);
 };
 
-const isTextRangeSelection = (selection: any) => {
+const isTextRangeSelection = (selection: Selection | null | undefined) => {
   if (!selection || selection.empty) {
     return false;
   }
@@ -198,8 +247,8 @@ const normalizeActions = (actions?: BubbleMenuAction[]) => {
   return normalized;
 };
 
-const canRunActionByView = (view: any, action: BubbleMenuAction) => {
-  const commands = view?.commands;
+const canRunActionByEditor = (editor: Editor | null | undefined, action: BubbleMenuAction) => {
+  const commands = getBubbleMenuCommands(editor);
   if (!commands) {
     return false;
   }
@@ -215,8 +264,8 @@ const canRunActionByView = (view: any, action: BubbleMenuAction) => {
   return typeof commands[action.command] === "function";
 };
 
-const runActionByView = (view: any, action: BubbleMenuAction) => {
-  const command = view?.commands?.[action.command];
+const runActionByEditor = (editor: Editor | null | undefined, action: BubbleMenuAction) => {
+  const command = getBubbleMenuCommands(editor)?.[action.command];
   if (typeof command !== "function") {
     return false;
   }
@@ -228,25 +277,29 @@ const runActionByView = (view: any, action: BubbleMenuAction) => {
   }
 };
 
-const isActionMarkActiveByView = (view: any, action: BubbleMenuAction) => {
+const isActionMarkActiveByView = (
+  view: BubbleMenuEditorView | null | undefined,
+  action: BubbleMenuAction
+) => {
   const state = view?.state;
   if (!state?.selection || !action.markName) {
     return false;
   }
 
-  const markType = state?.schema?.marks?.[action.markName];
+  const markType = state.schema?.marks?.[action.markName] as BubbleMenuMarkType | undefined;
   if (!markType) {
     return false;
   }
 
   const selection = state.selection;
   if (selection.empty) {
-    const storedMarks = state.storedMarks || selection.$from?.marks?.() || [];
-    return storedMarks.some((mark: any) => mark?.type === markType);
+    const storedMarks =
+      (state.storedMarks || selection.$from?.marks?.() || []) as readonly BubbleMenuMark[];
+    return storedMarks.some((mark) => mark?.type === markType);
   }
 
   let active = false;
-  state.doc.nodesBetween(selection.from, selection.to, (node: any) => {
+  state.doc.nodesBetween(selection.from, selection.to, (node: BubbleMenuTextNode) => {
     if (active) {
       return false;
     }
@@ -288,7 +341,7 @@ const defaultShouldShow = ({
 
 export class BubbleMenuView {
   editor: Editor;
-  view: any;
+  view: BubbleMenuEditorView;
   element: HTMLElement;
   popup: PopupController;
   shouldShow: (props: BubbleMenuShouldShowProps) => boolean;
@@ -418,8 +471,8 @@ export class BubbleMenuView {
     this.hide();
   };
 
-  private transactionHandler = ({ transaction }: { transaction: any }) => {
-    const meta = transaction?.getMeta?.(this.pluginKeyRef);
+  private transactionHandler = ({ transaction }: { transaction: Transaction }) => {
+    const meta = transaction.getMeta(this.pluginKeyRef) as BubbleMenuTransactionMeta | undefined;
     if (meta === "updatePosition") {
       this.updatePosition();
       return;
@@ -462,10 +515,10 @@ export class BubbleMenuView {
       ownerDocument: this.ownerDocument,
       popup: this.popup,
       actions: this.actions,
-      canRunAction: (action) => canRunActionByView(this.view, action),
+      canRunAction: (action) => canRunActionByEditor(this.editor, action),
       isActionActive: (action) => isActionMarkActiveByView(this.view, action),
       runAction: (action) => {
-        const executed = runActionByView(this.view, action);
+        const executed = runActionByEditor(this.editor, action);
         if (!executed) {
           return false;
         }
@@ -488,12 +541,8 @@ export class BubbleMenuView {
     return { reference: rect, rect };
   }
 
-  private getShouldShow(oldState?: any) {
-    const state = this.view?.state;
-    if (!state?.selection) {
-      return false;
-    }
-
+  private getShouldShow(oldState?: EditorState) {
+    const state = this.view.state;
     const { from, to } = getSelectionRange(state.selection);
     const { rect } = this.resolveReference();
     return this.shouldShow({
@@ -537,11 +586,12 @@ export class BubbleMenuView {
     this.show(reference, rect);
   }
 
-  private updateHandler = (view: any, selectionChanged: boolean, docChanged: boolean, oldState?: any) => {
-    if (!view) {
-      return;
-    }
-
+  private updateHandler = (
+    view: BubbleMenuEditorView,
+    selectionChanged: boolean,
+    docChanged: boolean,
+    oldState?: EditorState
+  ) => {
     const isSame = !selectionChanged && !docChanged;
     if (isSame) {
       return;
@@ -563,7 +613,7 @@ export class BubbleMenuView {
     this.show(reference, rect);
   };
 
-  private handleDebouncedUpdate = (view: any, oldState?: any) => {
+  private handleDebouncedUpdate = (view: BubbleMenuEditorView, oldState?: EditorState) => {
     const selectionChanged = !oldState?.selection?.eq?.(view.state.selection);
     const docChanged = !oldState?.doc?.eq?.(view.state.doc);
 
@@ -586,11 +636,7 @@ export class BubbleMenuView {
     }, this.updateDelay);
   };
 
-  update(view: any, oldState?: any) {
-    if (!view?.state) {
-      return;
-    }
-
+  update(view: BubbleMenuEditorView, oldState?: EditorState) {
     const selection = view.state.selection;
     const hasValidSelection =
       Number.isFinite(selection?.from) &&
@@ -690,13 +736,16 @@ export const BubbleMenuPlugin = (options: BubbleMenuPluginProps) => {
     view: (view) =>
       new BubbleMenuView({
         ...options,
-        view,
+        view: view as BubbleMenuEditorView,
         pluginKeyRef,
       }),
   });
 };
 
-export const updateBubbleMenuPosition = (view: any, pluginKey?: string | PluginKey) => {
+export const updateBubbleMenuPosition = (
+  view: Pick<BubbleMenuEditorView, "state" | "dispatch">,
+  pluginKey?: string | PluginKey
+) => {
   const pluginKeyRef = resolvePluginKeyRef(pluginKey);
   const transaction = view?.state?.tr?.setMeta?.(pluginKeyRef, "updatePosition");
   if (!transaction) {
@@ -707,7 +756,7 @@ export const updateBubbleMenuPosition = (view: any, pluginKey?: string | PluginK
 };
 
 export const updateBubbleMenuOptions = (
-  view: any,
+  view: Pick<BubbleMenuEditorView, "state" | "dispatch">,
   options: BubbleMenuUpdateOptions,
   pluginKey?: string | PluginKey
 ) => {

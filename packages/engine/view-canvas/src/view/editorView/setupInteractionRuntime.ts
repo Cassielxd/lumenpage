@@ -25,17 +25,10 @@ export const createEditorViewInteractionRuntime = ({
   getTextLength,
   setSelectionOffsets,
   dispatchEditorProp,
-  runCommand,
-  basicCommands,
-  runKeymap,
-  enableBuiltInKeyFallback,
   dispatchTransaction,
   textOffsetToDocPos,
   docPosToTextOffset,
   clampOffset,
-  logDelete,
-  isInSpecialStructureAtPos,
-  shouldAutoAdvanceAfterEnter,
   updateStatus,
   updateCaret,
   scheduleRender,
@@ -55,17 +48,10 @@ export const createEditorViewInteractionRuntime = ({
   getTextLength: () => number;
   setSelectionOffsets: (anchor: number, head: number, options?: any) => void;
   dispatchEditorProp: (name: any, ...args: any[]) => boolean;
-  runCommand: any;
-  basicCommands: any;
-  runKeymap: any;
-  enableBuiltInKeyFallback: boolean;
   dispatchTransaction: (tr: any) => void;
   textOffsetToDocPos: (doc: any, offset: number) => number;
   docPosToTextOffset: (doc: any, pos: number) => number;
   clampOffset: (offset: number) => number;
-  logDelete: (...args: any[]) => void;
-  isInSpecialStructureAtPos: (state: any, pos: number) => boolean;
-  shouldAutoAdvanceAfterEnter: (args: any) => boolean | null;
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
   scheduleRender: () => void;
@@ -90,6 +76,30 @@ export const createEditorViewInteractionRuntime = ({
     getDomRoot: () => dom.root,
   });
 
+  const isInSpecialStructureAtPos = (state: any, pos: number) => {
+    const fromProps = runtimeState.queryEditorProp("isInSpecialStructureAtPos", state, pos);
+    if (typeof fromProps === "boolean") {
+      return fromProps;
+    }
+    const fromConfig = resolveCanvasConfig("isInSpecialStructureAtPos");
+    if (typeof fromConfig === "function") {
+      return fromConfig(state, pos);
+    }
+    return false;
+  };
+
+  const shouldAutoAdvanceAfterEnter = (args: any) => {
+    const fromProps = runtimeState.queryEditorProp("shouldAutoAdvanceAfterEnter", args);
+    if (typeof fromProps === "boolean") {
+      return fromProps;
+    }
+    const fromConfig = resolveCanvasConfig("shouldAutoAdvanceAfterEnter", null);
+    if (typeof fromConfig === "function") {
+      return fromConfig(args);
+    }
+    return null;
+  };
+
   const {
     insertText,
     insertTextWithBreaks,
@@ -103,8 +113,6 @@ export const createEditorViewInteractionRuntime = ({
   } = createEditingRuntime({
     getState: () => view.state,
     dispatchTransaction,
-    runCommand,
-    basicCommands,
     setPendingPreferredUpdate: runtimeState.setPendingPreferredUpdate,
     getCaretOffset: runtimeState.getCaretOffset,
     getText,
@@ -113,7 +121,7 @@ export const createEditorViewInteractionRuntime = ({
     docPosToTextOffset,
     textOffsetToDocPos,
     createSelectionStateAtOffset,
-    logDelete,
+    logDelete: () => {},
     isInSpecialStructureAtPos,
     shouldAutoAdvanceAfterEnter,
     getLayout: runtimeState.getLayout,
@@ -138,10 +146,6 @@ export const createEditorViewInteractionRuntime = ({
     dispatchEditorProp,
     queryEditorProp: runtimeState.queryEditorProp,
     dispatchTransaction,
-    runCommand,
-    basicCommands,
-    runKeymap,
-    enableBuiltInKeyFallback,
     insertText,
     insertTextWithBreaks,
     deleteText,

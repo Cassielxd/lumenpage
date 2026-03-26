@@ -72,6 +72,7 @@ type MountPlaygroundEditorParams = {
 };
 
 type MountedPlaygroundEditor = {
+  editor: Editor;
   view: CanvasEditorView;
   destroy: () => void;
 };
@@ -346,11 +347,11 @@ export const mountPlaygroundEditor = ({
   const addSmokeByFlags = () => {
     enqueueSmoke(
       flags.debugTableBehaviorSmoke,
-      () => runTableBehaviorStrictSmoke(view, tableDebugPanelElement || null)
+      () => runTableBehaviorStrictSmoke(view, editor, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugTableSmoke,
-      () => runTableNavigationSmoke(view, tableDebugPanelElement || null)
+      () => runTableNavigationSmoke(view, editor, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugListSmoke,
@@ -362,7 +363,7 @@ export const mountPlaygroundEditor = ({
     );
     enqueueSmoke(
       flags.debugListBehaviorSmoke,
-      () => runListBehaviorSmoke(view, tableDebugPanelElement || null)
+      () => runListBehaviorSmoke(view, editor, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugPaginationRegressionSmoke,
@@ -390,7 +391,7 @@ export const mountPlaygroundEditor = ({
     );
     enqueueSmoke(
       flags.debugToolSmoke,
-      () => runToolCommandSmoke(view, tableDebugPanelElement || null)
+      () => runToolCommandSmoke(view, editor, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugPasteSmoke,
@@ -444,7 +445,7 @@ export const mountPlaygroundEditor = ({
     );
     enqueueSmoke(
       flags.debugHistorySmoke,
-      () => runHistorySmoke(view, tableDebugPanelElement || null)
+      () => runHistorySmoke(view, editor, tableDebugPanelElement || null)
     );
     enqueueSmoke(
       flags.debugImeActionSmoke,
@@ -452,18 +453,18 @@ export const mountPlaygroundEditor = ({
     );
   };
   if (flags.debugAllSmoke) {
-    enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, editor, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runTableNavigationSmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListNestedTableSmoke(view, tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runListBehaviorSmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragSelectionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragActionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runSelectionImeSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runSelectionBoundarySmoke(view, tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runToolCommandSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runToolCommandSmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runPasteActionSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runMappingSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runCoordsSmoke(view, tableDebugPanelElement || null));
@@ -478,15 +479,15 @@ export const mountPlaygroundEditor = ({
     enqueueSmoke(true, () => runMarkdownIoSmoke(tableDebugPanelElement || null));
     enqueueSmoke(true, () => runPerfBudgetSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runLegacyConfigSmoke(tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runHistorySmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runHistorySmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runImeActionSmoke(view, tableDebugPanelElement || null));
   } else if (flags.debugP0Smoke) {
     // P0 蹇€熷洖褰掑寘锛氳緭鍏?閫夊尯銆佹嫋鎷姐€佽〃鏍笺€佸垪琛ㄣ€佸潡鍑犱綍涓庡熀纭€鑷姩鍖栭摼璺€?
-    enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runTableNavigationSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runTableBehaviorStrictSmoke(view, editor, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runTableNavigationSmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runOrderedListPaginationSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runListNestedTableSmoke(view, tableDebugPanelElement || null));
-    enqueueSmoke(true, () => runListBehaviorSmoke(view, tableDebugPanelElement || null));
+    enqueueSmoke(true, () => runListBehaviorSmoke(view, editor, tableDebugPanelElement || null));
     enqueueSmoke(true, () => smokeTests.runPaginationRegressionSmoke?.(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runBlockOutlineAlignmentSmoke(view, tableDebugPanelElement || null));
     enqueueSmoke(true, () => runDragSelectionSmoke(view, tableDebugPanelElement || null));
@@ -638,6 +639,7 @@ export const mountPlaygroundEditor = ({
   }
 
   return {
+    editor,
     view,
     destroy: () => {
       configurePlaygroundSecurityPolicy({ enableAudit: false });

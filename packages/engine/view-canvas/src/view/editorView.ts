@@ -25,7 +25,6 @@ import type { CanvasEditorViewProps } from "./editorView/types";
 export class CanvasEditorView {
   dom;
   state;
-  commands;
   dispatchTransaction;
   _internals;
   overlayHost;
@@ -40,7 +39,6 @@ export class CanvasEditorView {
     this.state = setup.state;
     this.dom = setup.domRoot;
     this.overlayHost = setup.overlayHost;
-    this.commands = setup.commands;
     this.dispatchTransaction = setup.dispatchTransaction;
     this._internals = setup.internals;
     this.composing = setup.composing;

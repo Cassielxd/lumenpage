@@ -1,9 +1,9 @@
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
-import { resolveImageInsertAttrs } from "./mediaDimensions";
 import { showToolbarMessage } from "./ui/message";
+import type { GetEditorCommandMap } from "./commandUtils";
+import { invokeCommand } from "./commandUtils";
 
 type GetView = () => any;
-type RunCommand = (name: string, ...args: unknown[]) => boolean;
 
 type ToolbarTexts = {
   promptLinkUrl: string;
@@ -14,12 +14,12 @@ type ToolbarTexts = {
 
 export const createInlineMediaActions = ({
   getView,
-  run,
+  getEditorCommands,
   getToolbarTexts,
   requestInputDialog,
 }: {
   getView: GetView;
-  run: RunCommand;
+  getEditorCommands: GetEditorCommandMap;
   getToolbarTexts: () => ToolbarTexts;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
@@ -53,7 +53,7 @@ export const createInlineMediaActions = ({
     }
     const url = String(result.url || "");
     if (!url.trim()) {
-      return run("toggleLink");
+      return invokeCommand(getEditorCommands()?.unsetLink);
     }
     const href = url.trim();
     if (empty) {
@@ -62,7 +62,7 @@ export const createInlineMediaActions = ({
       view.dispatch(tr.scrollIntoView());
       return true;
     }
-    const ok = run("toggleLink", { href, title: href });
+    const ok = invokeCommand(getEditorCommands()?.setLink, { href, title: href });
     if (!ok) {
       showToolbarMessage(toolbarTexts.alertLinkRequiresSelection, "warning");
     }
@@ -82,7 +82,7 @@ export const createInlineMediaActions = ({
     if (!src) {
       return false;
     }
-    return run("insertImage", await resolveImageInsertAttrs({ src }));
+    return invokeCommand(getEditorCommands()?.insertImage, { src, width: 320, height: 240 });
   };
 
   const insertVideo = async () => {
@@ -98,7 +98,7 @@ export const createInlineMediaActions = ({
     if (!src) {
       return false;
     }
-    return run("insertVideo", { src, embed: false });
+    return invokeCommand(getEditorCommands()?.insertVideo, { src, embed: false });
   };
 
   return {

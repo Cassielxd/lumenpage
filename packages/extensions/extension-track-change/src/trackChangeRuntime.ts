@@ -13,6 +13,23 @@ import {
   type TrackChangesOptions,
 } from "./types";
 
+type TrackChangesRuntimeCommandMethods<ReturnType> = {
+  setTrackChanges: (enabled: boolean) => ReturnType;
+  toggleTrackChanges: () => ReturnType;
+  setActiveTrackChange: (changeId: string | null) => ReturnType;
+  acceptTrackChange: (changeId: string) => ReturnType;
+  rejectTrackChange: (changeId: string) => ReturnType;
+  acceptAllTrackChanges: () => ReturnType;
+  rejectAllTrackChanges: () => ReturnType;
+  focusTrackChange: (changeId: string) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    trackChangesRuntime: TrackChangesRuntimeCommandMethods<ReturnType>;
+  }
+}
+
 const getTrackChangeMarkType = (state: any) => state?.schema?.marks?.trackChange || null;
 
 const getSkippedTrackChangeBoundary = (state: any, direction: "backward" | "forward") => {

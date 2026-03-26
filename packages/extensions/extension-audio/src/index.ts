@@ -7,8 +7,24 @@ import { audioNodeSpec } from "./audio";
 export { audioNodeSpec, serializeAudioToText } from "./audio";
 export { audioRenderer } from "./renderer";
 
+type InsertAudioOptions = {
+  src: string;
+  title?: string;
+  width?: number;
+};
+
+type AudioCommandMethods<ReturnType> = {
+  insertAudio: (attrs: InsertAudioOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    audio: AudioCommandMethods<ReturnType>;
+  }
+}
+
 const insertAudioCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertAudioOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.audio;
     if (!type) {
@@ -44,7 +60,7 @@ export const Audio = Node.create({
   },
   addCommands() {
     return {
-      insertAudio: (attrs?: Record<string, unknown>) => insertAudioCommand(attrs),
+      insertAudio: (attrs: InsertAudioOptions) => insertAudioCommand(attrs),
     };
   },
   canvas() {

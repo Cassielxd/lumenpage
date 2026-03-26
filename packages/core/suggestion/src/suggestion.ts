@@ -1,6 +1,6 @@
 import type { Editor } from "lumenpage-core";
-import { Plugin, PluginKey } from "lumenpage-state";
-import { Decoration, DecorationSet } from "lumenpage-view-canvas";
+import { Plugin, PluginKey, type EditorState, type Transaction } from "lumenpage-state";
+import { Decoration, DecorationSet, type DecorationSpec } from "lumenpage-view-canvas";
 
 import {
   findSuggestionMatch as defaultFindSuggestionMatch,
@@ -9,14 +9,36 @@ import {
   type SuggestionRange,
 } from "./findSuggestionMatch";
 
-export interface SuggestionOptions<I = any, TSelected = any> {
+export type SuggestionCoords = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+export type SuggestionEditorView = {
+  state: EditorState;
+  dispatch: (transaction: Transaction) => void;
+  coordsAtPos?: (pos: number) => SuggestionCoords | null;
+  composing?: boolean;
+  dom?: HTMLElement | null;
+};
+
+type SuggestionDecorationSpec = DecorationSpec & {
+  tag?: string;
+  className?: string;
+  content?: string;
+  emptyClassName?: string;
+};
+
+export interface SuggestionOptions<I = unknown, TSelected = unknown> {
   pluginKey?: PluginKey;
   shouldShow?: (props: {
     editor: Editor;
     range: SuggestionRange;
     query: string;
     text: string;
-    transaction: any;
+    transaction: Transaction;
   }) => boolean;
   editor: Editor;
   char?: string;
@@ -33,14 +55,14 @@ export interface SuggestionOptions<I = any, TSelected = any> {
   render?: () => SuggestionRenderLifecycle<I, TSelected>;
   allow?: (props: {
     editor: Editor;
-    state: any;
+    state: EditorState;
     range: SuggestionRange;
     isActive?: boolean;
   }) => boolean;
   findSuggestionMatch?: (config: SuggestionMatchTrigger) => SuggestionMatch;
 }
 
-export interface SuggestionProps<I = any, TSelected = any> {
+export interface SuggestionProps<I = unknown, TSelected = unknown> {
   editor: Editor;
   range: SuggestionRange;
   query: string;
@@ -52,12 +74,12 @@ export interface SuggestionProps<I = any, TSelected = any> {
 }
 
 export interface SuggestionKeyDownProps {
-  view: any;
+  view: SuggestionEditorView;
   event: KeyboardEvent;
   range: SuggestionRange;
 }
 
-export type SuggestionRenderLifecycle<I = any, TSelected = any> = {
+export type SuggestionRenderLifecycle<I = unknown, TSelected = unknown> = {
   onBeforeStart?: (props: SuggestionProps<I, TSelected>) => void;
   onStart?: (props: SuggestionProps<I, TSelected>) => void;
   onBeforeUpdate?: (props: SuggestionProps<I, TSelected>) => void;
@@ -83,7 +105,7 @@ const toFinite = (value: unknown) => {
   return Number.isFinite(next) ? next : null;
 };
 
-const toViewportDomRect = (editor: Editor, rect: any): DOMRect | null => {
+const toViewportDomRect = (editor: Editor, rect: SuggestionCoords | null | undefined): DOMRect | null => {
   const left = toFinite(rect?.left);
   const right = toFinite(rect?.right);
   const top = toFinite(rect?.top);
@@ -152,12 +174,15 @@ const clientRectFor = (editor: Editor, range: SuggestionRange) => () => {
   return raw ? toViewportDomRect(editor, raw) : null;
 };
 
-const dispatchExit = (view: any, pluginKeyRef: PluginKey) => {
+const dispatchExit = (
+  view: Pick<SuggestionEditorView, "state" | "dispatch">,
+  pluginKeyRef: PluginKey
+) => {
   const tr = view.state.tr.setMeta(pluginKeyRef, { exit: true });
   view.dispatch(tr);
 };
 
-export const Suggestion = <I = any, TSelected = any>({
+export const Suggestion = <I = unknown, TSelected = unknown>({
   pluginKey = SuggestionPluginKey,
   editor,
   char = "@",
@@ -184,9 +209,9 @@ export const Suggestion = <I = any, TSelected = any>({
     key: pluginKey,
     view() {
       return {
-        update: async (view: any, prevState: any) => {
-          const prev = pluginKey.getState(prevState) as SuggestionPluginState;
-          const next = pluginKey.getState(view.state) as SuggestionPluginState;
+        update: async (view: SuggestionEditorView, prevState: EditorState) => {
+          const prev = pluginKey.getState(prevState) as SuggestionPluginState | undefined;
+          const next = pluginKey.getState(view.state) as SuggestionPluginState | undefined;
 
           const moved = !!(prev?.active && next?.active && prev.range.from !== next.range.from);
           const started = !prev?.active && !!next?.active;
@@ -275,9 +300,14 @@ export const Suggestion = <I = any, TSelected = any>({
         text: null,
         composing: false,
       }),
-      apply: (transaction: any, prev: SuggestionPluginState, _oldState: any, state: any) => {
+      apply: (
+        transaction: Transaction,
+        prev: SuggestionPluginState,
+        _oldState: EditorState,
+        state: EditorState
+      ) => {
         const next = { ...prev };
-        const meta = transaction.getMeta(pluginKey);
+        const meta = transaction.getMeta(pluginKey) as { exit?: boolean } | undefined;
         if (meta?.exit) {
           return {
             active: false,
@@ -354,8 +384,8 @@ export const Suggestion = <I = any, TSelected = any>({
       },
     },
     props: {
-      handleKeyDown(view: any, event: KeyboardEvent) {
-        const state = pluginKey.getState(view.state) as SuggestionPluginState;
+      handleKeyDown(view: SuggestionEditorView, event: KeyboardEvent) {
+        const state = pluginKey.getState(view.state) as SuggestionPluginState | undefined;
         if (!state?.active) {
           return false;
         }
@@ -373,26 +403,28 @@ export const Suggestion = <I = any, TSelected = any>({
           return true;
         }
 
-        return renderer?.onKeyDown?.({
-          view,
-          event,
-          range: state.range,
-        }) === true;
+        return (
+          renderer?.onKeyDown?.({
+            view,
+            event,
+            range: state.range,
+          }) === true
+        );
       },
-      decorations(state: any) {
-        const pluginState = pluginKey.getState(state) as SuggestionPluginState;
+      decorations(state: EditorState) {
+        const pluginState = pluginKey.getState(state) as SuggestionPluginState | undefined;
         if (!pluginState?.active) {
           return null;
         }
         const isEmpty = !pluginState.query?.length;
-        const decorationSpec: Record<string, any> = {
+        const decorationSpec: SuggestionDecorationSpec = {
           tag: decorationTag,
           className: decorationClass,
           content: decorationContent,
           emptyClassName: isEmpty ? decorationEmptyClass : "",
         };
         return DecorationSet.create(state.doc, [
-          Decoration.inline(pluginState.range.from, pluginState.range.to, decorationSpec as any),
+          Decoration.inline(pluginState.range.from, pluginState.range.to, decorationSpec),
         ]);
       },
     },
@@ -401,6 +433,9 @@ export const Suggestion = <I = any, TSelected = any>({
   return plugin;
 };
 
-export const exitSuggestion = (view: any, pluginKeyRef: PluginKey = SuggestionPluginKey) => {
+export const exitSuggestion = (
+  view: Pick<SuggestionEditorView, "state" | "dispatch">,
+  pluginKeyRef: PluginKey = SuggestionPluginKey
+) => {
   dispatchExit(view, pluginKeyRef);
 };

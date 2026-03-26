@@ -27,7 +27,6 @@ export type CanvasViewConfig = {
 };
 
 export type CanvasConfig = CanvasViewConfig & {
-  commands?: any;
   nodeSelectionTypes?: string[];
   getText?: (doc: any) => string;
   parseHtmlToSlice?: (html: string) => any;
@@ -43,7 +42,6 @@ export type CanvasConfig = CanvasViewConfig & {
 export const canvasConfigKey = new PluginKey("lumenpage-canvas-config");
 
 const LEGACY_STRATEGY_KEYS = [
-  "commands",
   "getText",
   "parseHtmlToSlice",
   "isInSpecialStructureAtPos",

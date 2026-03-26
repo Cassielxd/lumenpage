@@ -125,7 +125,7 @@ export const createDebugLoggers = ({ debugConfig, getText, docPosToTextOffset, c
   const logSelection = debugConfig?.selection
     ? createSelectionLogger({ getText, docPosToTextOffset, clampOffset })
     : () => {};
-  const logDelete = () => {};
+  const logDelete = null;
   const debugLog = () => {};
 
   return {

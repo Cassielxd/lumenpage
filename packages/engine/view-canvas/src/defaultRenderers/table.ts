@@ -1,4 +1,5 @@
 import { defaultTableRenderer as baseTableRenderer } from "lumenpage-render-engine";
+import { NodeSelection } from "lumenpage-state";
 import {
   tableCellSelectionToRects,
   tableRangeSelectionToCellRects,
@@ -31,69 +32,72 @@ const isInTableAtResolvedPos = ($pos, config: Required<TableSelectionGeometryCon
 export const createTableSelectionGeometry = (config?: TableSelectionGeometryConfig | null) => {
   const resolved = normalizeTableSelectionSemantics(config);
 
-  return ({
-  shouldComputeSelectionRects: ({ editorState, selection }) => {
-    const pmSel = editorState?.selection;
-    if (!pmSel) {
-      return false;
-    }
-    if (pmSel?.$anchorCell || pmSel?.$headCell || pmSel?.constructor?.name === "CellSelection") {
-      return true;
-    }
-    if (pmSel?.constructor?.name === "NodeSelection") {
-      return matchesTableSelectionNodeType(pmSel.node?.type?.name, resolved.tableNodeTypes);
-    }
-    if (!selection || selection.from === selection.to) {
-      return false;
-    }
-    return isInTableAtResolvedPos(pmSel?.$from, resolved) || isInTableAtResolvedPos(pmSel?.$to, resolved);
-  },
-  shouldRenderBorderOnly: ({ editorState }) => {
-    const selection = editorState?.selection;
-    return (
-      selection?.constructor?.name === "NodeSelection" &&
-      matchesTableSelectionNodeType(selection.node?.type?.name, resolved.tableNodeTypes)
-    );
-  },
-  resolveSelectionRects: ({
-    layout,
-    editorState,
-    selection,
-    scrollTop,
-    viewportWidth,
-    layoutIndex,
-    docPosToTextOffset,
-  }) => {
-    const tableCellRects = tableCellSelectionToRects({
+  return {
+    shouldComputeSelectionRects: ({ editorState, selection }) => {
+      const pmSel = editorState?.selection;
+      if (!pmSel) {
+        return false;
+      }
+      if (pmSel?.$anchorCell || pmSel?.$headCell) {
+        return true;
+      }
+      if (pmSel instanceof NodeSelection) {
+        return matchesTableSelectionNodeType(pmSel.node?.type?.name, resolved.tableNodeTypes);
+      }
+      if (!selection || selection.from === selection.to) {
+        return false;
+      }
+      return (
+        isInTableAtResolvedPos(pmSel?.$from, resolved) ||
+        isInTableAtResolvedPos(pmSel?.$to, resolved)
+      );
+    },
+    shouldRenderBorderOnly: ({ editorState }) => {
+      const selection = editorState?.selection;
+      return (
+        selection instanceof NodeSelection &&
+        matchesTableSelectionNodeType(selection.node?.type?.name, resolved.tableNodeTypes)
+      );
+    },
+    resolveSelectionRects: ({
       layout,
-      selection: editorState?.selection,
-      doc: editorState?.doc,
+      editorState,
+      selection,
       scrollTop,
       viewportWidth,
       layoutIndex,
       docPosToTextOffset,
-      semantics: resolved,
-    });
-    if (Array.isArray(tableCellRects) && tableCellRects.length > 0) {
-      return [...tableCellRects, ...tableCellRects];
-    }
+    }) => {
+      const tableCellRects = tableCellSelectionToRects({
+        layout,
+        selection: editorState?.selection,
+        doc: editorState?.doc,
+        scrollTop,
+        viewportWidth,
+        layoutIndex,
+        docPosToTextOffset,
+        semantics: resolved,
+      });
+      if (Array.isArray(tableCellRects) && tableCellRects.length > 0) {
+        return [...tableCellRects, ...tableCellRects];
+      }
 
-    const tableRangeRects = tableRangeSelectionToCellRects({
-      layout,
-      fromOffset: selection?.from,
-      toOffset: selection?.to,
-      scrollTop,
-      viewportWidth,
-      layoutIndex,
-      semantics: resolved,
-    });
-    if (Array.isArray(tableRangeRects) && tableRangeRects.length > 0) {
-      return [...tableRangeRects, ...tableRangeRects];
-    }
+      const tableRangeRects = tableRangeSelectionToCellRects({
+        layout,
+        fromOffset: selection?.from,
+        toOffset: selection?.to,
+        scrollTop,
+        viewportWidth,
+        layoutIndex,
+        semantics: resolved,
+      });
+      if (Array.isArray(tableRangeRects) && tableRangeRects.length > 0) {
+        return [...tableRangeRects, ...tableRangeRects];
+      }
 
-    return null;
-  },
-  });
+      return null;
+    },
+  };
 };
 
 export const tableRenderer = baseTableRenderer;

@@ -13,7 +13,7 @@
             size="small"
             variant="text"
             class="icon-btn"
-            :disabled="!canRun('undo')"
+            :disabled="!canUndo()"
             @click="runUndo"
           >
             <Icon name="arrow-left" />
@@ -24,7 +24,7 @@
             size="small"
             variant="text"
             class="icon-btn"
-            :disabled="!canRun('redo')"
+            :disabled="!canRedo()"
             @click="runRedo"
           >
             <Icon name="arrow-right" />
@@ -240,11 +240,13 @@
 <script setup lang="ts">
 import { computed, ref, toRaw, watch } from "vue";
 import { Icon } from "tdesign-icons-vue-next";
+import type { Editor as LumenEditor } from "lumenpage-core";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import { closeHistory, redoDepth, undoDepth } from "lumenpage-history";
 import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 const props = defineProps<{
+  editor?: LumenEditor | null;
   editorView: CanvasEditorView | null;
   locale?: PlaygroundLocale;
   blockTypeOptions?: Array<{ label: string; value: string }>;
@@ -411,26 +413,17 @@ const resolvedParagraphSpacingOptions = computed(() => {
   }));
 });
 
-const getCommands = () => props.editorView?.commands || null;
-const run = (name: string, ...args: unknown[]) => {
-  const commands = getCommands();
-  const command = commands?.[name];
-  if (typeof command !== "function") {
-    return false;
-  }
-  return command(...args);
-};
+const getEditor = () => (props.editor ? toRaw(props.editor) : null);
+type EditorCommand<TArgs extends unknown[] = unknown[]> = (...args: TArgs) => boolean;
+type EditorCommandMap = Record<string, EditorCommand | undefined>;
 
-const canRun = (name: string, ...args: unknown[]) => {
-  const commands = getCommands();
-  if (typeof commands?.can === "function") {
-    return commands.can(name, ...args) === true;
-  }
-  return true;
-};
-
-const runWithNotice = (name: string, message: string, ...args: unknown[]) => {
-  const ok = run(name, ...args);
+const getEditorCommands = () => (getEditor()?.commands || null) as EditorCommandMap | null;
+const getEditorCanCommands = () => (getEditor()?.can?.() || null) as EditorCommandMap | null;
+const invokeCommand = <TArgs extends unknown[]>(
+  command: EditorCommand<TArgs> | null | undefined,
+  ...args: TArgs
+) => command?.(...args) ?? false;
+const notifyCommandFailure = (ok: boolean, message: string) => {
   if (!ok) {
     window.alert(message);
   }
@@ -502,8 +495,12 @@ const handleToolbarKeyDown = (event: KeyboardEvent) => {
   nextButton.focus();
 };
 
-const runUndo = () => runWithNotice("undo", i18n.value.toolbar.alertCannotUndo);
-const runRedo = () => runWithNotice("redo", i18n.value.toolbar.alertCannotRedo);
+const canUndo = () => invokeCommand(getEditorCanCommands()?.undo);
+const canRedo = () => invokeCommand(getEditorCanCommands()?.redo);
+const runUndo = () =>
+  notifyCommandFailure(invokeCommand(getEditorCommands()?.undo), i18n.value.toolbar.alertCannotUndo);
+const runRedo = () =>
+  notifyCommandFailure(invokeCommand(getEditorCommands()?.redo), i18n.value.toolbar.alertCannotRedo);
 const markHistoryBoundary = () => {
   const view = props.editorView ? toRaw(props.editorView) : null;
   if (!view?.state?.tr) {
@@ -513,26 +510,27 @@ const markHistoryBoundary = () => {
   view.dispatch(tr);
   return true;
 };
-const toggleBold = () => run("toggleBold");
-const toggleItalic = () => run("toggleItalic");
-const toggleUnderline = () => run("toggleUnderline");
-const toggleStrike = () => run("toggleStrike");
-const toggleInlineCode = () => run("toggleInlineCode");
-const toggleBlockquote = () => run("toggleBlockquote");
+const toggleBold = () => invokeCommand(getEditorCommands()?.toggleBold);
+const toggleItalic = () => invokeCommand(getEditorCommands()?.toggleItalic);
+const toggleUnderline = () => invokeCommand(getEditorCommands()?.toggleUnderline);
+const toggleStrike = () => invokeCommand(getEditorCommands()?.toggleStrike);
+const toggleInlineCode = () => invokeCommand(getEditorCommands()?.toggleInlineCode);
+const toggleBlockquote = () => invokeCommand(getEditorCommands()?.toggleBlockquote);
 const toggleCodeBlock = () => {
-  if (run("toggleCodeBlock")) {
+  const commands = getEditorCommands();
+  if (invokeCommand(commands?.toggleCodeBlock)) {
     return true;
   }
-  return run("setBlockType", "codeBlock");
+  return invokeCommand(commands?.setCodeBlock);
 };
-const insertHorizontalRule = () => run("insertHorizontalRule");
-const toggleBulletList = () => run("toggleBulletList");
-const toggleOrderedList = () => run("toggleOrderedList");
-const indent = () => run("indent");
-const outdent = () => run("outdent");
-const alignLeft = () => run("alignLeft");
-const alignCenter = () => run("alignCenter");
-const alignRight = () => run("alignRight");
+const insertHorizontalRule = () => invokeCommand(getEditorCommands()?.insertHorizontalRule);
+const toggleBulletList = () => invokeCommand(getEditorCommands()?.toggleBulletList);
+const toggleOrderedList = () => invokeCommand(getEditorCommands()?.toggleOrderedList);
+const indent = () => invokeCommand(getEditorCommands()?.indent);
+const outdent = () => invokeCommand(getEditorCommands()?.outdent);
+const alignLeft = () => invokeCommand(getEditorCommands()?.alignLeft);
+const alignCenter = () => invokeCommand(getEditorCommands()?.alignCenter);
+const alignRight = () => invokeCommand(getEditorCommands()?.alignRight);
 
 const toggleLink = () => {
   const view = props.editorView ? toRaw(props.editorView) : null;
@@ -553,7 +551,7 @@ const toggleLink = () => {
     return false;
   }
   if (!url.trim()) {
-    return run("toggleLink");
+    return invokeCommand(getEditorCommands()?.unsetLink);
   }
   const href = url.trim();
   if (empty) {
@@ -564,7 +562,7 @@ const toggleLink = () => {
     view.dispatch(tr.scrollIntoView());
     return true;
   }
-  const ok = run("toggleLink", { href, title: href });
+  const ok = invokeCommand(getEditorCommands()?.setLink, { href, title: href });
   if (!ok) {
     window.alert(i18n.value.toolbar.alertLinkRequiresSelection);
   }
@@ -576,7 +574,7 @@ const insertImage = () => {
   if (!src) {
     return false;
   }
-  return run("insertImage", { src });
+  return invokeCommand(getEditorCommands()?.insertImage, { src });
 };
 
 const insertVideo = () => {
@@ -584,52 +582,70 @@ const insertVideo = () => {
   if (!src) {
     return false;
   }
-  return run("insertVideo", { src, embed: false });
+  return invokeCommand(getEditorCommands()?.insertVideo, { src, embed: false });
 };
 
 const addTableRowAfter = () =>
-  runWithNotice("addTableRowAfter", i18n.value.toolbar.alertTableCellRequired);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.addTableRowAfter),
+    i18n.value.toolbar.alertTableCellRequired
+  );
 const deleteTableRow = () =>
-  runWithNotice("deleteTableRow", i18n.value.toolbar.alertTableCellRequired);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.deleteTableRow),
+    i18n.value.toolbar.alertTableCellRequired
+  );
 const addTableColumnAfter = () =>
-  runWithNotice("addTableColumnAfter", i18n.value.toolbar.alertTableCellRequired);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.addTableColumnAfter),
+    i18n.value.toolbar.alertTableCellRequired
+  );
 const deleteTableColumn = () =>
-  runWithNotice("deleteTableColumn", i18n.value.toolbar.alertTableCellRequired);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.deleteTableColumn),
+    i18n.value.toolbar.alertTableCellRequired
+  );
 const mergeTableCellRight = () =>
-  runWithNotice("mergeTableCellRight", i18n.value.toolbar.alertMergeRightUnavailable);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.mergeTableCellRight),
+    i18n.value.toolbar.alertMergeRightUnavailable
+  );
 const splitTableCell = () =>
-  runWithNotice("splitTableCell", i18n.value.toolbar.alertSplitCellUnavailable);
+  notifyCommandFailure(
+    invokeCommand(getEditorCommands()?.splitTableCell),
+    i18n.value.toolbar.alertSplitCellUnavailable
+  );
 
 const tableMenuOptions = computed(() => [
   {
     content: i18n.value.toolbar.tableAddRow,
     value: "addTableRowAfter",
-    disabled: !canRun("addTableRowAfter"),
+    disabled: !invokeCommand(getEditorCanCommands()?.addTableRowAfter),
   },
   {
     content: i18n.value.toolbar.tableDeleteRow,
     value: "deleteTableRow",
-    disabled: !canRun("deleteTableRow"),
+    disabled: !invokeCommand(getEditorCanCommands()?.deleteTableRow),
   },
   {
     content: i18n.value.toolbar.tableAddColumn,
     value: "addTableColumnAfter",
-    disabled: !canRun("addTableColumnAfter"),
+    disabled: !invokeCommand(getEditorCanCommands()?.addTableColumnAfter),
   },
   {
     content: i18n.value.toolbar.tableDeleteColumn,
     value: "deleteTableColumn",
-    disabled: !canRun("deleteTableColumn"),
+    disabled: !invokeCommand(getEditorCanCommands()?.deleteTableColumn),
   },
   {
     content: i18n.value.toolbar.tableMergeRight,
     value: "mergeTableCellRight",
-    disabled: !canRun("mergeTableCellRight"),
+    disabled: !invokeCommand(getEditorCanCommands()?.mergeTableCellRight),
   },
   {
     content: i18n.value.toolbar.tableSplitCell,
     value: "splitTableCell",
-    disabled: !canRun("splitTableCell"),
+    disabled: !invokeCommand(getEditorCanCommands()?.splitTableCell),
   },
 ]);
 
@@ -661,13 +677,13 @@ const handleTableMenuClick = (payload: any) => {
 
 const handleBlockTypeChange = (value: string) => {
   if (value === "paragraph") {
-    run("setBlockType", "paragraph");
+    invokeCommand(getEditorCommands()?.setParagraph);
     return;
   }
   if (value.startsWith("heading-")) {
     const level = Number.parseInt(value.replace("heading-", ""), 10);
     if (Number.isFinite(level)) {
-      run("setBlockType", "heading", level);
+      invokeCommand(getEditorCommands()?.setHeading, level);
     }
   }
 };
@@ -741,19 +757,19 @@ const applyParagraphSpacing = (key: "paragraphSpacingBefore" | "paragraphSpacing
 };
 
 const applySpacingBeforeToSelection = () => {
-  run("setParagraphSpacingBefore", paragraphSpacingBefore.value);
+  invokeCommand(getEditorCommands()?.setParagraphSpacingBefore, paragraphSpacingBefore.value);
 };
 
 const applySpacingAfterToSelection = () => {
-  run("setParagraphSpacingAfter", paragraphSpacingAfter.value);
+  invokeCommand(getEditorCommands()?.setParagraphSpacingAfter, paragraphSpacingAfter.value);
 };
 
 const clearSpacingBeforeForSelection = () => {
-  run("clearParagraphSpacingBefore");
+  invokeCommand(getEditorCommands()?.clearParagraphSpacingBefore);
 };
 
 const clearSpacingAfterForSelection = () => {
-  run("clearParagraphSpacingAfter");
+  invokeCommand(getEditorCommands()?.clearParagraphSpacingAfter);
 };
 
 const syncSpacingFromSelection = () => {

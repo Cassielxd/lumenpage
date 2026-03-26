@@ -1,7 +1,17 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "composite": false,
-    "noEmit": true
-  }
+    "extends":  "./tsconfig.json",
+    "compilerOptions":  {
+                            "composite":  false,
+                            "noEmit":  true,
+                            "baseUrl":  "../../..",
+                            "rootDir":  "../../..",
+                            "paths":  {
+                                          "lumenpage-core":  [
+                                                                 "packages/core/core/src/index.ts"
+                                                             ],
+                                          "lumenpage-commands":  [
+                                                                     "packages/lp/commands/src/index.ts"
+                                                                 ]
+                                      }
+                        }
 }

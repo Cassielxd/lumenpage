@@ -7,8 +7,30 @@ export { signatureNodeSpec, serializeSignatureToText } from "./signature";
 export { signatureRenderer } from "./renderer";
 export { createDefaultSignatureNodeView };
 
+type InsertSignatureOptions = {
+  signer?: string;
+  name?: string;
+  signedAt?: string;
+  src: string;
+  width?: number;
+  height?: number;
+  strokeWidth?: number;
+  strokeColor?: string;
+  backgroundColor?: string;
+};
+
+type SignatureCommandMethods<ReturnType> = {
+  insertSignature: (attrs: InsertSignatureOptions) => ReturnType;
+};
+
+declare module "lumenpage-core" {
+  interface Commands<ReturnType> {
+    signature: SignatureCommandMethods<ReturnType>;
+  }
+}
+
 const insertSignatureCommand =
-  (attrs: Record<string, unknown> | null | undefined = {}) =>
+  (attrs: InsertSignatureOptions) =>
   (state: any, dispatch?: (tr: any) => void) => {
     const type = state?.schema?.nodes?.signature;
     if (!type) {
@@ -53,7 +75,7 @@ export const Signature = Node.create({
   },
   addCommands() {
     return {
-      insertSignature: (attrs?: Record<string, unknown>) => insertSignatureCommand(attrs),
+      insertSignature: (attrs: InsertSignatureOptions) => insertSignatureCommand(attrs),
     };
   },
   addNodeView() {

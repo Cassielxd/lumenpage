@@ -1,236 +1,229 @@
 {
-  "files": [],
-  "references": [
-    {
-      "path": "packages/core/core"
-    },
-    {
-      "path": "packages/core/dev-tools"
-    },
-    {
-      "path": "packages/extensions/extension-active-block"
-    },
-    {
-      "path": "packages/extensions/extension-audio"
-    },
-    {
-      "path": "packages/extensions/extension-bookmark"
-    },
-    {
-      "path": "packages/extensions/extension-base-keymap"
-    },
-    {
-      "path": "packages/extensions/extension-block-id"
-    },
-    {
-      "path": "packages/extensions/extension-callout"
-    },
-    {
-      "path": "packages/extensions/extension-blockquote"
-    },
-    {
-      "path": "packages/extensions/extension-bold"
-    },
-    {
-      "path": "packages/extensions/extension-bullet-list"
-    },
-    {
-      "path": "packages/extensions/extension-canvas-keymap"
-    },
-    {
-      "path": "packages/extensions/extension-code-block"
-    },
-    {
-      "path": "packages/extensions/extension-code"
-    },
-    {
-      "path": "packages/extensions/extension-columns"
-    },
-    {
-      "path": "packages/extensions/extension-comment"
-    },
-    {
-      "path": "packages/extensions/extension-collaboration"
-    },
-    {
-      "path": "packages/extensions/extension-collaboration-caret"
-    },
-    {
-      "path": "packages/extensions/extension-changeset"
-    },
-    {
-      "path": "packages/extensions/extension-track-change"
-    },
-    {
-      "path": "packages/extensions/extension-document"
-    },
-    {
-      "path": "packages/extensions/extension-editing-commands"
-    },
-    {
-      "path": "packages/extensions/extension-embed-panel"
-    },
-    {
-      "path": "packages/extensions/extension-drag-handle"
-    },
-    {
-      "path": "packages/extensions/extension-file"
-    },
-    {
-      "path": "packages/extensions/extension-heading"
-    },
-    {
-      "path": "packages/extensions/extension-hard-break"
-    },
-    {
-      "path": "packages/extensions/extension-undo-redo"
-    },
-    {
-      "path": "packages/extensions/extension-horizontal-rule"
-    },
-    {
-      "path": "packages/extensions/extension-image"
-    },
-    {
-      "path": "packages/extensions/extension-italic"
-    },
-    {
-      "path": "packages/extensions/extension-link"
-    },
-    {
-      "path": "packages/extensions/extension-list-item"
-    },
-    {
-      "path": "packages/extensions/extension-math"
-    },
-    {
-      "path": "packages/extensions/extension-mention"
-    },
-    {
-      "path": "packages/extensions/extension-ordered-list"
-    },
-    {
-      "path": "packages/extensions/extension-option-box"
-    },
-    {
-      "path": "packages/extensions/extension-page-break"
-    },
-    {
-      "path": "packages/extensions/extension-paragraph"
-    },
-    {
-      "path": "packages/extensions/extension-popup"
-    },
-    {
-      "path": "packages/extensions/extension-bubble-menu"
-    },
-    {
-      "path": "packages/extensions/extension-smart-input-rules"
-    },
-    {
-      "path": "packages/extensions/extension-seal"
-    },
-    {
-      "path": "packages/extensions/extension-signature"
-    },
-    {
-      "path": "packages/extensions/extension-strike"
-    },
-    {
-      "path": "packages/extensions/extension-subscript"
-    },
-    {
-      "path": "packages/extensions/extension-superscript"
-    },
-    {
-      "path": "packages/extensions/extension-table"
-    },
-    {
-      "path": "packages/extensions/extension-tag"
-    },
-    {
-      "path": "packages/extensions/extension-task-item"
-    },
-    {
-      "path": "packages/extensions/extension-task-list"
-    },
-    {
-      "path": "packages/extensions/extension-template"
-    },
-    {
-      "path": "packages/extensions/extension-text"
-    },
-    {
-      "path": "packages/extensions/extension-text-box"
-    },
-    {
-      "path": "packages/extensions/extension-text-style"
-    },
-    {
-      "path": "packages/extensions/extension-underline"
-    },
-    {
-      "path": "packages/extensions/extension-video"
-    },
-    {
-      "path": "packages/extensions/extension-web-page"
-    },
-    {
-      "path": "packages/lp/model"
-    },
-    {
-      "path": "packages/lp/state"
-    },
-    {
-      "path": "packages/lp/transform"
-    },
-    {
-      "path": "packages/lp/view-types"
-    },
-    {
-      "path": "packages/lp/commands"
-    },
-    {
-      "path": "packages/lp/keymap"
-    },
-    {
-      "path": "packages/lp/inputrules"
-    },
-    {
-      "path": "packages/lp/history"
-    },
-    {
-      "path": "packages/lp/collab"
-    },
-    {
-      "path": "packages/engine/render-engine"
-    },
-    {
-      "path": "packages/core/suggestion"
-    },
-    {
-      "path": "packages/engine/view-canvas"
-    },
-    {
-      "path": "packages/engine/layout-engine"
-    },
-    {
-      "path": "packages/engine/view-runtime"
-    },
-    {
-      "path": "packages/core/link"
-    },
-    {
-      "path": "packages/core/markdown"
-    },
-    {
-      "path": "packages/core/starter-kit"
-    },
-    {
-      "path": "apps/playground"
-    },
-    {
-      "path": "apps/lumen"
-    }
-  ]
+    "files":  [
+
+              ],
+    "references":  [
+                       {
+                           "path":  "packages/core/core"
+                       },
+                       {
+                           "path":  "packages/core/dev-tools"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-active-block"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-audio"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-bookmark"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-block-id"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-callout"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-blockquote"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-bold"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-bullet-list"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-code-block"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-code"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-columns"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-comment"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-collaboration"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-collaboration-caret"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-changeset"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-track-change"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-document"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-embed-panel"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-drag-handle"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-file"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-heading"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-hard-break"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-undo-redo"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-horizontal-rule"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-image"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-italic"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-link"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-list-item"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-math"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-mention"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-ordered-list"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-option-box"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-page-break"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-paragraph"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-popup"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-bubble-menu"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-smart-input-rules"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-seal"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-signature"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-strike"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-subscript"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-superscript"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-table"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-tag"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-task-item"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-task-list"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-template"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-text"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-text-box"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-text-style"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-underline"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-video"
+                       },
+                       {
+                           "path":  "packages/extensions/extension-web-page"
+                       },
+                       {
+                           "path":  "packages/lp/model"
+                       },
+                       {
+                           "path":  "packages/lp/state"
+                       },
+                       {
+                           "path":  "packages/lp/transform"
+                       },
+                       {
+                           "path":  "packages/lp/view-types"
+                       },
+                       {
+                           "path":  "packages/lp/commands"
+                       },
+                       {
+                           "path":  "packages/lp/keymap"
+                       },
+                       {
+                           "path":  "packages/lp/inputrules"
+                       },
+                       {
+                           "path":  "packages/lp/history"
+                       },
+                       {
+                           "path":  "packages/lp/collab"
+                       },
+                       {
+                           "path":  "packages/engine/render-engine"
+                       },
+                       {
+                           "path":  "packages/core/suggestion"
+                       },
+                       {
+                           "path":  "packages/engine/view-canvas"
+                       },
+                       {
+                           "path":  "packages/engine/layout-engine"
+                       },
+                       {
+                           "path":  "packages/engine/view-runtime"
+                       },
+                       {
+                           "path":  "packages/core/link"
+                       },
+                       {
+                           "path":  "packages/core/markdown"
+                       },
+                       {
+                           "path":  "packages/core/starter-kit"
+                       },
+                       {
+                           "path":  "apps/playground"
+                       },
+                       {
+                           "path":  "apps/lumen"
+                       }
+                   ]
 }

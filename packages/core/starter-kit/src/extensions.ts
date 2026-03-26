@@ -1,12 +1,9 @@
-export { BaseKeymap } from "lumenpage-extension-base-keymap";
 export { Blockquote } from "lumenpage-extension-blockquote";
 export { Bold } from "lumenpage-extension-bold";
 export { BulletList } from "lumenpage-extension-bullet-list";
-export { CanvasKeymap } from "lumenpage-extension-canvas-keymap";
 export { Code } from "lumenpage-extension-code";
 export { CodeBlock } from "lumenpage-extension-code-block";
 export { Document } from "lumenpage-extension-document";
-export { EditingCommands } from "lumenpage-extension-editing-commands";
 export { HardBreak } from "lumenpage-extension-hard-break";
 export { Heading } from "lumenpage-extension-heading";
 export { HorizontalRule } from "lumenpage-extension-horizontal-rule";
