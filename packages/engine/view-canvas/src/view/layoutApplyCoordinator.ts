@@ -50,7 +50,9 @@ export const createLayoutApplyCoordinator = ({
     const prevLayout = getLayout?.() ?? null;
     nextLayout.__version = version;
     nextLayout.__changeSummary = changeSummary ?? null;
-    nextLayout.__forceRedraw = !prevLayout || changeSummary?.docChanged === true;
+    // Let page-level signatures drive redraws for doc edits; full cache invalidation is only
+    // needed for the first layout when no previous page surfaces exist yet.
+    nextLayout.__forceRedraw = !prevLayout;
     const prevLayoutIndex = getLayoutIndex?.() ?? null;
     setLayout(nextLayout);
     const isProgressiveLayout =

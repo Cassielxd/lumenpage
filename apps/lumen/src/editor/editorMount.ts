@@ -62,29 +62,17 @@ type MountPlaygroundEditorParams = {
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
   onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
-  onTrackChangeStateChange?: ((
-    snapshot: {
-      enabled: boolean;
-      activeChangeId: string | null;
-      changes: TrackChangeRecord[];
-    }
-  ) => void) | null;
-  onStatsChange?: ((stats: {
-    pageCount: number;
-    currentPage: number;
-    nodeCount: number;
-    pluginCount: number;
-    wordCount: number;
-    selectedWordCount: number;
-    blockType: string;
-  }) => void) | null;
+  onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
+  onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
 };
 
 type MountedPlaygroundEditor = {
+  editor: Editor;
   view: CanvasEditorView;
   setTocOutlineEnabled: (enabled: boolean) => void;
   isTocOutlineEnabled: () => boolean;
   getActiveCommentThreadId: () => string | null;
+  setCommentAnchor: (options: { threadId: string; anchorId: string }) => boolean;
   activateCommentThread: (threadId: string | null) => boolean;
   focusCommentThread: (threadId: string) => boolean;
   removeCommentThread: (threadId: string) => boolean;
@@ -100,10 +88,87 @@ type MountedPlaygroundEditor = {
   destroy: () => void;
 };
 
+type TrackChangeStateSnapshot = {
+  enabled: boolean;
+  activeChangeId: string | null;
+  changes: TrackChangeRecord[];
+};
+
+type EditorStatsSnapshot = {
+  pageCount: number;
+  currentPage: number;
+  nodeCount: number;
+  pluginCount: number;
+  wordCount: number;
+  selectedWordCount: number;
+  blockType: string;
+};
+
 const toFiniteNumber = (value: unknown) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
+
+const areTrackChangeRecordsEqual = (
+  left: TrackChangeRecord[],
+  right: TrackChangeRecord[]
+) => {
+  if (left === right) {
+    return true;
+  }
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    const leftRecord = left[index];
+    const rightRecord = right[index];
+    if (!leftRecord || !rightRecord) {
+      return false;
+    }
+    if (
+      leftRecord.changeId !== rightRecord.changeId ||
+      leftRecord.from !== rightRecord.from ||
+      leftRecord.to !== rightRecord.to ||
+      leftRecord.userId !== rightRecord.userId ||
+      leftRecord.userName !== rightRecord.userName ||
+      leftRecord.createdAt !== rightRecord.createdAt ||
+      leftRecord.insertedText !== rightRecord.insertedText ||
+      leftRecord.deletedText !== rightRecord.deletedText
+    ) {
+      return false;
+    }
+    const leftKinds = Array.isArray(leftRecord.kinds) ? leftRecord.kinds : [];
+    const rightKinds = Array.isArray(rightRecord.kinds) ? rightRecord.kinds : [];
+    if (leftKinds.length !== rightKinds.length) {
+      return false;
+    }
+    for (let kindIndex = 0; kindIndex < leftKinds.length; kindIndex += 1) {
+      if (leftKinds[kindIndex] !== rightKinds[kindIndex]) {
+        return false;
+      }
+    }
+  }
+  return true;
+};
+
+const areTrackChangeSnapshotsEqual = (
+  left: TrackChangeStateSnapshot | null,
+  right: TrackChangeStateSnapshot
+) =>
+  !!left &&
+  left.enabled === right.enabled &&
+  left.activeChangeId === right.activeChangeId &&
+  areTrackChangeRecordsEqual(left.changes, right.changes);
+
+const areEditorStatsEqual = (left: EditorStatsSnapshot | null, right: EditorStatsSnapshot) =>
+  !!left &&
+  left.pageCount === right.pageCount &&
+  left.currentPage === right.currentPage &&
+  left.nodeCount === right.nodeCount &&
+  left.pluginCount === right.pluginCount &&
+  left.wordCount === right.wordCount &&
+  left.selectedWordCount === right.selectedWordCount &&
+  left.blockType === right.blockType;
 
 const readDomRect = (element: Element | null) => {
   if (!(element instanceof HTMLElement)) {
@@ -448,11 +513,7 @@ export const mountPlaygroundEditor = ({
     if (!Number.isFinite(pos)) {
       return false;
     }
-    const command = view?.commands?.toggleTaskItemChecked;
-    if (typeof command !== "function") {
-      return false;
-    }
-    const handled = command(pos, { onlyWhenNearStart: true }) === true;
+    const handled = editor.commands.toggleTaskItemChecked?.(pos, { onlyWhenNearStart: true }) === true;
     if (handled) {
       event?.preventDefault?.();
     }
@@ -559,13 +620,57 @@ export const mountPlaygroundEditor = ({
       activeThreadId: getCommentsPluginState(view?.state).activeThreadId || null,
     });
   };
+  let trackChangeFrameId = 0;
+  let cachedTrackChangeDoc: any = null;
+  let cachedTrackChangeRevision: number | null = null;
+  let cachedTrackChangeRecords: TrackChangeRecord[] = [];
+  let lastTrackChangeSnapshot: TrackChangeStateSnapshot | null = null;
   const emitTrackChangeState = () => {
+    if (!onTrackChangeStateChange) {
+      return;
+    }
     const pluginState = getTrackChangePluginState(view?.state);
-    onTrackChangeStateChange?.({
+    const nextRevision = Number.isFinite(pluginState?.revision) ? Number(pluginState.revision) : 0;
+    const currentDoc = view?.state?.doc ?? null;
+    if (currentDoc !== cachedTrackChangeDoc || nextRevision !== cachedTrackChangeRevision) {
+      cachedTrackChangeDoc = currentDoc;
+      cachedTrackChangeRevision = nextRevision;
+      cachedTrackChangeRecords = listTrackChanges(view?.state);
+    }
+    const nextSnapshot: TrackChangeStateSnapshot = {
       enabled: pluginState.enabled === true,
       activeChangeId: pluginState.activeChangeId || null,
-      changes: listTrackChanges(view?.state),
-    });
+      changes: cachedTrackChangeRecords,
+    };
+    if (areTrackChangeSnapshotsEqual(lastTrackChangeSnapshot, nextSnapshot)) {
+      return;
+    }
+    lastTrackChangeSnapshot = {
+      enabled: nextSnapshot.enabled,
+      activeChangeId: nextSnapshot.activeChangeId,
+      changes: nextSnapshot.changes.map((record) => ({
+        ...record,
+        kinds: Array.isArray(record.kinds) ? record.kinds.slice() : [],
+      })),
+    };
+    onTrackChangeStateChange(nextSnapshot);
+  };
+  const scheduleTrackChangeStateEmit = () => {
+    if (!onTrackChangeStateChange) {
+      return;
+    }
+    if (trackChangeFrameId && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(trackChangeFrameId);
+      trackChangeFrameId = 0;
+    }
+    if (typeof requestAnimationFrame === "function") {
+      trackChangeFrameId = requestAnimationFrame(() => {
+        trackChangeFrameId = 0;
+        emitTrackChangeState();
+      });
+      return;
+    }
+    emitTrackChangeState();
   };
   const baseDispatchTransaction =
     typeof view.dispatchTransaction === "function" ? view.dispatchTransaction.bind(view) : null;
@@ -573,11 +678,13 @@ export const mountPlaygroundEditor = ({
     view.dispatchTransaction = (transaction: any) => {
       baseDispatchTransaction(transaction);
       emitCommentState();
-      emitTrackChangeState();
+      scheduleTrackChangeStateEmit();
     };
   }
+  const setCommentAnchor = (options: { threadId: string; anchorId: string }) =>
+    editor.commands.setCommentAnchor?.(options) === true;
   const activateCommentThread = (threadId: string | null) =>
-    view.commands?.activateCommentThread?.(threadId) === true;
+    editor.commands.activateCommentThread?.(threadId) === true;
   const focusCommentThread = (threadId: string) => {
     const normalizedThreadId = normalizeCommentId(threadId);
     if (!normalizedThreadId) {
@@ -602,18 +709,19 @@ export const mountPlaygroundEditor = ({
     }
   };
   const removeCommentThread = (threadId: string) =>
-    view.commands?.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
-  const setTrackChangesEnabled = (enabled: boolean) => view.commands?.setTrackChanges?.(enabled) === true;
+    editor.commands.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
+  const setTrackChangesEnabled = (enabled: boolean) =>
+    editor.commands.setTrackChanges?.(enabled) === true;
   const activateTrackChange = (changeId: string | null) =>
-    view.commands?.setActiveTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+    editor.commands.setActiveTrackChange?.(normalizeTrackChangeId(changeId)) === true;
   const focusTrackChange = (changeId: string) =>
-    view.commands?.focusTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+    editor.commands.focusTrackChange?.(normalizeTrackChangeId(changeId)) === true;
   const acceptTrackChange = (changeId: string) =>
-    view.commands?.acceptTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+    editor.commands.acceptTrackChange?.(normalizeTrackChangeId(changeId)) === true;
   const rejectTrackChange = (changeId: string) =>
-    view.commands?.rejectTrackChange?.(normalizeTrackChangeId(changeId)) === true;
-  const acceptAllTrackChanges = () => view.commands?.acceptAllTrackChanges?.() === true;
-  const rejectAllTrackChanges = () => view.commands?.rejectAllTrackChanges?.() === true;
+    editor.commands.rejectTrackChange?.(normalizeTrackChangeId(changeId)) === true;
+  const acceptAllTrackChanges = () => editor.commands.acceptAllTrackChanges?.() === true;
+  const rejectAllTrackChanges = () => editor.commands.rejectAllTrackChanges?.() === true;
   const inspectCurrentBlock = (blockId: string) => {
     const normalizedBlockId = String(blockId || "");
     if (!normalizedBlockId) {
@@ -713,6 +821,10 @@ export const mountPlaygroundEditor = ({
 
   let statsFrameId = 0;
   let statsTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  let cachedStatsDoc: any = null;
+  let cachedDocNodeCount = 0;
+  let cachedDocWordCount = 0;
+  let lastStatsSnapshot: EditorStatsSnapshot | null = null;
   const scrollArea = view?._internals?.dom?.scrollArea ?? null;
   const emitStats = () => {
     if (!onStatsChange) {
@@ -720,19 +832,29 @@ export const mountPlaygroundEditor = ({
     }
     const pagination = typeof view.getPaginationInfo === "function" ? view.getPaginationInfo() : null;
     const state = view.state;
-    let nodeCount = 0;
-    try {
-      state?.doc?.descendants?.(() => {
-        nodeCount += 1;
-      });
-    } catch (_error) {
-      nodeCount = 0;
+    const currentDoc = state?.doc ?? null;
+    if (currentDoc !== cachedStatsDoc) {
+      cachedStatsDoc = currentDoc;
+      cachedDocNodeCount = 0;
+      cachedDocWordCount = 0;
+      try {
+        currentDoc?.descendants?.(() => {
+          cachedDocNodeCount += 1;
+        });
+      } catch (_error) {
+        cachedDocNodeCount = 0;
+      }
+      try {
+        const docText = String(currentDoc?.textContent || "");
+        cachedDocWordCount = docText.replace(/\s+/g, "").length;
+      } catch (_error) {
+        cachedDocWordCount = 0;
+      }
     }
     let wordCount = 0;
     let selectedWordCount = 0;
     try {
-      const docText = String(state?.doc?.textContent || "");
-      wordCount = docText.replace(/\s+/g, "").length;
+      wordCount = cachedDocWordCount;
       const selectionFrom = Number(state?.selection?.from);
       const selectionTo = Number(state?.selection?.to);
       if (
@@ -773,15 +895,20 @@ export const mountPlaygroundEditor = ({
           : 0;
     const blockType = String(state?.selection?.$from?.parent?.type?.name || "").trim();
 
-    onStatsChange({
+    const nextStats: EditorStatsSnapshot = {
       pageCount,
       currentPage,
-      nodeCount,
+      nodeCount: cachedDocNodeCount,
       pluginCount: Math.max(0, Number(state?.plugins?.length) || 0),
       wordCount,
       selectedWordCount,
       blockType,
-    });
+    };
+    if (areEditorStatsEqual(lastStatsSnapshot, nextStats)) {
+      return;
+    }
+    lastStatsSnapshot = nextStats;
+    onStatsChange(nextStats);
   };
   const scheduleStatsEmit = () => {
     if (!onStatsChange) {
@@ -840,12 +967,14 @@ export const mountPlaygroundEditor = ({
   }
 
   return {
+    editor,
     view,
     setTocOutlineEnabled: (enabled: boolean) => {
       tocOutlineController.setEnabled(enabled);
     },
     isTocOutlineEnabled: () => tocOutlineController.isEnabled(),
     getActiveCommentThreadId: () => getCommentsPluginState(view?.state).activeThreadId || null,
+    setCommentAnchor,
     activateCommentThread,
     focusCommentThread,
     removeCommentThread,
@@ -873,6 +1002,9 @@ export const mountPlaygroundEditor = ({
       scrollArea?.removeEventListener?.("scroll", handleScroll);
       if (statsFrameId && typeof cancelAnimationFrame === "function") {
         cancelAnimationFrame(statsFrameId);
+      }
+      if (trackChangeFrameId && typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(trackChangeFrameId);
       }
       if (statsTimeoutId != null) {
         clearTimeout(statsTimeoutId);
