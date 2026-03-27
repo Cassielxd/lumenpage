@@ -2,7 +2,7 @@ import { Plugin, PluginKey } from "lumenpage-state";
 
 import type { Editor } from "./Editor";
 import { CommandManager } from "./CommandManager";
-import { createChainableState } from "./createChainableState";
+import { createChainableState } from "./helpers/createChainableState";
 
 export type Range = {
   from: number;

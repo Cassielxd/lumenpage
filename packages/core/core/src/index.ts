@@ -1,15 +1,17 @@
 export { Editor } from "./Editor";
 export type { EditorOptions } from "./Editor";
 export { CommandManager } from "./CommandManager";
+export * as commands from "./commands";
+export * as extensions from "./extensions";
+export * as helpers from "./helpers";
+export * as utilities from "./utilities";
 export * from "./commands";
-export { createChainableState } from "./createChainableState";
-export { createDocument } from "./createDocument";
-export type { EditorContent, EditorJSONContent, EditorJSONMark } from "./createDocument";
 export { BeforeInput, Commands, FocusEvents, Keymap, basicCommands, focusEventsPluginKey } from "./extensions";
 export { Drop, Paste, dropPluginKey, pastePluginKey } from "./extensions";
 export { EventEmitter } from "./EventEmitter";
 export { Extension } from "./Extension";
 export { ExtensionManager } from "./ExtensionManager";
+export * from "./helpers";
 export { Mark } from "./Mark";
 export { Node } from "./Node";
 export {
@@ -22,6 +24,7 @@ export {
 } from "./PasteRule";
 export { markPasteRule, nodePasteRule, textPasteRule } from "./pasteRules";
 export { createSchema } from "./createSchema";
+export * from "./utilities";
 export {
   attachExtensionPaginationDocWorker,
   type PaginationDocWorkerRequest,

@@ -39,7 +39,8 @@
     "dev:app": "pnpm -C apps/playground dev",
     "dev:collab": "pnpm -C apps/collab-server dev",
     "start:collab": "pnpm -C apps/collab-server start",
-    "build:collab": "pnpm -C apps/collab-server build"
+    "build:collab": "pnpm -C apps/collab-server build",
+    "test:core:characterization": "node ./packages/core/core/tests/run-characterization-tests.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

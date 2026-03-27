@@ -1,61 +1,6 @@
-﻿import type { AnyExtension, ExtendableConfig } from "./types";
-
-const isPlainObject = (value: unknown): value is Record<string, any> => {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
-};
-
-export const mergeDeep = <T>(base: T, patch: any): T => {
-  if (patch == null) {
-    return base;
-  }
-  if (!isPlainObject(base) || !isPlainObject(patch)) {
-    return patch as T;
-  }
-
-  const result: Record<string, any> = { ...base };
-  for (const [key, value] of Object.entries(patch)) {
-    const current = result[key];
-    result[key] = isPlainObject(current) && isPlainObject(value) ? mergeDeep(current, value) : value;
-  }
-  return result as T;
-};
-
-export const getExtensionField = <Value = any>(
-  extension: AnyExtension | null | undefined,
-  field: string,
-  context: Record<string, any> = {}
-): Value | undefined => {
-  if (!extension) {
-    return undefined;
-  }
-
-  const localValue = (extension.config as Record<string, any>)[field];
-  const parentValue = extension.parent ? getExtensionField(extension.parent, field, context) : undefined;
-
-  if (localValue === undefined) {
-    return parentValue as Value | undefined;
-  }
-
-  if (typeof localValue !== "function") {
-    return localValue as Value;
-  }
-
-  const bound = (...args: any[]) =>
-    localValue.apply(
-      {
-        ...context,
-        name: extension.name,
-        parent: parentValue,
-      },
-      args
-    );
-
-  return bound as Value;
-};
+import { getExtensionField } from "./helpers/getExtensionField";
+import { mergeDeep } from "./utilities/mergeDeep";
+import type { AnyExtension, ExtendableConfig } from "./types";
 
 export class Extendable<
   Options = any,
@@ -71,6 +16,7 @@ export class Extendable<
 
   constructor(config: Partial<Config> = {}, parent: AnyExtension | null = null, options: Partial<Options> = {}) {
     const resolvedName = String(config.name ?? parent?.name ?? "").trim();
+
     if (!resolvedName) {
       throw new Error("Extension name is required.");
     }
@@ -113,3 +59,6 @@ export class Extendable<
     );
   }
 }
+
+export { getExtensionField } from "./helpers/getExtensionField";
+export { mergeDeep } from "./utilities/mergeDeep";

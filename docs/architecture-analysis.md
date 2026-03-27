@@ -82,3 +82,4 @@
 - `docs/large-doc-optimization-handoff-2026-03-09.md`
 - `docs/lumen-feature-packaging-plan.md`
 - `docs/package-governance-checklist.md`
+- `docs/core-style-alignment.md`

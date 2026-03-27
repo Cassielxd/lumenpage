@@ -2,7 +2,7 @@ import type { EditorState, Transaction } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 
 import type { Editor } from "./Editor";
-import { createChainableState } from "./createChainableState";
+import { createChainableState } from "./helpers/createChainableState";
 import type {
   AnyCommand,
   CanCommands,

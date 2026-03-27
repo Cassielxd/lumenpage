@@ -2,15 +2,15 @@
 import { EditorState, Selection, type Transaction } from "lumenpage-state";
 import { CanvasEditorView, type CanvasEditorViewProps } from "lumenpage-view-canvas";
 
+import { createEditorViewProps } from "./bridge/canvas/createEditorViewProps";
+import { collectNodeSelectionTypes, createSelectionGeometry } from "./bridge/canvas/selectionGeometry";
 import { CommandManager } from "./CommandManager";
-import { createDocument, type EditorContent } from "./createDocument";
-import { createEditorViewProps } from "./createEditorViewProps";
 import { defaultEditorOptions, hasSchemaSpec } from "./editorConfig";
 import { EventEmitter } from "./EventEmitter";
 import { createSchema } from "./createSchema";
 import { ExtensionManager } from "./ExtensionManager";
+import { createDocument, type EditorContent } from "./helpers/createDocument";
 import { resolveEditorExtensions } from "./resolveEditorExtensions";
-import { collectNodeSelectionTypes, createSelectionGeometry } from "./selectionGeometry";
 import type {
   AnyExtensionInput,
   CanCommands,

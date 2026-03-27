@@ -9,6 +9,7 @@
 
 - 下次继续开发前先读：`docs/session-handoff.md`
 - 该文档维护了当前未提交改动、验证命令与下一步优先级，作为会话级入口。
+- `packages/core/core` 的风格对齐与行为护栏说明见：`docs/core-style-alignment.md`
 
 ## 最高优先级（当前主线）
 

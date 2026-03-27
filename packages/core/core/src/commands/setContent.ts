@@ -1,6 +1,6 @@
 import { Selection } from "lumenpage-state";
 
-import { createDocument, type EditorContent } from "../createDocument";
+import { createDocument, type EditorContent } from "../helpers/createDocument";
 import type { RawCommands } from "../types";
 
 declare module "lumenpage-core" {
