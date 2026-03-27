@@ -67,7 +67,8 @@ const cases: OverlayCase[] = [
         },
       ],
     },
-  },  {
+  },
+  {
     name: "audio overlay matches layout box and stays above next paragraph",
     selector: ".lumenpage-audio-overlay",
     nodeBlockId: "audio-overlay-case",
@@ -88,6 +89,57 @@ const cases: OverlayCase[] = [
           type: "paragraph",
           attrs: { id: "paragraph-after-audio" },
           content: [{ type: "text", text: "Paragraph after audio overlay" }],
+        },
+      ],
+    },
+  },
+  {
+    name: "bookmark overlay matches layout box and stays above next paragraph",
+    selector: ".lumenpage-bookmark-overlay",
+    nodeBlockId: "bookmark-overlay-case",
+    nextBlockId: "paragraph-after-bookmark",
+    doc: {
+      type: "doc",
+      content: [
+        {
+          type: "bookmark",
+          attrs: {
+            id: "bookmark-overlay-case",
+            href: "https://example.com/reference",
+            title: "Reference bookmark",
+            description: "Bookmark description",
+          },
+        },
+        {
+          type: "paragraph",
+          attrs: { id: "paragraph-after-bookmark" },
+          content: [{ type: "text", text: "Paragraph after bookmark overlay" }],
+        },
+      ],
+    },
+  },
+  {
+    name: "file overlay matches layout box and stays above next paragraph",
+    selector: ".lumenpage-file-overlay",
+    nodeBlockId: "file-overlay-case",
+    nextBlockId: "paragraph-after-file",
+    doc: {
+      type: "doc",
+      content: [
+        {
+          type: "file",
+          attrs: {
+            id: "file-overlay-case",
+            href: "https://example.com/demo.pdf",
+            name: "Demo PDF",
+            size: "2 MB",
+            mimeType: "application/pdf",
+          },
+        },
+        {
+          type: "paragraph",
+          attrs: { id: "paragraph-after-file" },
+          content: [{ type: "text", text: "Paragraph after file overlay" }],
         },
       ],
     },
@@ -231,4 +283,3 @@ for (const testCase of cases) {
     guards.assertClean();
   });
 }
-

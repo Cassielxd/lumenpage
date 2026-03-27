@@ -6,7 +6,31 @@ const resolveOverlayHost = (view: any) =>
   view?.dom?.querySelector?.(".lumenpage-overlay-host") ||
   null;
 
-export const createDefaultBookmarkNodeView = (node: any, view: any) => {
+const syncNodeViewBlockId = (element: HTMLElement, node: any) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
+
+const findNodePosByBlockId = (doc: any, blockId: string | null) => {
+  if (!doc || !blockId || typeof doc.descendants !== "function") {
+    return null;
+  }
+  let found: number | null = null;
+  doc.descendants((candidate: any, pos: number) => {
+    if (candidate?.attrs?.id === blockId) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
+export const createDefaultBookmarkNodeView = (node: any, view: any, getPos?: () => number) => {
   const host = resolveOverlayHost(view);
   if (!host) return null;
 
@@ -18,6 +42,8 @@ export const createDefaultBookmarkNodeView = (node: any, view: any) => {
   container.style.height = "0";
   container.style.pointerEvents = "none";
   container.style.overflow = "visible";
+  container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
 
   const link = document.createElement("a");
@@ -33,6 +59,34 @@ export const createDefaultBookmarkNodeView = (node: any, view: any) => {
   container.appendChild(link);
 
   let currentNode = node;
+  let suppressNextClick = false;
+
+  const resolveNodePos = () => {
+    const livePos = getPos?.();
+    if (Number.isFinite(livePos)) {
+      return Number(livePos);
+    }
+    return findNodePosByBlockId(view?.state?.doc, currentNode?.attrs?.id ?? null);
+  };
+
+  const isNodeSelected = () => {
+    const pos = resolveNodePos();
+    const selection = view?.state?.selection;
+    return (
+      Number.isFinite(pos) &&
+      selection?.constructor?.name === "NodeSelection" &&
+      selection.from === pos
+    );
+  };
+
+  const applyNodeSelection = () => {
+    const pos = resolveNodePos();
+    const setNodeSelectionAtPos = view?._internals?.setNodeSelectionAtPos;
+    if (!Number.isFinite(pos) || typeof setNodeSelectionAtPos !== "function") {
+      return false;
+    }
+    return setNodeSelectionAtPos(pos) === true;
+  };
 
   const updateLink = (nextNode: any) => {
     const href = sanitizeLinkHref(nextNode.attrs?.href || "");
@@ -41,12 +95,40 @@ export const createDefaultBookmarkNodeView = (node: any, view: any) => {
     link.setAttribute("aria-label", link.title);
   };
 
+  const handlePointerDown = (event: PointerEvent) => {
+    if (event.button !== 0 || isNodeSelected()) {
+      return;
+    }
+    suppressNextClick = applyNodeSelection();
+    if (suppressNextClick) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  const handleClick = (event: MouseEvent) => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (!isNodeSelected() && applyNodeSelection()) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  link.addEventListener("pointerdown", handlePointerDown, true);
+  link.addEventListener("click", handleClick, true);
+
   updateLink(node);
 
   return {
     update(nextNode: any) {
       if (nextNode.type !== currentNode.type) return false;
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       updateLink(nextNode);
       return true;
     },
@@ -61,12 +143,16 @@ export const createDefaultBookmarkNodeView = (node: any, view: any) => {
       container.style.height = `${Math.max(1, Math.round(height))}px`;
     },
     destroy() {
+      link.removeEventListener("pointerdown", handlePointerDown, true);
+      link.removeEventListener("click", handleClick, true);
       container.remove();
     },
     selectNode() {
+      suppressNextClick = false;
       container.style.outline = "2px solid #3b82f6";
     },
     deselectNode() {
+      suppressNextClick = false;
       container.style.outline = "none";
     },
   };

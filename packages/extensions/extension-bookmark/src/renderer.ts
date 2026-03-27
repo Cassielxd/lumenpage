@@ -9,6 +9,18 @@ const buildBookmarkLayout = ({ node, settings }: { node: any; settings: any }) =
   const height = 88;
   const title = trimText(attrs.title) || "Reference";
   const description = trimText(attrs.description);
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -18,7 +30,7 @@ const buildBookmarkLayout = ({ node, settings }: { node: any; settings: any }) =
     runs: [],
     x: settings.margin.left,
     blockType: "bookmark",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     bookmarkMeta: {
       href: String(attrs.href || ""),
       title,
@@ -32,7 +44,7 @@ const buildBookmarkLayout = ({ node, settings }: { node: any; settings: any }) =
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
 };
@@ -49,7 +61,7 @@ export const bookmarkRenderer = {
       height: layout.height,
       blockLineHeight: layout.height,
       blockType: "bookmark",
-      blockAttrs: layout.blockAttrs,
+      blockAttrs: { ...layout.blockAttrs },
     };
   },
 

@@ -10,6 +10,18 @@ const buildFileLayout = ({ node, settings }: { node: any; settings: any }) => {
   const name = trimText(attrs.name) || "Attachment";
   const size = trimText(attrs.size);
   const mimeType = trimText(attrs.mimeType);
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -19,7 +31,7 @@ const buildFileLayout = ({ node, settings }: { node: any; settings: any }) => {
     runs: [],
     x: settings.margin.left,
     blockType: "file",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     fileMeta: {
       href: String(attrs.href || ""),
       name,
@@ -34,7 +46,7 @@ const buildFileLayout = ({ node, settings }: { node: any; settings: any }) => {
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
 };
@@ -51,7 +63,7 @@ export const fileRenderer = {
       height: layout.height,
       blockLineHeight: layout.height,
       blockType: "file",
-      blockAttrs: layout.blockAttrs,
+      blockAttrs: { ...layout.blockAttrs },
     };
   },
 
