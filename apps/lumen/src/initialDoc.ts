@@ -18,6 +18,47 @@ export const initialDocJson = {
       "content": [
         {
           "type": "text",
+          "text": "LumenPage is a ProseMirror-based editor runtime that keeps ProseMirror's document model, transactions, state management, and plugin system, while replacing the standard DOM-based view layer with a custom Canvas rendering pipeline."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "The project is designed for page-oriented editing with tighter control over layout, pagination, selection geometry, hit testing, and rendering behavior. It does not replace ProseMirror's core model. Instead, it builds a custom Canvas view and layout runtime on top of ProseMirror's state and extensibility."
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "\"The project keeps ProseMirror's state management and plugin architecture as the foundation, but replaces the standard DOM-based view layer with a custom Canvas-based rendering system.\""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "text": "Reference: project introduction prepared for sharing on the ProseMirror Discuss community."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
           "text": "LumenPage 是一个基于 Canvas 的分页富文本编辑器框架，面向“长文档、强排版、可扩展”的在线编辑场景。 它不是简单复刻 `contenteditable`，而是把文档模型、分页布局、渲染管线做成可控系统，目标是提供稳定的分页结果、可预测的性能与清晰的扩展边界。"
         }
       ]
@@ -2684,4 +2725,3 @@ export const initialDocJson = {
     }
   ]
 };
-
