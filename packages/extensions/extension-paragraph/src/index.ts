@@ -97,7 +97,9 @@ const setParagraphSpacing = (key: "spacingBefore" | "spacingAfter", value: numbe
 
 export const Paragraph = Node.create({
   name: "paragraph",
-  priority: 100,
+  // Keep paragraph ahead of recursive block nodes (for example tables) so
+  // createAndFill/deleteSelection can always synthesize a safe default block.
+  priority: 1100,
   content: "inline*",
   group: "block",
   addCommands() {

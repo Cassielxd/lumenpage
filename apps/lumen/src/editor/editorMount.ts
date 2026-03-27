@@ -52,7 +52,7 @@ import {
   normalizePastedText,
   sanitizePastedHtml,
 } from "./pastePolicy";
-import { initialDocMinimalJson } from "../initialDocMinimal";
+import { initialDocJson } from "../initialDoc";
 
 type MountPlaygroundEditorParams = {
   host: HTMLElement;
@@ -602,7 +602,7 @@ export const mountPlaygroundEditor = ({
   const editor = new Editor({
     element: host,
     extensions: [...extensions, ...runtimeExtensions],
-    content: collaborationRuntime.provider ? "" : initialDocMinimalJson,
+    content: collaborationRuntime.provider ? "" : initialDocJson,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,

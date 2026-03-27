@@ -8,3 +8,5 @@ await import("./editor.characterization.test.mjs");
 await import("./core-events.characterization.test.mjs");
 await import("./command-manager.characterization.test.mjs");
 await import("./paste-rule.characterization.test.mjs");
+await import("./delete-selection.characterization.test.mjs");
+
