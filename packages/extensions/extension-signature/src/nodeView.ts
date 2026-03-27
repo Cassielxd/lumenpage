@@ -4,6 +4,15 @@ const resolveOverlayHost = (view: any) =>
   view?.dom?.querySelector?.(".lumenpage-overlay-host") ||
   null;
 
+const syncNodeViewBlockId = (element: HTMLElement, node: any) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
+
 export const createDefaultSignatureNodeView = (node: any, view: any) => {
   const host = resolveOverlayHost(view);
   if (!host) {
@@ -13,15 +22,20 @@ export const createDefaultSignatureNodeView = (node: any, view: any) => {
   const container = document.createElement("div");
   container.className = "lumenpage-signature-overlay";
   container.style.position = "absolute";
-  container.style.transform = "translate(0, 0)";
+  container.style.transform = "translate(0px, 0px)";
+  container.style.width = "0";
+  container.style.height = "0";
   container.style.pointerEvents = "none";
   container.style.overflow = "visible";
+  container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
 
   const image = document.createElement("img");
   image.style.width = "100%";
   image.style.height = "100%";
   image.style.objectFit = "contain";
+  image.style.display = "block";
   image.draggable = false;
   container.appendChild(image);
 
@@ -51,6 +65,7 @@ export const createDefaultSignatureNodeView = (node: any, view: any) => {
         return false;
       }
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       updateImage(nextNode);
       return true;
     },

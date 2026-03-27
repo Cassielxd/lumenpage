@@ -22,15 +22,17 @@ export const serializeSignatureToText = (node: any) => {
 };
 
 const leafOffsetMapping = {
-  toText: (node: any) => serializeSignatureToText(node),
-  getTextLength: (node: any) => serializeSignatureToText(node).length || 1,
-  mapOffsetToPos: (node: any, nodePos: number, offset: number) => (offset <= 0 ? nodePos : nodePos + node.nodeSize),
+  toText: () => " ",
+  getTextLength: () => 1,
+  mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
+    offset <= 0 ? nodePos : nodePos + node.nodeSize,
   mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),
 };
 
 export const signatureNodeSpec: NodeSpec = {
   group: "block",
   atom: true,
+  selectable: true,
   offsetMapping: leafOffsetMapping,
   attrs: {
     id: { default: null },

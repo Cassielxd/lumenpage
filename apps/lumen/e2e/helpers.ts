@@ -426,7 +426,12 @@ export const getSelectionRange = async (page: Page) =>
   page.evaluate(() => {
     const testApi = (globalThis as typeof globalThis & { __lumenTestApi?: LumenTestApi })
       .__lumenTestApi;
-    const testSelection = testApi?.getSelection?.();
+    let testSelection = null;
+    try {
+      testSelection = testApi?.getSelection?.() ?? null;
+    } catch (_error) {
+      testSelection = null;
+    }
     if (testSelection) {
       return testSelection;
     }
@@ -1511,6 +1516,4 @@ export const getNodeAttrsByBlockId = async (page: Page, blockId: string) =>
     });
     return matchedAttrs;
   }, blockId);
-
-
 

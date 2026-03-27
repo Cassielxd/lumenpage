@@ -12,8 +12,8 @@ export const serializeFileToText = (node: any) => {
 };
 
 const leafOffsetMapping = {
-  toText: (node: any) => serializeFileToText(node),
-  getTextLength: (node: any) => serializeFileToText(node).length || 1,
+  toText: () => " ",
+  getTextLength: () => 1,
   mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
     offset <= 0 ? nodePos : nodePos + node.nodeSize,
   mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),

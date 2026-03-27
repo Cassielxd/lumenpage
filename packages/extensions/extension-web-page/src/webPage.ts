@@ -31,8 +31,8 @@ export const serializeWebPageToText = (node: any) => {
 };
 
 const leafOffsetMapping = {
-  toText: (node: any) => serializeWebPageToText(node),
-  getTextLength: (node: any) => serializeWebPageToText(node).length || 1,
+  toText: () => " ",
+  getTextLength: () => 1,
   mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
     offset <= 0 ? nodePos : nodePos + node.nodeSize,
   mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),
@@ -41,6 +41,7 @@ const leafOffsetMapping = {
 export const webPageNodeSpec: NodeSpec = {
   group: "block",
   atom: true,
+  selectable: true,
   offsetMapping: leafOffsetMapping,
   attrs: {
     id: { default: null },
@@ -106,3 +107,4 @@ export const webPageNodeSpec: NodeSpec = {
     return ["iframe", attrs];
   }
 };
+

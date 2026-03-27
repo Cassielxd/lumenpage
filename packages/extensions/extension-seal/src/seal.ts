@@ -9,8 +9,8 @@ export const serializeSealToText = (node: any) => {
 };
 
 const leafOffsetMapping = {
-  toText: (node: any) => serializeSealToText(node),
-  getTextLength: (node: any) => serializeSealToText(node).length || 1,
+  toText: () => " ",
+  getTextLength: () => 1,
   mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
     offset <= 0 ? nodePos : nodePos + node.nodeSize,
   mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),

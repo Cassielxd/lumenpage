@@ -17,6 +17,18 @@ const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) =>
   const width = Math.max(1, Math.min(maxWidth, desiredWidth));
   const height = Math.max(180, desiredHeight);
   const title = trimText(attrs.title) || "Embedded page";
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -26,7 +38,7 @@ const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) =>
     runs: [],
     x: settings.margin.left,
     blockType: "webPage",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     webPageMeta: {
       href: String(attrs.href || ""),
       title,
@@ -39,7 +51,7 @@ const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) =>
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
 };
@@ -56,7 +68,7 @@ export const webPageRenderer = {
       height: layout.height,
       blockLineHeight: layout.height,
       blockType: "webPage",
-      blockAttrs: layout.blockAttrs,
+      blockAttrs: { ...layout.blockAttrs },
     };
   },
 

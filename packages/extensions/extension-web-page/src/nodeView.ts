@@ -6,6 +6,30 @@ const resolveOverlayHost = (view: any) =>
   view?.dom?.querySelector?.(".lumenpage-overlay-host") ||
   null;
 
+const syncNodeViewBlockId = (element: HTMLElement, node: any) => {
+  const blockId = node?.attrs?.id;
+  if (blockId != null && blockId !== "") {
+    element.setAttribute("data-node-view-block-id", String(blockId));
+    return;
+  }
+  element.removeAttribute("data-node-view-block-id");
+};
+
+const findNodePosByBlockId = (doc: any, blockId: string | null) => {
+  if (!doc || !blockId || typeof doc.descendants !== "function") {
+    return null;
+  }
+  let found: number | null = null;
+  doc.descendants((candidate: any, pos: number) => {
+    if (candidate?.attrs?.id === blockId) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+};
+
 const sanitizeWebPageHref = (value: unknown) => {
   const href = sanitizeLinkHref(value) || "";
   if (!href) {
@@ -17,7 +41,7 @@ const sanitizeWebPageHref = (value: unknown) => {
   return /^https?:\/\//i.test(href) ? href : "";
 };
 
-export const createDefaultWebPageNodeView = (node: any, view: any) => {
+export const createDefaultWebPageNodeView = (node: any, view: any, getPos?: () => number) => {
   const host = resolveOverlayHost(view);
   if (!host) return null;
 
@@ -27,11 +51,24 @@ export const createDefaultWebPageNodeView = (node: any, view: any) => {
   container.style.transform = "translate(0px, 0px)";
   container.style.width = "0";
   container.style.height = "0";
-  container.style.pointerEvents = "auto";
-  container.style.overflow = "hidden";
-  container.style.background = "#ffffff";
-  container.style.border = "1px solid #cbd5e1";
+  container.style.pointerEvents = "none";
+  container.style.overflow = "visible";
+  container.style.outline = "none";
+  syncNodeViewBlockId(container, node);
   host.appendChild(container);
+
+  const shell = document.createElement("div");
+  shell.style.width = "100%";
+  shell.style.height = "100%";
+  shell.style.pointerEvents = "auto";
+  shell.style.overflow = "hidden";
+  shell.style.background = "#ffffff";
+  shell.style.border = "1px solid #cbd5e1";
+  shell.style.boxSizing = "border-box";
+  shell.style.display = "flex";
+  shell.style.flexDirection = "column";
+  shell.style.userSelect = "none";
+  container.appendChild(shell);
 
   const header = document.createElement("div");
   header.style.height = "40px";
@@ -42,7 +79,8 @@ export const createDefaultWebPageNodeView = (node: any, view: any) => {
   header.style.padding = "0 12px";
   header.style.background = "#e2e8f0";
   header.style.boxSizing = "border-box";
-  container.appendChild(header);
+  header.style.flexShrink = "0";
+  shell.appendChild(header);
 
   const title = document.createElement("div");
   title.style.flex = "1";
@@ -63,32 +101,142 @@ export const createDefaultWebPageNodeView = (node: any, view: any) => {
   link.style.textDecoration = "none";
   header.appendChild(link);
 
+  const body = document.createElement("div");
+  body.style.position = "relative";
+  body.style.flex = "1";
+  body.style.minHeight = "0";
+  body.style.background = "#ffffff";
+  body.style.overflow = "hidden";
+  body.style.userSelect = "none";
+  shell.appendChild(body);
+
   const frame = document.createElement("iframe");
   frame.style.display = "block";
   frame.style.width = "100%";
-  frame.style.height = "calc(100% - 40px)";
+  frame.style.height = "100%";
   frame.style.border = "0";
   frame.style.background = "#ffffff";
   frame.setAttribute("loading", "lazy");
   frame.setAttribute("referrerpolicy", "no-referrer");
-  container.appendChild(frame);
+  body.appendChild(frame);
+
+  const interactionCover = document.createElement("div");
+  interactionCover.className = "lumenpage-web-page-interaction-cover";
+  interactionCover.style.position = "absolute";
+  interactionCover.style.inset = "0";
+  interactionCover.style.zIndex = "1";
+  interactionCover.style.background = "transparent";
+  interactionCover.style.pointerEvents = "auto";
+  interactionCover.style.cursor = "pointer";
+  body.appendChild(interactionCover);
 
   let currentNode = node;
+  let isSelected = false;
+  let releaseInteractionCoverRaf = 0;
+
+  const cancelPendingInteractionRelease = () => {
+    if (!releaseInteractionCoverRaf) {
+      return;
+    }
+    cancelAnimationFrame(releaseInteractionCoverRaf);
+    releaseInteractionCoverRaf = 0;
+  };
+
+  const resolveNodePos = () => {
+    const livePos = getPos?.();
+    if (Number.isFinite(livePos)) {
+      return Number(livePos);
+    }
+    return findNodePosByBlockId(view?.state?.doc, currentNode?.attrs?.id ?? null);
+  };
+
+  const applyNodeSelection = () => {
+    const pos = resolveNodePos();
+    const setNodeSelectionAtPos = view?._internals?.setNodeSelectionAtPos;
+    if (!Number.isFinite(pos) || typeof setNodeSelectionAtPos !== "function") {
+      return false;
+    }
+    return setNodeSelectionAtPos(pos) === true;
+  };
+
+  const stopOverlayEvent = (event: Event) => {
+    event.stopPropagation();
+    event.preventDefault?.();
+  };
+
+  const handleCoverPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) {
+      return;
+    }
+    applyNodeSelection();
+    stopOverlayEvent(event);
+  };
+
+  const handleCoverClick = (event: MouseEvent) => {
+    stopOverlayEvent(event);
+  };
+
+  const handleCoverDoubleClick = (event: MouseEvent) => {
+    stopOverlayEvent(event);
+  };
+
+  const handleCoverSelectStart = (event: Event) => {
+    stopOverlayEvent(event);
+  };
+
+  interactionCover.addEventListener("pointerdown", handleCoverPointerDown);
+  interactionCover.addEventListener("click", handleCoverClick);
+  interactionCover.addEventListener("dblclick", handleCoverDoubleClick);
+  interactionCover.addEventListener("selectstart", handleCoverSelectStart);
+
+  const syncInteractivity = () => {
+    cancelPendingInteractionRelease();
+    interactionCover.style.display = "block";
+    interactionCover.style.pointerEvents = "auto";
+    interactionCover.style.cursor = isSelected ? "default" : "pointer";
+    body.style.cursor = isSelected ? "default" : "pointer";
+    shell.style.outline = isSelected ? "2px solid #3b82f6" : "none";
+    if (!isSelected) {
+      return;
+    }
+    releaseInteractionCoverRaf = requestAnimationFrame(() => {
+      releaseInteractionCoverRaf = 0;
+      if (!isSelected) {
+        return;
+      }
+      interactionCover.style.pointerEvents = "none";
+      interactionCover.style.display = "none";
+    });
+  };
 
   const updateFrame = (nextNode: any) => {
     const href = sanitizeWebPageHref(nextNode.attrs?.href || "");
-    title.textContent = String(nextNode.attrs?.title || href || "Embedded page");
-    link.href = href || "#";
-    frame.src = href || "about:blank";
-    frame.title = String(nextNode.attrs?.title || "Embedded page");
+    const nextTitle = String(nextNode.attrs?.title || href || "Embedded page");
+    const nextLinkHref = href || "#";
+    const nextFrameSrc = href || "about:blank";
+    const nextFrameTitle = String(nextNode.attrs?.title || "Embedded page");
+    if (title.textContent !== nextTitle) {
+      title.textContent = nextTitle;
+    }
+    if (link.getAttribute("href") !== nextLinkHref) {
+      link.href = nextLinkHref;
+    }
+    if (frame.getAttribute("src") !== nextFrameSrc) {
+      frame.src = nextFrameSrc;
+    }
+    if (frame.title !== nextFrameTitle) {
+      frame.title = nextFrameTitle;
+    }
   };
 
   updateFrame(node);
+  syncInteractivity();
 
   return {
     update(nextNode: any) {
       if (nextNode.type !== currentNode.type) return false;
       currentNode = nextNode;
+      syncNodeViewBlockId(container, nextNode);
       updateFrame(nextNode);
       return true;
     },
@@ -103,13 +251,21 @@ export const createDefaultWebPageNodeView = (node: any, view: any) => {
       container.style.height = `${Math.max(1, Math.round(height))}px`;
     },
     destroy() {
+      cancelPendingInteractionRelease();
+      interactionCover.removeEventListener("pointerdown", handleCoverPointerDown);
+      interactionCover.removeEventListener("click", handleCoverClick);
+      interactionCover.removeEventListener("dblclick", handleCoverDoubleClick);
+      interactionCover.removeEventListener("selectstart", handleCoverSelectStart);
       container.remove();
     },
     selectNode() {
-      container.style.outline = "2px solid #3b82f6";
+      isSelected = true;
+      syncInteractivity();
     },
     deselectNode() {
-      container.style.outline = "none";
+      isSelected = false;
+      syncInteractivity();
     },
   };
 };
+

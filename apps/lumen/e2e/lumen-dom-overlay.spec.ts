@@ -119,6 +119,58 @@ const cases: OverlayCase[] = [
       ],
     },
   },
+  {
+    name: "web page overlay matches layout box and stays above next paragraph",
+    selector: ".lumenpage-web-page-overlay",
+    nodeBlockId: "web-page-overlay-case",
+    nextBlockId: "paragraph-after-web-page",
+    doc: {
+      type: "doc",
+      content: [
+        {
+          type: "webPage",
+          attrs: {
+            id: "web-page-overlay-case",
+            title: "Embedded page",
+            width: 620,
+            height: 360,
+          },
+        },
+        {
+          type: "paragraph",
+          attrs: { id: "paragraph-after-web-page" },
+          content: [{ type: "text", text: "Paragraph after web page overlay" }],
+        },
+      ],
+    },
+  },
+  {
+    name: "signature overlay matches layout box and stays above next paragraph",
+    selector: ".lumenpage-signature-overlay",
+    nodeBlockId: "signature-overlay-case",
+    nextBlockId: "paragraph-after-signature",
+    doc: {
+      type: "doc",
+      content: [
+        {
+          type: "signature",
+          attrs: {
+            id: "signature-overlay-case",
+            signer: "Jane Doe",
+            signedAt: "2026-03-27",
+            src: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
+            width: 320,
+            height: 120,
+          },
+        },
+        {
+          type: "paragraph",
+          attrs: { id: "paragraph-after-signature" },
+          content: [{ type: "text", text: "Paragraph after signature overlay" }],
+        },
+      ],
+    },
+  },
 ];
 
 const readVisibleOverlayRect = async (page: import("@playwright/test").Page, selector: string) => {
@@ -179,3 +231,4 @@ for (const testCase of cases) {
     guards.assertClean();
   });
 }
+

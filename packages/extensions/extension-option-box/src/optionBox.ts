@@ -9,8 +9,8 @@ export const serializeOptionBoxToText = (node: any) => {
 };
 
 const leafOffsetMapping = {
-  toText: (node: any) => serializeOptionBoxToText(node),
-  getTextLength: (node: any) => serializeOptionBoxToText(node).length || 1,
+  toText: () => " ",
+  getTextLength: () => 1,
   mapOffsetToPos: (node: any, nodePos: number, offset: number) =>
     offset <= 0 ? nodePos : nodePos + node.nodeSize,
   mapPosToOffset: (_node: any, nodePos: number, pos: number) => (pos <= nodePos ? 0 : 1),
