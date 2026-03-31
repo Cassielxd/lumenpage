@@ -2,8 +2,8 @@
 
 // 视图默认配置，集中维护以便复用与覆盖。
 export const DEFAULT_SETTINGS = {
-  pageWidth: 816,
-  pageHeight: 720,
+  pageWidth: 794,
+  pageHeight: 1123,
   pageGap: 24,
   margin: {
     top: 72,

@@ -211,7 +211,7 @@ export const createCanvasSettings = (
     Math.floor(resolveNumberParam("pageReuseRootProbe", 2))
   );
   const pageWidth = Math.max(480, Math.floor(resolveNumberParam("pageWidth", 794)));
-  const pageHeight = Math.max(640, Math.floor(resolveNumberParam("pageHeight", 720)));
+  const pageHeight = Math.max(640, Math.floor(resolveNumberParam("pageHeight", 1123)));
 
   return {
     pageWidth,
