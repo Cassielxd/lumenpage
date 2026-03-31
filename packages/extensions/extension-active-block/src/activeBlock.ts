@@ -6,6 +6,7 @@ export type ActiveBlockPluginOptions = {
   excludeTypes?: string[];
   borderColor?: string;
   borderWidth?: number;
+  borderLeftWidth?: number;
 };
 
 const resolveActiveTopLevelRange = (state: any) => {
@@ -62,7 +63,11 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
   }
 
   const borderColor = options.borderColor || "rgba(59, 130, 246, 0.8)";
-  const borderWidth = Number.isFinite(options.borderWidth) ? options.borderWidth : 1;
+  const borderLeftWidth = Number.isFinite(options.borderLeftWidth)
+    ? Number(options.borderLeftWidth)
+    : Number.isFinite(options.borderWidth)
+      ? Number(options.borderWidth)
+      : 3;
   const blockId =
     range.node?.attrs && typeof range.node.attrs === "object" && range.node.attrs.id != null
       ? String(range.node.attrs.id)
@@ -75,7 +80,8 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
       range.to,
       {
         borderColor,
-        borderWidth,
+        borderWidth: undefined,
+        borderLeftWidth,
         backgroundColor: undefined,
         blockId,
         nodeType,

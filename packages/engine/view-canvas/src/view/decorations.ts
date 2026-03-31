@@ -11,6 +11,10 @@ export type DecorationSpec = {
   underline?: DecorationUnderline;
   borderColor?: string;
   borderWidth?: number;
+  borderTopWidth?: number;
+  borderRightWidth?: number;
+  borderBottomWidth?: number;
+  borderLeftWidth?: number;
   blockId?: string | null;
   nodeType?: string | null;
   // 为 node decoration 启用“按装饰整体包围盒”绘制边框，而不是逐行边框。

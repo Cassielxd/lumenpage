@@ -78,6 +78,39 @@ export type DecorationDrawData = {
   widgets: DecorationWidget[];
 };
 
+const shiftDecorationDrawData = (
+  data: DecorationDrawData | null,
+  deltaY: number
+): DecorationDrawData | null => {
+  if (!data || !Number.isFinite(deltaY) || deltaY === 0) {
+    return data;
+  }
+
+  const shiftRects = (rects: DecorationRect[]) =>
+    rects.map((rect) => ({
+      ...rect,
+      y: Number.isFinite(rect?.y) ? Number(rect.y) - deltaY : rect?.y,
+    }));
+  const shiftTextSegments = (segments: DecorationTextSegment[]) =>
+    segments.map((segment) => ({
+      ...segment,
+      y: Number.isFinite(segment?.y) ? Number(segment.y) - deltaY : segment?.y,
+    }));
+  const shiftWidgets = (widgets: DecorationWidget[]) =>
+    widgets.map((widget) => ({
+      ...widget,
+      y: Number.isFinite(widget?.y) ? Number(widget.y) - deltaY : widget?.y,
+    }));
+
+  return {
+    ...data,
+    inlineRects: shiftRects(data.inlineRects),
+    nodeRects: shiftRects(data.nodeRects),
+    textSegments: shiftTextSegments(data.textSegments),
+    widgets: shiftWidgets(data.widgets),
+  };
+};
+
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;
 
@@ -405,8 +438,11 @@ export const buildDecorationDrawData = (
 
   if (!skipCache) {
     const cached = decorationCache.get(cacheKey);
-    if (cached && cached.data) {
-      return cached.data;
+    if (cached) {
+      return shiftDecorationDrawData(
+        cached.data,
+        scrollTop - (Number.isFinite(cached.scrollTop) ? cached.scrollTop : scrollTop)
+      );
     }
   }
 

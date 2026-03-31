@@ -88,7 +88,29 @@ const drawDecorationRects = (ctx: CanvasRenderingContext2D, rects: any[] | null 
       ctx.fillStyle = spec.backgroundColor;
       ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
     }
-    if (spec.borderColor && (spec.borderWidth ?? 1) > 0) {
+    const sideWidths = {
+      top: Number.isFinite(spec.borderTopWidth) ? Number(spec.borderTopWidth) : 0,
+      right: Number.isFinite(spec.borderRightWidth) ? Number(spec.borderRightWidth) : 0,
+      bottom: Number.isFinite(spec.borderBottomWidth) ? Number(spec.borderBottomWidth) : 0,
+      left: Number.isFinite(spec.borderLeftWidth) ? Number(spec.borderLeftWidth) : 0,
+    };
+    const hasSideBorders =
+      sideWidths.top > 0 || sideWidths.right > 0 || sideWidths.bottom > 0 || sideWidths.left > 0;
+    if (spec.borderColor && hasSideBorders) {
+      ctx.fillStyle = spec.borderColor;
+      if (sideWidths.top > 0) {
+        ctx.fillRect(rect.x, rect.y, rect.width, sideWidths.top);
+      }
+      if (sideWidths.right > 0) {
+        ctx.fillRect(rect.x + rect.width - sideWidths.right, rect.y, sideWidths.right, rect.height);
+      }
+      if (sideWidths.bottom > 0) {
+        ctx.fillRect(rect.x, rect.y + rect.height - sideWidths.bottom, rect.width, sideWidths.bottom);
+      }
+      if (sideWidths.left > 0) {
+        ctx.fillRect(rect.x, rect.y, sideWidths.left, rect.height);
+      }
+    } else if (spec.borderColor && (spec.borderWidth ?? 1) > 0) {
       ctx.strokeStyle = spec.borderColor;
       ctx.lineWidth = Number.isFinite(spec.borderWidth) ? spec.borderWidth : 1;
       ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);

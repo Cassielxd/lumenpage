@@ -4,6 +4,8 @@ register("./ts-loader.mjs", import.meta.url);
 
 await import("./extension-manager.characterization.test.mjs");
 await import("./canvas-bridge.characterization.test.mjs");
+await import("./decoration-render.characterization.test.mjs");
+await import("./overlay-renderer.characterization.test.mjs");
 await import("./editor.characterization.test.mjs");
 await import("./core-events.characterization.test.mjs");
 await import("./command-manager.characterization.test.mjs");
