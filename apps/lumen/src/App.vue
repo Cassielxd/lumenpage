@@ -35,6 +35,15 @@
         <t-button
           size="small"
           variant="outline"
+          :disabled="assistantButtonDisabled"
+          @mousedown.prevent
+          @click="handleAssistantPanelToggle"
+        >
+          {{ assistantButtonLabel }}
+        </t-button>
+        <t-button
+          size="small"
+          variant="outline"
           :theme="trackChangesEnabled ? 'success' : 'default'"
           :disabled="!canMutateTrackChanges"
           @mousedown.prevent
@@ -135,6 +144,13 @@
             @delete-message="handleCommentMessageDelete"
             @delete="handleCommentThreadDelete"
           />
+          <AiAssistantPanel
+            v-else-if="assistantPanelOpen"
+            :locale="debugFlags.locale"
+            :editor="editor"
+            :can-manage="canManageAssistant"
+            @close="closeAssistantPanel"
+          />
         </t-aside>
       </div>
     </t-content>
@@ -206,6 +222,7 @@ import {
 import type { Editor as LumenEditor } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
+import AiAssistantPanel from "./components/AiAssistantPanel.vue";
 import CommentsPanel from "./components/CommentsPanel.vue";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
@@ -248,6 +265,7 @@ const collaborationState = ref<LumenCollaborationState>(
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
 const commentsPanelOpen = ref(false);
 const activeCommentThreadId = ref<string | null>(null);
+const assistantPanelOpen = ref(false);
 const trackChangesEnabled = ref(false);
 const trackChangeRecords = ref<TrackChangeRecord[]>([]);
 const activeTrackChangeId = ref<string | null>(null);
@@ -296,18 +314,25 @@ const canMutateComments = computed(
 const currentCommentUserName = computed(
   () => (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || "You"
 );
+const canManageAssistant = computed(
+  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
+);
 const canMutateTrackChanges = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
 );
 const commentButtonDisabled = computed(() => !canMutateComments.value);
+const assistantButtonDisabled = computed(() => !canManageAssistant.value);
 const commentButtonLabel = computed(() =>
   commentCount.value > 0 ? `${i18n.app.comment} (${commentCount.value})` : i18n.app.comment
 );
+const assistantButtonLabel = computed(() => (debugFlags.locale === "en-US" ? "AI" : "AI 助手"));
 const trackChangeCount = computed(() => trackChangeRecords.value.length);
 const trackChangesPanelOpen = computed(
   () => trackChangesPanelManualOpen.value || !!activeTrackChangeId.value
 );
-const rightSidebarOpen = computed(() => trackChangesPanelOpen.value || commentsPanelOpen.value);
+const rightSidebarOpen = computed(
+  () => trackChangesPanelOpen.value || commentsPanelOpen.value || assistantPanelOpen.value
+);
 const trackChangesButtonDisabled = computed(
   () => !trackChangesEnabled.value && trackChangeCount.value === 0
 );
@@ -546,6 +571,10 @@ const closeCommentsPanel = () => {
   }
 };
 
+const closeAssistantPanel = () => {
+  assistantPanelOpen.value = false;
+};
+
 const getNextTrackChangeId = (excludeChangeId?: string | null) =>
   trackChangeRecords.value.find((change) => change.changeId !== excludeChangeId)?.changeId || null;
 
@@ -563,6 +592,9 @@ const openTrackChangesPanel = (preferredChangeId?: string | null) => {
   if (commentsPanelOpen.value || activeCommentThreadId.value) {
     closeCommentsPanel();
   }
+  if (assistantPanelOpen.value) {
+    closeAssistantPanel();
+  }
   const nextChangeId =
     preferredChangeId || activeTrackChangeId.value || trackChangeRecords.value[0]?.changeId || null;
   if (nextChangeId && nextChangeId !== activeTrackChangeId.value) {
@@ -577,6 +609,9 @@ const getNextCommentThreadId = (excludeThreadId?: string | null) =>
 const openCommentsPanel = (preferredThreadId?: string | null) => {
   if (trackChangesPanelOpen.value || activeTrackChangeId.value) {
     closeTrackChangesPanel();
+  }
+  if (assistantPanelOpen.value) {
+    closeAssistantPanel();
   }
   commentsPanelOpen.value = true;
   const nextThreadId = preferredThreadId || activeCommentThreadId.value || getNextCommentThreadId();
@@ -634,6 +669,16 @@ const stopRightSidebarResize = () => {
     document.body.style.cursor = "";
     document.body.style.userSelect = "";
   }
+};
+
+const openAssistantPanel = () => {
+  if (trackChangesPanelOpen.value || activeTrackChangeId.value) {
+    closeTrackChangesPanel();
+  }
+  if (commentsPanelOpen.value || activeCommentThreadId.value) {
+    closeCommentsPanel();
+  }
+  assistantPanelOpen.value = true;
 };
 
 const handleRightSidebarResizeMove = (event: PointerEvent) => {
@@ -1005,6 +1050,14 @@ const handleTrackChangesPanelToggle = () => {
   openTrackChangesPanel();
 };
 
+const handleAssistantPanelToggle = () => {
+  if (assistantPanelOpen.value) {
+    closeAssistantPanel();
+    return;
+  }
+  openAssistantPanel();
+};
+
 const handleTrackChangeSelect = (changeId: string) => {
   const texts = createTrackChangeActionTexts(debugFlags.locale);
   openTrackChangesPanel(changeId);
@@ -1102,6 +1155,9 @@ onMounted(async () => {
         (!commentsPanelOpen.value || resolvedThreadId !== previousThreadId)
       ) {
         closeTrackChangesPanel();
+        if (assistantPanelOpen.value) {
+          closeAssistantPanel();
+        }
         commentsPanelOpen.value = true;
         return;
       }
@@ -1120,6 +1176,9 @@ onMounted(async () => {
       if (nextActiveChangeId) {
         if (commentsPanelOpen.value || activeCommentThreadId.value) {
           closeCommentsPanel();
+        }
+        if (assistantPanelOpen.value) {
+          closeAssistantPanel();
         }
         return;
       }
@@ -1188,6 +1247,7 @@ onBeforeUnmount(() => {
   commentThreads.value = [];
   commentsPanelOpen.value = false;
   activeCommentThreadId.value = null;
+  assistantPanelOpen.value = false;
   trackChangesEnabled.value = false;
   trackChangeRecords.value = [];
   activeTrackChangeId.value = null;

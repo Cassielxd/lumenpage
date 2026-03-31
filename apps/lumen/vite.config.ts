@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
         { find: /^lumenpage-starter-kit$/, replacement: entry("starter-kit") },
         { find: /^lumenpage-inputrules$/, replacement: entry("inputrules") },
         { find: /^lumenpage-collab$/, replacement: entry("collab") },
+        { find: /^lumenpage-extension-ai$/, replacement: entry("extension-ai") },
         {
           find: /^lumenpage-extension-embed-panel\/browser$/,
           replacement: path.resolve(workspaceRoot, "packages/extensions/extension-embed-panel/src/browser.ts"),
@@ -106,6 +107,7 @@ export default defineConfig(({ mode }) => {
         "lumenpage-starter-kit",
         "lumenpage-inputrules",
         "lumenpage-collab",
+        "lumenpage-extension-ai",
         "lumenpage-extension-active-block",
         "lumenpage-extension-bubble-menu",
         "lumenpage-extension-block-id",

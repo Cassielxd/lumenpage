@@ -206,10 +206,11 @@ export class ExtensionManager {
     }
 
     this.boundEditor = editor;
+    const instances = editor.resolvedExtensions?.instances ?? this.createInstances(editor);
     bindExtensionEditorEvents({
       editor,
-      extensions: this.extensions,
-      getContext: (extension) => this.createDetachedContext(extension),
+      instances,
+      getContext: (instance) => this.createContext(instance, editor),
     });
   }
 

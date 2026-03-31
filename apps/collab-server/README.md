@@ -1,28 +1,61 @@
 ﻿# lumenpage-collab-server
 
-基于 `@hocuspocus/server` 的协作服务，提供最小可用的磁盘持久化与健康检查。
+Based on `@hocuspocus/server`, this service provides collaboration persistence, health checks, and a DeepSeek proxy for Lumen.
 
-## 用法
+## Usage
 
 ```bash
 pnpm -C apps/collab-server dev
 ```
 
-默认地址：`ws://127.0.0.1:1234`
+Default WebSocket URL: `ws://127.0.0.1:1234`
 
-健康检查：`http://127.0.0.1:1234/health`
+Health check: `http://127.0.0.1:1234/health`
 
-## 环境变量
+AI proxy endpoint: `http://127.0.0.1:1234/ai/deepseek/chat/completions`
 
-- `PORT`: WebSocket 端口，默认 `1234`
-- `HOCUSPOCUS_NAME`: 服务实例名，默认 `lumenpage-collab`
-- `HOCUSPOCUS_QUIET`: 是否关闭启动横幅，默认 `true`
-- `HOCUSPOCUS_DEBOUNCE`: 持久化防抖，默认 `2000`
-- `HOCUSPOCUS_MAX_DEBOUNCE`: 持久化最大延迟，默认 `10000`
-- `COLLAB_STORAGE_DIR`: 文档二进制存储目录，默认 `./data`
-- `COLLAB_AUTH_TOKEN`: 可选鉴权 token；设置后客户端必须传入相同 token
+## Environment Variables
 
-## 客户端示例
+- `PORT`: WebSocket port, default `1234`
+- `HOCUSPOCUS_NAME`: Service name, default `lumenpage-collab`
+- `HOCUSPOCUS_QUIET`: Disable startup banner when `true`
+- `HOCUSPOCUS_DEBOUNCE`: Persistence debounce delay, default `2000`
+- `HOCUSPOCUS_MAX_DEBOUNCE`: Max persistence debounce, default `10000`
+- `COLLAB_STORAGE_DIR`: Document storage directory, default `./data`
+- `COLLAB_AUTH_TOKEN`: Optional auth token for collaboration clients
+- `DEEPSEEK_API_KEY`: DeepSeek API key used by the server-side proxy
+- `DEEPSEEK_MODEL`: Optional default model if the client does not send one
+- `DEEPSEEK_BASE_URL`: Optional DeepSeek base URL, default `https://api.deepseek.com`
+
+## AI Proxy
+
+`/ai/deepseek/chat/completions` calls the official DeepSeek `Chat Completions API` on the server. The browser never needs to expose an API key.
+
+Example request body:
+
+```json
+{
+  "model": "deepseek-chat",
+  "intent": "rewrite",
+  "instruction": "Make it more concise",
+  "text": "Original content",
+  "documentText": "Full document context",
+  "systemPrompt": ""
+}
+```
+
+Example response body:
+
+```json
+{
+  "ok": true,
+  "outputText": "Rewritten content",
+  "completionId": "chatcmpl_xxx",
+  "model": "deepseek-chat"
+}
+```
+
+## Client Example
 
 ```ts
 import { HocuspocusProvider } from "@hocuspocus/provider";

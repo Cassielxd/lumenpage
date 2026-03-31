@@ -1,7 +1,7 @@
 import { getExtensionField } from "./getExtensionField";
 import { sortExtensions } from "./sortExtensions";
 import type { Editor } from "../Editor";
-import type { AnyExtension, ExtensionContext } from "../types";
+import type { ExtensionContext, ExtensionInstance } from "../types";
 
 const eventMap = [
   ["mount", "onMount"],
@@ -21,18 +21,18 @@ const eventMap = [
 
 export const bindExtensionEditorEvents = ({
   editor,
-  extensions,
+  instances,
   getContext,
 }: {
   editor: Editor;
-  extensions: ReadonlyArray<AnyExtension>;
-  getContext: (extension: AnyExtension) => ExtensionContext;
+  instances: ReadonlyArray<ExtensionInstance>;
+  getContext: (instance: ExtensionInstance) => ExtensionContext;
 }) => {
-  for (const extension of sortExtensions(extensions)) {
-    const ctx = getContext(extension);
+  for (const instance of sortExtensions(instances)) {
+    const ctx = getContext(instance);
 
     for (const [eventName, fieldName] of eventMap) {
-      const handler = getExtensionField<(event: unknown) => void>(extension, fieldName, ctx);
+      const handler = getExtensionField<(event: unknown) => void>(instance.extension, fieldName, ctx);
 
       if (typeof handler === "function") {
         editor.on(eventName, handler);

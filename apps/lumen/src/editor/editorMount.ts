@@ -448,6 +448,7 @@ export const mountPlaygroundEditor = ({
             onUsersChange: collaborationRuntime.updateUsers,
           }
         : null,
+      locale: flags.locale,
     }),
     EmbedPanelBrowserViewExtension,
     ActiveBlockSelectionExtension,

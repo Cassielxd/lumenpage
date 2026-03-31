@@ -1,3 +1,4 @@
+import { AiAssistant } from "lumenpage-extension-ai";
 import { Bookmark } from "lumenpage-extension-bookmark";
 import { BlockIdExtension } from "lumenpage-extension-block-id";
 import { Callout } from "lumenpage-extension-callout";
@@ -34,6 +35,8 @@ import { Video } from "lumenpage-extension-video";
 import { WebPage } from "lumenpage-extension-web-page";
 
 import { lumenCommentsStore } from "./commentsStore";
+import { createLumenAiAssistantProvider } from "./aiAssistantProviders";
+import type { PlaygroundLocale } from "./i18n";
 
 export type LumenCollaborationExtensionsOptions = {
   document: any;
@@ -82,11 +85,22 @@ const baseDocumentExtensions = [
 export const createLumenDocumentExtensions = (
   options: {
     collaboration?: LumenCollaborationExtensionsOptions | null;
+    locale?: PlaygroundLocale;
   } = {}
 ) => {
   const collaboration = options.collaboration ?? null;
+  const locale = options.locale || "zh-CN";
   const starterKit = StarterKit.configure({ undoRedo: false });
-  const extensions = [starterKit, ...(collaboration ? [] : [UndoRedo]), ...baseDocumentExtensions];
+  const extensions = [
+    starterKit,
+    ...(collaboration ? [] : [UndoRedo]),
+    AiAssistant.configure({
+      provider: createLumenAiAssistantProvider({
+        locale,
+      }),
+    }),
+    ...baseDocumentExtensions,
+  ];
 
   if (collaboration) {
     extensions.push(

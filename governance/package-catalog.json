@@ -126,6 +126,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-ai": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-audio": {
       "layer": "extensions",
       "visibility": "public",

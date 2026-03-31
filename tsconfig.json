@@ -13,6 +13,9 @@
                            "path":  "packages/extensions/extension-active-block"
                        },
                        {
+                           "path":  "packages/extensions/extension-ai"
+                       },
+                       {
                            "path":  "packages/extensions/extension-audio"
                        },
                        {
