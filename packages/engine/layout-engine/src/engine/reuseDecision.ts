@@ -1,5 +1,34 @@
 import { resolveRendererReusePolicy } from "../paginationPolicy";
 import { shouldDisableReuseForSensitiveChange } from "./sensitiveReuse";
+import type {
+  LayoutChangeSummary,
+  LayoutLine,
+  LayoutResult,
+  LayoutSettingsLike,
+  TopLevelIndexableDoc,
+} from "./types";
+
+type RendererRegistryLike = {
+  get?: (typeName: string) => unknown;
+};
+
+type PageReuseSettings = LayoutSettingsLike & {
+  shouldDisablePageReuseForChange?:
+    | ((args: {
+        doc: TopLevelIndexableDoc | null | undefined;
+        changeSummary: LayoutChangeSummary | null | undefined;
+        previousLayout: LayoutResult | null | undefined;
+        defaultDecision: boolean;
+        shouldDisableReuseForSensitiveChange: typeof shouldDisableReuseForSensitiveChange;
+      }) => boolean | void)
+    | null;
+};
+
+type NodeWithTypeName = {
+  type?: {
+    name?: string | null;
+  } | null;
+};
 
 export const resolveDisablePageReuse = ({
   doc,
@@ -8,18 +37,18 @@ export const resolveDisablePageReuse = ({
   changeSummary,
   registry,
 }: {
-  doc: any;
-  baseSettingsRaw: any;
-  previousLayout: any;
-  changeSummary: any;
-  registry: any;
+  doc: TopLevelIndexableDoc | null | undefined;
+  baseSettingsRaw: PageReuseSettings | null | undefined;
+  previousLayout: LayoutResult | null | undefined;
+  changeSummary: LayoutChangeSummary | null | undefined;
+  registry: RendererRegistryLike | null | undefined;
 }) => {
   let disablePageReuse = !!baseSettingsRaw?.disablePageReuse;
   if (disablePageReuse) {
     return true;
   }
 
-  const isSensitiveNodeByRenderer = (node: any) => {
+  const isSensitiveNodeByRenderer = (node: NodeWithTypeName | null | undefined) => {
     const typeName = node?.type?.name;
     if (!typeName || !registry?.get) {
       return false;
@@ -27,7 +56,7 @@ export const resolveDisablePageReuse = ({
     const renderer = registry.get(typeName);
     return resolveRendererReusePolicy(renderer) === "always-sensitive";
   };
-  const isSensitiveLineByRenderer = (line: any) => {
+  const isSensitiveLineByRenderer = (line: LayoutLine | null | undefined) => {
     const blockType = line?.blockType;
     if (!blockType || !registry?.get) {
       return false;

@@ -1,17 +1,23 @@
 {
-    "extends":  "./tsconfig.json",
-    "compilerOptions":  {
-                            "composite":  false,
-                            "noEmit":  true,
-                            "baseUrl":  "../../..",
-                            "rootDir":  "../../..",
-                            "paths":  {
-                                          "lumenpage-core":  [
-                                                                 "packages/core/core/src/index.ts"
-                                                             ],
-                                          "lumenpage-commands":  [
-                                                                     "packages/lp/commands/src/index.ts"
-                                                                 ]
-                                      }
-                        }
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "baseUrl": "../../..",
+    "rootDir": "../../..",
+    "paths": {
+      "lumenpage-core": [
+        "packages/core/core/src/index.ts"
+      ],
+      "lumenpage-view-canvas": [
+        "packages/engine/view-canvas/src/index.ts"
+      ],
+      "lumenpage-layout-engine": [
+        "packages/engine/layout-engine/src/index.ts"
+      ],
+      "lumenpage-commands": [
+        "packages/lp/commands/src/index.ts"
+      ]
+    }
+  }
 }

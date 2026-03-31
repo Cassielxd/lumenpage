@@ -1,20 +1,22 @@
-﻿import { measureTextWidth } from "../measure";
+import { measureTextWidth } from "../measure";
+import {
+  DEFAULT_PAGE_GAP,
+  DEFAULT_PAGE_HEIGHT,
+  DEFAULT_PAGE_MARGIN,
+  DEFAULT_PAGE_WIDTH,
+} from "../../pageDefaults";
 
 // 视图默认配置，集中维护以便复用与覆盖。
 export const DEFAULT_SETTINGS = {
-  pageWidth: 794,
-  pageHeight: 1123,
-  pageGap: 24,
-  margin: {
-    top: 72,
-    right: 72,
-    bottom: 72,
-    left: 72,
-  },
+  pageWidth: DEFAULT_PAGE_WIDTH,
+  pageHeight: DEFAULT_PAGE_HEIGHT,
+  pageGap: DEFAULT_PAGE_GAP,
+  margin: { ...DEFAULT_PAGE_MARGIN },
   lineHeight: 22,
   scrollMargin: 24,
   font: "16px Arial",
-  codeFont: "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+  codeFont:
+    "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
   codeBackground: "#f3f4f6",
   linkColor: "#2563eb",
   blockquoteIndent: 24,
@@ -28,8 +30,8 @@ export const DEFAULT_SETTINGS = {
   maxPageCache: 16,
   selectionStyle: {
     fill: "rgba(191, 219, 254, 0.4)",
-    stroke: "rgba(59, 130, 246, 0.8)",
-    strokeWidth: 1,
+    stroke: null,
+    strokeWidth: 0,
     radius: 2,
     inset: 0,
   },

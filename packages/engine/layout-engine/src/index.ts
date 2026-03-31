@@ -21,6 +21,21 @@ export {
   type RendererReusePolicy,
 } from "./paginationPolicy";
 export type {
+  LayoutBlockIndexRange,
+  LayoutCapabilityFlags,
+  LayoutChangeSummary,
+  LayoutFromDocOptions,
+  LayoutLine,
+  LayoutLineBlockAttrs,
+  LayoutLineFragmentOwner,
+  LayoutPage,
+  LayoutPositionRange,
+  LayoutResult,
+  LayoutSettingsLike,
+  LayoutSettingsMargin,
+  TopLevelIndexableDoc,
+} from "./engine/types";
+export type {
   ContainerStyle,
   LayoutBox,
   LayoutFragment,

@@ -1,6 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "composite": false,
+    "noEmit": true,
+    "baseUrl": "../../..",
+    "rootDir": "../../..",
+    "paths": {
+      "lumenpage-layout-engine": [
+        "packages/engine/layout-engine/src/index.ts"
+      ]
+    }
   }
 }

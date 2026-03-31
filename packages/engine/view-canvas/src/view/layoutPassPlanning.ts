@@ -1,23 +1,34 @@
+import type {
+  LayoutChangeSummary,
+  LayoutResult,
+  LayoutSettingsLike,
+  TopLevelIndexableDoc,
+} from "lumenpage-layout-engine";
+import type { LayoutIndex } from "lumenpage-view-runtime";
+import { DEFAULT_PAGE_WIDTH } from "../pageDefaults";
 import { getPageIndexForOffset } from "./layoutIndex";
 
 const toFiniteNumber = (value: unknown, fallback = 0) =>
   Number.isFinite(value) ? Number(value) : fallback;
 
-export const resolveLayoutSettingsForPass = (settings: any, resolvedPageWidth: unknown) => {
-  const fallbackWidth = toFiniteNumber(settings?.pageWidth, 794);
+export const resolveLayoutSettingsForPass = (
+  settings: LayoutSettingsLike | null | undefined,
+  resolvedPageWidth: unknown
+) => {
+  const fallbackWidth = toFiniteNumber(settings?.pageWidth, DEFAULT_PAGE_WIDTH);
   const pageWidth =
     Number.isFinite(resolvedPageWidth) && Number(resolvedPageWidth) > 0
       ? Number(resolvedPageWidth)
       : fallbackWidth > 0
         ? fallbackWidth
-        : 794;
+        : DEFAULT_PAGE_WIDTH;
   return {
     ...settings,
     pageWidth,
   };
 };
 
-export const getLayoutSettingsSignature = (settings: any) => {
+export const getLayoutSettingsSignature = (settings: LayoutSettingsLike | null | undefined) => {
   const margin = settings?.margin || {};
   return [
     toFiniteNumber(settings?.pageWidth, 0),
@@ -44,7 +55,11 @@ export const getLayoutSettingsSignature = (settings: any) => {
   ].join("|");
 };
 
-export const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
+export const findPageIndexForOffset = (
+  layout: LayoutResult | null | undefined,
+  offset: number,
+  layoutIndex: LayoutIndex | null = null
+) => {
   if (layoutIndex && typeof getPageIndexForOffset === "function") {
     const pageIndex = getPageIndexForOffset(layoutIndex, offset);
     if (Number.isFinite(pageIndex)) {
@@ -89,7 +104,10 @@ export const findPageIndexForOffset = (layout: any, offset: number, layoutIndex:
   return layout.pages.length - 1;
 };
 
-const findPageIndexForChangedBlocks = (layout: any, changeSummary: any) => {
+const findPageIndexForChangedBlocks = (
+  layout: LayoutResult | null | undefined,
+  changeSummary: LayoutChangeSummary | null | undefined
+) => {
   if (!layout || !Array.isArray(layout.pages) || layout.pages.length === 0) {
     return null;
   }
@@ -118,14 +136,18 @@ const findPageIndexForChangedBlocks = (layout: any, changeSummary: any) => {
   return null;
 };
 
-const isWholeDocumentChangeSummary = (changeSummary: any, doc: any) => {
-  if (changeSummary?.docChanged !== true || !doc?.childCount) {
+const isWholeDocumentChangeSummary = (
+  changeSummary: LayoutChangeSummary | null | undefined,
+  doc: TopLevelIndexableDoc | null | undefined
+) => {
+  const childCount = Number.isFinite(doc?.childCount) ? Number(doc.childCount) : 0;
+  if (changeSummary?.docChanged !== true || childCount === 0) {
     return false;
   }
 
   const before = changeSummary?.blocks?.before || {};
   const after = changeSummary?.blocks?.after || {};
-  const maxRootIndex = Math.max(0, Number(doc.childCount) - 1);
+  const maxRootIndex = Math.max(0, childCount - 1);
 
   return (
     Number(before.fromIndex) === 0 &&
@@ -147,16 +169,23 @@ export const resolveCascadePaginationPlan = ({
   docPosToTextOffset,
   getLayoutIndex,
 }: {
-  prevLayout: any;
-  changeSummary: any;
+  prevLayout: LayoutResult | null | undefined;
+  changeSummary: LayoutChangeSummary | null | undefined;
   docChanged: boolean;
   incrementalEnabled: boolean;
   runForceFullPass: boolean;
-  editorState: any;
-  doc: any;
+  editorState:
+    | {
+        selection?: {
+          head?: number | null;
+        } | null;
+      }
+    | null
+    | undefined;
+  doc: TopLevelIndexableDoc | null | undefined;
   clampOffset: (offset: number) => number;
-  docPosToTextOffset: (doc: any, pos: number) => number;
-  getLayoutIndex: () => any;
+  docPosToTextOffset: (doc: TopLevelIndexableDoc | null | undefined, pos: number) => number;
+  getLayoutIndex: () => LayoutIndex | null;
 }) => {
   let cascadeFromPageIndex: number | null = null;
   let useCascadePagination = false;
@@ -179,7 +208,11 @@ export const resolveCascadePaginationPlan = ({
         : null;
       const prevLayoutIndex = getLayoutIndex?.() ?? null;
       if (headOffset != null) {
-        const headPageIndex = findPageIndexForOffset(prevLayout, Number(headOffset), prevLayoutIndex);
+        const headPageIndex = findPageIndexForOffset(
+          prevLayout,
+          Number(headOffset),
+          prevLayoutIndex
+        );
         if (Number.isFinite(headPageIndex)) {
           cascadeFromPageIndex = Number(headPageIndex);
           useCascadePagination = true;

@@ -1,5 +1,11 @@
 import { LayoutPipeline } from "lumenpage-layout-engine";
 import { createLinebreakSegmentText, measureTextWidth } from "lumenpage-view-runtime";
+import {
+  DEFAULT_PAGE_GAP,
+  DEFAULT_PAGE_HEIGHT,
+  DEFAULT_PAGE_MARGIN,
+  DEFAULT_PAGE_WIDTH,
+} from "../pageDefaults";
 
 export type PaginationDocWorkerRequest = {
   id: number;
@@ -47,14 +53,14 @@ type AttachPaginationDocWorkerArgs = {
 
 const normalizeSettings = (settings: any) => ({
   textLocale: settings?.textLocale || "zh-CN",
-  pageWidth: Number(settings?.pageWidth) || 794,
-  pageHeight: Number(settings?.pageHeight) || 1123,
-  pageGap: Number(settings?.pageGap) || 24,
+  pageWidth: Number(settings?.pageWidth) || DEFAULT_PAGE_WIDTH,
+  pageHeight: Number(settings?.pageHeight) || DEFAULT_PAGE_HEIGHT,
+  pageGap: Number(settings?.pageGap) || DEFAULT_PAGE_GAP,
   margin: {
-    left: Number(settings?.margin?.left) || 72,
-    right: Number(settings?.margin?.right) || 72,
-    top: Number(settings?.margin?.top) || 72,
-    bottom: Number(settings?.margin?.bottom) || 72,
+    left: Number(settings?.margin?.left) || DEFAULT_PAGE_MARGIN.left,
+    right: Number(settings?.margin?.right) || DEFAULT_PAGE_MARGIN.right,
+    top: Number(settings?.margin?.top) || DEFAULT_PAGE_MARGIN.top,
+    bottom: Number(settings?.margin?.bottom) || DEFAULT_PAGE_MARGIN.bottom,
   },
   lineHeight: Number(settings?.lineHeight) || 26,
   blockSpacing: Number(settings?.blockSpacing) || 0,

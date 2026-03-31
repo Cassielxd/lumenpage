@@ -12,18 +12,19 @@ import {
   readLineFragmentContinuationState,
 } from "./fragmentContinuation";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
+import type { LayoutPage, LayoutResult } from "./types";
 
 type FinalizePageReuseDecisionOptions = {
   cascadePagination: boolean;
   cascadeFromPageIndex: number | null;
   pageIndex: number;
-  page: any;
-  previousLayout: any;
+  page: LayoutPage | null | undefined;
+  previousLayout: LayoutResult | null | undefined;
   offsetDelta: number;
   preferredBoundaryAnchor: string | null;
 };
 
-const pageHasVisualBlock = (page: any) => {
+const pageHasVisualBlock = (page: LayoutPage | null | undefined) => {
   const lines = Array.isArray(page?.lines) ? page.lines : [];
   for (const line of lines) {
     const capabilities = line?.blockAttrs?.layoutCapabilities;
@@ -41,7 +42,7 @@ const pageHasVisualBlock = (page: any) => {
   return false;
 };
 
-const pageHasFragmentAnchors = (page: any) =>
+const pageHasFragmentAnchors = (page: LayoutPage | null | undefined) =>
   getPageFragmentAnchorSummary(page).fragmentAnchors.length > 0;
 
 type FinalizePageReuseDecision =
@@ -78,7 +79,7 @@ type FinalizePageReuseDecision =
       diagnostics: PaginationSyncDiagnostics;
     };
 
-function buildPageExitToken(page: any, offsetDelta = 0) {
+function buildPageExitToken(page: LayoutPage | null | undefined, offsetDelta = 0) {
   const lines = Array.isArray(page?.lines) ? page.lines : [];
   const fragmentAnchorSummary = getPageFragmentAnchorSummary(page);
   const anchorLineIndex =
@@ -115,7 +116,7 @@ function buildPageExitToken(page: any, offsetDelta = 0) {
 }
 
 /**
- * 判断当前页在结束时是否可以直接复用旧布局中的同索引页边界。
+ * 闁告帇鍊栭弻鍥亹閹惧啿顤呭銈夋涧濠€顏嗙磼閹惧瓨灏嗛柡鍐煐濡叉悂宕ラ敃鈧ぐ鍙夌閵壯勭函闁规亽鍎遍ˇ鏌ユ偨閵婏附锛嬮悽顖氬暙閻剚绋夐鐘崇暠闁告艾鐬奸崒銊ヮ嚕閺囶潿鈧娼忛崷顓熸珪闁?
  */
 export function resolveFinalizePageReuseDecision({
   cascadePagination,
@@ -209,7 +210,7 @@ export function resolveFinalizePageReuseDecision({
     boundaryAnchor ||
     getPageFragmentAnchorSummary(page).lastFragmentAnchor ||
     null;
-  const equivalenceDebug: any = {};
+  const equivalenceDebug: Record<string, unknown> = {};
   if (
     ENABLE_SAME_INDEX_TAIL_REUSE &&
     arePagesEquivalent(page, previousPage, equivalenceDebug, offsetDelta, {
@@ -249,11 +250,11 @@ export function resolveFinalizePageReuseDecision({
 }
 
 /**
- * 判断渐进分页是否已经达到允许继续布局的最大页数。
+ * 闁告帇鍊栭弻鍥с€掗幇顖滅闁告帒妫濋妴澶愬及椤栨碍鍎婄€规瓕灏欑划鈩冩綇閹冪厒闁稿繋娴囬蹇曠磼瑜忛悽鑽ゆ暜閸愩劎婀伴柣銊ュ濞撹埖寰勮閵嗗寮懜顑藉亾?
  */
 export function shouldStopAtProgressiveCutoff(options: {
   cascadePagination: boolean;
-  previousLayout: any;
+  previousLayout: LayoutResult | null | undefined;
   cascadeStopPageIndex: number | null;
   pageIndex: number;
 }) {

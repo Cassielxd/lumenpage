@@ -38,8 +38,8 @@ const resolveSelectionStyle = (settings: any) => {
   };
   return {
     fill: resolveColor(style.fill, "rgba(191, 219, 254, 0.4)"),
-    stroke: resolveColor(style.stroke, "rgba(59, 130, 246, 0.8)"),
-    strokeWidth: Number.isFinite(style.strokeWidth) ? style.strokeWidth : 1,
+    stroke: resolveColor(style.stroke, null),
+    strokeWidth: Number.isFinite(style.strokeWidth) ? style.strokeWidth : 0,
     radius: Number.isFinite(style.radius) ? style.radius : 2,
     inset: Number.isFinite(style.inset) ? style.inset : 0,
   };

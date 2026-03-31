@@ -1,4 +1,12 @@
 import { TextSelection } from "lumenpage-state";
+import {
+  DEFAULT_PAGE_HEIGHT,
+  DEFAULT_PAGE_SIZE_PRESET_VALUE,
+  DEFAULT_PAGE_WIDTH,
+  PAGE_SIZE_PRESET_DEFINITIONS,
+  findPageSizePresetByDimensions,
+  type PageSizePresetDefinition,
+} from "lumenpage-view-canvas";
 import type { PlaygroundLocale } from "../i18n";
 import { createPageAppearanceActions } from "./pageAppearanceActions";
 import type { GetEditorCommandMap } from "./commandUtils";
@@ -10,67 +18,24 @@ const TOC_PLACEHOLDER = "[[TOC]]";
 
 const TOC_MARKERS = new Set([TOC_PLACEHOLDER, "[TOC]"]);
 
-export type PageSizePreset = {
-  value: string;
+export type PageSizePreset = PageSizePresetDefinition & {
   label: Record<PlaygroundLocale, string>;
-  width: number;
-  height: number;
 };
 
-export const PAGE_SIZE_PRESETS: PageSizePreset[] = [
-  {
-    value: "a3",
-    label: { "zh-CN": "A3", "en-US": "A3" },
-    width: 1123,
-    height: 1587,
-  },
-  {
-    value: "a4",
-    label: { "zh-CN": "A4", "en-US": "A4" },
-    width: 794,
-    height: 1123,
-  },
-  {
-    value: "a5",
-    label: { "zh-CN": "A5", "en-US": "A5" },
-    width: 559,
-    height: 794,
-  },
-  {
-    value: "b4",
-    label: { "zh-CN": "B4", "en-US": "B4" },
-    width: 944,
-    height: 1334,
-  },
-  {
-    value: "b5",
-    label: { "zh-CN": "B5", "en-US": "B5" },
-    width: 665,
-    height: 944,
-  },
-  {
-    value: "letter",
-    label: { "zh-CN": "Letter", "en-US": "Letter" },
-    width: 816,
-    height: 1056,
-  },
-  {
-    value: "legal",
-    label: { "zh-CN": "Legal", "en-US": "Legal" },
-    width: 816,
-    height: 1344,
-  },
-];
-
-const findPageSizePreset = (width: number, height: number) => {
-  const shortEdge = Math.min(width, height);
-  const longEdge = Math.max(width, height);
-  return (
-    PAGE_SIZE_PRESETS.find(
-      (preset) => preset.width === shortEdge && preset.height === longEdge
-    ) || null
-  );
+const PAGE_SIZE_LABELS: Record<PageSizePresetDefinition["value"], Record<PlaygroundLocale, string>> = {
+  a3: { "zh-CN": "A3", "en-US": "A3" },
+  a4: { "zh-CN": "A4", "en-US": "A4" },
+  a5: { "zh-CN": "A5", "en-US": "A5" },
+  b4: { "zh-CN": "B4", "en-US": "B4" },
+  b5: { "zh-CN": "B5", "en-US": "B5" },
+  letter: { "zh-CN": "Letter", "en-US": "Letter" },
+  legal: { "zh-CN": "Legal", "en-US": "Legal" },
 };
+
+export const PAGE_SIZE_PRESETS: PageSizePreset[] = PAGE_SIZE_PRESET_DEFINITIONS.map((preset) => ({
+  ...preset,
+  label: PAGE_SIZE_LABELS[preset.value],
+}));
 
 export const createLayoutActions = ({
   getView,
@@ -120,12 +85,12 @@ export const createLayoutActions = ({
     if (!settings) {
       return null;
     }
-    const width = Math.max(1, Math.round(Number(settings.pageWidth) || 794));
-    const height = Math.max(1, Math.round(Number(settings.pageHeight) || 1123));
+    const width = Math.max(1, Math.round(Number(settings.pageWidth) || DEFAULT_PAGE_WIDTH));
+    const height = Math.max(1, Math.round(Number(settings.pageHeight) || DEFAULT_PAGE_HEIGHT));
     return {
       width,
       height,
-      preset: findPageSizePreset(width, height),
+      preset: findPageSizePresetByDimensions(width, height),
     };
   };
 
@@ -252,7 +217,7 @@ export const createLayoutActions = ({
 
   const applyPageSizeSetting = async () => {
     const current = getCurrentPageSizeInfo();
-    const currentPreset = current?.preset?.value || PAGE_SIZE_PRESETS[1]?.value || "a4";
+    const currentPreset = current?.preset?.value || DEFAULT_PAGE_SIZE_PRESET_VALUE;
     const result = await requestInputDialog({
       title: getLocaleKey() === "en-US" ? "Page Size" : "纸张大小",
       fields: [

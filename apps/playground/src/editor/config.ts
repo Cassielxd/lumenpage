@@ -1,3 +1,9 @@
+import {
+  DEFAULT_PAGE_GAP,
+  DEFAULT_PAGE_HEIGHT,
+  DEFAULT_PAGE_MARGIN,
+  DEFAULT_PAGE_WIDTH,
+} from "lumenpage-view-canvas";
 import { createLinebreakSegmentText } from "lumenpage-view-runtime";
 
 import { resolvePlaygroundLocale, type PlaygroundLocale } from "./i18n";
@@ -274,15 +280,10 @@ export const createCanvasSettings = (
   );
 
   return {
-    pageWidth: 794,
-    pageHeight: 1123,
-    pageGap: 24,
-    margin: {
-      top: 72,
-      right: 72,
-      bottom: 72,
-      left: 72,
-    },
+    pageWidth: DEFAULT_PAGE_WIDTH,
+    pageHeight: DEFAULT_PAGE_HEIGHT,
+    pageGap: DEFAULT_PAGE_GAP,
+    margin: { ...DEFAULT_PAGE_MARGIN },
     lineHeight: 26,
     blockSpacing: 8,
     paragraphSpacingBefore: 0,

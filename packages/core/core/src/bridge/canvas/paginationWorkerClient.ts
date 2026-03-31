@@ -1,4 +1,10 @@
-import type { PaginationDocWorkerResponse } from "./paginationWorker";
+﻿import type { PaginationDocWorkerResponse } from "./paginationWorker";
+import {
+  DEFAULT_PAGE_GAP,
+  DEFAULT_PAGE_HEIGHT,
+  DEFAULT_PAGE_MARGIN,
+  DEFAULT_PAGE_WIDTH,
+} from "lumenpage-view-canvas";
 
 type PendingJob = {
   resolve: (layout: any) => void;
@@ -76,13 +82,13 @@ export class PaginationDocWorkerClient {
 
   private buildSettingsKey(settings: any) {
     return JSON.stringify({
-      pageWidth: Number(settings?.pageWidth) || 794,
-      pageHeight: Number(settings?.pageHeight) || 1123,
-      pageGap: Number(settings?.pageGap) || 24,
-      marginTop: Number(settings?.margin?.top) || 72,
-      marginRight: Number(settings?.margin?.right) || 72,
-      marginBottom: Number(settings?.margin?.bottom) || 72,
-      marginLeft: Number(settings?.margin?.left) || 72,
+      pageWidth: Number(settings?.pageWidth) || DEFAULT_PAGE_WIDTH,
+      pageHeight: Number(settings?.pageHeight) || DEFAULT_PAGE_HEIGHT,
+      pageGap: Number(settings?.pageGap) || DEFAULT_PAGE_GAP,
+      marginTop: Number(settings?.margin?.top) || DEFAULT_PAGE_MARGIN.top,
+      marginRight: Number(settings?.margin?.right) || DEFAULT_PAGE_MARGIN.right,
+      marginBottom: Number(settings?.margin?.bottom) || DEFAULT_PAGE_MARGIN.bottom,
+      marginLeft: Number(settings?.margin?.left) || DEFAULT_PAGE_MARGIN.left,
       lineHeight: Number(settings?.lineHeight) || 26,
       font: settings?.font || "16px Arial",
       textLocale: settings?.textLocale || "zh-CN",
@@ -96,14 +102,14 @@ export class PaginationDocWorkerClient {
   private serializeSettingsForWorker(settings: any) {
     return {
       textLocale: settings?.textLocale || "zh-CN",
-      pageWidth: Number(settings?.pageWidth) || 794,
-      pageHeight: Number(settings?.pageHeight) || 1123,
-      pageGap: Number(settings?.pageGap) || 24,
+      pageWidth: Number(settings?.pageWidth) || DEFAULT_PAGE_WIDTH,
+      pageHeight: Number(settings?.pageHeight) || DEFAULT_PAGE_HEIGHT,
+      pageGap: Number(settings?.pageGap) || DEFAULT_PAGE_GAP,
       margin: {
-        left: Number(settings?.margin?.left) || 72,
-        right: Number(settings?.margin?.right) || 72,
-        top: Number(settings?.margin?.top) || 72,
-        bottom: Number(settings?.margin?.bottom) || 72,
+        left: Number(settings?.margin?.left) || DEFAULT_PAGE_MARGIN.left,
+        right: Number(settings?.margin?.right) || DEFAULT_PAGE_MARGIN.right,
+        top: Number(settings?.margin?.top) || DEFAULT_PAGE_MARGIN.top,
+        bottom: Number(settings?.margin?.bottom) || DEFAULT_PAGE_MARGIN.bottom,
       },
       lineHeight: Number(settings?.lineHeight) || 26,
       blockSpacing: Number(settings?.blockSpacing) || 0,
@@ -187,3 +193,4 @@ export class PaginationDocWorkerClient {
     this.pending.clear();
   }
 }
+
