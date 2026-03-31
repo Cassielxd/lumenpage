@@ -9,7 +9,6 @@
           type="text"
           :placeholder="i18n.app.defaultDocTitle"
         />
-        <t-tag size="small" theme="success" variant="light">{{ i18n.app.saved }}</t-tag>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
         <t-tag
           v-if="debugFlags.collaborationEnabled"
@@ -70,7 +69,10 @@
     />
 
     <t-content class="doc-content">
-      <t-layout class="doc-workspace">
+      <div
+        ref="workspaceRef"
+        :class="['doc-workspace', { 'is-side-panel-resizing': isResizingRightSidebar }]"
+      >
         <t-aside v-if="tocPanelOpen && tocItems.length > 0" class="doc-outline">
           <div class="doc-outline-header">
             <span>{{ outlineTitle }}</span>
@@ -93,7 +95,17 @@
             <div ref="editorHost" class="editor-host"></div>
           </div>
         </t-content>
-        <t-aside v-if="rightSidebarOpen" class="doc-side-panel">
+        <t-aside
+          v-if="rightSidebarOpen"
+          class="doc-side-panel"
+          :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }"
+        >
+          <button
+            type="button"
+            class="doc-side-panel-resize-handle"
+            aria-label="Resize panel"
+            @pointerdown="handleRightSidebarResizeStart"
+          ></button>
           <TrackChangesPanel
             v-if="trackChangesPanelOpen"
             :locale="debugFlags.locale"
@@ -124,25 +136,30 @@
             @delete="handleCommentThreadDelete"
           />
         </t-aside>
-      </t-layout>
+      </div>
     </t-content>
     <t-footer class="doc-footer">
-      <div class="doc-footer-stats">
-        <span class="doc-footer-stat">{{ footerCurrentPageLabel }}</span>
+      <div v-if="false" class="doc-footer-stats">
+        <template v-for="(item, index) in footerStatItems" :key="`${index}-${item}`">
+          <span v-if="index > 0" class="doc-footer-divider">|</span>
+          <span class="doc-footer-stat">{{ item }}</span>
+        </template>
+        <span>{{ footerNodeLabel }}</span>
+        <span>{{ footerPluginLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerPageLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerWordLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerSelectionWordLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerBlockTypeLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerNodeLabel }}</span>
         <span class="doc-footer-divider">·</span>
-        <span class="doc-footer-stat">{{ footerPluginLabel }}</span>
       </div>
-      <div class="doc-footer-right">
+      <div class="doc-footer-stats">
+        <template v-for="(item, index) in footerStatItems" :key="`footer-${index}-${item}`">
+          <span v-if="index > 0" class="doc-footer-divider">|</span>
+          <span class="doc-footer-stat">{{ item }}</span>
+        </template>
+      </div>
+      <div v-if="false" class="doc-footer-right">
         <CollaborationPresence
           v-if="debugFlags.collaborationEnabled"
           :state="collaborationState"
@@ -153,6 +170,9 @@
           <span class="doc-footer-contact-label">{{ footerContactLabel }}</span>
           <a class="doc-footer-contact-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
         </div>
+      </div>
+      <div v-if="debugFlags.collaborationEnabled" class="doc-footer-right">
+        <CollaborationPresence :state="collaborationState" :locale="debugFlags.locale" compact />
       </div>
     </t-footer>
   </t-layout>
@@ -202,6 +222,7 @@ const docTitle = ref(
   debugFlags.collaborationEnabled ? debugFlags.collaborationDocument : i18n.app.defaultDocTitle
 );
 const editorHost = ref<HTMLElement | null>(null);
+const workspaceRef = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
@@ -217,6 +238,8 @@ const trackChangesEnabled = ref(false);
 const trackChangeRecords = ref<TrackChangeRecord[]>([]);
 const activeTrackChangeId = ref<string | null>(null);
 const trackChangesPanelManualOpen = ref(false);
+const rightSidebarWidth = ref(360);
+const isResizingRightSidebar = ref(false);
 const footerStats = ref({
   pageCount: 0,
   currentPage: 0,
@@ -339,6 +362,16 @@ const footerBlockTypeLabel = computed(() =>
     ? `Block ${resolveBlockTypeLabel(footerStats.value.blockType)}`
     : `块 ${resolveBlockTypeLabel(footerStats.value.blockType)}`
 );
+const footerStatItems = computed(() => {
+  const items = [footerCurrentPageLabel.value, footerPageLabel.value, footerWordLabel.value];
+  if (footerStats.value.selectedWordCount > 0) {
+    items.push(footerSelectionWordLabel.value);
+  }
+  if (footerStats.value.blockType) {
+    items.push(footerBlockTypeLabel.value);
+  }
+  return items;
+});
 const footerNodeLabel = computed(() =>
   debugFlags.locale === "en-US"
     ? `Nodes ${footerStats.value.nodeCount}`
@@ -528,6 +561,9 @@ const getNextCommentThreadId = (excludeThreadId?: string | null) =>
   commentThreads.value.find((thread) => thread.id !== excludeThreadId)?.id || null;
 
 const openCommentsPanel = (preferredThreadId?: string | null) => {
+  if (trackChangesPanelOpen.value || activeTrackChangeId.value) {
+    closeTrackChangesPanel();
+  }
   commentsPanelOpen.value = true;
   const nextThreadId = preferredThreadId || activeCommentThreadId.value || getNextCommentThreadId();
   if (nextThreadId && nextThreadId !== activeCommentThreadId.value) {
@@ -559,6 +595,56 @@ const handleStatsChange = (stats: {
     selectedWordCount: Math.max(0, Number(stats?.selectedWordCount) || 0),
     blockType: String(stats?.blockType || ""),
   };
+};
+
+const RIGHT_SIDEBAR_MIN_WIDTH = 280;
+const RIGHT_SIDEBAR_MAX_WIDTH = 460;
+
+const clampRightSidebarWidth = (value: number) =>
+  Math.min(RIGHT_SIDEBAR_MAX_WIDTH, Math.max(RIGHT_SIDEBAR_MIN_WIDTH, Math.round(value)));
+
+const updateRightSidebarWidthFromPointer = (clientX: number) => {
+  const rect = workspaceRef.value?.getBoundingClientRect();
+  if (!rect) {
+    return;
+  }
+  rightSidebarWidth.value = clampRightSidebarWidth(rect.right - clientX);
+};
+
+const stopRightSidebarResize = () => {
+  if (!isResizingRightSidebar.value) {
+    return;
+  }
+  isResizingRightSidebar.value = false;
+  if (typeof document !== "undefined") {
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+  }
+};
+
+const handleRightSidebarResizeMove = (event: PointerEvent) => {
+  if (!isResizingRightSidebar.value) {
+    return;
+  }
+  event.preventDefault();
+  updateRightSidebarWidthFromPointer(event.clientX);
+};
+
+const handleRightSidebarResizeEnd = () => {
+  stopRightSidebarResize();
+};
+
+const handleRightSidebarResizeStart = (event: PointerEvent) => {
+  if (event.button !== 0) {
+    return;
+  }
+  event.preventDefault();
+  isResizingRightSidebar.value = true;
+  updateRightSidebarWidthFromPointer(event.clientX);
+  if (typeof document !== "undefined") {
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
 };
 
 const createCommentActionTexts = (locale: "zh-CN" | "en-US") =>
@@ -972,6 +1058,9 @@ const handleTocItemClick = (item: TocOutlineItem) => {
 };
 
 onMounted(async () => {
+  window.addEventListener("pointermove", handleRightSidebarResizeMove, { passive: false });
+  window.addEventListener("pointerup", handleRightSidebarResizeEnd, { passive: true });
+  window.addEventListener("pointercancel", handleRightSidebarResizeEnd, { passive: true });
   if (!editorHost.value) {
     return;
   }
@@ -1059,6 +1148,10 @@ watch(
 );
 
 onBeforeUnmount(() => {
+  window.removeEventListener("pointermove", handleRightSidebarResizeMove);
+  window.removeEventListener("pointerup", handleRightSidebarResizeEnd);
+  window.removeEventListener("pointercancel", handleRightSidebarResizeEnd);
+  stopRightSidebarResize();
   detachEditor?.();
   detachEditor = null;
   setTocOutlineEnabled = null;
@@ -1114,7 +1207,7 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 56px;
+  height: 52px;
   padding: 0 16px;
   background: #ffffff;
   border-bottom: 1px solid #dfe1e5;
@@ -1185,6 +1278,7 @@ onBeforeUnmount(() => {
 
 .doc-main {
   position: relative;
+  display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -1196,7 +1290,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 34px;
+  min-height: 32px;
   padding: 0 16px;
   background: #ffffff;
   border-top: 1px solid #e5e7eb;
@@ -1317,6 +1411,8 @@ onBeforeUnmount(() => {
 
 .doc-stage {
   position: relative;
+  display: flex;
+  flex: 1;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -1327,15 +1423,43 @@ onBeforeUnmount(() => {
 }
 
 .doc-side-panel {
+  position: relative;
+  flex: 0 0 var(--doc-side-panel-width);
+  width: var(--doc-side-panel-width);
+  min-width: 0;
+  background: transparent;
+}
+
+.doc-side-panel-resize-handle {
   position: absolute;
   top: 0;
-  right: 0;
+  left: -6px;
   bottom: 0;
-  width: 320px;
-  min-width: 0;
-  z-index: 8;
+  width: 12px;
+  padding: 0;
+  border: 0;
   background: transparent;
-  box-shadow: -8px 0 24px rgba(15, 23, 42, 0.08);
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.doc-side-panel-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 44px;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: rgba(148, 163, 184, 0.55);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.doc-side-panel:hover .doc-side-panel-resize-handle::after,
+.doc-workspace.is-side-panel-resizing .doc-side-panel-resize-handle::after {
+  opacity: 1;
 }
 
 .editor-host {
@@ -1448,7 +1572,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1024px) {
   .doc-side-panel {
-    width: 280px;
+    width: min(320px, var(--doc-side-panel-width));
+    flex-basis: min(320px, var(--doc-side-panel-width));
   }
 }
 

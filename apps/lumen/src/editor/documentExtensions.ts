@@ -14,6 +14,7 @@ import {
   CollaborationCaret,
   type CollaborationCaretUser,
 } from "lumenpage-extension-collaboration-caret";
+import { UndoRedo } from "lumenpage-extension-undo-redo";
 import { StarterKit } from "lumenpage-starter-kit";
 import { Image } from "lumenpage-extension-image";
 import { Link } from "lumenpage-extension-link";
@@ -84,8 +85,8 @@ export const createLumenDocumentExtensions = (
   } = {}
 ) => {
   const collaboration = options.collaboration ?? null;
-  const starterKit = collaboration ? StarterKit.configure({ undoRedo: false }) : StarterKit;
-  const extensions = [starterKit, ...baseDocumentExtensions];
+  const starterKit = StarterKit.configure({ undoRedo: false });
+  const extensions = [starterKit, ...(collaboration ? [] : [UndoRedo]), ...baseDocumentExtensions];
 
   if (collaboration) {
     extensions.push(

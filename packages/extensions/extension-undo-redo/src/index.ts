@@ -21,6 +21,13 @@ export const UndoRedo = Extension.create({
       redo: () => redo,
     };
   },
+  addKeyboardShortcuts() {
+    return {
+      "Mod-z": () => this.editor?.commands.undo?.() === true,
+      "Mod-y": () => this.editor?.commands.redo?.() === true,
+      "Shift-Mod-z": () => this.editor?.commands.redo?.() === true,
+    };
+  },
   addPlugins() {
     return [history()];
   },

@@ -18,16 +18,12 @@
         </t-button>
       </div>
     </div>
-    <div class="menu-right">
-      <span class="menu-state-dot"></span>
-      <span class="menu-state-text">{{ i18n.toolbar.statusIdle }}</span>
-    </div>
   </t-header>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
+import type { PlaygroundLocale } from "../editor/i18n";
 import { getVisibleToolbarMenuTabs, type ToolbarMenuKey } from "../editor/toolbarCatalog";
 
 const props = defineProps<{
@@ -39,7 +35,6 @@ const emit = defineEmits<{
   (e: "update:activeMenu", value: ToolbarMenuKey): void;
 }>();
 
-const i18n = computed(() => createPlaygroundI18n(props.locale));
 const resolvedActiveMenu = computed<ToolbarMenuKey>(() => props.activeMenu || "base");
 const menuTabAriaLabel = computed(() =>
   props.locale === "en-US" ? "Toolbar categories" : "工具栏分类"
@@ -114,9 +109,9 @@ const handleMenuBarKeyDown = (event: KeyboardEvent) => {
 <style scoped>
 .menu-bar {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  height: 38px;
+  height: 34px;
   padding: 0 12px;
   background: #ffffff;
   border-bottom: 1px solid #eceff1;
@@ -132,25 +127,6 @@ const handleMenuBarKeyDown = (event: KeyboardEvent) => {
   display: flex;
   align-items: center;
   gap: 2px;
-}
-
-.menu-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 10px;
-}
-
-.menu-state-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #34a853;
-}
-
-.menu-state-text {
-  font-size: 12px;
-  color: #5f6368;
 }
 
 .menu-trigger {
@@ -186,10 +162,6 @@ const handleMenuBarKeyDown = (event: KeyboardEvent) => {
 }
 
 @media (max-width: 960px) {
-  .menu-right {
-    display: none;
-  }
-
   .menu-tab-trigger {
     min-width: 50px;
     padding: 0 8px;
