@@ -171,8 +171,22 @@
           <a class="doc-footer-contact-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
         </div>
       </div>
-      <div v-if="debugFlags.collaborationEnabled" class="doc-footer-right">
-        <CollaborationPresence :state="collaborationState" :locale="debugFlags.locale" compact />
+      <div class="doc-footer-right">
+        <CollaborationPresence
+          v-if="debugFlags.collaborationEnabled"
+          :state="collaborationState"
+          :locale="debugFlags.locale"
+          compact
+        />
+        <a
+          class="doc-footer-link"
+          href="https://github.com/Cassielxd/lumenpage"
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          GitHub
+        </a>
+        <a class="doc-footer-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
       </div>
     </t-footer>
   </t-layout>
@@ -1338,6 +1352,19 @@ onBeforeUnmount(() => {
   text-decoration: none;
 }
 
+.doc-footer-link {
+  color: #2563eb;
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.doc-footer-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 .doc-footer-contact-link:hover {
   text-decoration: underline;
 }
@@ -1559,6 +1586,10 @@ onBeforeUnmount(() => {
   color: #fff;
   border-color: #fff;
   box-shadow: none;
+}
+
+.doc-shell.is-high-contrast .doc-footer-link {
+  color: #fff;
 }
 
 .doc-shell.is-high-contrast .editor-host :deep(.lumenpage-scroll-area) {
