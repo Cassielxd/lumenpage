@@ -41,6 +41,9 @@ const pageHasVisualBlock = (page: any) => {
   return false;
 };
 
+const pageHasFragmentAnchors = (page: any) =>
+  getPageFragmentAnchorSummary(page).fragmentAnchors.length > 0;
+
 type FinalizePageReuseDecision =
   | {
       reason: "same-index-boundary-reuse";
@@ -144,7 +147,9 @@ export function resolveFinalizePageReuseDecision({
   const nextBoundaryToken = buildPageBoundaryAnchorToken(page, preferredBoundaryAnchor);
   const previousBoundaryToken = buildPageBoundaryAnchorToken(previousPage, preferredBoundaryAnchor);
   const hasVisualBlock = pageHasVisualBlock(page) || pageHasVisualBlock(previousPage);
-  if (!hasVisualBlock && nextBoundaryToken === previousBoundaryToken) {
+  const hasFragmentAnchors =
+    pageHasFragmentAnchors(page) || pageHasFragmentAnchors(previousPage);
+  if (!hasVisualBlock && !hasFragmentAnchors && nextBoundaryToken === previousBoundaryToken) {
     return {
       reason: "same-index-boundary-reuse",
       syncFromIndex: pageIndex,
@@ -175,7 +180,7 @@ export function resolveFinalizePageReuseDecision({
 
   const nextExitToken = buildPageExitToken(page, 0);
   const previousExitToken = buildPageExitToken(previousPage, offsetDelta);
-  if (!hasVisualBlock && nextExitToken === previousExitToken) {
+  if (!hasVisualBlock && !hasFragmentAnchors && nextExitToken === previousExitToken) {
     return {
       reason: "same-index-boundary-reuse",
       syncFromIndex: pageIndex,

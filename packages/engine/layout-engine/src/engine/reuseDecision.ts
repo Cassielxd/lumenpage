@@ -39,17 +39,18 @@ export const resolveDisablePageReuse = ({
   const defaultDecision = shouldDisableReuseForSensitiveChange(
     doc,
     changeSummary,
-    previousLayout,
-    registry
-      ? {
-          isSensitiveNode: isSensitiveNodeByRenderer,
-          isSensitiveLine: isSensitiveLineByRenderer,
-        }
-      : undefined
+    previousLayout
   );
+  const rendererDecision = registry
+    ? shouldDisableReuseForSensitiveChange(doc, changeSummary, previousLayout, {
+        isSensitiveNode: isSensitiveNodeByRenderer,
+        isSensitiveLine: isSensitiveLineByRenderer,
+      })
+    : false;
+  const combinedDefaultDecision = defaultDecision || rendererDecision;
   const customGuard = baseSettingsRaw?.shouldDisablePageReuseForChange;
   if (typeof customGuard !== "function") {
-    return defaultDecision;
+    return combinedDefaultDecision;
   }
 
   try {
@@ -57,16 +58,16 @@ export const resolveDisablePageReuse = ({
       doc,
       changeSummary,
       previousLayout,
-      defaultDecision,
+      defaultDecision: combinedDefaultDecision,
       shouldDisableReuseForSensitiveChange,
     });
     if (customDecision === true || customDecision === false) {
       disablePageReuse = customDecision;
     } else {
-      disablePageReuse = defaultDecision;
+      disablePageReuse = combinedDefaultDecision;
     }
   } catch (_error) {
-    disablePageReuse = defaultDecision;
+    disablePageReuse = combinedDefaultDecision;
   }
 
   return disablePageReuse;

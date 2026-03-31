@@ -2,6 +2,7 @@ import { Node } from "lumenpage-core";
 import {
   backspaceEmptyListItem,
   createToggleListCommand,
+  joinListItemBackward,
   splitListItem,
   toggleTaskItemChecked,
 } from "./list/commands";
@@ -10,6 +11,7 @@ import { listNodeSpecs } from "./list/specs";
 type ListItemCommands<ReturnType> = {
   splitListItem: () => ReturnType;
   backspaceEmptyListItem: () => ReturnType;
+  joinListItemBackward: () => ReturnType;
 };
 
 declare module "lumenpage-core" {
@@ -28,6 +30,7 @@ export { listNodeSpecs } from "./list/specs";
 export {
   backspaceEmptyListItem,
   createToggleListCommand,
+  joinListItemBackward,
   splitListItem,
   toggleTaskItemChecked,
 } from "./list/commands";
@@ -37,12 +40,22 @@ export const taskItemNodeSpec = listNodeSpecs.taskItem;
 
 export const ListItem = Node.create({
   name: "listItem",
-  priority: 100,
+  priority: 110,
   schema: listItemNodeSpec,
+  addKeyboardShortcuts() {
+    const handleBackward = () => this.editor.commands.joinListItemBackward();
+
+    return {
+      Backspace: handleBackward,
+      "Mod-Backspace": handleBackward,
+      "Shift-Backspace": handleBackward,
+    };
+  },
   addCommands() {
     return {
       splitListItem: () => splitListItem,
       backspaceEmptyListItem: () => backspaceEmptyListItem,
+      joinListItemBackward: () => joinListItemBackward,
     };
   },
 });

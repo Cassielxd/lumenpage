@@ -1,6 +1,5 @@
 import { Selection } from "lumenpage-state";
-import { liftTarget } from "lumenpage-transform";
-import { canSplit } from "lumenpage-transform";
+import { canSplit, joinPoint, liftTarget } from "lumenpage-transform";
 
 const isListNodeType = (name) =>
   name === "bulletList" || name === "orderedList" || name === "taskList";
@@ -32,6 +31,39 @@ const findAncestorDepthByTypes = ($pos, typeNames) => {
     }
   }
   return -1;
+};
+
+const resolveListItemBackspaceContext = (state) => {
+  const { selection } = state || {};
+  if (!selection?.empty) {
+    return null;
+  }
+
+  const { $from } = selection;
+  if (!$from?.parent?.isTextblock || $from.parentOffset !== 0) {
+    return null;
+  }
+
+  const itemDepth = findAncestorDepthByTypes($from, ["listItem", "taskItem"]);
+  if (itemDepth < 0 || itemDepth - 1 < 0) {
+    return null;
+  }
+
+  const listDepth = itemDepth - 1;
+  const listNode = $from.node(listDepth);
+  if (!isListNodeType(listNode?.type?.name)) {
+    return null;
+  }
+
+  const itemIndex = $from.index(listDepth);
+  if (itemIndex <= 0) {
+    return null;
+  }
+
+  return {
+    $from,
+    itemDepth,
+  };
 };
 
 const convertListItemsForListType = (tr, schema, listPos, listNode, targetListTypeName) => {
@@ -97,32 +129,11 @@ export const splitListItem = (state, dispatch) => {
 };
 
 export const backspaceEmptyListItem = (state, dispatch) => {
-  const { selection } = state;
-  if (!selection?.empty) {
+  const context = resolveListItemBackspaceContext(state);
+  if (!context?.$from || context.$from.parent.content.size !== 0) {
     return false;
   }
-  const { $from } = selection;
-  if (!$from?.parent?.isTextblock) {
-    return false;
-  }
-  if ($from.parentOffset !== 0 || $from.parent.content.size !== 0) {
-    return false;
-  }
-
-  const itemDepth = findAncestorDepthByTypes($from, ["listItem", "taskItem"]);
-  if (itemDepth < 0 || itemDepth - 1 < 0) {
-    return false;
-  }
-  const listDepth = itemDepth - 1;
-  const listNode = $from.node(listDepth);
-  if (!isListNodeType(listNode?.type?.name)) {
-    return false;
-  }
-
-  const itemIndex = $from.index(listDepth);
-  if (itemIndex <= 0) {
-    return false;
-  }
+  const { $from, itemDepth } = context;
 
   const itemStart = $from.before(itemDepth);
   const itemEnd = $from.after(itemDepth);
@@ -135,6 +146,27 @@ export const backspaceEmptyListItem = (state, dispatch) => {
   tr = tr.setSelection(Selection.near(tr.doc.resolve(prevPos), -1)).scrollIntoView();
   dispatch(tr);
   return true;
+};
+
+export const joinListItemBackward = (state, dispatch) => {
+  if (!resolveListItemBackspaceContext(state)) {
+    return false;
+  }
+
+  try {
+    const point = joinPoint(state.doc, state.selection.$from.pos, -1);
+    if (point == null) {
+      return false;
+    }
+
+    if (dispatch) {
+      dispatch(state.tr.join(point, 2).scrollIntoView());
+    }
+
+    return true;
+  } catch (_error) {
+    return false;
+  }
 };
 
 const resolveTaskListItemContext = (state, pos) => {
