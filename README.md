@@ -339,3 +339,7 @@ pnpm -C apps/lumen test:e2e:collab
 - [packages/core/core](./packages/core/core)
 - [packages/engine/view-canvas](./packages/engine/view-canvas)
 - [packages/extensions](./packages/extensions)
+
+## 联系方式
+
+- 邮箱：348040933@qq.com
