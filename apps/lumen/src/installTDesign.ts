@@ -12,6 +12,7 @@ import { Popup } from "tdesign-vue-next/es/popup";
 import { Select } from "tdesign-vue-next/es/select";
 import { Tag } from "tdesign-vue-next/es/tag";
 import { Textarea } from "tdesign-vue-next/es/textarea";
+import { TabPanel, Tabs } from "tdesign-vue-next/es/tabs";
 import { Tooltip } from "tdesign-vue-next/es/tooltip";
 
 const tdesignPlugins = [
@@ -30,6 +31,8 @@ const tdesignPlugins = [
   Popup,
   Select,
   Tag,
+  Tabs,
+  TabPanel,
   Textarea,
   Tooltip,
 ];
