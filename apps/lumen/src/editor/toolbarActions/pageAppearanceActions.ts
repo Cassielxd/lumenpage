@@ -1,4 +1,4 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import { showToolbarMessage } from "./ui/message";
 
@@ -17,15 +17,6 @@ type PageAppearanceRuntime = {
   baseRenderPageChrome: ((args: any) => boolean | void) | null;
 };
 
-type PageAppearanceTexts = {
-  promptBackground: string;
-  promptWatermark: string;
-  promptHeader: string;
-  promptFooter: string;
-  alertInvalidColor: string;
-  alertWatermarkTooLong: (maxLength: number) => string;
-};
-
 const APPEARANCE_STATE_KEY = "__lumenPageAppearanceState";
 const APPEARANCE_RUNTIME_KEY = "__lumenPageAppearanceRuntime";
 const WATERMARK_MAX_LENGTH = 48;
@@ -37,26 +28,6 @@ const createDefaultState = (): PageAppearanceState => ({
   headerText: "",
   footerText: "",
 });
-
-const resolveTexts = (locale: PlaygroundLocale): PageAppearanceTexts =>
-  locale === "en-US"
-    ? {
-        promptBackground:
-          "Page background color (CSS color, empty means restore default background)",
-        promptWatermark: "Watermark text (empty means remove watermark, max 48 chars)",
-        promptHeader: "Header text (empty means remove; supports {page} placeholder)",
-        promptFooter: "Footer text (empty means remove; supports {page} placeholder)",
-        alertInvalidColor: "Invalid color value",
-        alertWatermarkTooLong: (maxLength) => `Watermark text cannot exceed ${maxLength} chars`,
-      }
-    : {
-        promptBackground: "请输入页面背景色（CSS 颜色值，留空恢复默认背景）",
-        promptWatermark: "请输入水印文本（留空移除水印，最多 48 个字符）",
-        promptHeader: "请输入页眉文本（留空移除，可使用 {page} 占位符）",
-        promptFooter: "请输入页脚文本（留空移除，可使用 {page} 占位符）",
-        alertInvalidColor: "颜色值无效",
-        alertWatermarkTooLong: (maxLength) => `水印文本不能超过 ${maxLength} 个字符`,
-      };
 
 const ensureAppearanceState = (settings: any): PageAppearanceState => {
   if (!settings[APPEARANCE_STATE_KEY]) {
@@ -282,6 +253,7 @@ export const createPageAppearanceActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).pageAppearanceActions;
   const getSettingsAndState = () => {
     const view = getView();
     const settings = view?._internals?.settings;
@@ -292,7 +264,7 @@ export const createPageAppearanceActions = ({
       view,
       settings,
       state: ensureAppearanceState(settings),
-      texts: resolveTexts(getLocaleKey()),
+      texts: getTexts(),
     };
   };
 
@@ -341,7 +313,7 @@ export const createPageAppearanceActions = ({
       return false;
     }
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Background" : "\u9875\u9762\u80cc\u666f",
+      title: payload.texts.titlePageBackground,
       fields: [
         {
           key: "value",
@@ -362,7 +334,7 @@ export const createPageAppearanceActions = ({
       return false;
     }
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Watermark" : "\u6c34\u5370",
+      title: payload.texts.titlePageWatermark,
       fields: [
         {
           key: "value",
@@ -376,7 +348,10 @@ export const createPageAppearanceActions = ({
     }
     const next = String(result.value || "").trim();
     if (next.length > WATERMARK_MAX_LENGTH) {
-      showToolbarMessage(payload.texts.alertWatermarkTooLong(WATERMARK_MAX_LENGTH), "warning");
+      showToolbarMessage(
+        payload.texts.alertWatermarkTooLong.replace("{max}", String(WATERMARK_MAX_LENGTH)),
+        "warning"
+      );
       return false;
     }
     payload.state.watermarkText = next;
@@ -390,7 +365,7 @@ export const createPageAppearanceActions = ({
       return false;
     }
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Header" : "\u9875\u7709",
+      title: payload.texts.titlePageHeader,
       fields: [
         {
           key: "value",
@@ -413,7 +388,7 @@ export const createPageAppearanceActions = ({
       return false;
     }
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Footer" : "\u9875\u811a",
+      title: payload.texts.titlePageFooter,
       fields: [
         {
           key: "value",

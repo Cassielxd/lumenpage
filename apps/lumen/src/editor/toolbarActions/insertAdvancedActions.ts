@@ -1,4 +1,4 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import { openMentionPicker } from "lumenpage-extension-mention";
 import { sanitizeLinkHref } from "lumenpage-link";
 import { TextSelection } from "lumenpage-state";
@@ -7,115 +7,6 @@ import type { GetEditorCommandMap } from "./commandUtils";
 import { invokeCommand } from "./commandUtils";
 
 type GetView = () => any;
-
-type InsertAdvancedTexts = {
-  promptAudioUrl: string;
-  promptAudioTitle: string;
-  promptFileUrl: string;
-  promptFileName: string;
-  promptColumnsCount: string;
-  promptTagText: string;
-  promptCalloutText: string;
-  promptBookmarkUrl: string;
-  promptBookmarkTitle: string;
-  promptOptionText: string;
-  promptWebPageUrl: string;
-  promptWebPageTitle: string;
-  promptTemplateTitle: string;
-  promptTemplateSummary: string;
-  promptTemplateItems: string;
-  insertBookmarkPrefix: string;
-  insertWebPagePrefix: string;
-  insertAudioPrefix: string;
-  insertFilePrefix: string;
-  insertCalloutPrefix: string;
-  insertTemplatePrefix: string;
-  defaultCallout: string;
-  defaultBookmarkTitle: string;
-  defaultWebPageTitle: string;
-  defaultAudioTitle: string;
-  defaultFileName: string;
-  defaultTag: string;
-  defaultOptionText: string;
-  defaultColumnsCount: string;
-  defaultTemplateTitle: string;
-  defaultTemplateSummary: string;
-  defaultTemplateItems: string;
-  labelColumn: string;
-};
-
-const resolveTexts = (locale: PlaygroundLocale): InsertAdvancedTexts =>
-  locale === "en-US"
-    ? {
-        promptAudioUrl: "Audio URL",
-        promptAudioTitle: "Audio title",
-        promptFileUrl: "File URL",
-        promptFileName: "File name",
-        promptColumnsCount: "Column count (2-4)",
-        promptTagText: "Tag text",
-        promptCalloutText: "Callout text",
-        promptBookmarkUrl: "Bookmark URL",
-        promptBookmarkTitle: "Bookmark title",
-        promptOptionText: "Option items (comma/new line separated)",
-        promptWebPageUrl: "Web page URL",
-        promptWebPageTitle: "Web page title",
-        promptTemplateTitle: "Template title",
-        promptTemplateSummary: "Template summary",
-        promptTemplateItems: "Template bullet items (comma separated)",
-        insertBookmarkPrefix: "Bookmark",
-        insertWebPagePrefix: "WebPage",
-        insertAudioPrefix: "Audio",
-        insertFilePrefix: "File",
-        insertCalloutPrefix: "Callout",
-        insertTemplatePrefix: "Template",
-        defaultCallout: "Important note",
-        defaultBookmarkTitle: "Reference",
-        defaultWebPageTitle: "Embedded page",
-        defaultAudioTitle: "Audio clip",
-        defaultFileName: "Attachment",
-        defaultTag: "tag",
-        defaultOptionText: "Option A,Option B",
-        defaultColumnsCount: "2",
-        defaultTemplateTitle: "Project Plan",
-        defaultTemplateSummary: "Scope, milestones, and owners.",
-        defaultTemplateItems: "Milestone,Owner,Risk",
-        labelColumn: "Column",
-      }
-    : {
-        promptAudioUrl: "\u97f3\u9891\u5730\u5740",
-        promptAudioTitle: "\u97f3\u9891\u6807\u9898",
-        promptFileUrl: "\u6587\u4ef6\u5730\u5740",
-        promptFileName: "\u6587\u4ef6\u540d",
-        promptColumnsCount: "\u5217\u6570\uff082-4\uff09",
-        promptTagText: "\u6807\u7b7e\u6587\u672c",
-        promptCalloutText: "\u63d0\u793a\u6587\u672c",
-        promptBookmarkUrl: "\u4e66\u7b7e\u5730\u5740",
-        promptBookmarkTitle: "\u4e66\u7b7e\u6807\u9898",
-        promptOptionText: "\u9009\u9879\u5217\u8868\uff08\u9017\u53f7\u6216\u6362\u884c\u5206\u9694\uff09",
-        promptWebPageUrl: "\u7f51\u9875\u5730\u5740",
-        promptWebPageTitle: "\u7f51\u9875\u6807\u9898",
-        promptTemplateTitle: "\u6a21\u677f\u6807\u9898",
-        promptTemplateSummary: "\u6a21\u677f\u6458\u8981",
-        promptTemplateItems: "\u6a21\u677f\u6761\u76ee\uff08\u9017\u53f7\u5206\u9694\uff09",
-        insertBookmarkPrefix: "\u4e66\u7b7e",
-        insertWebPagePrefix: "\u7f51\u9875",
-        insertAudioPrefix: "\u97f3\u9891",
-        insertFilePrefix: "\u6587\u4ef6",
-        insertCalloutPrefix: "\u63d0\u793a",
-        insertTemplatePrefix: "\u6a21\u677f",
-        defaultCallout: "\u91cd\u8981\u63d0\u793a",
-        defaultBookmarkTitle: "\u53c2\u8003\u8d44\u6599",
-        defaultWebPageTitle: "\u5d4c\u5165\u9875\u9762",
-        defaultAudioTitle: "\u97f3\u9891\u7247\u6bb5",
-        defaultFileName: "\u9644\u4ef6",
-        defaultTag: "\u6807\u7b7e",
-        defaultOptionText: "\u9009\u9879 A,\u9009\u9879 B",
-        defaultColumnsCount: "2",
-        defaultTemplateTitle: "\u9879\u76ee\u8ba1\u5212",
-        defaultTemplateSummary: "\u8303\u56f4\u3001\u91cc\u7a0b\u7891\u548c\u8d1f\u8d23\u4eba\u3002",
-        defaultTemplateItems: "\u91cc\u7a0b\u7891,\u8d1f\u8d23\u4eba,\u98ce\u9669",
-        labelColumn: "\u5217",
-      };
 
 const getViewState = (getView: GetView) => {
   const view = getView();
@@ -376,7 +267,7 @@ export const createInsertAdvancedActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const dialogTitle = (en: string, zh: string) => (getLocaleKey() === "en-US" ? en : zh);
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).insertAdvancedActions;
 
   const readInput = async ({
     title,
@@ -410,9 +301,9 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertAudio = async () => {
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: dialogTitle("Insert Audio", "插入音频"),
+      title: texts.titleInsertAudio,
       width: 560,
       fields: [
         {
@@ -443,9 +334,9 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertFile = async () => {
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: dialogTitle("Insert File", "插入附件"),
+      title: texts.titleInsertFile,
       width: 560,
       fields: [
         {
@@ -476,9 +367,9 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertTag = async () => {
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const raw = await readInput({
-      title: dialogTitle("Insert Tag", "插入标签"),
+      title: texts.titleInsertTag,
       label: texts.promptTagText,
       defaultValue: texts.defaultTag,
       required: true,
@@ -501,9 +392,9 @@ export const createInsertAdvancedActions = ({
     if (!payload) {
       return false;
     }
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const raw = await readInput({
-      title: dialogTitle("Insert Callout", "插入提示块"),
+      title: texts.titleInsertCallout,
       label: texts.promptCalloutText,
       defaultValue: texts.defaultCallout,
       type: "textarea",
@@ -538,9 +429,9 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertBookmark = async () => {
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: dialogTitle("Insert Bookmark", "插入书签"),
+      title: texts.titleInsertBookmark,
       width: 560,
       fields: [
         {
@@ -575,9 +466,9 @@ export const createInsertAdvancedActions = ({
     if (!payload) {
       return false;
     }
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const raw = await readInput({
-      title: dialogTitle("Insert Option Box", "插入多选框"),
+      title: texts.titleInsertOptionBox,
       label: texts.promptOptionText,
       defaultValue: texts.defaultOptionText,
       type: "textarea",
@@ -587,7 +478,7 @@ export const createInsertAdvancedActions = ({
       return false;
     }
     const items = parseListItemsInput(raw);
-    if (invokeCommand(getEditorCommands()?.insertOptionBox, { title: "Options", items })) {
+    if (invokeCommand(getEditorCommands()?.insertOptionBox, { title: texts.optionBoxTitle, items })) {
       return true;
     }
     const taskListNode = createTaskListNode(payload.state.schema, items);
@@ -598,9 +489,9 @@ export const createInsertAdvancedActions = ({
   };
 
   const insertWebPage = async () => {
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: dialogTitle("Insert Web Page", "插入网页"),
+      title: texts.titleInsertWebPage,
       width: 560,
       fields: [
         {
@@ -643,9 +534,9 @@ export const createInsertAdvancedActions = ({
     if (!payload) {
       return false;
     }
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: dialogTitle("Insert Template", "插入模板"),
+      title: texts.titleInsertTemplate,
       width: 560,
       fields: [
         {

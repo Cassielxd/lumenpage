@@ -265,7 +265,7 @@
         v-if="showScrollLeftArrow"
         type="button"
         class="toolbar-scroll-arrow"
-        aria-label="Scroll toolbar left"
+        :aria-label="i18n.toolbar.scrollLeft"
         @mousedown.prevent
         @click="scrollToolbarLeft"
       >
@@ -275,7 +275,7 @@
         v-if="showScrollRightArrow"
         type="button"
         class="toolbar-scroll-arrow"
-        aria-label="Scroll toolbar right"
+        :aria-label="i18n.toolbar.scrollRight"
         @mousedown.prevent
         @click="scrollToolbarRight"
       >
@@ -320,8 +320,8 @@
   <t-dialog
     :visible="colorDialogVisible"
     :header="colorDialogTitle"
-    :confirm-btn="localeKey === 'en-US' ? 'Apply' : '\u786e\u5b9a'"
-    :cancel-btn="localeKey === 'en-US' ? 'Cancel' : '\u53d6\u6d88'"
+    :confirm-btn="i18n.toolbar.confirm"
+    :cancel-btn="i18n.toolbar.cancel"
     :close-on-overlay-click="false"
     :close-on-esc-keydown="true"
     width="440"
@@ -412,6 +412,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRaw, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import type { Editor as LumenEditor } from "lumenpage-core";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
@@ -419,7 +420,7 @@ import { redoDepth, undoDepth } from "lumenpage-history";
 import { TextSelection } from "lumenpage-state";
 import LumenIcon from "./LumenIcon.vue";
 import SignatureDialog from "./SignatureDialog.vue";
-import { createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 import {
   normalizeEditorSessionMode,
   toggleEditorSessionMode,
@@ -460,6 +461,7 @@ import {
   isHeadingInlineBoxItem,
 } from "../editor/toolbarActions/headingInlineActions";
 import {
+  resolveToolbarCatalogLabel,
   TOOLBAR_EXPORT_STRATEGY,
   TOOLBAR_MENU_GROUPS,
   type ToolbarGroupConfig,
@@ -480,14 +482,15 @@ const emit = defineEmits<{
   (e: "toggle-toc"): void;
 }>();
 
-const i18n = computed(() => createPlaygroundI18n(props.locale));
-const localeKey = computed<PlaygroundLocale>(() => (props.locale === "en-US" ? "en-US" : "zh-CN"));
+const { t } = useI18n();
+const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
+const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const resolvedActiveMenu = computed<ToolbarMenuKey>(() => props.activeMenu || "base");
 const resolvedSessionMode = computed<EditorSessionMode>(() =>
   normalizeEditorSessionMode(props.sessionMode)
 );
 const isViewerSession = computed(() => resolvedSessionMode.value === "viewer");
-const toolbarAriaLabel = computed(() => "Editor formatting toolbar");
+const toolbarAriaLabel = computed(() => i18n.value.toolbar.ariaLabel);
 
 const currentGroups = computed(() => TOOLBAR_MENU_GROUPS[resolvedActiveMenu.value] || []);
 const isBaseMenu = computed(() => resolvedActiveMenu.value === "base");
@@ -783,8 +786,7 @@ const syncInlineFontControls = () => {
 };
 
 const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel =
-    localeKey.value === "en-US" ? "Clear font family" : "\u6e05\u9664\u5b57\u4f53";
+  const clearLabel = i18n.value.toolbar.clearFontFamily;
   const values = new Map<string, string>();
   const append = (family: string) => {
     const value = String(family || "").trim();
@@ -811,8 +813,7 @@ const fontFamilyOptions = computed<ToolbarInputDialogOption[]>(() => {
 });
 
 const fontSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
-  const clearLabel =
-    localeKey.value === "en-US" ? "Clear font size" : "\u6e05\u9664\u5b57\u53f7";
+  const clearLabel = i18n.value.toolbar.clearFontSize;
   const current = Number(fontSizeValue.value);
   const set = new Set<number>([
     ...TOOLBAR_FONT_SIZE_PRESETS,
@@ -834,11 +835,11 @@ const fontSizeMenuOptions = computed(() =>
 );
 const fontFamilyDisplayLabel = computed(() => {
   const value = String(fontFamilyValue.value || "").trim();
-  return value || (localeKey.value === "en-US" ? "Font Family" : "\u5b57\u4f53");
+  return value || i18n.value.toolbar.fontFamily;
 });
 const fontSizeDisplayLabel = computed(() => {
   const value = String(fontSizeValue.value || "").trim();
-  return value ? `${value}px` : localeKey.value === "en-US" ? "Font Size" : "\u5b57\u53f7";
+  return value ? `${value}px` : i18n.value.toolbar.fontSize;
 });
 
 const handleInlineFontFamilyChange = (value: unknown) => {
@@ -855,12 +856,7 @@ const handleInlineFontFamilyChange = (value: unknown) => {
     : invokeCommand(commands?.setTextFontFamily, next);
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    showToolbarMessage(
-      localeKey.value === "en-US"
-        ? "Unable to apply font family"
-        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u4f53",
-      "error"
-    );
+    showToolbarMessage(i18n.value.toolbar.alertApplyFontFamilyFailed, "error");
   }
   syncInlineFontControls();
 };
@@ -877,50 +873,31 @@ const handleInlineFontSizeChange = (value: unknown) => {
     const ok = invokeCommand(getEditorCommands()?.clearTextFontSize);
     pendingInlineStyleSelection.value = null;
     if (!ok) {
-      showToolbarMessage(
-        localeKey.value === "en-US"
-          ? "Unable to apply font size"
-          : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7",
-        "error"
-      );
+      showToolbarMessage(i18n.value.toolbar.alertApplyFontSizeFailed, "error");
     }
     syncInlineFontControls();
     return;
   }
   const size = Number(next);
   if (!Number.isFinite(size) || size <= 0) {
-    showToolbarMessage(
-      localeKey.value === "en-US" ? "Invalid font size" : "\u5b57\u53f7\u65e0\u6548",
-      "warning"
-    );
+    showToolbarMessage(i18n.value.toolbar.alertInvalidFontSize, "warning");
     syncInlineFontControls();
     return;
   }
   const ok = invokeCommand(getEditorCommands()?.setTextFontSize, Math.round(size));
   pendingInlineStyleSelection.value = null;
   if (!ok) {
-    showToolbarMessage(
-      localeKey.value === "en-US"
-        ? "Unable to apply font size"
-        : "\u65e0\u6cd5\u5e94\u7528\u5b57\u53f7",
-      "error"
-    );
+    showToolbarMessage(i18n.value.toolbar.alertApplyFontSizeFailed, "error");
   }
   syncInlineFontControls();
 };
 
 const inputDialogTexts = computed(() =>
-  localeKey.value === "en-US"
-    ? {
-        confirm: "Apply",
-        cancel: "Cancel",
-        required: "Please complete required fields",
-      }
-    : {
-        confirm: "\u786e\u5b9a",
-        cancel: "\u53d6\u6d88",
-        required: "\u8bf7\u5b8c\u6210\u5fc5\u586b\u9879",
-      }
+  ({
+    confirm: i18n.value.toolbar.confirm,
+    cancel: i18n.value.toolbar.cancel,
+    required: i18n.value.toolbar.requiredFields,
+  })
 );
 const inputDialogVisible = ref(false);
 const inputDialogTitle = ref("");
@@ -1113,17 +1090,17 @@ const pageSizeOptions = computed<ToolbarInputDialogOption[]>(() => {
   const currentValue = pageSizeValue.value;
   const current = layoutActions.getCurrentPageSizeInfo?.();
   const options = PAGE_SIZE_PRESETS.map((preset) => ({
-    label: preset.label[localeKey.value],
+    label: preset.label,
     value: preset.value,
   }));
   if (!current?.preset) {
     const customValue = currentValue || resolveCurrentPageSizeValue();
     if (customValue) {
       options.unshift({
-        label:
-          localeKey.value === "en-US"
-            ? `Custom (${current?.width || 0} x ${current?.height || 0})`
-            : `自定义 (${current?.width || 0} x ${current?.height || 0})`,
+        label: t("toolbar.customPageSize", {
+          width: current?.width || 0,
+          height: current?.height || 0,
+        }),
         value: customValue,
       });
     }
@@ -1141,10 +1118,7 @@ const handlePageSizeChange = (value: unknown) => {
   }
   const ok = layoutActions.applyPageSizePreset?.(next);
   if (!ok) {
-    showToolbarMessage(
-      localeKey.value === "en-US" ? "Unable to set page size" : "无法设置纸张大小",
-      "error"
-    );
+    showToolbarMessage(i18n.value.toolbar.alertSetPageSizeFailed, "error");
   }
   syncPageSizeControl();
 };
@@ -1189,9 +1163,10 @@ const isTableInsertCellActive = (rows: number, cols: number) => {
 };
 const tableInsertPickerText = computed(() => {
   const current = tableInsertHoverSize.value || tableInsertLastSize.value;
-  return localeKey.value === "en-US"
-    ? `Insert ${current.rows} x ${current.cols} table`
-    : `插入 ${current.rows} x ${current.cols} 表格`;
+  return t("toolbar.tableInsertPreview", {
+    rows: current.rows,
+    cols: current.cols,
+  });
 });
 const handleTableInsertCellClick = (rows: number, cols: number) => {
   const ok = tableActions.insertTableWithSize?.(rows, cols);
@@ -1271,16 +1246,10 @@ const colorActionLastValues: Record<ToolbarColorAction, string> = {
   "cells-background": getToolbarColorDefault("cells-background"),
 };
 const colorDialogTexts = computed(() =>
-  localeKey.value === "en-US"
-    ? {
-        clear: "Clear",
-        cleared: "Cleared. Apply to restore default style.",
-      }
-    : {
-        clear: "\u6e05\u9664",
-        cleared:
-          "\u5df2\u6e05\u9664\uff0c\u70b9\u51fb\u786e\u5b9a\u540e\u6062\u590d\u9ed8\u8ba4\u6837\u5f0f\u3002",
-      }
+  ({
+    clear: i18n.value.toolbar.clear,
+    cleared: i18n.value.toolbar.clearedValue,
+  })
 );
 const colorDialogTitle = computed(() => {
   if (!colorDialogAction.value) {
@@ -1403,7 +1372,8 @@ const isFontFamilyItem = (item: ToolbarItemConfig) => item.action === "font-fami
 const isFontSizeItem = (item: ToolbarItemConfig) => item.action === "font-size";
 const isPageSizeItem = (item: ToolbarItemConfig) => item.action === "page-size";
 const isTableInsertItem = (item: ToolbarItemConfig) => item.action === "table-insert";
-const itemLabel = (item: ToolbarItemConfig) => item.label[localeKey.value] || "";
+const itemLabel = (item: ToolbarItemConfig) =>
+  resolveToolbarCatalogLabel(localeKey.value, item.labelKey);
 const shouldShowItemIcon = (item: ToolbarItemConfig) =>
   Boolean(item.icon) && !isHeadingInlineBoxItem(item);
 const setSessionMode = (value: EditorSessionMode) => {
@@ -1473,9 +1443,7 @@ const handleItemAction = (item: ToolbarItemConfig) => {
     return;
   }
   if (!item.implemented) {
-    MessagePlugin.warning(
-      localeKey.value === "en-US" ? "In development" : "\u5f00\u53d1\u4e2d"
-    );
+    MessagePlugin.warning(i18n.value.toolbar.inDevelopment);
     return;
   }
   if (isToolbarColorAction(item.action)) {

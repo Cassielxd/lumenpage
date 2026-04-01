@@ -1,4 +1,13 @@
+import { createI18n } from "vue-i18n";
+
 export type PlaygroundLocale = "zh-CN" | "en-US";
+
+export type LocaleText = Record<PlaygroundLocale, string>;
+
+export const defineLocaleText = (zhCN: string, enUS: string): LocaleText => ({
+  "zh-CN": zhCN,
+  "en-US": enUS,
+});
 
 export type PlaygroundI18n = {
   app: {
@@ -44,6 +53,9 @@ export type PlaygroundI18n = {
     markdownImportFailed: string;
   };
   toolbar: {
+    ariaLabel: string;
+    scrollLeft: string;
+    scrollRight: string;
     undo: string;
     redo: string;
     historyBoundaryTip: string;
@@ -81,12 +93,26 @@ export type PlaygroundI18n = {
     blockTypeHeading2: string;
     blockTypeHeading3: string;
     currentValuePrefix: string;
+    confirm: string;
+    cancel: string;
+    requiredFields: string;
+    clearedValue: string;
+    clearFontFamily: string;
+    clearFontSize: string;
+    fontFamily: string;
+    fontSize: string;
     alertCannotUndo: string;
     alertCannotRedo: string;
+    alertApplyFontFamilyFailed: string;
+    alertApplyFontSizeFailed: string;
+    alertInvalidFontSize: string;
     promptLinkUrl: string;
     alertLinkRequiresSelection: string;
     promptImageUrl: string;
     promptVideoUrl: string;
+    alertSetPageSizeFailed: string;
+    customPageSize: string;
+    tableInsertPreview: string;
     tableAddRow: string;
     tableDeleteRow: string;
     tableAddColumn: string;
@@ -96,10 +122,401 @@ export type PlaygroundI18n = {
     alertTableCellRequired: string;
     alertMergeRightUnavailable: string;
     alertSplitCellUnavailable: string;
+    inDevelopment: string;
+  };
+  shell: {
+    toolbarCategories: string;
+    language: string;
+    simplifiedChinese: string;
+    english: string;
+    outline: string;
+    outlineShow: string;
+    outlineHide: string;
+    outlineEmpty: string;
+    assistant: string;
+    addComment: string;
+    trackChanges: string;
+    trackChangesCount: string;
+    trackChangesEnable: string;
+    trackChangesDisable: string;
+    trackChangesEnabled: string;
+    trackChangesDisabled: string;
+    trackChangesActive: string;
+    currentPage: string;
+    totalPages: string;
+    words: string;
+    selectedWords: string;
+    block: string;
+    nodes: string;
+    plugins: string;
+    contact: string;
+    you: string;
+    blockTypeParagraph: string;
+    blockTypeHeading: string;
+    blockTypeBlockquote: string;
+    blockTypeCodeBlock: string;
+    blockTypeBulletList: string;
+    blockTypeOrderedList: string;
+    blockTypeTaskList: string;
+    blockTypeTable: string;
+    blockTypeUnknown: string;
+    untitledHeading: string;
+  };
+  commentActions: {
+    disabled: string;
+    requiresSelection: string;
+    failed: string;
+    created: string;
+    replyFailed: string;
+    editFailed: string;
+    edited: string;
+    deleteMessageFailed: string;
+    messageRemoved: string;
+    missingAnchor: string;
+    removed: string;
+  };
+  trackChangeActions: {
+    disabled: string;
+    enableFailed: string;
+    enabled: string;
+    disabledDone: string;
+    focusFailed: string;
+    acceptFailed: string;
+    rejectFailed: string;
+    accepted: string;
+    rejected: string;
+    acceptAllFailed: string;
+    rejectAllFailed: string;
+    acceptedAll: string;
+    rejectedAll: string;
+  };
+  commentsPanel: {
+    title: string;
+    threadSingle: string;
+    threadPlural: string;
+    summaryVisible: string;
+    empty: string;
+    filteredEmpty: string;
+    searchPlaceholder: string;
+    all: string;
+    open: string;
+    resolved: string;
+    emptyQuote: string;
+    jump: string;
+    resolve: string;
+    reopen: string;
+    delete: string;
+    edit: string;
+    save: string;
+    cancel: string;
+    edited: string;
+    emptyReplies: string;
+    reply: string;
+    replyPlaceholder: string;
+    replyPlaceholderResolved: string;
+    replyPlaceholderReadonly: string;
+    replyHint: string;
+    editHint: string;
+    noMessages: string;
+    oneMessage: string;
+    messageCount: string;
+  };
+  trackChangesPanel: {
+    title: string;
+    changeSingle: string;
+    changePlural: string;
+    summaryVisible: string;
+    enabled: string;
+    disabled: string;
+    emptyEnabled: string;
+    emptyDisabled: string;
+    filteredEmpty: string;
+    searchPlaceholder: string;
+    all: string;
+    acceptAll: string;
+    rejectAll: string;
+    accept: string;
+    reject: string;
+    jump: string;
+    deletedPrefix: string;
+    insertedPrefix: string;
+    deletedLabel: string;
+    insertedLabel: string;
+    replace: string;
+    insert: string;
+    delete: string;
+    unknownAuthor: string;
+    emptyExcerpt: string;
+  };
+  collaboration: {
+    fallbackUser: string;
+    statusAuthFailed: string;
+    statusSynced: string;
+    statusSyncing: string;
+    statusConnecting: string;
+    statusDisconnected: string;
+    onlineCount: string;
+    currentUser: string;
+  };
+  aiPanel: {
+    title: string;
+    ready: string;
+    readonly: string;
+    showSettings: string;
+    hideSettings: string;
+    provider: string;
+    model: string;
+    serverUrl: string;
+    systemPrompt: string;
+    modelPlaceholder: string;
+    serverUrlPlaceholder: string;
+    systemPromptPlaceholder: string;
+    providerTip: string;
+    rewrite: string;
+    summarize: string;
+    continueWriting: string;
+    placeholder: string;
+    sendHint: string;
+    send: string;
+    stop: string;
+    assistantName: string;
+    userName: string;
+    requestLabel: string;
+    sourceLabel: string;
+    sentContextLabel: string;
+    welcome: string;
+    missingEditor: string;
+    missingPlugin: string;
+    missingProviderConfig: string;
+    emptyContext: string;
+    cancelled: string;
+    generating: string;
+    turns: string;
+    composerHint: string;
+    selectionReady: string;
+    selectionFallback: string;
+    contextPreviewTitle: string;
+    contextPreviewSelection: string;
+    contextPreviewEmpty: string;
+    latestSelectionActions: string;
+    latestFallbackActions: string;
+    demoProvider: string;
+    deepSeekOfficialProvider: string;
+    replaceSelection: string;
+    insertAfter: string;
+    copyResult: string;
+    applyFailed: string;
+    replaceApplied: string;
+    insertApplied: string;
+    copySucceeded: string;
+    copyFailed: string;
+    sourceSelection: string;
+    sourceBlock: string;
+    sourceDocument: string;
+    sourceAuto: string;
+  };
+  layoutActions: {
+    lineHeightTitle: string;
+    lineHeightLabel: string;
+    paragraphSpacingTitle: string;
+    paragraphSpacingLabel: string;
+    pageMarginTitle: string;
+    pageMarginLabel: string;
+    pageSizeTitle: string;
+    pageSizePaperType: string;
+  };
+  textStyleActions: {
+    titleFontFamily: string;
+    titleFontSize: string;
+    titleTextColor: string;
+    titleTextBackground: string;
+    promptFontFamily: string;
+    promptFontSize: string;
+    promptTextColor: string;
+    promptTextBackground: string;
+    clearFontFamily: string;
+    clearFontSize: string;
+    alertInvalidColor: string;
+    alertInvalidFontSize: string;
+  };
+  searchReplaceActions: {
+    title: string;
+    promptSearch: string;
+    promptReplace: string;
+    alertEmptySearch: string;
+    alertNoMatch: string;
+    alertReplaced: string;
+  };
+  pageAppearanceActions: {
+    titlePageBackground: string;
+    titlePageWatermark: string;
+    titlePageHeader: string;
+    titlePageFooter: string;
+    promptBackground: string;
+    promptWatermark: string;
+    promptHeader: string;
+    promptFooter: string;
+    alertInvalidColor: string;
+    alertWatermarkTooLong: string;
+  };
+  tableActions: {
+    titleInsertTable: string;
+    labelTableSize: string;
+    titleCellAlignment: string;
+    labelCellAlignment: string;
+    alertCellRequired: string;
+    alertInvalidCellAlign: string;
+    alignLeft: string;
+    alignCenter: string;
+    alignRight: string;
+    alignJustify: string;
+  };
+  insertAdvancedActions: {
+    titleInsertAudio: string;
+    titleInsertFile: string;
+    titleInsertTag: string;
+    titleInsertCallout: string;
+    titleInsertBookmark: string;
+    titleInsertOptionBox: string;
+    titleInsertWebPage: string;
+    titleInsertTemplate: string;
+    promptAudioUrl: string;
+    promptAudioTitle: string;
+    promptFileUrl: string;
+    promptFileName: string;
+    promptColumnsCount: string;
+    promptTagText: string;
+    promptCalloutText: string;
+    promptBookmarkUrl: string;
+    promptBookmarkTitle: string;
+    promptOptionText: string;
+    promptWebPageUrl: string;
+    promptWebPageTitle: string;
+    promptTemplateTitle: string;
+    promptTemplateSummary: string;
+    promptTemplateItems: string;
+    insertBookmarkPrefix: string;
+    insertWebPagePrefix: string;
+    insertAudioPrefix: string;
+    insertFilePrefix: string;
+    insertCalloutPrefix: string;
+    insertTemplatePrefix: string;
+    defaultCallout: string;
+    defaultBookmarkTitle: string;
+    defaultWebPageTitle: string;
+    defaultAudioTitle: string;
+    defaultFileName: string;
+    defaultTag: string;
+    defaultOptionText: string;
+    defaultColumnsCount: string;
+    defaultTemplateTitle: string;
+    defaultTemplateSummary: string;
+    defaultTemplateItems: string;
+    labelColumn: string;
+    optionBoxTitle: string;
+  };
+  quickInsertActions: {
+    titleInsertSymbol: string;
+    titleInsertEmoji: string;
+    promptSymbol: string;
+    promptEmoji: string;
+  };
+  importActions: {
+    alertNoFile: string;
+    alertReadFailed: string;
+    alertParseFailed: string;
+    alertWordUnsupported: string;
+  };
+  markdownActions: {
+    titleMarkdown: string;
+    labelMode: string;
+    optionExport: string;
+    optionImport: string;
+  };
+  textFormatActions: {
+    alertPainterArmed: string;
+    alertPainterApplied: string;
+  };
+  toolsActions: {
+    titleInsertQrCode: string;
+    titleInsertBarcode: string;
+    titleInsertDiagram: string;
+    titleInsertEcharts: string;
+    titleInsertMermaid: string;
+    titleInsertMindMap: string;
+    titleChineseCase: string;
+    promptQrCodeContent: string;
+    promptBarcodeContent: string;
+    promptDiagramsCode: string;
+    promptEchartsCode: string;
+    promptMermaidCode: string;
+    promptMindMapCode: string;
+    promptChineseCaseInput: string;
+    promptChineseCaseMode: string;
+    alertChineseCaseInvalidNumber: string;
+    labelSignature: string;
+    defaultQrCodeContent: string;
+    defaultBarcodeContent: string;
+    defaultSignatureName: string;
+    defaultDiagramCode: string;
+    defaultEchartsCode: string;
+    defaultMermaidCode: string;
+    defaultMindMapCode: string;
+    optionChineseCaseUpper: string;
+    optionChineseCaseLower: string;
+    embedPanelTitleDiagram: string;
+    embedPanelTitleEcharts: string;
+    embedPanelTitleMermaid: string;
+    embedPanelTitleMindMap: string;
+  };
+  exportActions: {
+    printPreviewTitle: string;
+    close: string;
+    cancel: string;
+    print: string;
+    copyShareLink: string;
+    copyEmbedCode: string;
+    copiedToClipboard: string;
+    clipboardUnavailableManualCopy: string;
+  };
+  colorPickerActions: {
+    color: string;
+    backgroundColor: string;
+    highlight: string;
+    pageBackground: string;
+    cellsBackground: string;
+  };
+  toolbarCatalog: Record<string, string>;
+  aiProviderMessages: {
+    modelRequired: string;
+    requestFailed: string;
+    emptyResult: string;
+    cancelled: string;
+  };
+  slashCommands: {
+    emptyLabel: string;
+    paragraphTitle: string;
+    paragraphDescription: string;
+    heading1Title: string;
+    heading1Description: string;
+    heading2Title: string;
+    heading2Description: string;
+    heading3Title: string;
+    heading3Description: string;
+    bulletListTitle: string;
+    bulletListDescription: string;
+    orderedListTitle: string;
+    orderedListDescription: string;
+    taskListTitle: string;
+    taskListDescription: string;
+    blockquoteTitle: string;
+    blockquoteDescription: string;
+    codeBlockTitle: string;
+    codeBlockDescription: string;
   };
 };
 
-const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
+export const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
   "zh-CN": {
     app: {
       brand: "Lumen 文档",
@@ -144,6 +561,9 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       markdownImportFailed: "Markdown 导入失败：内容格式不受支持或不合法",
     },
     toolbar: {
+      ariaLabel: "编辑器格式工具栏",
+      scrollLeft: "向左滚动工具栏",
+      scrollRight: "向右滚动工具栏",
       undo: "撤销",
       redo: "重做",
       historyBoundaryTip: "分割历史分组（下一次编辑将独立撤销）",
@@ -181,12 +601,26 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       blockTypeHeading2: "标题 2",
       blockTypeHeading3: "标题 3",
       currentValuePrefix: "当前 ",
+      confirm: "确定",
+      cancel: "取消",
+      requiredFields: "请完成必填项",
+      clearedValue: "已清除，点击确定后恢复默认样式。",
+      clearFontFamily: "清除字体",
+      clearFontSize: "清除字号",
+      fontFamily: "字体",
+      fontSize: "字号",
       alertCannotUndo: "当前没有可撤销的操作",
       alertCannotRedo: "当前没有可重做的操作",
+      alertApplyFontFamilyFailed: "无法应用字体",
+      alertApplyFontSizeFailed: "无法应用字号",
+      alertInvalidFontSize: "字号无效",
       promptLinkUrl: "请输入链接地址",
       alertLinkRequiresSelection: "请先选中文本，或将光标放在文本中后再添加链接",
       promptImageUrl: "请输入图片地址",
       promptVideoUrl: "请输入视频地址",
+      alertSetPageSizeFailed: "无法设置纸张大小",
+      customPageSize: "自定义 ({width} x {height})",
+      tableInsertPreview: "插入 {rows} x {cols} 表格",
       tableAddRow: "表格加行",
       tableDeleteRow: "表格删行",
       tableAddColumn: "表格加列",
@@ -196,6 +630,505 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       alertTableCellRequired: "请先将光标放在表格单元格内",
       alertMergeRightUnavailable: "当前单元格无法向右合并",
       alertSplitCellUnavailable: "当前单元格无法拆分",
+      inDevelopment: "开发中",
+    },
+    shell: {
+      toolbarCategories: "工具栏分类",
+      language: "语言",
+      simplifiedChinese: "简体中文",
+      english: "英文",
+      outline: "目录",
+      outlineShow: "显示目录",
+      outlineHide: "隐藏目录",
+      outlineEmpty: "暂无目录项",
+      assistant: "AI 助手",
+      addComment: "添加评论",
+      trackChanges: "修订",
+      trackChangesCount: "修订 ({count})",
+      trackChangesEnable: "开启修订",
+      trackChangesDisable: "关闭修订",
+      trackChangesEnabled: "已开启",
+      trackChangesDisabled: "未开启",
+      trackChangesActive: "修订中",
+      currentPage: "当前页 {count}",
+      totalPages: "页数 {count}",
+      words: "字数 {count}",
+      selectedWords: "选中 {count}",
+      block: "块 {type}",
+      nodes: "节点数 {count}",
+      plugins: "插件数 {count}",
+      contact: "联系方式",
+      you: "你",
+      blockTypeParagraph: "正文",
+      blockTypeHeading: "标题",
+      blockTypeBlockquote: "引用",
+      blockTypeCodeBlock: "代码块",
+      blockTypeBulletList: "无序列表",
+      blockTypeOrderedList: "有序列表",
+        blockTypeTaskList: "任务列表",
+        blockTypeTable: "表格",
+        blockTypeUnknown: "未知",
+        untitledHeading: "无标题",
+      },
+    commentActions: {
+      disabled: "查看模式下无法评论。",
+      requiresSelection: "请先选中文本再创建评论。",
+      failed: "创建评论锚点失败。",
+      created: "已创建评论锚点。",
+      replyFailed: "添加评论回复失败。",
+      editFailed: "更新评论消息失败。",
+      edited: "已更新评论消息。",
+      deleteMessageFailed: "删除评论消息失败。",
+      messageRemoved: "已删除评论消息。",
+      missingAnchor: "评论锚点已不存在于文档中。",
+      removed: "已删除评论线程。",
+    },
+    trackChangeActions: {
+      disabled: "查看模式下无法开启修订。",
+      enableFailed: "修订模式切换失败。",
+      enabled: "已开启修订模式。",
+      disabledDone: "已关闭修订模式。",
+      focusFailed: "对应修订已不存在。",
+      acceptFailed: "接受修订失败。",
+      rejectFailed: "拒绝修订失败。",
+      accepted: "已接受修订。",
+      rejected: "已拒绝修订。",
+      acceptAllFailed: "全部接受失败。",
+      rejectAllFailed: "全部拒绝失败。",
+      acceptedAll: "已接受全部修订。",
+      rejectedAll: "已拒绝全部修订。",
+    },
+    commentsPanel: {
+      title: "评论",
+      threadSingle: "{count} 条线程",
+      threadPlural: "{count} 条线程",
+      summaryVisible: "显示 {visible} / {total} 条线程",
+      empty: "暂无评论线程",
+      filteredEmpty: "当前筛选条件下没有匹配的线程",
+      searchPlaceholder: "搜索评论",
+      all: "全部",
+      open: "进行中",
+      resolved: "已解决",
+      emptyQuote: "无引用文本",
+      jump: "定位",
+      resolve: "解决",
+      reopen: "重新打开",
+      delete: "删除",
+      edit: "编辑",
+      save: "保存",
+      cancel: "取消",
+      edited: "已编辑",
+      emptyReplies: "暂无回复",
+      reply: "回复",
+      replyPlaceholder: "输入回复",
+      replyPlaceholderResolved: "先重新打开线程再回复",
+      replyPlaceholderReadonly: "查看模式下无法评论",
+      replyHint: "Ctrl+Enter 发送",
+      editHint: "Ctrl+Enter 保存",
+      noMessages: "暂无消息",
+      oneMessage: "1 条消息",
+      messageCount: "{count} 条消息",
+    },
+    trackChangesPanel: {
+      title: "修订",
+      changeSingle: "{count} 条修订",
+      changePlural: "{count} 条修订",
+      summaryVisible: "显示 {visible} / {total} 条修订",
+      enabled: "修订中",
+      disabled: "修订关闭",
+      emptyEnabled: "已开启修订，新的编辑会显示在这里。",
+      emptyDisabled: "暂无修订记录。",
+      filteredEmpty: "当前筛选条件下没有匹配的修订。",
+      searchPlaceholder: "搜索修订",
+      all: "全部",
+      acceptAll: "全部接受",
+      rejectAll: "全部拒绝",
+      accept: "接受",
+      reject: "拒绝",
+      jump: "定位",
+      deletedPrefix: "删除：",
+      insertedPrefix: "新增：",
+      deletedLabel: "删除内容",
+      insertedLabel: "新增内容",
+      replace: "替换",
+      insert: "新增",
+      delete: "删除",
+      unknownAuthor: "未知用户",
+      emptyExcerpt: "（空）",
+    },
+    collaboration: {
+      fallbackUser: "用户",
+      statusAuthFailed: "鉴权失败",
+      statusSynced: "已同步",
+      statusSyncing: "同步中",
+      statusConnecting: "连接中",
+      statusDisconnected: "已断开",
+      onlineCount: "{count} 人在线",
+      currentUser: "我 · {name}",
+    },
+    aiPanel: {
+      title: "AI 助手",
+      ready: "可用",
+      readonly: "只读",
+      showSettings: "显示设置",
+      hideSettings: "隐藏设置",
+      provider: "供应商",
+      model: "模型",
+      serverUrl: "AI 服务",
+      systemPrompt: "系统提示词",
+      modelPlaceholder: "例如 deepseek-chat 或你的部署模型 ID",
+      serverUrlPlaceholder: "http://127.0.0.1:1234",
+      systemPromptPlaceholder: "可选，不填则使用内置写作提示词。",
+      providerTip: "浏览器先请求本地 collab-server，再由服务端调用官方 DeepSeek Chat Completions API。",
+      rewrite: "改写",
+      summarize: "总结",
+      continueWriting: "续写",
+      placeholder: "描述你希望 AI 如何处理当前内容",
+      sendHint: "Ctrl/Cmd + Enter 发送",
+      send: "发送",
+      stop: "停止",
+      assistantName: "Lumen AI",
+      userName: "你",
+      requestLabel: "请求",
+      sourceLabel: "来源",
+      sentContextLabel: "发送内容",
+      welcome: "先在编辑器中选中内容，再让 AI 改写、总结或续写。生成结果会先留在面板里，由你决定如何插入文档。",
+      missingEditor: "编辑器尚未就绪。",
+      missingPlugin: "当前编辑器实例未挂载 AI 扩展。",
+      missingProviderConfig: "当前 AI 供应商配置还不完整。",
+      emptyContext: "当前没有可供 AI 处理的内容。请先选中一段文字，或将光标放入一个段落。",
+      cancelled: "当前 AI 任务已取消。",
+      generating: "生成中",
+      turns: "轮",
+      composerHint: "发送时会优先使用已捕获的选区；如果没有选区，再回退到当前块。",
+      selectionReady: "已捕获最近一次有效选区。",
+      selectionFallback: "当前没有已捕获选区，必要时会回退到当前块。",
+      contextPreviewTitle: "当前上下文",
+      contextPreviewSelection: "已选内容",
+      contextPreviewEmpty: "暂未捕获选区。先在编辑器里选中一段内容，这里会立即显示。",
+      latestSelectionActions: "结果已生成。你可以替换已捕获选区、插入到其后，或先复制。",
+      latestFallbackActions: "结果已生成。你可以插入到文档，或先复制。",
+      demoProvider: "本地演示",
+      deepSeekOfficialProvider: "官方 DeepSeek",
+      replaceSelection: "替换选区",
+      insertAfter: "插入其后",
+      copyResult: "复制",
+      applyFailed: "生成结果未能写入文档。",
+      replaceApplied: "已用生成结果替换选区。",
+      insertApplied: "已将生成结果插入文档。",
+      copySucceeded: "已复制生成结果。",
+      copyFailed: "复制失败，请手动复制。",
+      sourceSelection: "选区",
+      sourceBlock: "当前块",
+      sourceDocument: "整篇文档",
+      sourceAuto: "自动",
+    },
+    layoutActions: {
+      lineHeightTitle: "行高",
+      lineHeightLabel: "行高（px）",
+      paragraphSpacingTitle: "段间距",
+      paragraphSpacingLabel: "段间距（px）",
+      pageMarginTitle: "页边距",
+      pageMarginLabel: "页边距（px）",
+      pageSizeTitle: "纸张大小",
+      pageSizePaperType: "纸张类型",
+    },
+    textStyleActions: {
+      titleFontFamily: "字体",
+      titleFontSize: "字号",
+      titleTextColor: "文字颜色",
+      titleTextBackground: "文字背景",
+      promptFontFamily: "字体",
+      promptFontSize: "字号（px）",
+      promptTextColor: "文字颜色（CSS 颜色值，留空清除）",
+      promptTextBackground: "文字背景色（CSS 颜色值，留空清除）",
+      clearFontFamily: "清除字体",
+      clearFontSize: "清除字号",
+      alertInvalidColor: "颜色值无效",
+      alertInvalidFontSize: "字号无效",
+    },
+    searchReplaceActions: {
+      title: "查找替换",
+      promptSearch: "查找内容",
+      promptReplace: "替换为（可为空）",
+      alertEmptySearch: "查找内容不能为空",
+      alertNoMatch: "未找到匹配项",
+      alertReplaced: "已替换 {count} 处",
+    },
+    pageAppearanceActions: {
+      titlePageBackground: "页面背景",
+      titlePageWatermark: "水印",
+      titlePageHeader: "页眉",
+      titlePageFooter: "页脚",
+      promptBackground: "请输入页面背景色（CSS 颜色值，留空恢复默认背景）",
+      promptWatermark: "请输入水印文本（留空移除水印，最多 48 个字符）",
+      promptHeader: "请输入页眉文本（留空移除，可使用 {page} 占位符）",
+      promptFooter: "请输入页脚文本（留空移除，可使用 {page} 占位符）",
+      alertInvalidColor: "颜色值无效",
+      alertWatermarkTooLong: "水印文本不能超过 {max} 个字符",
+    },
+    tableActions: {
+      titleInsertTable: "插入表格",
+      labelTableSize: "表格尺寸（行x列）",
+      titleCellAlignment: "单元格对齐",
+      labelCellAlignment: "单元格对齐方式：left / center / right / justify",
+      alertCellRequired: "请先将光标放在表格单元格内",
+      alertInvalidCellAlign: "单元格对齐值无效",
+      alignLeft: "左对齐",
+      alignCenter: "居中",
+      alignRight: "右对齐",
+      alignJustify: "两端对齐",
+    },
+    insertAdvancedActions: {
+      titleInsertAudio: "插入音频",
+      titleInsertFile: "插入附件",
+      titleInsertTag: "插入标签",
+      titleInsertCallout: "插入提示块",
+      titleInsertBookmark: "插入书签",
+      titleInsertOptionBox: "插入多选框",
+      titleInsertWebPage: "插入网页",
+      titleInsertTemplate: "插入模板",
+      promptAudioUrl: "音频地址",
+      promptAudioTitle: "音频标题",
+      promptFileUrl: "文件地址",
+      promptFileName: "文件名",
+      promptColumnsCount: "列数（2-4）",
+      promptTagText: "标签文本",
+      promptCalloutText: "提示文本",
+      promptBookmarkUrl: "书签地址",
+      promptBookmarkTitle: "书签标题",
+      promptOptionText: "选项列表（逗号或换行分隔）",
+      promptWebPageUrl: "网页地址",
+      promptWebPageTitle: "网页标题",
+      promptTemplateTitle: "模板标题",
+      promptTemplateSummary: "模板摘要",
+      promptTemplateItems: "模板条目（逗号分隔）",
+      insertBookmarkPrefix: "书签",
+      insertWebPagePrefix: "网页",
+      insertAudioPrefix: "音频",
+      insertFilePrefix: "文件",
+      insertCalloutPrefix: "提示",
+      insertTemplatePrefix: "模板",
+      defaultCallout: "重要提示",
+      defaultBookmarkTitle: "参考资料",
+      defaultWebPageTitle: "嵌入页面",
+      defaultAudioTitle: "音频片段",
+      defaultFileName: "附件",
+      defaultTag: "标签",
+      defaultOptionText: "选项 A,选项 B",
+      defaultColumnsCount: "2",
+      defaultTemplateTitle: "项目计划",
+      defaultTemplateSummary: "范围、里程碑和负责人。",
+      defaultTemplateItems: "里程碑,负责人,风险",
+      labelColumn: "列",
+      optionBoxTitle: "选项",
+    },
+    quickInsertActions: {
+      titleInsertSymbol: "插入符号",
+      titleInsertEmoji: "插入表情",
+      promptSymbol: "输入符号",
+      promptEmoji: "输入表情",
+    },
+    importActions: {
+      alertNoFile: "未选择文件",
+      alertReadFailed: "读取文件失败",
+      alertParseFailed: "解析文件内容失败",
+      alertWordUnsupported: "暂不支持旧版 .doc 文件，请使用 .docx、HTML 或 TXT。",
+    },
+    markdownActions: {
+      titleMarkdown: "Markdown",
+      labelMode: "操作：导出 / 导入",
+      optionExport: "导出",
+      optionImport: "导入",
+    },
+    textFormatActions: {
+      alertPainterArmed: "已复制格式。请选择目标内容后再次点击格式刷。",
+      alertPainterApplied: "格式已应用",
+    },
+    toolsActions: {
+      titleInsertQrCode: "插入二维码",
+      titleInsertBarcode: "插入条形码",
+      titleInsertDiagram: "插入图表",
+      titleInsertEcharts: "插入 ECharts",
+      titleInsertMermaid: "插入 Mermaid",
+      titleInsertMindMap: "插入思维导图",
+      titleChineseCase: "中文数字大小写",
+      promptQrCodeContent: "二维码内容",
+      promptBarcodeContent: "条形码内容",
+      promptDiagramsCode: "图表源码",
+      promptEchartsCode: "ECharts 配置 JSON",
+      promptMermaidCode: "Mermaid 源码",
+      promptMindMapCode: "思维导图源码",
+      promptChineseCaseInput: "输入需要转换的数字",
+      promptChineseCaseMode: "大小写模式",
+      alertChineseCaseInvalidNumber: "输入内容必须是有效数字",
+      labelSignature: "签名",
+      defaultQrCodeContent: "https://example.com",
+      defaultBarcodeContent: "1234567890",
+      defaultSignatureName: "签署人",
+      defaultDiagramCode: "flowchart LR\nA[开始] --> B[完成]",
+      defaultEchartsCode:
+        "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"周一\", \"周二\", \"周三\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
+      defaultMermaidCode: "graph TD\nA[开始] --> B[结束]",
+      defaultMindMapCode: "mindmap\n  root((主题))\n    分支 A\n    分支 B",
+      optionChineseCaseUpper: "大写",
+      optionChineseCaseLower: "小写",
+      embedPanelTitleDiagram: "Diagram",
+      embedPanelTitleEcharts: "ECharts",
+      embedPanelTitleMermaid: "Mermaid",
+      embedPanelTitleMindMap: "Mind Map",
+    },
+    exportActions: {
+      printPreviewTitle: "打印预览",
+      close: "关闭",
+      cancel: "取消",
+      print: "打印",
+      copyShareLink: "复制分享链接",
+      copyEmbedCode: "复制嵌入代码",
+      copiedToClipboard: "已复制到剪贴板",
+      clipboardUnavailableManualCopy: "剪贴板不可用，请手动复制文本：",
+    },
+    colorPickerActions: {
+      color: "文字颜色",
+      backgroundColor: "文字背景色",
+      highlight: "高亮颜色",
+      pageBackground: "页面背景色",
+      cellsBackground: "单元格背景色",
+    },
+    toolbarCatalog: {
+      "__empty__": "",
+      "tab.base": "首页",
+      "tab.insert": "插入",
+      "tab.table": "表格",
+      "tab.tools": "工具",
+      "tab.page": "页面",
+      "tab.export": "导出",
+      undo: "撤销",
+      redo: "重做",
+      "format-painter": "格式刷",
+      "clear-format": "清除格式",
+      heading: "标题",
+      "font-family": "字体",
+      "font-size": "字号",
+      bold: "加粗",
+      italic: "斜体",
+      underline: "下划线",
+      strike: "删除线",
+      subscript: "下标",
+      superscript: "上标",
+      color: "文字颜色",
+      "background-color": "背景颜色",
+      highlight: "高亮",
+      "ordered-list": "有序列表",
+      "bullet-list": "无序列表",
+      "task-list": "任务列表",
+      indent: "增加缩进",
+      outdent: "减少缩进",
+      "line-height": "行高",
+      margin: "段落间距",
+      "align-left": "左对齐",
+      "align-center": "居中对齐",
+      "align-right": "右对齐",
+      "align-justify": "两端对齐",
+      "align-distributed": "分散对齐",
+      quote: "引用",
+      "inline-code": "行内代码",
+      "select-all": "全选",
+      "import-word": "导入 Word",
+      markdown: "Markdown",
+      "search-replace": "查找替换",
+      viewer: "阅读模式",
+      print: "打印",
+      link: "链接",
+      image: "图片",
+      video: "视频",
+      audio: "音频",
+      file: "文件",
+      "code-block": "代码块",
+      symbol: "符号",
+      "chinese-date": "中文日期",
+      emoji: "表情",
+      tag: "标签",
+      callout: "提示块",
+      mention: "提及",
+      bookmark: "书签",
+      "option-box": "选项框",
+      "hard-break": "硬换行",
+      hr: "分隔线",
+      toc: "目录",
+      template: "模板",
+      "web-page": "网页嵌入",
+      "table-insert": "插入表格",
+      "table-fix": "修复表格",
+      "cells-align": "单元格对齐",
+      "cells-background": "单元格背景",
+      "add-row-before": "上方加行",
+      "add-row-after": "下方加行",
+      "add-column-before": "左侧加列",
+      "add-column-after": "右侧加列",
+      "delete-row": "删除行",
+      "delete-column": "删除列",
+      "merge-cells": "合并单元格",
+      "split-cell": "拆分单元格",
+      "toggle-header-row": "切换标题行",
+      "toggle-header-column": "切换标题列",
+      "toggle-header-cell": "切换标题单元格",
+      "next-cell": "下一单元格",
+      "previous-cell": "上一单元格",
+      "delete-table": "删除表格",
+      qrcode: "二维码",
+      barcode: "条形码",
+      signature: "签名",
+      diagrams: "流程图",
+      echarts: "ECharts",
+      mermaid: "Mermaid",
+      "mind-map": "思维导图",
+      "chinese-case": "中文数字大小写",
+      "toggle-toc": "目录",
+      "page-margin": "页面边距",
+      "page-size": "页面大小",
+      "page-orientation": "页面方向",
+      "page-break": "分页符",
+      "page-line-number": "行号",
+      "page-watermark": "水印",
+      "page-background": "页面背景",
+      "page-preview": "预览",
+      "page-header": "页眉",
+      "page-footer": "页脚",
+      "export-image": "导出图片",
+      "export-pdf": "导出 PDF",
+      "export-text": "导出文本",
+      "export-html": "导出 HTML",
+      "export-word": "导出 Word",
+      share: "分享",
+      embed: "嵌入",
+    },
+    aiProviderMessages: {
+      modelRequired: "必须填写模型。",
+      requestFailed: "DeepSeek 请求失败。",
+      emptyResult: "DeepSeek 返回了空结果。",
+      cancelled: "AI 请求已取消。",
+    },
+    slashCommands: {
+      emptyLabel: "没有匹配的块",
+      paragraphTitle: "正文",
+      paragraphDescription: "保留为普通段落",
+      heading1Title: "标题 1",
+      heading1Description: "替换为一级标题",
+      heading2Title: "标题 2",
+      heading2Description: "替换为二级标题",
+      heading3Title: "标题 3",
+      heading3Description: "替换为三级标题",
+      bulletListTitle: "无序列表",
+      bulletListDescription: "替换为项目符号列表",
+      orderedListTitle: "有序列表",
+      orderedListDescription: "替换为编号列表",
+      taskListTitle: "任务列表",
+      taskListDescription: "替换为可勾选任务列表",
+      blockquoteTitle: "引用",
+      blockquoteDescription: "替换为引用块",
+      codeBlockTitle: "代码块",
+      codeBlockDescription: "替换为代码块",
     },
   },
   "en-US": {
@@ -245,6 +1178,9 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
         "Markdown import failed: content format is unsupported or invalid",
     },
     toolbar: {
+      ariaLabel: "Editor formatting toolbar",
+      scrollLeft: "Scroll toolbar left",
+      scrollRight: "Scroll toolbar right",
       undo: "Undo",
       redo: "Redo",
       historyBoundaryTip: "Split history group (next edit will be isolated)",
@@ -282,13 +1218,27 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       blockTypeHeading2: "Heading 2",
       blockTypeHeading3: "Heading 3",
       currentValuePrefix: "Current ",
+      confirm: "Apply",
+      cancel: "Cancel",
+      requiredFields: "Please complete required fields",
+      clearedValue: "Cleared. Apply to restore default style.",
+      clearFontFamily: "Clear font family",
+      clearFontSize: "Clear font size",
+      fontFamily: "Font Family",
+      fontSize: "Font Size",
       alertCannotUndo: "No operation to undo",
       alertCannotRedo: "No operation to redo",
+      alertApplyFontFamilyFailed: "Unable to apply font family",
+      alertApplyFontSizeFailed: "Unable to apply font size",
+      alertInvalidFontSize: "Invalid font size",
       promptLinkUrl: "Enter link URL",
       alertLinkRequiresSelection:
         "Select text first, or place the caret in text before adding a link",
       promptImageUrl: "Enter image URL",
       promptVideoUrl: "Enter video URL",
+      alertSetPageSizeFailed: "Unable to set page size",
+      customPageSize: "Custom ({width} x {height})",
+      tableInsertPreview: "Insert {rows} x {cols} table",
       tableAddRow: "Add Row",
       tableDeleteRow: "Delete Row",
       tableAddColumn: "Add Column",
@@ -298,9 +1248,522 @@ const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       alertTableCellRequired: "Place the caret inside a table cell first",
       alertMergeRightUnavailable: "Current cell cannot merge to the right",
       alertSplitCellUnavailable: "Current cell cannot be split",
+      inDevelopment: "In development",
+    },
+    shell: {
+      toolbarCategories: "Toolbar categories",
+      language: "Language",
+      simplifiedChinese: "Simplified Chinese",
+      english: "English",
+      outline: "Outline",
+      outlineShow: "Show Outline",
+      outlineHide: "Hide Outline",
+      outlineEmpty: "No headings yet.",
+      assistant: "AI",
+      addComment: "Add Comment",
+      trackChanges: "Changes",
+      trackChangesCount: "Changes ({count})",
+      trackChangesEnable: "Enable Tracking",
+      trackChangesDisable: "Disable Tracking",
+      trackChangesEnabled: "On",
+      trackChangesDisabled: "Off",
+      trackChangesActive: "Tracking On",
+      currentPage: "Page {count}",
+      totalPages: "Pages {count}",
+      words: "Words {count}",
+      selectedWords: "Selected {count}",
+      block: "Block {type}",
+      nodes: "Nodes {count}",
+      plugins: "Plugins {count}",
+      contact: "Contact",
+      you: "You",
+      blockTypeParagraph: "Paragraph",
+      blockTypeHeading: "Heading",
+      blockTypeBlockquote: "Blockquote",
+      blockTypeCodeBlock: "Code Block",
+      blockTypeBulletList: "Bullet List",
+      blockTypeOrderedList: "Ordered List",
+        blockTypeTaskList: "Task List",
+        blockTypeTable: "Table",
+        blockTypeUnknown: "Unknown",
+        untitledHeading: "Untitled Heading",
+      },
+    commentActions: {
+      disabled: "Comments are unavailable in viewer mode.",
+      requiresSelection: "Select text first to create a comment.",
+      failed: "Failed to create comment anchor.",
+      created: "Comment anchor created.",
+      replyFailed: "Failed to add comment reply.",
+      editFailed: "Failed to update comment message.",
+      edited: "Comment message updated.",
+      deleteMessageFailed: "Failed to delete comment message.",
+      messageRemoved: "Comment message removed.",
+      missingAnchor: "Comment anchor no longer exists in the document.",
+      removed: "Comment thread removed.",
+    },
+    trackChangeActions: {
+      disabled: "Track changes is unavailable in viewer mode.",
+      enableFailed: "Failed to update track changes mode.",
+      enabled: "Track changes enabled.",
+      disabledDone: "Track changes disabled.",
+      focusFailed: "Tracked change range no longer exists.",
+      acceptFailed: "Failed to accept tracked change.",
+      rejectFailed: "Failed to reject tracked change.",
+      accepted: "Tracked change accepted.",
+      rejected: "Tracked change rejected.",
+      acceptAllFailed: "Failed to accept all tracked changes.",
+      rejectAllFailed: "Failed to reject all tracked changes.",
+      acceptedAll: "All tracked changes accepted.",
+      rejectedAll: "All tracked changes rejected.",
+    },
+    commentsPanel: {
+      title: "Comments",
+      threadSingle: "{count} thread",
+      threadPlural: "{count} threads",
+      summaryVisible: "{visible} of {total} threads",
+      empty: "No comment threads yet.",
+      filteredEmpty: "No threads match the current filter.",
+      searchPlaceholder: "Search comments",
+      all: "All",
+      open: "Open",
+      resolved: "Resolved",
+      emptyQuote: "No quoted text",
+      jump: "Jump",
+      resolve: "Resolve",
+      reopen: "Reopen",
+      delete: "Delete",
+      edit: "Edit",
+      save: "Save",
+      cancel: "Cancel",
+      edited: "Edited",
+      emptyReplies: "No replies yet.",
+      reply: "Reply",
+      replyPlaceholder: "Write a reply",
+      replyPlaceholderResolved: "Reopen the thread to reply.",
+      replyPlaceholderReadonly: "Comments are unavailable in viewer mode.",
+      replyHint: "Ctrl+Enter to reply",
+      editHint: "Ctrl+Enter to save",
+      noMessages: "No messages",
+      oneMessage: "1 message",
+      messageCount: "{count} messages",
+    },
+    trackChangesPanel: {
+      title: "Changes",
+      changeSingle: "{count} change",
+      changePlural: "{count} changes",
+      summaryVisible: "{visible} of {total} changes",
+      enabled: "Tracking On",
+      disabled: "Tracking Off",
+      emptyEnabled: "Track changes is on. New edits will appear here.",
+      emptyDisabled: "No tracked changes yet.",
+      filteredEmpty: "No changes match the current filter.",
+      searchPlaceholder: "Search changes",
+      all: "All",
+      acceptAll: "Accept All",
+      rejectAll: "Reject All",
+      accept: "Accept",
+      reject: "Reject",
+      jump: "Jump",
+      deletedPrefix: "Delete:",
+      insertedPrefix: "Insert:",
+      deletedLabel: "Deleted",
+      insertedLabel: "Inserted",
+      replace: "Replace",
+      insert: "Insert",
+      delete: "Delete",
+      unknownAuthor: "Unknown",
+      emptyExcerpt: "(empty)",
+    },
+    collaboration: {
+      fallbackUser: "User",
+      statusAuthFailed: "Auth failed",
+      statusSynced: "Synced",
+      statusSyncing: "Syncing",
+      statusConnecting: "Connecting",
+      statusDisconnected: "Disconnected",
+      onlineCount: "{count} online",
+      currentUser: "You · {name}",
+    },
+    aiPanel: {
+      title: "AI Assistant",
+      ready: "Ready",
+      readonly: "Read-only",
+      showSettings: "Show Settings",
+      hideSettings: "Hide Settings",
+      provider: "Provider",
+      model: "Model",
+      serverUrl: "AI Server",
+      systemPrompt: "System Prompt",
+      modelPlaceholder: "Use deepseek-chat or your deployed model id",
+      serverUrlPlaceholder: "http://127.0.0.1:1234",
+      systemPromptPlaceholder: "Optional. Leave empty to use the built-in writing prompt.",
+      providerTip: "The browser calls your local collab-server, and the server calls the official DeepSeek Chat Completions API.",
+      rewrite: "Rewrite",
+      summarize: "Summarize",
+      continueWriting: "Continue",
+      placeholder: "Describe what you want AI to do with the current content",
+      sendHint: "Ctrl/Cmd + Enter to send",
+      send: "Send",
+      stop: "Stop",
+      assistantName: "Lumen AI",
+      userName: "You",
+      requestLabel: "Request",
+      sourceLabel: "Source",
+      sentContextLabel: "Sent Content",
+      welcome: "Select text in the editor, then ask me to rewrite, summarize, or continue writing. The result will stay in this panel until you choose how to apply it.",
+      missingEditor: "Editor is not ready yet.",
+      missingPlugin: "AI extension is not available in the current editor instance.",
+      missingProviderConfig: "The current AI provider is not fully configured yet.",
+      emptyContext: "No content is available for AI processing yet. Select some text first, or place the caret inside a paragraph.",
+      cancelled: "The current AI task was cancelled.",
+      generating: "Generating",
+      turns: "turns",
+      composerHint: "The assistant uses the last captured selection first, then falls back to the current block when needed.",
+      selectionReady: "The latest valid selection has been captured.",
+      selectionFallback: "No captured selection yet. The assistant will fall back to the current block when needed.",
+      contextPreviewTitle: "Current Context",
+      contextPreviewSelection: "Selected Content",
+      contextPreviewEmpty: "No selection has been captured yet. Select some text in the editor and it will appear here immediately.",
+      latestSelectionActions: "The result is ready. You can replace the captured selection, insert after it, or copy it first.",
+      latestFallbackActions: "The result is ready. You can insert it into the document, or copy it first.",
+      demoProvider: "Local Demo",
+      deepSeekOfficialProvider: "Official DeepSeek",
+      replaceSelection: "Replace Selection",
+      insertAfter: "Insert After",
+      copyResult: "Copy",
+      applyFailed: "The generated result could not be applied to the document.",
+      replaceApplied: "The generated result replaced the selection.",
+      insertApplied: "The generated result was inserted into the document.",
+      copySucceeded: "The generated result was copied to the clipboard.",
+      copyFailed: "Copy failed. Please copy the result manually.",
+      sourceSelection: "Selection",
+      sourceBlock: "Current Block",
+      sourceDocument: "Whole Document",
+      sourceAuto: "Auto",
+    },
+    layoutActions: {
+      lineHeightTitle: "Line Height",
+      lineHeightLabel: "Line height (px)",
+      paragraphSpacingTitle: "Paragraph Spacing",
+      paragraphSpacingLabel: "Paragraph spacing (px)",
+      pageMarginTitle: "Page Margin",
+      pageMarginLabel: "Page margin (px)",
+      pageSizeTitle: "Page Size",
+      pageSizePaperType: "Paper type",
+    },
+    textStyleActions: {
+      titleFontFamily: "Font Family",
+      titleFontSize: "Font Size",
+      titleTextColor: "Text Color",
+      titleTextBackground: "Text Background",
+      promptFontFamily: "Font family",
+      promptFontSize: "Font size (px)",
+      promptTextColor: "Text color (CSS color, empty to clear)",
+      promptTextBackground: "Text background color (CSS color, empty to clear)",
+      clearFontFamily: "Clear font family",
+      clearFontSize: "Clear font size",
+      alertInvalidColor: "Invalid color value",
+      alertInvalidFontSize: "Invalid font size",
+    },
+    searchReplaceActions: {
+      title: "Search & Replace",
+      promptSearch: "Find text",
+      promptReplace: "Replace with (can be empty)",
+      alertEmptySearch: "Find text cannot be empty",
+      alertNoMatch: "No matches found",
+      alertReplaced: "Replaced {count} matches",
+    },
+    pageAppearanceActions: {
+      titlePageBackground: "Page Background",
+      titlePageWatermark: "Page Watermark",
+      titlePageHeader: "Page Header",
+      titlePageFooter: "Page Footer",
+      promptBackground:
+        "Page background color (CSS color, empty means restore default background)",
+      promptWatermark: "Watermark text (empty means remove watermark, max 48 chars)",
+      promptHeader: "Header text (empty means remove; supports {page} placeholder)",
+      promptFooter: "Footer text (empty means remove; supports {page} placeholder)",
+      alertInvalidColor: "Invalid color value",
+      alertWatermarkTooLong: "Watermark text cannot exceed {max} chars",
+    },
+    tableActions: {
+      titleInsertTable: "Insert Table",
+      labelTableSize: "Table size (rows x columns)",
+      titleCellAlignment: "Cell Alignment",
+      labelCellAlignment: "Cell alignment: left / center / right / justify",
+      alertCellRequired: "Place the caret inside a table cell first",
+      alertInvalidCellAlign: "Invalid cell alignment value",
+      alignLeft: "Left",
+      alignCenter: "Center",
+      alignRight: "Right",
+      alignJustify: "Justify",
+    },
+    insertAdvancedActions: {
+      titleInsertAudio: "Insert Audio",
+      titleInsertFile: "Insert File",
+      titleInsertTag: "Insert Tag",
+      titleInsertCallout: "Insert Callout",
+      titleInsertBookmark: "Insert Bookmark",
+      titleInsertOptionBox: "Insert Option Box",
+      titleInsertWebPage: "Insert Web Page",
+      titleInsertTemplate: "Insert Template",
+      promptAudioUrl: "Audio URL",
+      promptAudioTitle: "Audio title",
+      promptFileUrl: "File URL",
+      promptFileName: "File name",
+      promptColumnsCount: "Column count (2-4)",
+      promptTagText: "Tag text",
+      promptCalloutText: "Callout text",
+      promptBookmarkUrl: "Bookmark URL",
+      promptBookmarkTitle: "Bookmark title",
+      promptOptionText: "Option items (comma/new line separated)",
+      promptWebPageUrl: "Web page URL",
+      promptWebPageTitle: "Web page title",
+      promptTemplateTitle: "Template title",
+      promptTemplateSummary: "Template summary",
+      promptTemplateItems: "Template bullet items (comma separated)",
+      insertBookmarkPrefix: "Bookmark",
+      insertWebPagePrefix: "WebPage",
+      insertAudioPrefix: "Audio",
+      insertFilePrefix: "File",
+      insertCalloutPrefix: "Callout",
+      insertTemplatePrefix: "Template",
+      defaultCallout: "Important note",
+      defaultBookmarkTitle: "Reference",
+      defaultWebPageTitle: "Embedded page",
+      defaultAudioTitle: "Audio clip",
+      defaultFileName: "Attachment",
+      defaultTag: "tag",
+      defaultOptionText: "Option A,Option B",
+      defaultColumnsCount: "2",
+      defaultTemplateTitle: "Project Plan",
+      defaultTemplateSummary: "Scope, milestones, and owners.",
+      defaultTemplateItems: "Milestone,Owner,Risk",
+      labelColumn: "Column",
+      optionBoxTitle: "Options",
+    },
+    quickInsertActions: {
+      titleInsertSymbol: "Insert Symbol",
+      titleInsertEmoji: "Insert Emoji",
+      promptSymbol: "Input symbol text",
+      promptEmoji: "Input emoji",
+    },
+    importActions: {
+      alertNoFile: "No file selected",
+      alertReadFailed: "Failed to read file",
+      alertParseFailed: "Failed to parse file content",
+      alertWordUnsupported: "Legacy .doc files are not supported yet. Please use .docx, HTML, or TXT.",
+    },
+    markdownActions: {
+      titleMarkdown: "Markdown",
+      labelMode: "Action: export / import",
+      optionExport: "Export",
+      optionImport: "Import",
+    },
+    textFormatActions: {
+      alertPainterArmed: "Format copied. Select target content and click format painter again.",
+      alertPainterApplied: "Format applied",
+    },
+    toolsActions: {
+      titleInsertQrCode: "Insert QR Code",
+      titleInsertBarcode: "Insert Barcode",
+      titleInsertDiagram: "Insert Diagram",
+      titleInsertEcharts: "Insert ECharts",
+      titleInsertMermaid: "Insert Mermaid",
+      titleInsertMindMap: "Insert Mind Map",
+      titleChineseCase: "Chinese Case",
+      promptQrCodeContent: "QR code content",
+      promptBarcodeContent: "Barcode content",
+      promptDiagramsCode: "Diagram source code",
+      promptEchartsCode: "ECharts option JSON",
+      promptMermaidCode: "Mermaid source code",
+      promptMindMapCode: "Mind map source code",
+      promptChineseCaseInput: "Input number to convert into Chinese case",
+      promptChineseCaseMode: "Case mode",
+      alertChineseCaseInvalidNumber: "Input must be a valid number",
+      labelSignature: "Signature",
+      defaultQrCodeContent: "https://example.com",
+      defaultBarcodeContent: "1234567890",
+      defaultSignatureName: "Signer",
+      defaultDiagramCode: "flowchart LR\nA[Start] --> B[Done]",
+      defaultEchartsCode:
+        "{\n  \"xAxis\": {\"type\": \"category\", \"data\": [\"Mon\", \"Tue\", \"Wed\"]},\n  \"yAxis\": {\"type\": \"value\"},\n  \"series\": [{\"type\": \"bar\", \"data\": [120, 200, 150]}]\n}",
+      defaultMermaidCode: "graph TD\nA[Start] --> B[End]",
+      defaultMindMapCode: "mindmap\n  root((Root))\n    Branch A\n    Branch B",
+      optionChineseCaseUpper: "Upper",
+      optionChineseCaseLower: "Lower",
+      embedPanelTitleDiagram: "Diagram",
+      embedPanelTitleEcharts: "ECharts",
+      embedPanelTitleMermaid: "Mermaid",
+      embedPanelTitleMindMap: "Mind Map",
+    },
+    exportActions: {
+      printPreviewTitle: "Print Preview",
+      close: "Close",
+      cancel: "Cancel",
+      print: "Print",
+      copyShareLink: "Copy share link",
+      copyEmbedCode: "Copy embed code",
+      copiedToClipboard: "Copied to clipboard",
+      clipboardUnavailableManualCopy: "Clipboard is unavailable. Copy text manually:",
+    },
+    colorPickerActions: {
+      color: "Text color",
+      backgroundColor: "Text background",
+      highlight: "Highlight color",
+      pageBackground: "Page background",
+      cellsBackground: "Cell background",
+    },
+    toolbarCatalog: {
+      "__empty__": "",
+      "tab.base": "Home",
+      "tab.insert": "Insert",
+      "tab.table": "Table",
+      "tab.tools": "Tools",
+      "tab.page": "Page",
+      "tab.export": "Export",
+      undo: "Undo",
+      redo: "Redo",
+      "format-painter": "Format Painter",
+      "clear-format": "Clear Format",
+      heading: "Heading",
+      "font-family": "Font Family",
+      "font-size": "Font Size",
+      bold: "Bold",
+      italic: "Italic",
+      underline: "Underline",
+      strike: "Strikethrough",
+      subscript: "Subscript",
+      superscript: "Superscript",
+      color: "Text Color",
+      "background-color": "Background Color",
+      highlight: "Highlight",
+      "ordered-list": "Ordered List",
+      "bullet-list": "Bullet List",
+      "task-list": "Task List",
+      indent: "Indent",
+      outdent: "Outdent",
+      "line-height": "Line Height",
+      margin: "Paragraph Spacing",
+      "align-left": "Align Left",
+      "align-center": "Align Center",
+      "align-right": "Align Right",
+      "align-justify": "Align Justify",
+      "align-distributed": "Align Distributed",
+      quote: "Quote",
+      "inline-code": "Inline Code",
+      "select-all": "Select All",
+      "import-word": "Import Word",
+      markdown: "Markdown",
+      "search-replace": "Search & Replace",
+      viewer: "Viewer",
+      print: "Print",
+      link: "Link",
+      image: "Image",
+      video: "Video",
+      audio: "Audio",
+      file: "File",
+      "code-block": "Code Block",
+      symbol: "Symbol",
+      "chinese-date": "Chinese Date",
+      emoji: "Emoji",
+      tag: "Tag",
+      callout: "Callout",
+      mention: "Mention",
+      bookmark: "Bookmark",
+      "option-box": "Option Box",
+      "hard-break": "Hard Break",
+      hr: "Horizontal Rule",
+      toc: "Table of Contents",
+      template: "Template",
+      "web-page": "Web Page",
+      "table-insert": "Insert Table",
+      "table-fix": "Fix Table",
+      "cells-align": "Cell Alignment",
+      "cells-background": "Cell Background",
+      "add-row-before": "Add Row Before",
+      "add-row-after": "Add Row After",
+      "add-column-before": "Add Column Before",
+      "add-column-after": "Add Column After",
+      "delete-row": "Delete Row",
+      "delete-column": "Delete Column",
+      "merge-cells": "Merge Cells",
+      "split-cell": "Split Cell",
+      "toggle-header-row": "Toggle Header Row",
+      "toggle-header-column": "Toggle Header Column",
+      "toggle-header-cell": "Toggle Header Cell",
+      "next-cell": "Next Cell",
+      "previous-cell": "Previous Cell",
+      "delete-table": "Delete Table",
+      qrcode: "QR Code",
+      barcode: "Barcode",
+      signature: "Signature",
+      diagrams: "Diagrams",
+      echarts: "ECharts",
+      mermaid: "Mermaid",
+      "mind-map": "Mind Map",
+      "chinese-case": "Chinese Case",
+      "toggle-toc": "TOC",
+      "page-margin": "Page Margin",
+      "page-size": "Page Size",
+      "page-orientation": "Page Orientation",
+      "page-break": "Page Break",
+      "page-line-number": "Line Number",
+      "page-watermark": "Watermark",
+      "page-background": "Page Background",
+      "page-preview": "Preview",
+      "page-header": "Header",
+      "page-footer": "Footer",
+      "export-image": "Export Image",
+      "export-pdf": "Export PDF",
+      "export-text": "Export Text",
+      "export-html": "Export HTML",
+      "export-word": "Export Word",
+      share: "Share",
+      embed: "Embed",
+    },
+    aiProviderMessages: {
+      modelRequired: "Model is required.",
+      requestFailed: "The DeepSeek request failed.",
+      emptyResult: "The DeepSeek API returned an empty result.",
+      cancelled: "AI request was cancelled.",
+    },
+    slashCommands: {
+      emptyLabel: "No matching blocks",
+      paragraphTitle: "Paragraph",
+      paragraphDescription: "Keep as a normal paragraph",
+      heading1Title: "Heading 1",
+      heading1Description: "Replace with a level 1 heading",
+      heading2Title: "Heading 2",
+      heading2Description: "Replace with a level 2 heading",
+      heading3Title: "Heading 3",
+      heading3Description: "Replace with a level 3 heading",
+      bulletListTitle: "Bullet List",
+      bulletListDescription: "Replace with a bullet list",
+      orderedListTitle: "Ordered List",
+      orderedListDescription: "Replace with a numbered list",
+      taskListTitle: "Task List",
+      taskListDescription: "Replace with a checklist",
+      blockquoteTitle: "Blockquote",
+      blockquoteDescription: "Replace with a blockquote",
+      codeBlockTitle: "Code Block",
+      codeBlockDescription: "Replace with a code block",
     },
   },
 };
+
+export const PLAYGROUND_LOCALE_STORAGE_KEY = "lumenpage-lumen-locale";
+
+export const PLAYGROUND_LOCALE_OPTIONS: Array<{ value: PlaygroundLocale; label: LocaleText }> = [
+  {
+    value: "zh-CN",
+    label: defineLocaleText("简体中文", "Simplified Chinese"),
+  },
+  {
+    value: "en-US",
+    label: defineLocaleText("英文", "English"),
+  },
+];
 
 const LOCALE_ALIAS: Record<string, PlaygroundLocale> = {
   zh: "zh-CN",
@@ -310,7 +1773,7 @@ const LOCALE_ALIAS: Record<string, PlaygroundLocale> = {
   "en-us": "en-US",
 };
 
-const normalizeLocale = (value: unknown): PlaygroundLocale | null => {
+export const normalizePlaygroundLocale = (value: unknown): PlaygroundLocale | null => {
   const raw = String(value ?? "")
     .trim()
     .toLowerCase();
@@ -320,21 +1783,76 @@ const normalizeLocale = (value: unknown): PlaygroundLocale | null => {
   return LOCALE_ALIAS[raw] || null;
 };
 
+export const coercePlaygroundLocale = (
+  value: unknown,
+  fallback: PlaygroundLocale = "zh-CN"
+): PlaygroundLocale => normalizePlaygroundLocale(value) || fallback;
+
+const readStoredPlaygroundLocale = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    return normalizePlaygroundLocale(window.localStorage.getItem(PLAYGROUND_LOCALE_STORAGE_KEY));
+  } catch (_error) {
+    return null;
+  }
+};
+
+export const persistPlaygroundLocale = (locale: PlaygroundLocale) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(PLAYGROUND_LOCALE_STORAGE_KEY, locale);
+  } catch (_error) {
+    // Ignore storage failures in private mode or restricted environments.
+  }
+};
+
+const syncPlaygroundLocaleToUrl = (locale: PlaygroundLocale) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("locale", locale);
+  window.history.replaceState(window.history.state, "", url.toString());
+};
+
+export const setPlaygroundLocale = (
+  locale: PlaygroundLocale,
+  options: { reload?: boolean } = {}
+) => {
+  persistPlaygroundLocale(locale);
+  syncPlaygroundLocaleToUrl(locale);
+  if (options.reload !== false && typeof window !== "undefined") {
+    window.location.reload();
+  }
+};
+
 export const resolvePlaygroundLocale = (fallback: PlaygroundLocale = "zh-CN"): PlaygroundLocale => {
   if (typeof window === "undefined") {
     return fallback;
   }
   const params = new URLSearchParams(window.location.search);
-  const locale = normalizeLocale(params.get("locale"));
+  const locale = normalizePlaygroundLocale(params.get("locale"));
   if (locale) {
     return locale;
   }
-  const lang = normalizeLocale(params.get("lang"));
+  const lang = normalizePlaygroundLocale(params.get("lang"));
   if (lang) {
     return lang;
   }
-  return fallback;
+  return readStoredPlaygroundLocale() || fallback;
 };
 
 export const createPlaygroundI18n = (locale: PlaygroundLocale = "zh-CN"): PlaygroundI18n =>
   PLAYGROUND_I18N[locale] || PLAYGROUND_I18N["zh-CN"];
+
+export const createLumenI18n = (locale: PlaygroundLocale = resolvePlaygroundLocale()) =>
+  createI18n({
+    legacy: false,
+    locale,
+    fallbackLocale: "zh-CN",
+    messages: PLAYGROUND_I18N,
+  });

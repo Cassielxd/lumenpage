@@ -7,7 +7,7 @@ import type {
 
 import BubbleMenuPanel from "../components/BubbleMenuPanel.vue";
 import type { PlaygroundLocale } from "./i18n";
-import { TOOLBAR_MENU_GROUPS } from "./toolbarCatalog";
+import { resolveToolbarCatalogLabel, TOOLBAR_MENU_GROUPS } from "./toolbarCatalog";
 
 type BubbleMenuPanelItem = {
   id: string;
@@ -19,7 +19,7 @@ type BubbleMenuPanelItem = {
 
 type ToolbarBubbleMeta = {
   icon: string;
-  labels: Record<PlaygroundLocale, string>;
+  labelKey: string;
 };
 
 type LumenBubbleMenuRendererOptions = {
@@ -54,7 +54,7 @@ for (const groups of Object.values(TOOLBAR_MENU_GROUPS)) {
       if (!toolbarItemByAction.has(item.action)) {
         toolbarItemByAction.set(item.action, {
           icon: item.icon,
-          labels: item.label,
+          labelKey: item.labelKey,
         });
       }
     }
@@ -70,7 +70,7 @@ const resolvePanelItem = (
   return {
     id: action.id,
     icon: toolbarItem?.icon || action.icon,
-    label: toolbarItem?.labels?.[locale] || action.label,
+    label: (toolbarItem ? resolveToolbarCatalogLabel(locale, toolbarItem.labelKey) : "") || action.label,
     active: props.isActionActive(action),
     disabled: !props.canRunAction(action),
   };

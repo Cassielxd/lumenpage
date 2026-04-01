@@ -1,21 +1,10 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog, ToolbarInputDialogOption } from "./ui/inputDialog";
 import { showToolbarMessage } from "./ui/message";
 import type { GetEditorCommandMap } from "./commandUtils";
 import { invokeCommand } from "./commandUtils";
 
 type GetView = () => any;
-
-type TextStyleTexts = {
-  promptFontFamily: string;
-  promptFontSize: string;
-  promptTextColor: string;
-  promptTextBackground: string;
-  clearFontFamily: string;
-  clearFontSize: string;
-  alertInvalidColor: string;
-  alertInvalidFontSize: string;
-};
 
 const DEFAULT_HIGHLIGHT_COLOR = "#fff59d";
 const FONT_SIZE_PRESETS = [10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72];
@@ -36,29 +25,6 @@ const FONT_FAMILY_PRESETS = [
   "Noto Sans SC",
   "Noto Serif SC",
 ];
-
-const resolveTexts = (locale: PlaygroundLocale): TextStyleTexts =>
-  locale === "en-US"
-    ? {
-        promptFontFamily: "Font family",
-        promptFontSize: "Font size (px)",
-        promptTextColor: "Text color (CSS color, empty to clear)",
-        promptTextBackground: "Text background color (CSS color, empty to clear)",
-        clearFontFamily: "Clear font family",
-        clearFontSize: "Clear font size",
-        alertInvalidColor: "Invalid color value",
-        alertInvalidFontSize: "Invalid font size",
-      }
-    : {
-        promptFontFamily: "字体",
-        promptFontSize: "字号（px）",
-        promptTextColor: "文字颜色（CSS 颜色值，留空清除）",
-        promptTextBackground: "文字背景色（CSS 颜色值，留空清除）",
-        clearFontFamily: "清除字体",
-        clearFontSize: "清除字号",
-        alertInvalidColor: "颜色值无效",
-        alertInvalidFontSize: "字号无效",
-      };
 
 const parseBaseFontFamily = (fontSpec: string | null | undefined) => {
   const source = String(fontSpec || "").trim();
@@ -129,7 +95,7 @@ const collectRuntimeFontFamilies = () => {
 
 const buildFontFamilyOptions = (
   current: string,
-  texts: TextStyleTexts
+  texts: ReturnType<typeof createPlaygroundI18n>["textStyleActions"]
 ): ToolbarInputDialogOption[] => {
   const values = new Map<string, string>();
   const append = (family: string) => {
@@ -162,7 +128,10 @@ const buildFontFamilyOptions = (
   return options;
 };
 
-const buildFontSizeOptions = (current: number, texts: TextStyleTexts): ToolbarInputDialogOption[] => {
+const buildFontSizeOptions = (
+  current: number,
+  texts: ReturnType<typeof createPlaygroundI18n>["textStyleActions"]
+): ToolbarInputDialogOption[] => {
   const set = new Set<number>([current, ...FONT_SIZE_PRESETS]);
   const ordered = Array.from(set)
     .filter((value) => Number.isFinite(value) && value > 0)
@@ -184,14 +153,14 @@ export const createTextStyleActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
-  const getTexts = () => resolveTexts(getLocaleKey());
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).textStyleActions;
 
   const applyFontFamilySetting = async () => {
     const settingsFont = getView()?._internals?.settings?.font;
     const texts = getTexts();
     const current = parseBaseFontFamily(settingsFont);
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Font Family" : "字体",
+      title: texts.titleFontFamily,
       fields: [
         {
           key: "value",
@@ -217,7 +186,7 @@ export const createTextStyleActions = ({
     const texts = getTexts();
     const currentSize = parseBaseFontSize(settingsFont);
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Font Size" : "字号",
+      title: texts.titleFontSize,
       fields: [
         {
           key: "value",
@@ -244,12 +213,13 @@ export const createTextStyleActions = ({
   };
 
   const applyTextColorSetting = async () => {
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Text Color" : "文字颜色",
+      title: texts.titleTextColor,
       fields: [
         {
           key: "value",
-          label: getTexts().promptTextColor,
+          label: texts.promptTextColor,
           defaultValue: "#111827",
         },
       ],
@@ -262,19 +232,20 @@ export const createTextStyleActions = ({
       return invokeCommand(getEditorCommands()?.clearTextColor);
     }
     if (!isValidCssColor(value)) {
-      showToolbarMessage(getTexts().alertInvalidColor, "warning");
+      showToolbarMessage(texts.alertInvalidColor, "warning");
       return false;
     }
     return invokeCommand(getEditorCommands()?.setTextColor, value);
   };
 
   const applyTextBackgroundSetting = async () => {
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Text Background" : "文字背景",
+      title: texts.titleTextBackground,
       fields: [
         {
           key: "value",
-          label: getTexts().promptTextBackground,
+          label: texts.promptTextBackground,
           defaultValue: DEFAULT_HIGHLIGHT_COLOR,
         },
       ],
@@ -287,7 +258,7 @@ export const createTextStyleActions = ({
       return invokeCommand(getEditorCommands()?.clearTextBackground);
     }
     if (!isValidCssColor(value)) {
-      showToolbarMessage(getTexts().alertInvalidColor, "warning");
+      showToolbarMessage(texts.alertInvalidColor, "warning");
       return false;
     }
     return invokeCommand(getEditorCommands()?.setTextBackground, value);

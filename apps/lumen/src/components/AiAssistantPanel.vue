@@ -155,6 +155,7 @@ import {
   updateLumenAiProviderConfig,
   type LumenAiProviderId,
 } from "../editor/aiAssistantProviders";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 type AiAssistantMessage = {
   id: string;
@@ -173,183 +174,8 @@ type LatestGeneratedOutput = {
   selectionSnapshot: AiAssistantSelectionSnapshot | null;
 };
 
-type AiPanelTexts = {
-  title: string;
-  ready: string;
-  readonly: string;
-  showSettings: string;
-  hideSettings: string;
-  provider: string;
-  model: string;
-  serverUrl: string;
-  systemPrompt: string;
-  modelPlaceholder: string;
-  serverUrlPlaceholder: string;
-  systemPromptPlaceholder: string;
-  providerTip: string;
-  rewrite: string;
-  summarize: string;
-  continueWriting: string;
-  placeholder: string;
-  sendHint: string;
-  send: string;
-  stop: string;
-  assistantName: string;
-  userName: string;
-  requestLabel: string;
-  sourceLabel: string;
-  sentContextLabel: string;
-  welcome: string;
-  missingEditor: string;
-  missingPlugin: string;
-  missingProviderConfig: string;
-  emptyContext: string;
-  cancelled: string;
-  generating: string;
-  turns: string;
-  composerHint: string;
-  selectionReady: string;
-  selectionFallback: string;
-  contextPreviewTitle: string;
-  contextPreviewSelection: string;
-  contextPreviewEmpty: string;
-  latestSelectionActions: string;
-  latestFallbackActions: string;
-  demoProvider: string;
-  deepSeekOfficialProvider: string;
-  replaceSelection: string;
-  insertAfter: string;
-  copyResult: string;
-  applyFailed: string;
-  replaceApplied: string;
-  insertApplied: string;
-  copySucceeded: string;
-  copyFailed: string;
-  sourceSelection: string;
-  sourceBlock: string;
-  sourceDocument: string;
-  sourceAuto: string;
-};
-
-const AI_PANEL_I18N: Record<"zh-CN" | "en-US", AiPanelTexts> = {
-  "zh-CN": {
-    title: "AI 助手",
-    ready: "可用",
-    readonly: "只读",
-    showSettings: "显示设置",
-    hideSettings: "隐藏设置",
-    provider: "供应商",
-    model: "模型",
-    serverUrl: "AI 服务",
-    systemPrompt: "系统提示词",
-    modelPlaceholder: "例如 deepseek-chat 或你的部署模型 ID",
-    serverUrlPlaceholder: "http://127.0.0.1:1234",
-    systemPromptPlaceholder: "可选，不填则使用内置写作提示词。",
-    providerTip: "浏览器先请求本地 collab-server，再由服务端调用官方 DeepSeek Chat Completions API。",
-    rewrite: "改写",
-    summarize: "总结",
-    continueWriting: "续写",
-    placeholder: "描述你希望 AI 如何处理当前内容",
-    sendHint: "Ctrl/Cmd + Enter 发送",
-    send: "发送",
-    stop: "停止",
-    assistantName: "Lumen AI",
-    userName: "你",
-    requestLabel: "请求",
-    sourceLabel: "来源",
-    sentContextLabel: "发送内容",
-    welcome: "先在编辑器中选中内容，再让 AI 改写、总结或续写。生成结果会先留在面板里，由你决定如何插入文档。",
-    missingEditor: "编辑器尚未就绪。",
-    missingPlugin: "当前编辑器实例未挂载 AI 扩展。",
-    missingProviderConfig: "当前 AI 供应商配置还不完整。",
-    emptyContext: "当前没有可供 AI 处理的内容。请先选中一段文字，或将光标放入一个段落。",
-    cancelled: "当前 AI 任务已取消。",
-    generating: "生成中",
-    turns: "轮",
-    composerHint: "发送时会优先使用已捕获的选区；如果没有选区，再回退到当前块。",
-    selectionReady: "已捕获最近一次有效选区。",
-    selectionFallback: "当前没有已捕获选区，必要时会回退到当前块。",
-    contextPreviewTitle: "当前上下文",
-    contextPreviewSelection: "已选内容",
-    contextPreviewEmpty: "暂未捕获选区。先在编辑器里选中一段内容，这里会立即显示。",
-    latestSelectionActions: "结果已生成。你可以替换已捕获选区、插入到其后，或先复制。",
-    latestFallbackActions: "结果已生成。你可以插入到文档，或先复制。",
-    demoProvider: "本地演示",
-    deepSeekOfficialProvider: "官方 DeepSeek",
-    replaceSelection: "替换选区",
-    insertAfter: "插入其后",
-    copyResult: "复制",
-    applyFailed: "生成结果未能写入文档。",
-    replaceApplied: "已用生成结果替换选区。",
-    insertApplied: "已将生成结果插入文档。",
-    copySucceeded: "已复制生成结果。",
-    copyFailed: "复制失败，请手动复制。",
-    sourceSelection: "选区",
-    sourceBlock: "当前块",
-    sourceDocument: "整篇文档",
-    sourceAuto: "自动",
-  },
-  "en-US": {
-    title: "AI Assistant",
-    ready: "Ready",
-    readonly: "Read-only",
-    showSettings: "Show Settings",
-    hideSettings: "Hide Settings",
-    provider: "Provider",
-    model: "Model",
-    serverUrl: "AI Server",
-    systemPrompt: "System Prompt",
-    modelPlaceholder: "Use deepseek-chat or your deployed model id",
-    serverUrlPlaceholder: "http://127.0.0.1:1234",
-    systemPromptPlaceholder: "Optional. Leave empty to use the built-in writing prompt.",
-    providerTip: "The browser calls your local collab-server, and the server calls the official DeepSeek Chat Completions API.",
-    rewrite: "Rewrite",
-    summarize: "Summarize",
-    continueWriting: "Continue",
-    placeholder: "Describe what you want AI to do with the current content",
-    sendHint: "Ctrl/Cmd + Enter to send",
-    send: "Send",
-    stop: "Stop",
-    assistantName: "Lumen AI",
-    userName: "You",
-    requestLabel: "Request",
-    sourceLabel: "Source",
-    sentContextLabel: "Sent Content",
-    welcome: "Select text in the editor, then ask me to rewrite, summarize, or continue writing. The result will stay in this panel until you choose how to apply it.",
-    missingEditor: "Editor is not ready yet.",
-    missingPlugin: "AI extension is not available in the current editor instance.",
-    missingProviderConfig: "The current AI provider is not fully configured yet.",
-    emptyContext: "No content is available for AI processing yet. Select some text first, or place the caret inside a paragraph.",
-    cancelled: "The current AI task was cancelled.",
-    generating: "Generating",
-    turns: "turns",
-    composerHint: "The assistant uses the last captured selection first, then falls back to the current block when needed.",
-    selectionReady: "The latest valid selection has been captured.",
-    selectionFallback: "No captured selection yet. The assistant will fall back to the current block when needed.",
-    contextPreviewTitle: "Current Context",
-    contextPreviewSelection: "Selected Content",
-    contextPreviewEmpty: "No selection has been captured yet. Select some text in the editor and it will appear here immediately.",
-    latestSelectionActions: "The result is ready. You can replace the captured selection, insert after it, or copy it first.",
-    latestFallbackActions: "The result is ready. You can insert it into the document, or copy it first.",
-    demoProvider: "Local Demo",
-    deepSeekOfficialProvider: "Official DeepSeek",
-    replaceSelection: "Replace Selection",
-    insertAfter: "Insert After",
-    copyResult: "Copy",
-    applyFailed: "The generated result could not be applied to the document.",
-    replaceApplied: "The generated result replaced the selection.",
-    insertApplied: "The generated result was inserted into the document.",
-    copySucceeded: "The generated result was copied to the clipboard.",
-    copyFailed: "Copy failed. Please copy the result manually.",
-    sourceSelection: "Selection",
-    sourceBlock: "Current Block",
-    sourceDocument: "Whole Document",
-    sourceAuto: "Auto",
-  },
-};
-
 const props = defineProps<{
-  locale: "zh-CN" | "en-US";
+  locale: PlaygroundLocale;
   editor: LumenEditor | null;
   canManage: boolean;
 }>();
@@ -358,6 +184,7 @@ defineEmits<{
   (event: "close"): void;
 }>();
 
+const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const draft = ref("");
 const running = ref(false);
 const settingsOpen = ref(true);
@@ -369,7 +196,7 @@ let messageSeed = 0;
 
 const providerConfig = lumenAiProviderConfig;
 const buildLabel = "ai-panel-debug-20260331-04";
-const texts = computed(() => AI_PANEL_I18N[props.locale] || AI_PANEL_I18N["en-US"]);
+const texts = computed(() => createPlaygroundI18n(currentLocale.value).aiPanel);
 
 const assistantStorage = computed(() => getAiAssistantStorage(props.editor));
 const providerOptions = computed(() => [
@@ -424,7 +251,7 @@ const latestResultHint = computed(() =>
 );
 
 const formatNow = () =>
-  new Intl.DateTimeFormat(props.locale, {
+  new Intl.DateTimeFormat(currentLocale.value, {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date());

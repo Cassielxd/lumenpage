@@ -1,16 +1,10 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import { showToolbarMessage } from "./ui/message";
 import { TextSelection } from "lumenpage-state";
 
 type GetView = () => any;
 type TableCellAlign = "left" | "center" | "right" | "justify";
-
-type TableTexts = {
-  promptCellAlign: string;
-  alertCellRequired: string;
-  alertInvalidCellAlign: string;
-};
 
 const isTableCellTypeName = (typeName: string | null | undefined) =>
   typeName === "tableCell" || typeName === "tableHeader";
@@ -21,20 +15,6 @@ const withoutLegacyHeaderAttr = (attrs: Record<string, unknown> | null | undefin
   }
   return Object.fromEntries(Object.entries(attrs).filter(([key]) => key !== "header"));
 };
-
-const resolveTexts = (locale: PlaygroundLocale): TableTexts =>
-  locale === "en-US"
-    ? {
-        promptCellAlign: "Cell alignment: left / center / right / justify",
-        alertCellRequired: "Place the caret inside a table cell first",
-        alertInvalidCellAlign: "Invalid cell alignment value",
-      }
-    : {
-        promptCellAlign:
-          "\u5355\u5143\u683c\u5bf9\u9f50\u65b9\u5f0f\uff1aleft / center / right / justify",
-        alertCellRequired: "\u8bf7\u5148\u5c06\u5149\u6807\u653e\u5728\u8868\u683c\u5355\u5143\u683c\u5185",
-        alertInvalidCellAlign: "\u5355\u5143\u683c\u5bf9\u9f50\u503c\u65e0\u6548",
-      };
 
 const parseTableSize = (raw: string | null) => {
   if (!raw || !raw.trim()) {
@@ -408,6 +388,7 @@ export const createTableActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).tableActions;
   const insertTableWithSize = (rows: number, cols: number) => {
     const view = getView();
     if (!view?.state?.tr) {
@@ -431,12 +412,13 @@ export const createTableActions = ({
   };
 
   const insertTable = async () => {
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Insert Table" : "\u63d2\u5165\u8868\u683c",
+      title: texts.titleInsertTable,
       fields: [
         {
           key: "size",
-          label: getLocaleKey() === "en-US" ? "Table size (rows x columns)" : "\u8868\u683c\u5c3a\u5bf8\uff08\u884cx\u5217\uff09",
+          label: texts.labelTableSize,
           defaultValue: "3x3",
           required: true,
         },
@@ -711,33 +693,25 @@ export const createTableActions = ({
 
   const applyCellAlignmentSetting = async () => {
     const context = resolveTableContext();
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     if (!context || resolveCellTargets(context).length === 0) {
       showToolbarMessage(texts.alertCellRequired, "warning");
       return false;
     }
     const current = getCurrentCellsAlign(context) || "left";
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Cell Alignment" : "\u5355\u5143\u683c\u5bf9\u9f50",
+      title: texts.titleCellAlignment,
       fields: [
         {
           key: "align",
-          label: texts.promptCellAlign,
+          label: texts.labelCellAlignment,
           type: "select",
-          options:
-            getLocaleKey() === "en-US"
-              ? [
-                  { label: "Left", value: "left" },
-                  { label: "Center", value: "center" },
-                  { label: "Right", value: "right" },
-                  { label: "Justify", value: "justify" },
-                ]
-              : [
-                  { label: "左对齐", value: "left" },
-                  { label: "居中", value: "center" },
-                  { label: "右对齐", value: "right" },
-                  { label: "两端对齐", value: "justify" },
-                ],
+          options: [
+            { label: texts.alignLeft, value: "left" },
+            { label: texts.alignCenter, value: "center" },
+            { label: texts.alignRight, value: "right" },
+            { label: texts.alignJustify, value: "justify" },
+          ],
           defaultValue: current,
           required: true,
         },

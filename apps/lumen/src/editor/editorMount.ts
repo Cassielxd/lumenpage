@@ -463,7 +463,7 @@ export const mountPlaygroundEditor = ({
   ];
   const tocOutlineController = createTocOutlinePlugin({
     onChange: onTocOutlineChange ?? undefined,
-    emptyHeadingText: flags.locale === "en-US" ? "Untitled Heading" : "\u65e0\u6807\u9898",
+    emptyHeadingText: i18n.shell.untitledHeading,
     initialEnabled: tocOutlineEnabled !== false,
   });
   const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);

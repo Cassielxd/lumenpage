@@ -1,4 +1,4 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import type { GetEditorCommandMap } from "./commandUtils";
 import { invokeCommand } from "./commandUtils";
 
@@ -28,23 +28,6 @@ const TOOLBAR_COLOR_DEFAULTS: Record<ToolbarColorAction, string> = {
   "cells-background": "#ffffff",
 };
 
-const TOOLBAR_COLOR_TITLES: Record<PlaygroundLocale, Record<ToolbarColorAction, string>> = {
-  "zh-CN": {
-    color: "\u6587\u5b57\u989c\u8272",
-    "background-color": "\u6587\u5b57\u80cc\u666f\u8272",
-    highlight: "\u9ad8\u4eae\u989c\u8272",
-    "page-background": "\u9875\u9762\u80cc\u666f\u8272",
-    "cells-background": "\u5355\u5143\u683c\u80cc\u666f\u8272",
-  },
-  "en-US": {
-    color: "Text color",
-    "background-color": "Text background",
-    highlight: "Highlight color",
-    "page-background": "Page background",
-    "cells-background": "Cell background",
-  },
-};
-
 const normalizeColor = (value: string | null | undefined) => {
   const next = String(value || "").trim();
   return next || null;
@@ -56,8 +39,22 @@ export const isToolbarColorAction = (action: string): action is ToolbarColorActi
 export const getToolbarColorDefault = (action: ToolbarColorAction) =>
   TOOLBAR_COLOR_DEFAULTS[action];
 
-export const getToolbarColorDialogTitle = (action: ToolbarColorAction, locale: PlaygroundLocale) =>
-  TOOLBAR_COLOR_TITLES[locale][action];
+export const getToolbarColorDialogTitle = (action: ToolbarColorAction, locale: PlaygroundLocale) => {
+  const texts = createPlaygroundI18n(locale).colorPickerActions;
+  if (action === "color") {
+    return texts.color;
+  }
+  if (action === "background-color") {
+    return texts.backgroundColor;
+  }
+  if (action === "highlight") {
+    return texts.highlight;
+  }
+  if (action === "page-background") {
+    return texts.pageBackground;
+  }
+  return texts.cellsBackground;
+};
 
 export const applyToolbarColorAction = ({
   action,

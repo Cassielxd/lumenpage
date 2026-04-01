@@ -20,17 +20,24 @@
         </t-tag>
       </div>
       <div class="topbar-right">
+        <t-select
+          class="topbar-locale"
+          size="small"
+          :model-value="localeKey"
+          :options="localeOptions"
+          @update:model-value="handleLocaleChange"
+        />
         <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
         <t-avatar v-if="!debugFlags.collaborationEnabled" size="small">U</t-avatar>
       </div>
     </t-header>
 
-    <EditorMenuBar v-model:active-menu="activeToolbarMenu" :locale="debugFlags.locale" />
+    <EditorMenuBar v-model:active-menu="activeToolbarMenu" :locale="localeKey" />
     <EditorToolbar
       ref="toolbarRef"
       :editor="editor"
       :editorView="view"
-      :locale="debugFlags.locale"
+      :locale="localeKey"
       :active-menu="activeToolbarMenu"
       :session-mode="sessionMode"
       @update:session-mode="handleSessionModeUpdate"
@@ -103,7 +110,7 @@
                   </t-button>
                 </div>
                 <CommentsPanel
-                  :locale="debugFlags.locale"
+                  :locale="localeKey"
                   :threads="commentThreads"
                   :active-thread-id="activeCommentThreadId"
                   :can-manage="canMutateComments"
@@ -122,7 +129,7 @@
             <t-tab-panel value="assistant" :label="assistantButtonLabel">
               <div class="doc-side-tab-panel">
                 <AiAssistantPanel
-                  :locale="debugFlags.locale"
+                  :locale="localeKey"
                   :editor="editor"
                   :can-manage="canManageAssistant"
                   @close="closeAssistantPanel"
@@ -152,7 +159,7 @@
                   </t-tag>
                 </div>
                 <TrackChangesPanel
-                  :locale="debugFlags.locale"
+                  :locale="localeKey"
                   :changes="trackChangeRecords"
                   :active-change-id="activeTrackChangeId"
                   :enabled="trackChangesEnabled"
@@ -195,7 +202,7 @@
         <CollaborationPresence
           v-if="debugFlags.collaborationEnabled"
           :state="collaborationState"
-          :locale="debugFlags.locale"
+          :locale="localeKey"
           compact
         />
         <div class="doc-footer-contact">
@@ -207,7 +214,7 @@
         <CollaborationPresence
           v-if="debugFlags.collaborationEnabled"
           :state="collaborationState"
-          :locale="debugFlags.locale"
+          :locale="localeKey"
           compact
         />
         <a
@@ -235,6 +242,7 @@ import {
   watch,
   type Ref,
 } from "vue";
+import { useI18n } from "vue-i18n";
 import type { Editor as LumenEditor } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
@@ -249,7 +257,13 @@ import {
   type LumenCollaborationState,
 } from "./editor/collaboration";
 import { createPlaygroundDebugFlags } from "./editor/config";
-import { createPlaygroundI18n } from "./editor/i18n";
+import {
+  PLAYGROUND_LOCALE_OPTIONS,
+  coercePlaygroundLocale,
+  createPlaygroundI18n,
+  setPlaygroundLocale,
+  type PlaygroundLocale,
+} from "./editor/i18n";
 import { lumenCommentsStore, type LumenCommentThread } from "./editor/commentsStore";
 import { mountPlaygroundEditor } from "./editor/editorMount";
 import { showToolbarMessage } from "./editor/toolbarActions/ui/message";
@@ -264,9 +278,20 @@ import { findCommentAnchorRanges } from "lumenpage-extension-comment";
 import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
 const debugFlags = createPlaygroundDebugFlags();
-const i18n = createPlaygroundI18n(debugFlags.locale);
+const { locale: globalLocale, t } = useI18n();
+globalLocale.value = debugFlags.locale;
+const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(globalLocale.value));
+const i18n = computed(() => createPlaygroundI18n(localeKey.value));
+const localeOptions = computed(() =>
+  PLAYGROUND_LOCALE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label[localeKey.value],
+  }))
+);
 const docTitle = ref(
-  debugFlags.collaborationEnabled ? debugFlags.collaborationDocument : i18n.app.defaultDocTitle
+  debugFlags.collaborationEnabled
+    ? debugFlags.collaborationDocument
+    : createPlaygroundI18n(debugFlags.locale).app.defaultDocTitle
 );
 const editorHost = ref<HTMLElement | null>(null);
 const workspaceRef = ref<HTMLElement | null>(null);
@@ -300,15 +325,9 @@ const footerStats = ref({
 const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
 const tocPanelOpen = ref(false);
-const outlineTitle = computed(() => (debugFlags.locale === "en-US" ? "Outline" : "目录"));
+const outlineTitle = computed(() => i18n.value.shell.outline);
 const tocToggleLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? tocPanelOpen.value
-      ? "Hide Outline"
-      : "Show Outline"
-    : tocPanelOpen.value
-      ? "隐藏目录"
-      : "显示目录"
+  tocPanelOpen.value ? i18n.value.shell.outlineHide : i18n.value.shell.outlineShow
 );
 const sessionMode = ref<EditorSessionMode>(
   debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
@@ -316,19 +335,19 @@ const sessionMode = ref<EditorSessionMode>(
 const isReadonlyPermission = computed(() => debugFlags.permissionMode === "readonly");
 const permissionLabel = computed(() => {
   if (isReadonlyPermission.value || sessionMode.value === "viewer") {
-    return i18n.app.permissionReadonly;
+    return i18n.value.app.permissionReadonly;
   }
   if (debugFlags.permissionMode === "comment") {
-    return i18n.app.permissionComment;
+    return i18n.value.app.permissionComment;
   }
-  return i18n.app.permissionEdit;
+  return i18n.value.app.permissionEdit;
 });
 const commentCount = computed(() => commentThreads.value.length);
 const canMutateComments = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
 );
 const currentCommentUserName = computed(
-  () => (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || "You"
+  () => (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || i18n.value.shell.you
 );
 const canManageAssistant = computed(
   () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
@@ -338,106 +357,63 @@ const canMutateTrackChanges = computed(
 );
 const commentButtonDisabled = computed(() => !canMutateComments.value);
 const commentButtonLabel = computed(() =>
-  commentCount.value > 0 ? `${i18n.app.comment} (${commentCount.value})` : i18n.app.comment
+  commentCount.value > 0
+    ? `${i18n.value.app.comment} (${commentCount.value})`
+    : i18n.value.app.comment
 );
-const assistantButtonLabel = computed(() => (debugFlags.locale === "en-US" ? "AI" : "AI 助手"));
+const assistantButtonLabel = computed(() => i18n.value.shell.assistant);
 const trackChangeCount = computed(() => trackChangeRecords.value.length);
 const trackChangesPanelOpen = computed(
   () => trackChangesPanelManualOpen.value || !!activeTrackChangeId.value
 );
 const activeSideTab = ref<SideTabKey>("assistant");
-const outlineEmptyLabel = computed(() =>
-  debugFlags.locale === "en-US" ? "No headings yet." : "暂无目录项"
-);
-const commentActionLabel = computed(() =>
-  debugFlags.locale === "en-US" ? "Add Comment" : "添加评论"
-);
+const outlineEmptyLabel = computed(() => i18n.value.shell.outlineEmpty);
+const commentActionLabel = computed(() => i18n.value.shell.addComment);
 const trackChangesActionLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? trackChangesEnabled.value
-      ? "Disable Tracking"
-      : "Enable Tracking"
-    : trackChangesEnabled.value
-      ? "关闭修订"
-      : "开启修订"
+  trackChangesEnabled.value
+    ? i18n.value.shell.trackChangesDisable
+    : i18n.value.shell.trackChangesEnable
 );
 const trackChangesStatusLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? trackChangesEnabled.value
-      ? "On"
-      : "Off"
-    : trackChangesEnabled.value
-      ? "已开启"
-      : "未开启"
+  trackChangesEnabled.value
+    ? i18n.value.shell.trackChangesEnabled
+    : i18n.value.shell.trackChangesDisabled
 );
-const outlineTabLabel = computed(() => (debugFlags.locale === "en-US" ? "Outline" : "目录"));
+const outlineTabLabel = computed(() => i18n.value.shell.outline);
 const trackChangesButtonDisabled = computed(
   () => !trackChangesEnabled.value && trackChangeCount.value === 0
 );
 const trackChangesToggleLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? trackChangesEnabled.value
-      ? "Tracking On"
-      : "Track Changes"
-    : trackChangesEnabled.value
-      ? "修订中"
-      : "开启修订"
+  trackChangesEnabled.value
+    ? i18n.value.shell.trackChangesActive
+    : i18n.value.shell.trackChangesEnable
 );
 const trackChangesButtonLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? trackChangeCount.value > 0
-      ? `Changes (${trackChangeCount.value})`
-      : "Changes"
-    : trackChangeCount.value > 0
-      ? `修订 (${trackChangeCount.value})`
-      : "修订"
+  trackChangeCount.value > 0
+    ? t("shell.trackChangesCount", { count: trackChangeCount.value })
+    : i18n.value.shell.trackChanges
 );
-const footerPageLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Pages ${footerStats.value.pageCount}`
-    : `页数 ${footerStats.value.pageCount}`
-);
+const footerPageLabel = computed(() => t("shell.totalPages", { count: footerStats.value.pageCount }));
 const footerCurrentPageLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Page ${footerStats.value.currentPage || 0}`
-    : `当前页 ${footerStats.value.currentPage || 0}`
+  t("shell.currentPage", { count: footerStats.value.currentPage || 0 })
 );
-const footerWordLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Words ${footerStats.value.wordCount}`
-    : `字数 ${footerStats.value.wordCount}`
-);
+const footerWordLabel = computed(() => t("shell.words", { count: footerStats.value.wordCount }));
 const footerSelectionWordLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Selected ${footerStats.value.selectedWordCount}`
-    : `选中 ${footerStats.value.selectedWordCount}`
+  t("shell.selectedWords", { count: footerStats.value.selectedWordCount })
 );
 const resolveBlockTypeLabel = (value: string) => {
-  if (debugFlags.locale === "en-US") {
-    if (value === "paragraph") return "Paragraph";
-    if (value === "heading") return "Heading";
-    if (value === "blockquote") return "Blockquote";
-    if (value === "codeBlock") return "Code Block";
-    if (value === "bulletList") return "Bullet List";
-    if (value === "orderedList") return "Ordered List";
-    if (value === "taskList") return "Task List";
-    if (value === "table") return "Table";
-    return value || "Unknown";
-  }
-  if (value === "paragraph") return "正文";
-  if (value === "heading") return "标题";
-  if (value === "blockquote") return "引用";
-  if (value === "codeBlock") return "代码块";
-  if (value === "bulletList") return "无序列表";
-  if (value === "orderedList") return "有序列表";
-  if (value === "taskList") return "任务列表";
-  if (value === "table") return "表格";
-  return value || "未知";
+  if (value === "paragraph") return i18n.value.shell.blockTypeParagraph;
+  if (value === "heading") return i18n.value.shell.blockTypeHeading;
+  if (value === "blockquote") return i18n.value.shell.blockTypeBlockquote;
+  if (value === "codeBlock") return i18n.value.shell.blockTypeCodeBlock;
+  if (value === "bulletList") return i18n.value.shell.blockTypeBulletList;
+  if (value === "orderedList") return i18n.value.shell.blockTypeOrderedList;
+  if (value === "taskList") return i18n.value.shell.blockTypeTaskList;
+  if (value === "table") return i18n.value.shell.blockTypeTable;
+  return value || i18n.value.shell.blockTypeUnknown;
 };
 const footerBlockTypeLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Block ${resolveBlockTypeLabel(footerStats.value.blockType)}`
-    : `块 ${resolveBlockTypeLabel(footerStats.value.blockType)}`
+  t("shell.block", { type: resolveBlockTypeLabel(footerStats.value.blockType) })
 );
 const footerStatItems = computed(() => {
   const items = [footerCurrentPageLabel.value, footerPageLabel.value, footerWordLabel.value];
@@ -449,19 +425,11 @@ const footerStatItems = computed(() => {
   }
   return items;
 });
-const footerNodeLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Nodes ${footerStats.value.nodeCount}`
-    : `节点数 ${footerStats.value.nodeCount}`
-);
-const footerPluginLabel = computed(() =>
-  debugFlags.locale === "en-US"
-    ? `Plugins ${footerStats.value.pluginCount}`
-    : `插件数 ${footerStats.value.pluginCount}`
-);
-const footerContactLabel = computed(() =>
-  debugFlags.locale === "en-US" ? "Contact" : "联系方式"
-);
+const footerNodeLabel = computed(() => t("shell.nodes", { count: footerStats.value.nodeCount }));
+const footerPluginLabel = computed(() => t("shell.plugins", { count: footerStats.value.pluginCount }));
+const footerContactLabel = computed(() => i18n.value.shell.contact);
+const commentActionTexts = computed(() => i18n.value.commentActions);
+const trackChangeActionTexts = computed(() => i18n.value.trackChangeActions);
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 let detachCommentStore: null | (() => void) = null;
@@ -587,6 +555,15 @@ const handleSessionModeUpdate = (nextMode: EditorSessionMode) => {
     return;
   }
   sessionMode.value = nextMode;
+};
+
+const handleLocaleChange = (value: string | number) => {
+  const nextLocale = coercePlaygroundLocale(value);
+  if (nextLocale === localeKey.value) {
+    return;
+  }
+  globalLocale.value = nextLocale;
+  setPlaygroundLocale(nextLocale);
 };
 
 const clearActiveCommentThread = () => {
@@ -803,68 +780,6 @@ const handleRightSidebarResizeStart = (event: PointerEvent) => {
   }
 };
 
-const createCommentActionTexts = (locale: "zh-CN" | "en-US") =>
-  locale === "en-US"
-    ? {
-        disabled: "Comments are unavailable in viewer mode.",
-        requiresSelection: "Select text first to create a comment.",
-        failed: "Failed to create comment anchor.",
-        created: "Comment anchor created.",
-        replyFailed: "Failed to add comment reply.",
-        editFailed: "Failed to update comment message.",
-        edited: "Comment message updated.",
-        deleteMessageFailed: "Failed to delete comment message.",
-        messageRemoved: "Comment message removed.",
-        missingAnchor: "Comment anchor no longer exists in the document.",
-        removed: "Comment thread removed.",
-      }
-    : {
-        disabled: "\u67e5\u770b\u6a21\u5f0f\u4e0b\u65e0\u6cd5\u8bc4\u8bba\u3002",
-        requiresSelection: "\u8bf7\u5148\u9009\u4e2d\u6587\u672c\u518d\u521b\u5efa\u8bc4\u8bba\u3002",
-        failed: "\u521b\u5efa\u8bc4\u8bba\u951a\u70b9\u5931\u8d25\u3002",
-        created: "\u5df2\u521b\u5efa\u8bc4\u8bba\u951a\u70b9\u3002",
-        replyFailed: "\u6dfb\u52a0\u8bc4\u8bba\u56de\u590d\u5931\u8d25\u3002",
-        editFailed: "\u66f4\u65b0\u8bc4\u8bba\u6d88\u606f\u5931\u8d25\u3002",
-        edited: "\u5df2\u66f4\u65b0\u8bc4\u8bba\u6d88\u606f\u3002",
-        deleteMessageFailed: "\u5220\u9664\u8bc4\u8bba\u6d88\u606f\u5931\u8d25\u3002",
-        messageRemoved: "\u5df2\u5220\u9664\u8bc4\u8bba\u6d88\u606f\u3002",
-        missingAnchor: "\u8bc4\u8bba\u951a\u70b9\u5df2\u4e0d\u5b58\u5728\u4e8e\u6587\u6863\u4e2d\u3002",
-        removed: "\u5df2\u5220\u9664\u8bc4\u8bba\u7ebf\u7a0b\u3002",
-      };
-
-const createTrackChangeActionTexts = (locale: "zh-CN" | "en-US") =>
-  locale === "en-US"
-    ? {
-        disabled: "Track changes is unavailable in viewer mode.",
-        enableFailed: "Failed to update track changes mode.",
-        enabled: "Track changes enabled.",
-        disabledDone: "Track changes disabled.",
-        focusFailed: "Tracked change range no longer exists.",
-        acceptFailed: "Failed to accept tracked change.",
-        rejectFailed: "Failed to reject tracked change.",
-        accepted: "Tracked change accepted.",
-        rejected: "Tracked change rejected.",
-        acceptAllFailed: "Failed to accept all tracked changes.",
-        rejectAllFailed: "Failed to reject all tracked changes.",
-        acceptedAll: "All tracked changes accepted.",
-        rejectedAll: "All tracked changes rejected.",
-      }
-    : {
-        disabled: "查看模式下无法开启修订。",
-        enableFailed: "修订模式切换失败。",
-        enabled: "已开启修订模式。",
-        disabledDone: "已关闭修订模式。",
-        focusFailed: "对应修订已不存在。",
-        acceptFailed: "接受修订失败。",
-        rejectFailed: "拒绝修订失败。",
-        accepted: "已接受修订。",
-        rejected: "已拒绝修订。",
-        acceptAllFailed: "全部接受失败。",
-        rejectAllFailed: "全部拒绝失败。",
-        acceptedAll: "已接受全部修订。",
-        rejectedAll: "已拒绝全部修订。",
-      };
-
 const createCommentEntityId = (prefix: string) => {
   const randomUuid =
     typeof globalThis.crypto?.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
@@ -971,7 +886,7 @@ const syncCommentThreads = () => {
 };
 
 const handleCommentClick = () => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   clearActiveTrackChange();
   trackChangesPanelManualOpen.value = false;
   assistantPanelOpen.value = false;
@@ -1033,7 +948,7 @@ const handleCommentClick = () => {
 };
 
 const handleCommentThreadSelect = (threadId: string) => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   openCommentsPanel(threadId);
   const focused = focusCommentThreadInEditor?.(threadId) === true;
   if (!focused) {
@@ -1061,7 +976,7 @@ const handleCommentThreadReply = ({
   threadId: string;
   body: string;
 }) => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   const nextMessage = lumenCommentsStore.addMessage(threadId, {
     body,
     authorId: currentCommentUserName.value,
@@ -1083,7 +998,7 @@ const handleCommentMessageEdit = ({
   messageId: string;
   body: string;
 }) => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   const nextMessage = lumenCommentsStore.updateMessage(threadId, messageId, {
     body,
     authorId: currentCommentUserName.value,
@@ -1104,7 +1019,7 @@ const handleCommentMessageDelete = ({
   threadId: string;
   messageId: string;
 }) => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   const removed = lumenCommentsStore.removeMessage(threadId, messageId);
   if (!removed) {
     showToolbarMessage(texts.deleteMessageFailed, "warning");
@@ -1115,7 +1030,7 @@ const handleCommentMessageDelete = ({
 };
 
 const handleCommentThreadDelete = (threadId: string) => {
-  const texts = createCommentActionTexts(debugFlags.locale);
+  const texts = commentActionTexts.value;
   const nextThreadId = getNextCommentThreadId(threadId);
   removeCommentThreadInEditor?.(threadId);
   lumenCommentsStore.removeThread(threadId);
@@ -1127,7 +1042,7 @@ const handleCommentThreadDelete = (threadId: string) => {
 };
 
 const handleTrackChangesToggle = () => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   if (!canMutateTrackChanges.value) {
     showToolbarMessage(texts.disabled, "warning");
     return;
@@ -1147,7 +1062,7 @@ const handleTrackChangesToggle = () => {
 };
 
 const handleTrackChangeSelect = (changeId: string) => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   openTrackChangesPanel(changeId);
   const focused = focusTrackChangeInEditor?.(changeId) === true;
   if (!focused) {
@@ -1159,7 +1074,7 @@ const handleTrackChangeSelect = (changeId: string) => {
 };
 
 const handleTrackChangeAccept = (changeId: string) => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   if (acceptTrackChangeInEditor?.(changeId) !== true) {
     showToolbarMessage(texts.acceptFailed, "warning");
     return;
@@ -1168,7 +1083,7 @@ const handleTrackChangeAccept = (changeId: string) => {
 };
 
 const handleTrackChangeReject = (changeId: string) => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   if (rejectTrackChangeInEditor?.(changeId) !== true) {
     showToolbarMessage(texts.rejectFailed, "warning");
     return;
@@ -1177,7 +1092,7 @@ const handleTrackChangeReject = (changeId: string) => {
 };
 
 const handleTrackChangesAcceptAll = () => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   if (acceptAllTrackChangesInEditor?.() !== true) {
     showToolbarMessage(texts.acceptAllFailed, "warning");
     return;
@@ -1186,7 +1101,7 @@ const handleTrackChangesAcceptAll = () => {
 };
 
 const handleTrackChangesRejectAll = () => {
-  const texts = createTrackChangeActionTexts(debugFlags.locale);
+  const texts = trackChangeActionTexts.value;
   if (rejectAllTrackChangesInEditor?.() !== true) {
     showToolbarMessage(texts.rejectAllFailed, "warning");
     return;
@@ -1387,6 +1302,10 @@ onBeforeUnmount(() => {
 
 .topbar-right {
   justify-content: flex-end;
+}
+
+.topbar-locale {
+  width: 132px;
 }
 
 .logo {

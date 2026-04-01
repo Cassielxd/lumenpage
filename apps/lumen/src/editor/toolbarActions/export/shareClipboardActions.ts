@@ -32,18 +32,17 @@ export const createShareClipboardActions = ({
     } catch (_error) {
       // fall through to manual copy dialog fallback
     }
+
+    const texts = resolveExportLocaleTexts(getLocaleKey());
     const result = await requestInputDialog({
       title: promptTitle,
       width: 620,
-      confirmText: getLocaleKey() === "en-US" ? "Close" : "关闭",
-      cancelText: getLocaleKey() === "en-US" ? "Cancel" : "取消",
+      confirmText: texts.close,
+      cancelText: texts.cancel,
       fields: [
         {
           key: "value",
-          label:
-            getLocaleKey() === "en-US"
-              ? "Clipboard is unavailable. Copy text manually:"
-              : "剪贴板不可用，请手动复制：",
+          label: texts.clipboardUnavailableManualCopy,
           type: "textarea",
           defaultValue: text,
           required: true,

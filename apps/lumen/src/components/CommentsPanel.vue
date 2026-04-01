@@ -252,8 +252,10 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 import type { LumenCommentMessage, LumenCommentThread } from "../editor/commentsStore";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 type CommentStatusFilter = "all" | "open" | "resolved";
 
@@ -262,7 +264,7 @@ const props = defineProps<{
   activeThreadId: string | null;
   canManage: boolean;
   currentUserName: string;
-  locale: "zh-CN" | "en-US";
+  locale: PlaygroundLocale;
 }>();
 
 const emit = defineEmits<{
@@ -280,68 +282,10 @@ const messageDrafts = reactive<Record<string, string>>({});
 const editingMessageId = ref<string | null>(null);
 const searchQuery = ref("");
 const statusFilter = ref<CommentStatusFilter>("all");
-
-const texts = computed(() =>
-  props.locale === "en-US"
-    ? {
-        title: "Comments",
-        thread: "thread",
-        threads: "threads",
-        empty: "No comment threads yet.",
-        filteredEmpty: "No threads match the current filter.",
-        searchPlaceholder: "Search comments",
-        all: "All",
-        open: "Open",
-        resolved: "Resolved",
-        emptyQuote: "No quoted text",
-        jump: "Jump",
-        resolve: "Resolve",
-        reopen: "Reopen",
-        delete: "Delete",
-        edit: "Edit",
-        save: "Save",
-        cancel: "Cancel",
-        edited: "Edited",
-        emptyReplies: "No replies yet.",
-        reply: "Reply",
-        replyPlaceholder: "Write a reply",
-        replyPlaceholderResolved: "Reopen the thread to reply.",
-        replyPlaceholderReadonly: "Comments are unavailable in viewer mode.",
-        replyHint: "Ctrl+Enter to reply",
-        editHint: "Ctrl+Enter to save",
-        noMessages: "No messages",
-        oneMessage: "1 message",
-      }
-    : {
-        title: "\u8bc4\u8bba",
-        thread: "\u6761\u7ebf\u7a0b",
-        threads: "\u6761\u7ebf\u7a0b",
-        empty: "\u6682\u65e0\u8bc4\u8bba\u7ebf\u7a0b",
-        filteredEmpty: "\u5f53\u524d\u7b5b\u9009\u6761\u4ef6\u4e0b\u6ca1\u6709\u5339\u914d\u7684\u7ebf\u7a0b",
-        searchPlaceholder: "\u641c\u7d22\u8bc4\u8bba",
-        all: "\u5168\u90e8",
-        open: "\u8fdb\u884c\u4e2d",
-        resolved: "\u5df2\u89e3\u51b3",
-        emptyQuote: "\u65e0\u5f15\u7528\u6587\u672c",
-        jump: "\u5b9a\u4f4d",
-        resolve: "\u89e3\u51b3",
-        reopen: "\u91cd\u65b0\u6253\u5f00",
-        delete: "\u5220\u9664",
-        edit: "\u7f16\u8f91",
-        save: "\u4fdd\u5b58",
-        cancel: "\u53d6\u6d88",
-        edited: "\u5df2\u7f16\u8f91",
-        emptyReplies: "\u6682\u65e0\u56de\u590d",
-        reply: "\u56de\u590d",
-        replyPlaceholder: "\u8f93\u5165\u56de\u590d",
-        replyPlaceholderResolved: "\u5148\u91cd\u65b0\u6253\u5f00\u7ebf\u7a0b\u518d\u56de\u590d",
-        replyPlaceholderReadonly: "\u67e5\u770b\u6a21\u5f0f\u4e0b\u65e0\u6cd5\u8bc4\u8bba",
-        replyHint: "Ctrl+Enter \u53d1\u9001",
-        editHint: "Ctrl+Enter \u4fdd\u5b58",
-        noMessages: "\u6682\u65e0\u6d88\u606f",
-        oneMessage: "1 \u6761\u6d88\u606f",
-      }
-);
+const { t } = useI18n();
+const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
+const i18n = computed(() => createPlaygroundI18n(currentLocale.value));
+const texts = computed(() => i18n.value.commentsPanel);
 
 const normalizeSearchValue = (value: unknown) => String(value || "").trim().toLowerCase();
 
@@ -378,14 +322,11 @@ const summaryLabel = computed(() => {
   const totalCount = props.threads.length;
   const visibleCount = filteredThreads.value.length;
   if (visibleCount === totalCount) {
-    if (totalCount === 1) {
-      return `1 ${texts.value.thread}`;
-    }
-    return `${totalCount} ${texts.value.threads}`;
+    return totalCount === 1
+      ? t("commentsPanel.threadSingle", { count: totalCount })
+      : t("commentsPanel.threadPlural", { count: totalCount });
   }
-  return props.locale === "en-US"
-    ? `${visibleCount} of ${totalCount} ${texts.value.threads}`
-    : `\u663e\u793a ${visibleCount} / ${totalCount} ${texts.value.threads}`;
+  return t("commentsPanel.summaryVisible", { visible: visibleCount, total: totalCount });
 });
 
 const threadGroups = computed(() => {
@@ -426,7 +367,7 @@ const formatTimestamp = (value: string | null | undefined) => {
     return "--";
   }
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(currentLocale.value, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -444,7 +385,7 @@ const formatMessageCount = (count: number) => {
   if (count === 1) {
     return texts.value.oneMessage;
   }
-  return props.locale === "en-US" ? `${count} messages` : `${count} \u6761\u6d88\u606f`;
+  return t("commentsPanel.messageCount", { count });
 };
 
 const getReplyDraft = (threadId: string) => replyDrafts[threadId] || "";

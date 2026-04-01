@@ -1,31 +1,10 @@
 import { createDocument } from "lumenpage-core";
 import { DOMParser as PMDOMParser } from "lumenpage-model";
-import type { PlaygroundLocale } from "../i18n";
+
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import { showToolbarMessage } from "./ui/message";
 
 type GetView = () => any;
-
-type ImportTexts = {
-  alertNoFile: string;
-  alertReadFailed: string;
-  alertParseFailed: string;
-  alertWordUnsupported: string;
-};
-
-const resolveTexts = (locale: PlaygroundLocale): ImportTexts =>
-  locale === "en-US"
-    ? {
-        alertNoFile: "No file selected",
-        alertReadFailed: "Failed to read file",
-        alertParseFailed: "Failed to parse file content",
-        alertWordUnsupported: "Legacy .doc files are not supported yet. Please use .docx, HTML, or TXT.",
-      }
-    : {
-        alertNoFile: "未选择文件",
-        alertReadFailed: "读取文件失败",
-        alertParseFailed: "解析文件内容失败",
-        alertWordUnsupported: "暂不支持旧版 .doc 文件，请使用 .docx、HTML 或 TXT。",
-      };
 
 const getFileExtension = (name: string) => {
   const text = String(name || "").trim().toLowerCase();
@@ -115,13 +94,15 @@ export const createImportActions = ({
   getView: GetView;
   getLocaleKey: () => PlaygroundLocale;
 }) => {
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).importActions;
+
   const importWordDocument = async () => {
     const view = getView();
     const state = view?.state;
     if (!view || !state?.schema || typeof document === "undefined") {
       return false;
     }
-    const texts = resolveTexts(getLocaleKey());
+    const texts = getTexts();
     const input = buildImportInput();
     document.body.appendChild(input);
 

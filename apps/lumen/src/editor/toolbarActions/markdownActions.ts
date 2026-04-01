@@ -1,4 +1,4 @@
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import { loadMarkdownModule } from "../markdownBridge";
 import type { RequestToolbarInputDialog } from "./ui/inputDialog";
 import { showToolbarMessage } from "./ui/message";
@@ -26,6 +26,8 @@ export const createMarkdownActions = ({
   downloadTextAsFile: DownloadTextAsFile;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).markdownActions;
+
   const handleMarkdownAction = async () => {
     const view = getView();
     if (!view?.state?.doc) {
@@ -33,27 +35,19 @@ export const createMarkdownActions = ({
     }
 
     const menuTexts = getMenuTexts();
+    const texts = getTexts();
     const dialogResult = await requestInputDialog({
-      title: "Markdown",
+      title: texts.titleMarkdown,
       width: 560,
       fields: [
         {
           key: "mode",
-          label:
-            getLocaleKey() === "en-US"
-              ? "Action: export / import"
-              : "操作：输入 export 或 import",
+          label: texts.labelMode,
           type: "select",
-          options:
-            getLocaleKey() === "en-US"
-              ? [
-                  { label: "Export", value: "export" },
-                  { label: "Import", value: "import" },
-                ]
-              : [
-                  { label: "导出", value: "export" },
-                  { label: "导入", value: "import" },
-                ],
+          options: [
+            { label: texts.optionExport, value: "export" },
+            { label: texts.optionImport, value: "import" },
+          ],
           defaultValue: "export",
           required: true,
         },

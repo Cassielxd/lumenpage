@@ -164,8 +164,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 import type { TrackChangeRecord } from "lumenpage-extension-track-change";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 type TrackChangeFilter = "all" | "insert" | "delete" | "replace";
 
@@ -174,7 +176,7 @@ const props = defineProps<{
   activeChangeId: string | null;
   enabled: boolean;
   canManage: boolean;
-  locale: "zh-CN" | "en-US";
+  locale: PlaygroundLocale;
 }>();
 
 defineEmits<{
@@ -188,60 +190,10 @@ defineEmits<{
 
 const searchQuery = ref("");
 const typeFilter = ref<TrackChangeFilter>("all");
-
-const texts = computed(() =>
-  props.locale === "en-US"
-    ? {
-        title: "Changes",
-        change: "change",
-        changes: "changes",
-        enabled: "Tracking On",
-        disabled: "Tracking Off",
-        emptyEnabled: "Track changes is on. New edits will appear here.",
-        emptyDisabled: "No tracked changes yet.",
-        filteredEmpty: "No changes match the current filter.",
-        searchPlaceholder: "Search changes",
-        all: "All",
-        acceptAll: "Accept All",
-        rejectAll: "Reject All",
-        accept: "Accept",
-        reject: "Reject",
-        jump: "Jump",
-        deletedPrefix: "Delete:",
-        insertedPrefix: "Insert:",
-        deletedLabel: "Deleted",
-        insertedLabel: "Inserted",
-        replace: "Replace",
-        insert: "Insert",
-        delete: "Delete",
-        unknownAuthor: "Unknown",
-      }
-    : {
-        title: "\u4fee\u8ba2",
-        change: "\u6761\u4fee\u8ba2",
-        changes: "\u6761\u4fee\u8ba2",
-        enabled: "\u4fee\u8ba2\u4e2d",
-        disabled: "\u4fee\u8ba2\u5173\u95ed",
-        emptyEnabled: "\u5df2\u5f00\u542f\u4fee\u8ba2\uff0c\u65b0\u7684\u7f16\u8f91\u4f1a\u663e\u793a\u5728\u8fd9\u91cc\u3002",
-        emptyDisabled: "\u6682\u65e0\u4fee\u8ba2\u8bb0\u5f55\u3002",
-        filteredEmpty: "\u5f53\u524d\u7b5b\u9009\u6761\u4ef6\u4e0b\u6ca1\u6709\u5339\u914d\u7684\u4fee\u8ba2\u3002",
-        searchPlaceholder: "\u641c\u7d22\u4fee\u8ba2",
-        all: "\u5168\u90e8",
-        acceptAll: "\u5168\u90e8\u63a5\u53d7",
-        rejectAll: "\u5168\u90e8\u62d2\u7edd",
-        accept: "\u63a5\u53d7",
-        reject: "\u62d2\u7edd",
-        jump: "\u5b9a\u4f4d",
-        deletedPrefix: "\u5220\u9664\uff1a",
-        insertedPrefix: "\u65b0\u589e\uff1a",
-        deletedLabel: "\u5220\u9664\u5185\u5bb9",
-        insertedLabel: "\u65b0\u589e\u5185\u5bb9",
-        replace: "\u66ff\u6362",
-        insert: "\u65b0\u589e",
-        delete: "\u5220\u9664",
-        unknownAuthor: "\u672a\u77e5\u7528\u6237",
-      }
-);
+const { t } = useI18n();
+const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
+const i18n = computed(() => createPlaygroundI18n(currentLocale.value));
+const texts = computed(() => i18n.value.trackChangesPanel);
 
 const normalizeSearchValue = (value: unknown) => String(value || "").trim().toLowerCase();
 
@@ -291,14 +243,11 @@ const summaryLabel = computed(() => {
   const totalCount = props.changes.length;
   const visibleCount = filteredChanges.value.length;
   if (visibleCount === totalCount) {
-    if (totalCount === 1) {
-      return `1 ${texts.value.change}`;
-    }
-    return `${totalCount} ${texts.value.changes}`;
+    return totalCount === 1
+      ? t("trackChangesPanel.changeSingle", { count: totalCount })
+      : t("trackChangesPanel.changePlural", { count: totalCount });
   }
-  return props.locale === "en-US"
-    ? `${visibleCount} of ${totalCount} ${texts.value.changes}`
-    : `\u663e\u793a ${visibleCount} / ${totalCount} ${texts.value.changes}`;
+  return t("trackChangesPanel.summaryVisible", { visible: visibleCount, total: totalCount });
 });
 
 const selectedChangeId = computed(() => {
@@ -343,7 +292,7 @@ const formatTimestamp = (value: string | null | undefined) => {
     return "--";
   }
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(currentLocale.value, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -357,7 +306,7 @@ const formatTimestamp = (value: string | null | undefined) => {
 const formatExcerpt = (value: string | null | undefined) => {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) {
-    return props.locale === "en-US" ? "(empty)" : "\uff08\u7a7a\uff09";
+    return texts.value.emptyExcerpt;
   }
   return text.length > 64 ? `${text.slice(0, 61)}...` : text;
 };

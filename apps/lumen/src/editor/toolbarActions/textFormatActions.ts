@@ -1,7 +1,8 @@
+import { createPlaygroundI18n } from "../i18n";
+import { showToolbarMessage } from "./ui/message";
+
 type GetView = () => any;
 type GetLocaleKey = () => "zh-CN" | "en-US";
-
-import { showToolbarMessage } from "./ui/message";
 
 type PainterSnapshot = {
   marks: any[];
@@ -17,17 +18,6 @@ const buildResetParagraphAttrs = (attrs: Record<string, unknown> = {}) => ({
   spacingBefore: null,
   spacingAfter: null,
 });
-
-const getPainterTexts = (locale: "zh-CN" | "en-US") =>
-  locale === "en-US"
-    ? {
-        armed: "Format copied. Select target content and click format painter again.",
-        applied: "Format applied",
-      }
-    : {
-        armed: "已复制格式。请选中目标内容后再次点击格式刷。",
-        applied: "已应用格式",
-      };
 
 const cloneMarks = (marks: any[]) =>
   (marks || []).map((mark) => mark?.type?.create?.(mark?.attrs || {}) || mark).filter(Boolean);
@@ -74,6 +64,7 @@ export const createTextFormatActions = ({
   getLocaleKey: GetLocaleKey;
 }) => {
   let painterSnapshot: PainterSnapshot | null = null;
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).textFormatActions;
 
   const clearFormat = () => {
     const view = getView();
@@ -145,7 +136,7 @@ export const createTextFormatActions = ({
     if (!view || !state?.tr || !state?.selection || !state?.schema) {
       return false;
     }
-    const texts = getPainterTexts(getLocaleKey());
+    const texts = getTexts();
 
     if (!painterSnapshot) {
       const { from, empty, $from } = state.selection;
@@ -154,7 +145,7 @@ export const createTextFormatActions = ({
         marks: cloneMarks(marks || []),
         blockAttrs: captureBlockAttrsFromSelection(state),
       };
-      showToolbarMessage(texts.armed, "info");
+      showToolbarMessage(texts.alertPainterArmed, "info");
       return true;
     }
 
@@ -185,7 +176,7 @@ export const createTextFormatActions = ({
       return false;
     }
     view.dispatch(tr.scrollIntoView());
-    showToolbarMessage(texts.applied, "success");
+    showToolbarMessage(texts.alertPainterApplied, "success");
     return true;
   };
 

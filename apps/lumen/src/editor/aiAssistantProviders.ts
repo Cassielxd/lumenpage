@@ -1,6 +1,6 @@
 ﻿import { reactive } from "vue";
 import { createDemoAiAssistantProvider, type AiAssistantProvider } from "lumenpage-extension-ai";
-import type { PlaygroundLocale } from "./i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "./i18n";
 
 export type LumenAiProviderId = "demo" | "deepseek-official";
 
@@ -95,17 +95,7 @@ const normalizeServerEndpoint = (serverUrl: string) => {
     : `${normalized}/ai/deepseek/chat/completions`;
 };
 
-const buildModelRequiredMessage = (locale: PlaygroundLocale) =>
-  locale === "zh-CN" ? "必须填写模型。" : "Model is required.";
-
-const buildRequestFailedMessage = (locale: PlaygroundLocale) =>
-  locale === "zh-CN" ? "DeepSeek 请求失败。" : "The DeepSeek request failed.";
-
-const buildEmptyResultMessage = (locale: PlaygroundLocale) =>
-  locale === "zh-CN" ? "DeepSeek 返回了空结果。" : "The DeepSeek API returned an empty result.";
-
-const buildCancelledMessage = (locale: PlaygroundLocale) =>
-  locale === "zh-CN" ? "AI 请求已取消。" : "AI request was cancelled.";
+const getAiProviderMessages = (locale: PlaygroundLocale) => createPlaygroundI18n(locale).aiProviderMessages;
 
 export const abortLumenAiProviderRequest = () => {
   activeAbortController?.abort();
@@ -122,8 +112,9 @@ const requestDeepSeekOfficialProvider = async (
   }
 ) => {
   const modelId = trimText(lumenAiProviderConfig.modelId);
+  const messages = getAiProviderMessages(locale);
   if (!modelId) {
-    throw new Error(buildModelRequiredMessage(locale));
+    throw new Error(messages.modelRequired);
   }
 
   const endpoint = normalizeServerEndpoint(lumenAiProviderConfig.serverUrl);
@@ -159,7 +150,7 @@ const requestDeepSeekOfficialProvider = async (
 
     if (!response.ok) {
       const errorText = trimText(await response.text());
-      throw new Error(errorText || buildRequestFailedMessage(locale));
+      throw new Error(errorText || messages.requestFailed);
     }
 
     const payload = (await response.json()) as {
@@ -174,7 +165,7 @@ const requestDeepSeekOfficialProvider = async (
 
     const outputText = trimText(payload.outputText);
     if (!outputText) {
-      throw new Error(trimText(payload.error) || buildEmptyResultMessage(locale));
+      throw new Error(trimText(payload.error) || messages.emptyResult);
     }
 
     return outputText;
@@ -184,7 +175,7 @@ const requestDeepSeekOfficialProvider = async (
       error,
     });
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(buildCancelledMessage(locale));
+      throw new Error(messages.cancelled);
     }
     throw error;
   } finally {

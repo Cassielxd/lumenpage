@@ -27,9 +27,10 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 
 import type { LumenCollaborationState } from "../editor/collaboration";
-import type { PlaygroundLocale } from "../editor/i18n";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 type CollaborationUserView = {
   key: string;
@@ -44,7 +45,10 @@ const props = defineProps<{
   compact?: boolean;
 }>();
 
+const { t } = useI18n();
 const compact = computed(() => props.compact === true);
+const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
+const i18n = computed(() => createPlaygroundI18n(currentLocale.value));
 
 const createInitials = (name: string) => {
   const normalized = String(name || "").trim();
@@ -59,7 +63,7 @@ const createInitials = (name: string) => {
 };
 
 const normalizeUser = (user: Record<string, any>, fallbackKey: string): CollaborationUserView => {
-  const name = String(user?.name || "").trim() || "User";
+  const name = String(user?.name || "").trim() || i18n.value.collaboration.fallbackUser;
   const color = String(user?.color || "").trim() || "#2563eb";
   return {
     key: String(user?.clientId ?? fallbackKey),
@@ -115,45 +119,29 @@ const statusTone = computed(() => {
 });
 
 const statusLabel = computed(() => {
-  if (props.locale === "en-US") {
-    if (props.state.error) {
-      return "Auth failed";
-    }
-    if (props.state.synced) {
-      return "Synced";
-    }
-    if (props.state.status === "connected") {
-      return "Syncing";
-    }
-    if (props.state.status === "connecting") {
-      return "Connecting";
-    }
-    return "Disconnected";
-  }
-
   if (props.state.error) {
-    return "鉴权失败";
+    return i18n.value.collaboration.statusAuthFailed;
   }
   if (props.state.synced) {
-    return "已同步";
+    return i18n.value.collaboration.statusSynced;
   }
   if (props.state.status === "connected") {
-    return "同步中";
+    return i18n.value.collaboration.statusSyncing;
   }
   if (props.state.status === "connecting") {
-    return "连接中";
+    return i18n.value.collaboration.statusConnecting;
   }
-  return "已断开";
+  return i18n.value.collaboration.statusDisconnected;
 });
 
 const userCountLabel = computed(() => {
   const count = visibleUsers.value.length;
-  return props.locale === "en-US" ? `${count} online` : `${count} 人在线`;
+  return t("collaboration.onlineCount", { count });
 });
 
 const currentUserLabel = computed(() => {
-  const name = String(props.state.userName || "").trim() || "User";
-  return props.locale === "en-US" ? `You · ${name}` : `我 · ${name}`;
+  const name = String(props.state.userName || "").trim() || i18n.value.collaboration.fallbackUser;
+  return t("collaboration.currentUser", { name });
 });
 
 const createAvatarStyle = (color: string) => ({

@@ -7,7 +7,7 @@ import {
   findPageSizePresetByDimensions,
   type PageSizePresetDefinition,
 } from "lumenpage-view-canvas";
-import type { PlaygroundLocale } from "../i18n";
+import { createPlaygroundI18n, type PlaygroundLocale } from "../i18n";
 import { createPageAppearanceActions } from "./pageAppearanceActions";
 import type { GetEditorCommandMap } from "./commandUtils";
 import { invokeCommand } from "./commandUtils";
@@ -19,17 +19,17 @@ const TOC_PLACEHOLDER = "[[TOC]]";
 const TOC_MARKERS = new Set([TOC_PLACEHOLDER, "[TOC]"]);
 
 export type PageSizePreset = PageSizePresetDefinition & {
-  label: Record<PlaygroundLocale, string>;
+  label: string;
 };
 
-const PAGE_SIZE_LABELS: Record<PageSizePresetDefinition["value"], Record<PlaygroundLocale, string>> = {
-  a3: { "zh-CN": "A3", "en-US": "A3" },
-  a4: { "zh-CN": "A4", "en-US": "A4" },
-  a5: { "zh-CN": "A5", "en-US": "A5" },
-  b4: { "zh-CN": "B4", "en-US": "B4" },
-  b5: { "zh-CN": "B5", "en-US": "B5" },
-  letter: { "zh-CN": "Letter", "en-US": "Letter" },
-  legal: { "zh-CN": "Legal", "en-US": "Legal" },
+const PAGE_SIZE_LABELS: Record<PageSizePresetDefinition["value"], string> = {
+  a3: "A3",
+  a4: "A4",
+  a5: "A5",
+  b4: "B4",
+  b5: "B5",
+  letter: "Letter",
+  legal: "Legal",
 };
 
 export const PAGE_SIZE_PRESETS: PageSizePreset[] = PAGE_SIZE_PRESET_DEFINITIONS.map((preset) => ({
@@ -48,6 +48,7 @@ export const createLayoutActions = ({
   getLocaleKey: () => PlaygroundLocale;
   requestInputDialog: RequestToolbarInputDialog;
 }) => {
+  const getTexts = () => createPlaygroundI18n(getLocaleKey()).layoutActions;
   const pageAppearanceActions = createPageAppearanceActions({
     getView,
     getLocaleKey,
@@ -154,9 +155,10 @@ export const createLayoutActions = ({
       return false;
     }
     const current = Number(settings.lineHeight) || 26;
+    const texts = getTexts();
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Line Height" : "行高",
-      label: getLocaleKey() === "en-US" ? "Line height (px)" : "行高（px）",
+      title: texts.lineHeightTitle,
+      label: texts.lineHeightLabel,
       defaultValue: String(current),
     });
     if (!Number.isFinite(next) || next <= 0) {
@@ -167,9 +169,10 @@ export const createLayoutActions = ({
   };
 
   const applyParagraphSpacingSetting = async () => {
+    const texts = getTexts();
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Paragraph Spacing" : "段间距",
-      label: getLocaleKey() === "en-US" ? "Paragraph spacing (px)" : "段间距（px）",
+      title: texts.paragraphSpacingTitle,
+      label: texts.paragraphSpacingLabel,
       defaultValue: "8",
     });
     if (!Number.isFinite(next) || next < 0) {
@@ -202,9 +205,10 @@ export const createLayoutActions = ({
       return false;
     }
     const current = Number(settings.margin.left) || 72;
+    const texts = getTexts();
     const next = await requestNumber({
-      title: getLocaleKey() === "en-US" ? "Page Margin" : "页边距",
-      label: getLocaleKey() === "en-US" ? "Page margin (px)" : "页边距（px）",
+      title: texts.pageMarginTitle,
+      label: texts.pageMarginLabel,
       defaultValue: String(current),
     });
     if (!Number.isFinite(next) || next < 0) {
@@ -218,15 +222,16 @@ export const createLayoutActions = ({
   const applyPageSizeSetting = async () => {
     const current = getCurrentPageSizeInfo();
     const currentPreset = current?.preset?.value || DEFAULT_PAGE_SIZE_PRESET_VALUE;
+    const texts = getTexts();
     const result = await requestInputDialog({
-      title: getLocaleKey() === "en-US" ? "Page Size" : "纸张大小",
+      title: texts.pageSizeTitle,
       fields: [
         {
           key: "value",
-          label: getLocaleKey() === "en-US" ? "Paper type" : "纸张类型",
+          label: texts.pageSizePaperType,
           type: "select",
           options: PAGE_SIZE_PRESETS.map((preset) => ({
-            label: preset.label[getLocaleKey()],
+            label: preset.label,
             value: preset.value,
           })),
           defaultValue: currentPreset,

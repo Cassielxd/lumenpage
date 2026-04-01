@@ -1,5 +1,5 @@
 import { computed, nextTick, ref } from "vue";
-import type { ToolbarItemConfig } from "../toolbarCatalog";
+import { EMPTY_TOOLBAR_LABEL_KEY, type ToolbarItemConfig } from "../toolbarCatalog";
 import type { GetEditorCommandMap } from "./commandUtils";
 import { invokeCommand } from "./commandUtils";
 
@@ -35,7 +35,7 @@ export const createHeadingInlineItems = (): ToolbarItemConfig[] => [
   {
     id: "heading-inline-box",
     icon: "",
-    label: { "zh-CN": "", "en-US": "" },
+    labelKey: EMPTY_TOOLBAR_LABEL_KEY,
     action: HEADING_INLINE_BOX_ACTION,
     implemented: true,
   },

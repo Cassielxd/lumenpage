@@ -23,8 +23,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { PlaygroundLocale } from "../editor/i18n";
-import { getVisibleToolbarMenuTabs, type ToolbarMenuKey } from "../editor/toolbarCatalog";
+import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
+import {
+  getVisibleToolbarMenuTabs,
+  resolveToolbarCatalogLabel,
+  type ToolbarMenuKey,
+} from "../editor/toolbarCatalog";
 
 const props = defineProps<{
   locale?: PlaygroundLocale;
@@ -35,15 +39,15 @@ const emit = defineEmits<{
   (e: "update:activeMenu", value: ToolbarMenuKey): void;
 }>();
 
+const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
+const i18n = computed(() => createPlaygroundI18n(currentLocale.value));
 const resolvedActiveMenu = computed<ToolbarMenuKey>(() => props.activeMenu || "base");
-const menuTabAriaLabel = computed(() =>
-  props.locale === "en-US" ? "Toolbar categories" : "工具栏分类"
-);
+const menuTabAriaLabel = computed(() => i18n.value.shell.toolbarCategories);
 
 const toolbarMenuItems = computed<Array<{ value: ToolbarMenuKey; label: string }>>(() =>
   getVisibleToolbarMenuTabs().map((item) => ({
     value: item.value,
-    label: item.label[props.locale === "en-US" ? "en-US" : "zh-CN"],
+    label: resolveToolbarCatalogLabel(currentLocale.value, item.labelKey),
   }))
 );
 
