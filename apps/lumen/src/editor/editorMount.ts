@@ -69,6 +69,7 @@ type MountPlaygroundEditorParams = {
 type MountedPlaygroundEditor = {
   editor: Editor;
   view: CanvasEditorView;
+  collaborationDocument: unknown | null;
   setTocOutlineEnabled: (enabled: boolean) => void;
   isTocOutlineEnabled: () => boolean;
   getActiveCommentThreadId: () => string | null;
@@ -970,6 +971,7 @@ export const mountPlaygroundEditor = ({
   return {
     editor,
     view,
+    collaborationDocument: collaborationRuntime.provider?.document ?? null,
     setTocOutlineEnabled: (enabled: boolean) => {
       tocOutlineController.setEnabled(enabled);
     },

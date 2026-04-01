@@ -66,10 +66,12 @@
     "lumenpage-view-canvas": "workspace:*",
     "lumenpage-view-runtime": "workspace:*",
     "mammoth": "^1.12.0",
+    "konva": "^9.3.22",
     "tdesign-icons-vue-next": "^0.3.4",
     "tdesign-vue-next": "^1.8.0",
     "vue": "^3.5.0",
     "vue-i18n": "^11.3.0",
+    "vue-konva": "^3.2.6",
     "yjs": "^13.6.30"
   },
   "devDependencies": {

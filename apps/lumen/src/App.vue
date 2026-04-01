@@ -52,128 +52,176 @@
         <t-content class="doc-main">
           <div class="doc-stage">
             <div ref="editorHost" class="editor-host"></div>
+            <AnnotationLayer :editor-view="view" :host="editorHost" :store="annotationStore" />
+          </div>
+          <div class="doc-floating-actions" :class="{ 'has-side-panel': !!activeSideTab }">
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'outline' }"
+              @click="handleFloatingActionClick('outline')"
+            >
+              <span class="doc-floating-action-label">{{ outlineTabLabel }}</span>
+            </button>
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'comments' }"
+              @click="handleFloatingActionClick('comments')"
+            >
+              <span class="doc-floating-action-label">{{ commentButtonLabel }}</span>
+            </button>
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'collaboration' }"
+              @click="handleFloatingActionClick('collaboration')"
+            >
+              <span class="doc-floating-action-label">{{ collaborationButtonLabel }}</span>
+            </button>
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'assistant' }"
+              @click="handleFloatingActionClick('assistant')"
+            >
+              <span class="doc-floating-action-label">{{ assistantButtonLabel }}</span>
+            </button>
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'changes' }"
+              @click="handleFloatingActionClick('changes')"
+            >
+              <span class="doc-floating-action-label">{{ trackChangesButtonLabel }}</span>
+            </button>
+            <button
+              type="button"
+              class="doc-floating-action"
+              :class="{ 'is-active': activeSideTab === 'annotation' && annotationStore.state.active }"
+              @click="handleFloatingActionClick('annotation')"
+            >
+              <span class="doc-floating-action-label">{{ annotationActionLabel }}</span>
+            </button>
           </div>
         </t-content>
-        <t-aside class="doc-side-tabs" :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }">
+        <t-aside
+          v-if="activeSideTab"
+          class="doc-side-tabs"
+          :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }"
+        >
           <button
             type="button"
             class="doc-side-panel-resize-handle"
             aria-label="Resize panel"
             @pointerdown="handleRightSidebarResizeStart"
           ></button>
-          <t-tabs
-            class="doc-side-tabs-control"
-            placement="left"
-            theme="card"
-            size="medium"
-            :value="activeSideTab"
-            @change="handleSideTabChange"
-          >
-            <t-tab-panel value="outline" :label="outlineTabLabel">
-              <div class="doc-side-tab-panel doc-side-tab-panel-outline">
-                <div class="doc-side-tab-header">
-                  <div class="doc-side-tab-heading">
-                    <span class="doc-side-tab-title">{{ outlineTitle }}</span>
-                    <span class="doc-side-tab-summary">{{ tocItems.length }}</span>
-                  </div>
-                </div>
-                <div v-if="tocItems.length === 0" class="doc-side-tab-empty">
-                  {{ outlineEmptyLabel }}
-                </div>
-                <div v-else class="doc-outline-list">
-                  <button
-                    v-for="item in tocItems"
-                    :key="item.id"
-                    type="button"
-                    class="doc-outline-item"
-                    :class="{ 'is-active': item.id === activeTocId }"
-                    :style="{ '--toc-level': String(item.level) }"
-                    @click="handleTocItemClick(item)"
-                  >
-                    <span class="doc-outline-item-text">{{ item.text }}</span>
-                  </button>
+          <div class="doc-side-panel-card">
+            <div v-if="activeSideTab === 'outline'" class="doc-side-tab-panel doc-side-tab-panel-outline">
+              <div class="doc-side-tab-header">
+                <div class="doc-side-tab-heading">
+                  <span class="doc-side-tab-title">{{ outlineTitle }}</span>
+                  <span class="doc-side-tab-summary">{{ tocItems.length }}</span>
                 </div>
               </div>
-            </t-tab-panel>
+              <div v-if="tocItems.length === 0" class="doc-side-tab-empty">
+                {{ outlineEmptyLabel }}
+              </div>
+              <div v-else class="doc-outline-list">
+                <button
+                  v-for="item in tocItems"
+                  :key="item.id"
+                  type="button"
+                  class="doc-outline-item"
+                  :class="{ 'is-active': item.id === activeTocId }"
+                  :style="{ '--toc-level': String(item.level) }"
+                  @click="handleTocItemClick(item)"
+                >
+                  <span class="doc-outline-item-text">{{ item.text }}</span>
+                </button>
+              </div>
+            </div>
 
-            <t-tab-panel value="comments" :label="commentButtonLabel">
-              <div class="doc-side-tab-panel">
-                <div class="doc-side-tab-actions">
-                  <t-button
-                    size="small"
-                    variant="outline"
-                    :disabled="commentButtonDisabled"
-                    @mousedown.prevent
-                    @click="handleCommentClick"
-                  >
-                    {{ commentActionLabel }}
-                  </t-button>
-                </div>
-                <CommentsPanel
-                  :locale="localeKey"
-                  :threads="commentThreads"
-                  :active-thread-id="activeCommentThreadId"
-                  :can-manage="canMutateComments"
-                  :current-user-name="currentCommentUserName"
-                  @close="closeCommentsPanel"
-                  @select="handleCommentThreadSelect"
-                  @toggle-resolved="handleCommentThreadResolved"
-                  @reply="handleCommentThreadReply"
-                  @edit-message="handleCommentMessageEdit"
-                  @delete-message="handleCommentMessageDelete"
-                  @delete="handleCommentThreadDelete"
-                />
+            <div v-else-if="activeSideTab === 'comments'" class="doc-side-tab-panel">
+              <div class="doc-side-tab-actions">
+                <t-button
+                  size="small"
+                  variant="outline"
+                  :disabled="commentButtonDisabled"
+                  @mousedown.prevent
+                  @click="handleCommentClick"
+                >
+                  {{ commentActionLabel }}
+                </t-button>
               </div>
-            </t-tab-panel>
+              <CommentsPanel
+                :locale="localeKey"
+                :threads="commentThreads"
+                :active-thread-id="activeCommentThreadId"
+                :can-manage="canMutateComments"
+                :current-user-name="currentCommentUserName"
+                @close="closeCommentsPanel"
+                @select="handleCommentThreadSelect"
+                @toggle-resolved="handleCommentThreadResolved"
+                @reply="handleCommentThreadReply"
+                @edit-message="handleCommentMessageEdit"
+                @delete-message="handleCommentMessageDelete"
+                @delete="handleCommentThreadDelete"
+              />
+            </div>
 
-            <t-tab-panel value="assistant" :label="assistantButtonLabel">
-              <div class="doc-side-tab-panel">
-                <AiAssistantPanel
-                  :locale="localeKey"
-                  :editor="editor"
-                  :can-manage="canManageAssistant"
-                  @close="closeAssistantPanel"
-                />
-              </div>
-            </t-tab-panel>
+            <div v-else-if="activeSideTab === 'collaboration'" class="doc-side-tab-panel">
+              <CollaborationPanel :locale="localeKey" :state="collaborationState" />
+            </div>
 
-            <t-tab-panel value="changes" :label="trackChangesButtonLabel">
-              <div class="doc-side-tab-panel">
-                <div class="doc-side-tab-actions">
-                  <t-button
-                    size="small"
-                    variant="outline"
-                    :theme="trackChangesEnabled ? 'success' : 'default'"
-                    :disabled="!canMutateTrackChanges"
-                    @mousedown.prevent
-                    @click="handleTrackChangesToggle"
-                  >
-                    {{ trackChangesActionLabel }}
-                  </t-button>
-                  <t-tag
-                    size="small"
-                    variant="light"
-                    :theme="trackChangesEnabled ? 'success' : 'default'"
-                  >
-                    {{ trackChangesStatusLabel }}
-                  </t-tag>
-                </div>
-                <TrackChangesPanel
-                  :locale="localeKey"
-                  :changes="trackChangeRecords"
-                  :active-change-id="activeTrackChangeId"
-                  :enabled="trackChangesEnabled"
-                  :can-manage="canMutateTrackChanges"
-                  @close="closeTrackChangesPanel"
-                  @select="handleTrackChangeSelect"
-                  @accept="handleTrackChangeAccept"
-                  @reject="handleTrackChangeReject"
-                  @accept-all="handleTrackChangesAcceptAll"
-                  @reject-all="handleTrackChangesRejectAll"
-                />
+            <div v-else-if="activeSideTab === 'assistant'" class="doc-side-tab-panel">
+              <AiAssistantPanel
+                :locale="localeKey"
+                :editor="editor"
+                :can-manage="canManageAssistant"
+                @close="closeAssistantPanel"
+              />
+            </div>
+
+            <div v-else-if="activeSideTab === 'changes'" class="doc-side-tab-panel">
+              <div class="doc-side-tab-actions">
+                <t-button
+                  size="small"
+                  variant="outline"
+                  :theme="trackChangesEnabled ? 'success' : 'default'"
+                  :disabled="!canMutateTrackChanges"
+                  @mousedown.prevent
+                  @click="handleTrackChangesToggle"
+                >
+                  {{ trackChangesActionLabel }}
+                </t-button>
+                <t-tag
+                  size="small"
+                  variant="light"
+                  :theme="trackChangesEnabled ? 'success' : 'default'"
+                >
+                  {{ trackChangesStatusLabel }}
+                </t-tag>
               </div>
-            </t-tab-panel>
-          </t-tabs>
+              <TrackChangesPanel
+                :locale="localeKey"
+                :changes="trackChangeRecords"
+                :active-change-id="activeTrackChangeId"
+                :enabled="trackChangesEnabled"
+                :can-manage="canMutateTrackChanges"
+                @close="closeTrackChangesPanel"
+                @select="handleTrackChangeSelect"
+                @accept="handleTrackChangeAccept"
+                @reject="handleTrackChangeReject"
+                @accept-all="handleTrackChangesAcceptAll"
+                @reject-all="handleTrackChangesRejectAll"
+              />
+            </div>
+
+            <div v-else-if="activeSideTab === 'annotation'" class="doc-side-tab-panel">
+              <AnnotationToolbar :locale="localeKey" :store="annotationStore" />
+            </div>
+          </div>
         </t-aside>
       </div>
     </t-content>
@@ -244,14 +292,18 @@ import {
 } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Editor as LumenEditor } from "lumenpage-core";
-import { Selection, TextSelection } from "lumenpage-state";
+import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import AiAssistantPanel from "./components/AiAssistantPanel.vue";
+import AnnotationLayer from "./components/AnnotationLayer.vue";
+import AnnotationToolbar from "./components/AnnotationToolbar.vue";
 import CommentsPanel from "./components/CommentsPanel.vue";
+import CollaborationPanel from "./components/CollaborationPanel.vue";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import TrackChangesPanel from "./components/TrackChangesPanel.vue";
+import { createLumenAnnotationStore } from "./annotation/annotationStore";
 import {
   createInitialLumenCollaborationState,
   type LumenCollaborationState,
@@ -300,17 +352,18 @@ const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const editor = shallowRef<LumenEditor | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
+const annotationStore = createLumenAnnotationStore();
+const ANNOTATION_STORAGE_PREFIX = "lumenpage-lumen-annotation-v1";
+const ANNOTATION_AUTHOR_STORAGE_KEY = "lumenpage-lumen-annotation-author-id";
 const collaborationState = ref<LumenCollaborationState>(
   createInitialLumenCollaborationState(debugFlags)
 );
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
-const commentsPanelOpen = ref(false);
 const activeCommentThreadId = ref<string | null>(null);
-const assistantPanelOpen = ref(false);
 const trackChangesEnabled = ref(false);
 const trackChangeRecords = ref<TrackChangeRecord[]>([]);
 const activeTrackChangeId = ref<string | null>(null);
-const trackChangesPanelManualOpen = ref(false);
+const activeSideTab = ref<SideTabKey | null>(null);
 const rightSidebarWidth = ref(360);
 const isResizingRightSidebar = ref(false);
 const footerStats = ref({
@@ -324,11 +377,7 @@ const footerStats = ref({
 });
 const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
-const tocPanelOpen = ref(false);
 const outlineTitle = computed(() => i18n.value.shell.outline);
-const tocToggleLabel = computed(() =>
-  tocPanelOpen.value ? i18n.value.shell.outlineHide : i18n.value.shell.outlineShow
-);
 const sessionMode = ref<EditorSessionMode>(
   debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
 );
@@ -363,10 +412,6 @@ const commentButtonLabel = computed(() =>
 );
 const assistantButtonLabel = computed(() => i18n.value.shell.assistant);
 const trackChangeCount = computed(() => trackChangeRecords.value.length);
-const trackChangesPanelOpen = computed(
-  () => trackChangesPanelManualOpen.value || !!activeTrackChangeId.value
-);
-const activeSideTab = ref<SideTabKey>("assistant");
 const outlineEmptyLabel = computed(() => i18n.value.shell.outlineEmpty);
 const commentActionLabel = computed(() => i18n.value.shell.addComment);
 const trackChangesActionLabel = computed(() =>
@@ -380,14 +425,8 @@ const trackChangesStatusLabel = computed(() =>
     : i18n.value.shell.trackChangesDisabled
 );
 const outlineTabLabel = computed(() => i18n.value.shell.outline);
-const trackChangesButtonDisabled = computed(
-  () => !trackChangesEnabled.value && trackChangeCount.value === 0
-);
-const trackChangesToggleLabel = computed(() =>
-  trackChangesEnabled.value
-    ? i18n.value.shell.trackChangesActive
-    : i18n.value.shell.trackChangesEnable
-);
+const collaborationButtonLabel = computed(() => i18n.value.collaborationPanel.title);
+const annotationActionLabel = computed(() => i18n.value.annotationPanel.title);
 const trackChangesButtonLabel = computed(() =>
   trackChangeCount.value > 0
     ? t("shell.trackChangesCount", { count: trackChangeCount.value })
@@ -453,7 +492,13 @@ type LumenSelectionSnapshot = {
   type: string | null;
 };
 
-type SideTabKey = "outline" | "comments" | "assistant" | "changes";
+type SideTabKey =
+  | "outline"
+  | "comments"
+  | "collaboration"
+  | "assistant"
+  | "changes"
+  | "annotation";
 
 type LumenTestApi = {
   forceRender: () => boolean;
@@ -465,6 +510,100 @@ type LumenTestApi = {
 type LumenDebugWindow = Window & {
   __lumenView?: CanvasEditorView | null;
   __lumenTestApi?: LumenTestApi | null;
+};
+
+const resolveAnnotationAuthorId = () => {
+  if (typeof window === "undefined") {
+    return "server";
+  }
+  try {
+    const stored = window.localStorage.getItem(ANNOTATION_AUTHOR_STORAGE_KEY);
+    const normalized = typeof stored === "string" ? stored.trim() : "";
+    if (normalized) {
+      return normalized;
+    }
+    const nextId =
+      typeof window.crypto?.randomUUID === "function"
+        ? window.crypto.randomUUID()
+        : `annotation-author-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    window.localStorage.setItem(ANNOTATION_AUTHOR_STORAGE_KEY, nextId);
+    return nextId;
+  } catch (_error) {
+    return `annotation-author-${Date.now().toString(36)}`;
+  }
+};
+
+const annotationAuthorId = resolveAnnotationAuthorId();
+const annotationAuthorName = computed(() =>
+  debugFlags.collaborationEnabled ? collaborationState.value.userName || i18n.value.shell.you : i18n.value.shell.you
+);
+const annotationAuthorColor = computed(
+  () => (debugFlags.collaborationEnabled ? collaborationState.value.userColor : null) || "#2563eb"
+);
+
+const annotationStorageKey =
+  typeof window === "undefined"
+    ? `${ANNOTATION_STORAGE_PREFIX}:server`
+    : [
+        ANNOTATION_STORAGE_PREFIX,
+        debugFlags.collaborationEnabled ? "collab" : "local",
+        debugFlags.collaborationDocument,
+        debugFlags.collaborationField,
+        window.location.pathname,
+      ]
+        .map((part) => encodeURIComponent(String(part || "")))
+        .join(":");
+
+const restoreAnnotationSession = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (annotationStore.isCollaborationBacked() || debugFlags.collaborationEnabled) {
+    return;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(annotationStorageKey);
+    if (!raw) {
+      return;
+    }
+    const restored = annotationStore.hydrate(JSON.parse(raw));
+    if (!restored) {
+      window.sessionStorage.removeItem(annotationStorageKey);
+    }
+  } catch (_error) {
+    try {
+      window.sessionStorage.removeItem(annotationStorageKey);
+    } catch (_nestedError) {
+      // Ignore storage cleanup failures.
+    }
+  }
+};
+
+const persistAnnotationSession = () => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (annotationStore.isCollaborationBacked() || debugFlags.collaborationEnabled) {
+    return;
+  }
+  try {
+    const snapshot = annotationStore.snapshot();
+    if (snapshot.items.length === 0) {
+      window.sessionStorage.removeItem(annotationStorageKey);
+      return;
+    }
+    window.sessionStorage.setItem(annotationStorageKey, JSON.stringify(snapshot));
+  } catch (_error) {
+    // Ignore storage failures in restricted environments.
+  }
+};
+
+const syncAnnotationAuthor = () => {
+  annotationStore.setCurrentAuthor({
+    id: annotationAuthorId,
+    name: annotationAuthorName.value,
+    color: annotationAuthorColor.value,
+  });
 };
 
 const clampSelectionPos = (doc: CanvasEditorView["state"]["doc"] | null | undefined, pos: number) => {
@@ -582,43 +721,49 @@ const clearActiveTrackChange = () => {
   }
 };
 
+const setActiveSideTab = (nextTab: SideTabKey | null) => {
+  if (activeSideTab.value === "annotation" && nextTab !== "annotation") {
+    annotationStore.setActive(false);
+  }
+  activeSideTab.value = nextTab;
+  setTocOutlineEnabled?.(nextTab === "outline");
+};
+
 const setTocPanelEnabled = (enabled: boolean) => {
   if (enabled) {
     clearActiveCommentThread();
     clearActiveTrackChange();
-    activeSideTab.value = "outline";
-    tocPanelOpen.value = true;
-    commentsPanelOpen.value = false;
-    assistantPanelOpen.value = false;
-    trackChangesPanelManualOpen.value = false;
-    setTocOutlineEnabled?.(true);
+    setActiveSideTab("outline");
     return;
   }
-
-  tocPanelOpen.value = false;
-  setTocOutlineEnabled?.(false);
   if (activeSideTab.value === "outline") {
-    activeSideTab.value = "assistant";
-    assistantPanelOpen.value = true;
+    setActiveSideTab(null);
+    return;
   }
+  setTocOutlineEnabled?.(false);
 };
 
 const toggleTocPanel = () => {
-  setTocPanelEnabled(!tocPanelOpen.value);
+  handleFloatingActionClick("outline");
 };
 
 const closeCommentsPanel = () => {
-  commentsPanelOpen.value = false;
   clearActiveCommentThread();
   if (activeSideTab.value === "comments") {
-    openAssistantPanel();
+    setActiveSideTab(null);
   }
 };
 
 const closeAssistantPanel = () => {
-  assistantPanelOpen.value = false;
   if (activeSideTab.value === "assistant") {
-    setTocPanelEnabled(true);
+    setActiveSideTab(null);
+  }
+};
+
+const closeAnnotationPanel = () => {
+  annotationStore.setActive(false);
+  if (activeSideTab.value === "annotation") {
+    setActiveSideTab(null);
   }
 };
 
@@ -626,21 +771,15 @@ const getNextTrackChangeId = (excludeChangeId?: string | null) =>
   trackChangeRecords.value.find((change) => change.changeId !== excludeChangeId)?.changeId || null;
 
 const closeTrackChangesPanel = () => {
-  trackChangesPanelManualOpen.value = false;
   clearActiveTrackChange();
   if (activeSideTab.value === "changes") {
-    setTocPanelEnabled(true);
+    setActiveSideTab(null);
   }
 };
 
 const openTrackChangesPanel = (preferredChangeId?: string | null) => {
   clearActiveCommentThread();
-  trackChangesPanelManualOpen.value = true;
-  commentsPanelOpen.value = false;
-  assistantPanelOpen.value = false;
-  tocPanelOpen.value = false;
-  setTocOutlineEnabled?.(false);
-  activeSideTab.value = "changes";
+  setActiveSideTab("changes");
   const nextChangeId =
     preferredChangeId || activeTrackChangeId.value || trackChangeRecords.value[0]?.changeId || null;
   if (nextChangeId && nextChangeId !== activeTrackChangeId.value) {
@@ -654,12 +793,7 @@ const getNextCommentThreadId = (excludeThreadId?: string | null) =>
 
 const openCommentsPanel = (preferredThreadId?: string | null) => {
   clearActiveTrackChange();
-  trackChangesPanelManualOpen.value = false;
-  assistantPanelOpen.value = false;
-  tocPanelOpen.value = false;
-  setTocOutlineEnabled?.(false);
-  activeSideTab.value = "comments";
-  commentsPanelOpen.value = true;
+  setActiveSideTab("comments");
   const nextThreadId = preferredThreadId || activeCommentThreadId.value || getNextCommentThreadId();
   if (nextThreadId && nextThreadId !== activeCommentThreadId.value) {
     activeCommentThreadId.value = nextThreadId;
@@ -667,31 +801,52 @@ const openCommentsPanel = (preferredThreadId?: string | null) => {
   }
 };
 
-const normalizeSideTabValue = (value: string | number): SideTabKey => {
-  if (value === "outline" || value === "comments" || value === "assistant" || value === "changes") {
-    return value;
-  }
-  return "assistant";
-};
-
-const handleSideTabChange = (value: string | number) => {
-  const nextTab = normalizeSideTabValue(value);
-  if (nextTab === activeSideTab.value) {
+const handleFloatingActionClick = (tab: SideTabKey) => {
+  if (tab === "outline") {
+    setTocPanelEnabled(activeSideTab.value !== "outline");
     return;
   }
-  if (nextTab === "outline") {
-    setTocPanelEnabled(true);
-    return;
-  }
-  if (nextTab === "comments") {
+  if (tab === "comments") {
+    if (activeSideTab.value === "comments") {
+      closeCommentsPanel();
+      return;
+    }
     openCommentsPanel(activeCommentThreadId.value);
     return;
   }
-  if (nextTab === "changes") {
+  if (tab === "changes") {
+    if (activeSideTab.value === "changes") {
+      closeTrackChangesPanel();
+      return;
+    }
     openTrackChangesPanel(activeTrackChangeId.value);
     return;
   }
-  openAssistantPanel();
+  if (tab === "assistant") {
+    if (activeSideTab.value === "assistant") {
+      closeAssistantPanel();
+      return;
+    }
+    openAssistantPanel();
+    return;
+  }
+  if (tab === "collaboration") {
+    if (activeSideTab.value === "collaboration") {
+      setActiveSideTab(null);
+      return;
+    }
+    clearActiveCommentThread();
+    clearActiveTrackChange();
+    setActiveSideTab("collaboration");
+    return;
+  }
+  if (tab === "annotation") {
+    if (activeSideTab.value === "annotation" && annotationStore.state.active) {
+      closeAnnotationPanel();
+      return;
+    }
+    openAnnotationPanel();
+  }
 };
 
 const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
@@ -747,12 +902,14 @@ const stopRightSidebarResize = () => {
 const openAssistantPanel = () => {
   clearActiveCommentThread();
   clearActiveTrackChange();
-  trackChangesPanelManualOpen.value = false;
-  commentsPanelOpen.value = false;
-  tocPanelOpen.value = false;
-  setTocOutlineEnabled?.(false);
-  activeSideTab.value = "assistant";
-  assistantPanelOpen.value = true;
+  setActiveSideTab("assistant");
+};
+
+const openAnnotationPanel = () => {
+  clearActiveCommentThread();
+  clearActiveTrackChange();
+  annotationStore.setActive(true);
+  setActiveSideTab("annotation");
 };
 
 const handleRightSidebarResizeMove = (event: PointerEvent) => {
@@ -868,18 +1025,12 @@ const syncCommentThreads = () => {
   pruneOrphanCommentThreads();
   const threads = lumenCommentsStore.listThreads();
   commentThreads.value = threads;
-  if (threads.length === 0 && activeSideTab.value !== "comments") {
-    commentsPanelOpen.value = false;
-  }
-  if (activeSideTab.value === "comments") {
-    commentsPanelOpen.value = true;
-  }
   const hasActiveThread =
     !!activeCommentThreadId.value &&
     threads.some((thread) => thread.id === activeCommentThreadId.value);
   if (!hasActiveThread) {
     activeCommentThreadId.value = null;
-    if (commentsPanelOpen.value && threads.length > 0) {
+    if (activeSideTab.value === "comments" && threads.length > 0) {
       openCommentsPanel(threads[0]?.id || null);
     }
   }
@@ -887,11 +1038,6 @@ const syncCommentThreads = () => {
 
 const handleCommentClick = () => {
   const texts = commentActionTexts.value;
-  clearActiveTrackChange();
-  trackChangesPanelManualOpen.value = false;
-  assistantPanelOpen.value = false;
-  tocPanelOpen.value = false;
-  setTocOutlineEnabled?.(false);
   const currentView = view.value;
   const selection = currentView?.state?.selection;
   const hasSelection = !!currentView && selection instanceof TextSelection && selection.empty !== true;
@@ -1128,11 +1274,15 @@ const handleTocItemClick = (item: TocOutlineItem) => {
 };
 
 onMounted(async () => {
+  syncAnnotationAuthor();
   window.addEventListener("pointermove", handleRightSidebarResizeMove, { passive: false });
   window.addEventListener("pointerup", handleRightSidebarResizeEnd, { passive: true });
   window.addEventListener("pointercancel", handleRightSidebarResizeEnd, { passive: true });
   if (!editorHost.value) {
     return;
+  }
+  if (!debugFlags.collaborationEnabled) {
+    restoreAnnotationSession();
   }
   await nextTick();
   const mounted = mountPlaygroundEditor({
@@ -1146,28 +1296,16 @@ onMounted(async () => {
       }
     },
     onTocOutlineChange: handleTocOutlineChange,
-    tocOutlineEnabled: tocPanelOpen.value,
+    tocOutlineEnabled: activeSideTab.value === "outline",
     onCommentStateChange: ({ activeThreadId }) => {
       const nextThreadId = activeThreadId || null;
       const previousThreadId = activeCommentThreadId.value;
       activeCommentThreadId.value = nextThreadId;
       syncCommentThreads();
       const resolvedThreadId = activeCommentThreadId.value;
-      if (
-        resolvedThreadId &&
-        (!commentsPanelOpen.value || resolvedThreadId !== previousThreadId)
-      ) {
-        clearActiveTrackChange();
-        trackChangesPanelManualOpen.value = false;
-        assistantPanelOpen.value = false;
-        tocPanelOpen.value = false;
-        setTocOutlineEnabled?.(false);
-        activeSideTab.value = "comments";
-        commentsPanelOpen.value = true;
+      if (resolvedThreadId && (activeSideTab.value !== "comments" || resolvedThreadId !== previousThreadId)) {
+        openCommentsPanel(resolvedThreadId);
         return;
-      }
-      if (!resolvedThreadId && activeSideTab.value !== "comments") {
-        commentsPanelOpen.value = false;
       }
     },
     onTrackChangeStateChange: ({ enabled, activeChangeId, changes }) => {
@@ -1179,16 +1317,10 @@ onMounted(async () => {
           : null;
       activeTrackChangeId.value = nextActiveChangeId;
       if (nextActiveChangeId) {
-        clearActiveCommentThread();
-        commentsPanelOpen.value = false;
-        assistantPanelOpen.value = false;
-        tocPanelOpen.value = false;
-        setTocOutlineEnabled?.(false);
-        activeSideTab.value = "changes";
-        trackChangesPanelManualOpen.value = true;
+        openTrackChangesPanel(nextActiveChangeId);
         return;
       }
-      if (trackChangesPanelManualOpen.value && changes.length > 0) {
+      if (activeSideTab.value === "changes" && changes.length > 0) {
         const fallbackChangeId = getNextTrackChangeId();
         if (fallbackChangeId) {
           activeTrackChangeId.value = fallbackChangeId;
@@ -1200,6 +1332,11 @@ onMounted(async () => {
   });
   editor.value = mounted.editor;
   view.value = mounted.view;
+  if (debugFlags.collaborationEnabled) {
+    annotationStore.useCollaborationStore(mounted.collaborationDocument, debugFlags.collaborationField);
+  } else {
+    annotationStore.useLocalStore();
+  }
   syncDebugHandles();
   setTocOutlineEnabled = mounted.setTocOutlineEnabled;
   setCommentAnchorInEditor = mounted.setCommentAnchor;
@@ -1226,6 +1363,27 @@ watch(
   }
 );
 
+watch(
+  () => [annotationAuthorName.value, annotationAuthorColor.value],
+  () => {
+    syncAnnotationAuthor();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => ({
+    items: annotationStore.state.items,
+    tool: annotationStore.state.tool,
+    color: annotationStore.state.color,
+    lineWidth: annotationStore.state.lineWidth,
+  }),
+  () => {
+    persistAnnotationSession();
+  },
+  { deep: true }
+);
+
 onBeforeUnmount(() => {
   window.removeEventListener("pointermove", handleRightSidebarResizeMove);
   window.removeEventListener("pointerup", handleRightSidebarResizeEnd);
@@ -1247,17 +1405,16 @@ onBeforeUnmount(() => {
   rejectTrackChangeInEditor = null;
   acceptAllTrackChangesInEditor = null;
   rejectAllTrackChangesInEditor = null;
+  annotationStore.useLocalStore({ clear: true });
   editor.value = null;
   view.value = null;
   syncDebugHandles();
   commentThreads.value = [];
-  commentsPanelOpen.value = false;
   activeCommentThreadId.value = null;
-  assistantPanelOpen.value = false;
   trackChangesEnabled.value = false;
   trackChangeRecords.value = [];
   activeTrackChangeId.value = null;
-  trackChangesPanelManualOpen.value = false;
+  activeSideTab.value = null;
   collaborationState.value = createInitialLumenCollaborationState(debugFlags);
   tocItems.value = [];
   activeTocId.value = null;
@@ -1380,63 +1537,74 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: 12px 12px 12px 0;
   background: transparent;
+  z-index: 8;
 }
 
-.doc-side-tabs-control {
+.doc-floating-actions {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  z-index: 9;
+  pointer-events: auto;
+}
+
+.doc-floating-actions.has-side-panel {
+  right: 14px;
+}
+
+.doc-floating-action {
+  min-width: 86px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(255, 255, 255, 0.94);
+  color: #334155;
+  border-radius: 999px;
+  padding: 10px 14px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.doc-floating-action:hover {
+  transform: translateX(-2px);
+  border-color: rgba(37, 99, 235, 0.28);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+}
+
+.doc-floating-action.is-active {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.34);
+  color: #1d4ed8;
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.18);
+}
+
+.doc-floating-action-label {
+  display: block;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.doc-side-panel-card {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
-}
-
-.doc-side-tabs-control :deep(.t-tabs__header.t-is-left) {
-  float: none;
-  display: flex;
-  flex: 0 0 104px;
-  height: 100%;
-  background: #f8fafc;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__nav-container.t-is-left) {
-  width: 100%;
-  height: 100%;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__nav-scroll) {
-  height: 100%;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__nav-wrap.t-is-vertical) {
-  width: 100%;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__nav-item.t-is-left) {
-  width: 100%;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__nav-item-wrapper) {
-  width: calc(100% - 12px);
-  justify-content: center;
-  margin: 6px;
-}
-
-.doc-side-tabs-control :deep(.t-tabs__content) {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  background: #ffffff;
-}
-
-.doc-side-tabs-control :deep(.t-tab-panel) {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
 }
 
 .doc-footer {
@@ -1657,6 +1825,8 @@ onBeforeUnmount(() => {
 }
 
 .doc-side-tab-panel :deep(.doc-comments),
+.doc-side-tab-panel :deep(.doc-annotation-toolbar),
+.doc-side-tab-panel :deep(.doc-collaboration-panel),
 .doc-side-tab-panel :deep(.doc-ai-assistant),
 .doc-side-tab-panel :deep(.doc-track-changes) {
   flex: 1;
@@ -1736,7 +1906,7 @@ onBeforeUnmount(() => {
 .doc-shell.is-high-contrast .topbar,
 .doc-shell.is-high-contrast .doc-footer,
 .doc-shell.is-high-contrast .doc-stage,
-.doc-shell.is-high-contrast .doc-side-tabs-control,
+.doc-shell.is-high-contrast .doc-side-panel-card,
 .doc-shell.is-high-contrast :deep(.menu-bar),
 .doc-shell.is-high-contrast :deep(.toolbar) {
   background: #000;
@@ -1763,6 +1933,31 @@ onBeforeUnmount(() => {
 }
 
 .doc-shell.is-high-contrast .doc-footer-link {
+  color: #fff;
+}
+
+.doc-shell.is-high-contrast .doc-floating-action {
+  background: rgba(0, 0, 0, 0.92);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.doc-shell.is-high-contrast .doc-floating-action.is-active {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+.doc-shell.is-high-contrast .doc-side-tab-panel,
+.doc-shell.is-high-contrast .doc-side-tab-title,
+.doc-shell.is-high-contrast .doc-outline-item {
+  color: #fff;
+}
+
+.doc-shell.is-high-contrast .doc-outline-item:hover,
+.doc-shell.is-high-contrast .doc-outline-item.is-active {
+  background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
 
@@ -1807,7 +2002,27 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 
+  .doc-floating-actions {
+    right: 12px;
+    gap: 8px;
+  }
+
+  .doc-floating-action {
+    min-width: 72px;
+    padding: 8px 12px;
+  }
+
   .doc-side-tabs {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, calc(100vw - 72px));
+    flex-basis: auto;
+    padding: 12px;
+  }
+
+  .doc-side-panel-resize-handle {
     display: none;
   }
 }

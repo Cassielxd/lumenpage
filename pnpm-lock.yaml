@@ -61,6 +61,9 @@ importers:
       docx:
         specifier: ^9.6.1
         version: 9.6.1
+      konva:
+        specifier: ^9.3.22
+        version: 9.3.22
       lumenpage-commands:
         specifier: workspace:*
         version: link:../../packages/lp/commands
@@ -223,6 +226,9 @@ importers:
       vue-i18n:
         specifier: ^11.3.0
         version: 11.3.0(vue@3.5.28(typescript@5.9.3))
+      vue-konva:
+        specifier: ^3.2.6
+        version: 3.4.0(konva@9.3.22)(vue@3.5.28(typescript@5.9.3))
       yjs:
         specifier: ^13.6.30
         version: 13.6.30
@@ -632,19 +638,6 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extensions/extension-base-keymap:
-    dependencies:
-      lumenpage-commands:
-        specifier: workspace:*
-        version: link:../../lp/commands
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../../core/core
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
   packages/extensions/extension-block-id:
     dependencies:
       lumenpage-core:
@@ -749,19 +742,6 @@ importers:
       lumenpage-render-engine:
         specifier: workspace:*
         version: link:../../engine/render-engine
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/extensions/extension-canvas-keymap:
-    dependencies:
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../../core/core
-      lumenpage-extension-editing-commands:
-        specifier: workspace:*
-        version: link:../extension-editing-commands
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -903,37 +883,6 @@ importers:
       lumenpage-view-canvas:
         specifier: workspace:*
         version: link:../../engine/view-canvas
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
-  packages/extensions/extension-editing-commands:
-    dependencies:
-      lumenpage-commands:
-        specifier: workspace:*
-        version: link:../../lp/commands
-      lumenpage-core:
-        specifier: workspace:*
-        version: link:../../core/core
-      lumenpage-extension-list-item:
-        specifier: workspace:*
-        version: link:../extension-list-item
-      lumenpage-extension-table:
-        specifier: workspace:*
-        version: link:../extension-table
-      lumenpage-extension-task-item:
-        specifier: workspace:*
-        version: link:../extension-task-item
-      lumenpage-history:
-        specifier: workspace:*
-        version: link:../../lp/history
-      lumenpage-state:
-        specifier: workspace:*
-        version: link:../../lp/state
-      lumenpage-transform:
-        specifier: workspace:*
-        version: link:../../lp/transform
     devDependencies:
       typescript:
         specifier: ^5.5.4
@@ -3223,6 +3172,9 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
+  konva@9.3.22:
+    resolution: {integrity: sha512-yQI5d1bmELlD/fowuyfOp9ff+oamg26WOCkyqUyc+nczD/lhRa3EvD2MZOoc4c1293TAubW9n34fSQLgSeEgSw==}
+
   langium@4.2.1:
     resolution: {integrity: sha512-zu9QWmjpzJcomzdJQAHgDVhLGq5bLosVak1KVa40NzQHXfqr4eAHupvnPOVXEoLkg6Ocefvf/93d//SB7du4YQ==}
     engines: {node: '>=20.10.0', npm: '>=10.2.3'}
@@ -3916,6 +3868,13 @@ packages:
     engines: {node: '>= 10.0.0', npm: '>= 5.0.0'}
     peerDependencies:
       vue: '>=3.0.0'
+
+  vue-konva@3.4.0:
+    resolution: {integrity: sha512-l7yqAPmc6gPbdXzxoukTiXzA6EdqTtPhzQp1pTdppwWLiimPCgFHcqp8nApXQN5dqF11p2OejwjKv150cf9ncA==}
+    engines: {node: '>= 4.0.0', npm: '>= 3.0.0'}
+    peerDependencies:
+      konva: '>7'
+      vue: ^3
 
   vue@3.5.28:
     resolution: {integrity: sha512-BRdrNfeoccSoIZeIhyPBfvWSLFP4q8J3u8Ju8Ug5vu3LdD+yTM13Sg4sKtljxozbnuMu1NB1X5HBHRYUzFocKg==}
@@ -5826,6 +5785,8 @@ snapshots:
 
   kleur@4.1.5: {}
 
+  konva@9.3.22: {}
+
   langium@4.2.1:
     dependencies:
       chevrotain: 11.1.2
@@ -6599,6 +6560,11 @@ snapshots:
 
   vue-json-pretty@2.6.0(vue@3.5.28(typescript@5.9.3)):
     dependencies:
+      vue: 3.5.28(typescript@5.9.3)
+
+  vue-konva@3.4.0(konva@9.3.22)(vue@3.5.28(typescript@5.9.3)):
+    dependencies:
+      konva: 9.3.22
       vue: 3.5.28(typescript@5.9.3)
 
   vue@3.5.28(typescript@5.9.3):

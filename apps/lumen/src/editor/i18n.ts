@@ -258,6 +258,34 @@ export type PlaygroundI18n = {
     onlineCount: string;
     currentUser: string;
   };
+  collaborationPanel: {
+    title: string;
+    enabled: string;
+    disabled: string;
+    synced: string;
+    connecting: string;
+    showSettings: string;
+    hideSettings: string;
+    emptyTitle: string;
+    emptyCopy: string;
+    url: string;
+    urlPlaceholder: string;
+    document: string;
+    documentPlaceholder: string;
+    field: string;
+    fieldPlaceholder: string;
+    token: string;
+    tokenPlaceholder: string;
+    userName: string;
+    userNamePlaceholder: string;
+    userColor: string;
+    userColorPlaceholder: string;
+    reloadHint: string;
+    update: string;
+    enable: string;
+    disable: string;
+    reset: string;
+  };
   aiPanel: {
     title: string;
     ready: string;
@@ -314,6 +342,30 @@ export type PlaygroundI18n = {
     sourceBlock: string;
     sourceDocument: string;
     sourceAuto: string;
+  };
+  annotationPanel: {
+    title: string;
+    open: string;
+    close: string;
+    page: string;
+    hint: string;
+    tool: string;
+    pen: string;
+    highlighter: string;
+    line: string;
+    rect: string;
+    eraser: string;
+    color: string;
+    size: string;
+    author: string;
+    authors: string;
+    viewAll: string;
+    viewMine: string;
+    clearMine: string;
+    unknownAuthor: string;
+    undo: string;
+    clearPage: string;
+    clearAll: string;
   };
   layoutActions: {
     lineHeightTitle: string;
@@ -516,7 +568,7 @@ export type PlaygroundI18n = {
   };
 };
 
-export const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
+export const PLAYGROUND_I18N = {
   "zh-CN": {
     app: {
       brand: "Lumen 文档",
@@ -1750,6 +1802,117 @@ export const PLAYGROUND_I18N: Record<PlaygroundLocale, PlaygroundI18n> = {
       codeBlockDescription: "Replace with a code block",
     },
   },
+} as unknown as Record<PlaygroundLocale, PlaygroundI18n>;
+
+PLAYGROUND_I18N["zh-CN"].annotationPanel = {
+  title: "\u6587\u6863\u6807\u6ce8",
+  open: "\u6253\u5f00\u6807\u6ce8",
+  close: "\u9000\u51fa\u6807\u6ce8",
+  page: "\u9875\u9762",
+  hint: "\u4ec5\u4fdd\u5b58\u5f53\u524d\u4f1a\u8bdd\u4e34\u65f6\u6807\u8bb0",
+  tool: "\u5de5\u5177",
+  pen: "\u753b\u7b14",
+  highlighter: "\u8367\u5149\u7b14",
+  line: "\u76f4\u7ebf",
+  rect: "\u6846\u9009",
+  eraser: "\u64e6\u9664",
+  color: "\u989c\u8272",
+  size: "\u7c97\u7ec6",
+  author: "\u5f53\u524d\u6807\u6ce8\u4eba",
+  authors: "\u6807\u6ce8\u6210\u5458",
+  viewAll: "\u5168\u90e8",
+  viewMine: "\u53ea\u770b\u6211\u7684",
+  clearMine: "\u6e05\u9664\u6211\u7684",
+  unknownAuthor: "\u672a\u77e5",
+  undo: "\u64a4\u9500",
+  clearPage: "\u6e05\u9664\u5f53\u9875",
+  clearAll: "\u6e05\u7a7a\u5168\u90e8",
+};
+
+PLAYGROUND_I18N["en-US"].annotationPanel = {
+  title: "Annotations",
+  open: "Open Annotation",
+  close: "Exit Annotation",
+  page: "Page",
+  hint: "Temporary marks for the current session",
+  tool: "Tool",
+  pen: "Pen",
+  highlighter: "Highlighter",
+  line: "Line",
+  rect: "Rect",
+  eraser: "Eraser",
+  color: "Color",
+  size: "Size",
+  author: "Current Author",
+  authors: "Authors",
+  viewAll: "All",
+  viewMine: "Mine",
+  clearMine: "Clear Mine",
+  unknownAuthor: "Unknown",
+  undo: "Undo",
+  clearPage: "Clear Page",
+  clearAll: "Clear All",
+};
+
+PLAYGROUND_I18N["zh-CN"].collaborationPanel = {
+  title: "\u534f\u4f5c",
+  enabled: "\u5df2\u5f00\u542f",
+  disabled: "\u672a\u5f00\u542f",
+  synced: "\u5df2\u540c\u6b65",
+  connecting: "\u8fde\u63a5\u4e2d",
+  showSettings: "\u663e\u793a\u8bbe\u7f6e",
+  hideSettings: "\u6536\u8d77\u8bbe\u7f6e",
+  emptyTitle: "\u5f53\u524d\u672a\u5f00\u542f\u534f\u4f5c",
+  emptyCopy:
+    "\u5728\u8fd9\u91cc\u914d\u7f6e\u534f\u4f5c\u670d\u52a1\u3001\u6587\u6863\u540d\u548c\u7528\u6237\u8eab\u4efd\uff0c\u5e94\u7528\u540e\u5c06\u5237\u65b0\u9875\u9762\u5e76\u91cd\u65b0\u8fde\u63a5\u3002",
+  url: "\u534f\u4f5c\u5730\u5740",
+  urlPlaceholder: "ws://127.0.0.1:1234",
+  document: "\u6587\u6863\u540d",
+  documentPlaceholder: "\u4f8b\u5982\uff1alumen-demo",
+  field: "\u5b57\u6bb5",
+  fieldPlaceholder: "\u4f8b\u5982\uff1adefault",
+  token: "Token",
+  tokenPlaceholder: "\u53ef\u9009",
+  userName: "\u7528\u6237\u540d",
+  userNamePlaceholder: "\u4f8b\u5982\uff1aAlice",
+  userColor: "\u7528\u6237\u989c\u8272",
+  userColorPlaceholder: "#2563eb",
+  reloadHint:
+    "\u5e94\u7528\u540e\u4f1a\u5237\u65b0\u9875\u9762\uff0c\u5e76\u6309\u5f53\u524d\u53c2\u6570\u91cd\u65b0\u5efa\u7acb\u534f\u4f5c\u8fde\u63a5\u3002",
+  update: "\u66f4\u65b0\u534f\u4f5c",
+  enable: "\u5f00\u542f\u534f\u4f5c",
+  disable: "\u5173\u95ed\u534f\u4f5c",
+  reset: "\u91cd\u7f6e",
+};
+
+PLAYGROUND_I18N["en-US"].collaborationPanel = {
+  title: "Collab",
+  enabled: "Enabled",
+  disabled: "Disabled",
+  synced: "Synced",
+  connecting: "Connecting",
+  showSettings: "Show Settings",
+  hideSettings: "Hide Settings",
+  emptyTitle: "Collaboration is currently off",
+  emptyCopy:
+    "Configure the collaboration server, document, and user identity here. Applying the settings reloads the page and reconnects.",
+  url: "Server URL",
+  urlPlaceholder: "ws://127.0.0.1:1234",
+  document: "Document",
+  documentPlaceholder: "For example: lumen-demo",
+  field: "Field",
+  fieldPlaceholder: "For example: default",
+  token: "Token",
+  tokenPlaceholder: "Optional",
+  userName: "User Name",
+  userNamePlaceholder: "For example: Alice",
+  userColor: "User Color",
+  userColorPlaceholder: "#2563eb",
+  reloadHint: "Applying the settings reloads the page and reconnects with the current parameters.",
+  update: "Update",
+  enable: "Enable",
+  disable: "Disable",
+  reset: "Reset",
 };
 
 export const PLAYGROUND_LOCALE_STORAGE_KEY = "lumenpage-lumen-locale";

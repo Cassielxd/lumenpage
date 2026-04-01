@@ -26,6 +26,10 @@ export type PlaygroundDebugFlags = {
 };
 
 const STORAGE_KEYS = {
+  collaborationUrl: "lumenpage-lumen-collab-url",
+  collaborationDocument: "lumenpage-lumen-collab-document",
+  collaborationField: "lumenpage-lumen-collab-field",
+  collaborationToken: "lumenpage-lumen-collab-token",
   collaborationUserName: "lumenpage-lumen-collab-user-name",
   collaborationUserColor: "lumenpage-lumen-collab-user-color",
 } as const;
@@ -79,6 +83,18 @@ const writeLocalStorage = (key: string, value: string) => {
   }
 };
 
+const removeLocalStorage = (key: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(key);
+  } catch (_error) {
+    // Ignore storage failures in private mode or restricted environments.
+  }
+};
+
 const resolveStoredValue = (key: string, fallbackFactory: () => string) => {
   const stored = readLocalStorage(key);
   if (stored) {
@@ -87,6 +103,37 @@ const resolveStoredValue = (key: string, fallbackFactory: () => string) => {
 
   const fallback = fallbackFactory();
   writeLocalStorage(key, fallback);
+  return fallback;
+};
+
+const resolveStoredOrQueryValue = ({
+  queryKey,
+  storageKey,
+  fallback,
+  allowEmpty = false,
+}: {
+  queryKey: string;
+  storageKey: string;
+  fallback: string;
+  allowEmpty?: boolean;
+}) => {
+  const explicit = resolveQueryParam(queryKey);
+  if (explicit != null) {
+    if (explicit.length > 0) {
+      writeLocalStorage(storageKey, explicit);
+      return explicit;
+    }
+    if (allowEmpty) {
+      removeLocalStorage(storageKey);
+      return "";
+    }
+  }
+
+  const stored = readLocalStorage(storageKey);
+  if (stored != null) {
+    return stored;
+  }
+
   return fallback;
 };
 
@@ -283,10 +330,27 @@ export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   enablePaginationWorker: resolveWorkerEnabled(),
   forcePaginationWorker: resolveBooleanParam("paginationWorkerForce"),
   collaborationEnabled: resolveCollaborationEnabled(),
-  collaborationUrl: resolveQueryParam("collabUrl") || DEFAULT_COLLABORATION_URL,
-  collaborationDocument: resolveQueryParam("collabDoc") || DEFAULT_COLLABORATION_DOCUMENT,
-  collaborationField: resolveQueryParam("collabField") || DEFAULT_COLLABORATION_FIELD,
-  collaborationToken: resolveQueryParam("collabToken") || "",
+  collaborationUrl: resolveStoredOrQueryValue({
+    queryKey: "collabUrl",
+    storageKey: STORAGE_KEYS.collaborationUrl,
+    fallback: DEFAULT_COLLABORATION_URL,
+  }),
+  collaborationDocument: resolveStoredOrQueryValue({
+    queryKey: "collabDoc",
+    storageKey: STORAGE_KEYS.collaborationDocument,
+    fallback: DEFAULT_COLLABORATION_DOCUMENT,
+  }),
+  collaborationField: resolveStoredOrQueryValue({
+    queryKey: "collabField",
+    storageKey: STORAGE_KEYS.collaborationField,
+    fallback: DEFAULT_COLLABORATION_FIELD,
+  }),
+  collaborationToken: resolveStoredOrQueryValue({
+    queryKey: "collabToken",
+    storageKey: STORAGE_KEYS.collaborationToken,
+    fallback: "",
+    allowEmpty: true,
+  }),
   collaborationUserName: resolveCollaborationUserName(),
   collaborationUserColor: resolveCollaborationUserColor(),
 });
