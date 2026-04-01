@@ -175,6 +175,104 @@ const resolveCollaborationUserColor = () => {
   });
 };
 
+const drawPageCornerBracket = ({
+  ctx,
+  x,
+  y,
+  horizontal,
+  vertical,
+  size,
+}: {
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  x: number;
+  y: number;
+  horizontal: 1 | -1;
+  vertical: 1 | -1;
+  size: number;
+}) => {
+  ctx.beginPath();
+  ctx.moveTo(x + horizontal * size, y);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x, y + vertical * size);
+  ctx.stroke();
+};
+
+const clampPageGuidePoint = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+const drawLumenPageCorners = ({
+  ctx,
+  width,
+  height,
+  layout,
+  highContrast,
+}: {
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  width: number;
+  height: number;
+  layout?: {
+    margin?: {
+      left?: number;
+      right?: number;
+      top?: number;
+      bottom?: number;
+    } | null;
+  } | null;
+  highContrast: boolean;
+}) => {
+  const marginLeft = Math.max(0, Number(layout?.margin?.left) || DEFAULT_PAGE_MARGIN.left);
+  const marginRight = Math.max(0, Number(layout?.margin?.right) || DEFAULT_PAGE_MARGIN.right);
+  const marginTop = Math.max(0, Number(layout?.margin?.top) || DEFAULT_PAGE_MARGIN.top);
+  const marginBottom = Math.max(0, Number(layout?.margin?.bottom) || DEFAULT_PAGE_MARGIN.bottom);
+  const size = 14;
+  const safetyInset = 8;
+  const leftX = clampPageGuidePoint(marginLeft, safetyInset, width - safetyInset);
+  const rightX = clampPageGuidePoint(width - marginRight, safetyInset, width - safetyInset);
+  const topY = clampPageGuidePoint(marginTop, safetyInset, height - safetyInset);
+  const bottomY = clampPageGuidePoint(height - marginBottom, safetyInset, height - safetyInset);
+
+  ctx.save();
+  ctx.strokeStyle = highContrast ? "rgba(255, 255, 255, 0.9)" : "rgba(71, 85, 105, 0.72)";
+  ctx.lineWidth = highContrast ? 1.35 : 1.1;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  drawPageCornerBracket({
+    ctx,
+    x: leftX,
+    y: topY,
+    horizontal: -1,
+    vertical: -1,
+    size,
+  });
+  drawPageCornerBracket({
+    ctx,
+    x: rightX,
+    y: topY,
+    horizontal: 1,
+    vertical: -1,
+    size,
+  });
+  drawPageCornerBracket({
+    ctx,
+    x: leftX,
+    y: bottomY,
+    horizontal: -1,
+    vertical: 1,
+    size,
+  });
+  drawPageCornerBracket({
+    ctx,
+    x: rightX,
+    y: bottomY,
+    horizontal: 1,
+    vertical: 1,
+    size,
+  });
+
+  ctx.restore();
+};
+
 export const createPlaygroundDebugFlags = (): PlaygroundDebugFlags => ({
   locale: resolvePlaygroundLocale(),
   highContrast: resolveHighContrast(),
@@ -240,6 +338,33 @@ export const createCanvasSettings = (
     pageReuseProbeRadius,
     pageReuseRootIndexProbeRadius,
     disablePageReuse: false,
+    renderPageChrome: ({
+      ctx,
+      width,
+      height,
+      layout,
+    }: {
+      ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+      width: number;
+      height: number;
+      layout?: {
+        margin?: {
+          left?: number;
+          right?: number;
+          top?: number;
+          bottom?: number;
+        } | null;
+      } | null;
+    }) => {
+      drawLumenPageCorners({
+        ctx,
+        width,
+        height,
+        layout,
+        highContrast,
+      });
+      return true;
+    },
     // Lumen shell prefers crisp text over sub-pixel scaling smoothness.
     pixelRatioStrategy: "integer",
     paginationWorker: (enablePaginationWorker
