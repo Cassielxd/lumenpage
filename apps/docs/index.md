@@ -1,158 +1,83 @@
-﻿---
+---
 layout: home
 
 hero:
-  name: Lumenpage
-  text: 面向文档场景的 Canvas 分页编辑器
-  tagline: 为长文档、分页页面和复杂业务块而设计，在编辑阶段直接得到接近最终结果的页面体验。
+  name: LumenPage
+  text: 面向分页文档场景的 Canvas 编辑器
+  tagline: 对标 Google Docs 方向的文档底座，强调分页编辑、插件扩展、产品壳装配和可持续演进。
   actions:
     - theme: brand
-      text: 了解 Lumenpage
-      link: /guide/getting-started
-    - theme: alt
-      text: 查看 API
-      link: /api/core
-    - theme: alt
-      text: Lumen 应用入口
+      text: 从 Lumen 入口开始
       link: /guide/lumen-entry
     - theme: alt
-      text: 体验 Demo
+      text: 快速开始
+      link: /guide/getting-started
+    - theme: alt
+      text: 查看应用 API
+      link: /api/lumen-app
+    - theme: alt
+      text: 体验 Lumen Demo
       link: /demo/lumen-app
 
 features:
-  - title: 编辑时即分页
-    details: 编辑阶段直接看到分页结果，适合文档和页面类场景。
-  - title: API 向 tiptap 靠拢
-    details: Editor、Extension、Node、Mark 的使用方式尽量贴近 tiptap。
-  - title: Canvas 渲染可控
-    details: 布局、渲染、视图分层，适合高保真页面和导出场景。
-  - title: 基础与业务分层
-    details: 核心层保留基础能力，业务块留在 extension 包，边界清晰。
+  - title: Pagination-first
+    details: 编辑阶段直接分页，布局、渲染、视图运行时和产品壳围绕同一套页面模型工作。
+  - title: Plugin-first
+    details: 节点、行为、协作、审阅、AI 和业务块都通过 extension 组织，而不是堆进应用层。
+  - title: Product Shell
+    details: Lumen 不只是示例页，已经具备评论、修订、协作、AI、标注和交互式标尺等产品能力。
+  - title: Replaceable Services
+    details: 协作和 AI 服务通过 collab-server 接入，前端壳、协作协议和模型供应商保持解耦。
 ---
 
-## 为什么是 Lumenpage
+## LumenPage 现在是什么
 
-Lumenpage 不是一个只会渲染 HTML 的普通富文本编辑器，而是一套面向文档场景的编辑系统。
+LumenPage 不是一个单纯的 `contenteditable` 富文本编辑器，而是一套围绕分页文档构建的编辑系统：
 
-- 编辑阶段就具备布局和分页能力
-- 状态模型保持 ProseMirror 风格，便于理解事务、选择区和 schema
-- 上层 API 尽量向 tiptap 对齐，降低迁移和上手成本
-- 基础能力和业务能力分层，适合长期演进
+- `packages/lp/*` 负责模型、状态、事务、命令、历史和输入规则
+- `packages/core/*` 负责 Editor 壳、StarterKit 和编辑器抽象
+- `packages/engine/*` 负责分页布局、Canvas 渲染和视图运行时
+- `packages/extensions/*` 负责节点、交互、协作、AI 和业务扩展
+- `apps/lumen` 负责产品壳、工具栏、右侧工作区、标注、协作和 AI 接入
 
-## 适合什么场景
+## 当前产品能力
 
-- 长文档编辑
-- 分页页面和公文类编辑
-- 表格、图片、视频、附件、签名等复杂块混排
-- 需要更强渲染控制和导出能力的编辑器产品
+Lumen 已经不是最小 demo，而是当前项目最接近真实文档产品的一层：
 
-## 适合谁使用
+- 评论、修订、目录、协作状态和 AI 助手
+- 文档标注工作区，支持涂写、高亮、直线、框选、擦除
+- 交互式文档标尺，支持水平和垂直页边距拖拽
+- 浮动侧边操作和右侧工作区面板
+- `vue-i18n` 统一国际化
+- `collab-server` 统一承接 Yjs / Hocuspocus 和 AI 代理
 
-- tiptap 用户：希望保留扩展心智模型，同时获得分页和 Canvas 视图能力
-- 编辑器产品开发者：需要自己控制工具栏、块能力、导出和页面壳
-- 文档系统团队：需要长文档、分页页面、复杂业务块和更稳定的渲染边界
+## 为什么推荐先看 `apps/lumen`
 
-## 典型能力
+如果你是第一次进入这个仓库，不要先从底层 layout engine 开始。  
+优先从 `apps/lumen` 看，你能最快理解这几个最关键的问题：
 
-<div class="lp-capability-grid">
-  <div class="lp-capability-card">
-    <strong>分页编辑</strong>
-    <span>在编辑过程中直接看到页面切分。</span>
-  </div>
-  <div class="lp-capability-card">
-    <strong>Slash Command</strong>
-    <span>新段落输入 <code>/</code> 快速插入块。</span>
-  </div>
-  <div class="lp-capability-card">
-    <strong>Mention</strong>
-    <span>和输入建议系统联动的实体插入。</span>
-  </div>
-  <div class="lp-capability-card">
-    <strong>Bubble Menu</strong>
-    <span>选区浮动工具条。</span>
-  </div>
-  <div class="lp-capability-card">
-    <strong>表格和复杂块</strong>
-    <span>表格、图片、视频、附件、书签、网页卡片等混排。</span>
-  </div>
-  <div class="lp-capability-card">
-    <strong>签名与导出</strong>
-    <span>签名块、Word 导入、可编辑 Word 导出。</span>
-  </div>
-</div>
+- 应用壳怎么装配 `Editor` 和 `CanvasEditorView`
+- 页面配置、协作、AI、标注、标尺放在什么层
+- 扩展清单如何从 `documentExtensions.ts` 进入产品
+- 右侧工作区、浮动动作和统计信息如何围绕编辑器状态工作
 
-## 核心分层
+## 阅读顺序
 
-- `packages/lp/*`：模型、状态、变换、历史、命令等底层能力
-- `packages/core/core`：Editor、Extension、Node、Mark、事件与 schema 组装
-- `packages/engine/layout-engine`：断行、布局、分页
-- `packages/engine/render-engine`：基础默认 renderer 和 mark adapter
-- `packages/engine/view-canvas`：Canvas 视图、输入、选区、光标、 node view 运行时
-- `packages/extensions/extension-*`：业务块和交互扩展
-
-## 架构示意
-
-<div class="lp-arch-grid">
-  <div class="lp-arch-card">
-    <strong>apps/lumen</strong>
-    <span>应用壳、工具栏、页面布局、业务接入入口</span>
-  </div>
-  <div class="lp-arch-card">
-    <strong>packages/core/core</strong>
-    <span>Editor、Extension、Node、Mark、事件与 schema 组装</span>
-  </div>
-  <div class="lp-arch-card">
-    <strong>packages/lp/*</strong>
-    <span>模型、状态、变换、历史、命令等底层能力</span>
-  </div>
-  <div class="lp-arch-card">
-    <strong>packages/engine/view-canvas</strong>
-    <span>Canvas 视图、输入、选区、光标和 node view 运行时</span>
-  </div>
-  <div class="lp-arch-card">
-    <strong>packages/engine/layout-engine</strong>
-    <span>断行、布局、分页与页面复用</span>
-  </div>
-  <div class="lp-arch-card">
-    <strong>packages/engine/render-engine</strong>
-    <span>基础默认 renderer 与 mark adapter</span>
-  </div>
-  <div class="lp-arch-card lp-arch-card--wide">
-    <strong>packages/extensions/extension-*</strong>
-    <span>图片、表格、签名、书签、mention、slash command 等业务块和交互扩展</span>
-  </div>
-</div>
-
-应用层负责组装，核心层负责编辑器能力，布局和渲染层负责页面计算与绘制，业务块最终落在各自的 `extension-*` 包中。
-
-## 快速开始命令
-
-```bash
-pnpm install
-pnpm docs:dev
-pnpm dev:lumen
-pnpm dev
-```
-
-## 从哪里开始看
-
-### 产品和应用接入
+### 产品层
 
 - [从 Lumen 入口开始](/guide/lumen-entry)
-- [如何配置编辑器](/guide/lumen-config)
-- [扩展组装方式](/guide/lumen-extensions)
-- [StarterKit 与扩展选择](/guide/starter-kit-and-extensions)
-- [工具栏能力](/guide/toolbar-actions)
+- [Lumen 运行时配置](/guide/lumen-config)
+- [Lumen 扩展装配](/guide/lumen-extensions)
+- [扩展与分页能力](/guide/extensions-and-pagination)
 
 ### API
 
 - [Lumen App 入口 API](/api/lumen-app)
-- [工具栏 API](/api/toolbar-actions)
-- [插件总览 API](/api/plugins)
-- [Core API](/api/core)
+- [Lumen 配置 API](/api/lumen-config)
+- [Lumen 扩展清单 API](/api/lumen-extensions)
 
-### Demo
+### 示例
 
-- [基础编辑器 Demo](/demo/basic-editor)
-- [Lumen 应用 Demo](/demo/lumen-app)
-- [斜杠命令 Demo](/demo/slash-command)
+- [Lumen App Demo](/demo/lumen-app)
+- [Basic Editor Demo](/demo/basic-editor)
+- [Slash Command Demo](/demo/slash-command)

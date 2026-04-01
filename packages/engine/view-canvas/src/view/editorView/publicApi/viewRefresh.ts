@@ -58,6 +58,11 @@ export const forceViewLayout = (
   if (options.immediate === false) {
     internals?.scheduleLayout?.();
   } else {
+    try {
+      (globalThis as any).__lumenForceSyncLayoutOnce = true;
+    } catch (_error) {
+      // Ignore environments where global flags are unavailable.
+    }
     internals?.updateLayout?.();
   }
   return true;

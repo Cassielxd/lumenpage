@@ -1,52 +1,43 @@
-# 扩展组装方式
+# Lumen 扩展装配
 
-`apps/lumen/src/editor/documentExtensions.ts` 是当前文档级扩展清单。
+Lumen 当前的文档扩展装配集中在：
 
-## 基础原则
+- `apps/lumen/src/editor/documentExtensions.ts`
 
-当前项目的组装方式是：
+这层的职责不是实现所有能力，而是决定：
 
-1. `StarterKit` 提供基础文本编辑能力
-2. 文档块扩展在 `documentExtensions.ts` 统一注册
-3. 运行时扩展在 `editorMount.ts` 追加注册
+- Lumen 默认支持哪些文档节点和 mark
+- 哪些能力需要在协作模式下切换实现
+- AI、评论、修订这类产品能力如何进入文档层
+- 哪些能力属于文档扩展，哪些能力属于产品壳
 
-## 文档扩展
+## 装配分层
 
-当前文档扩展包括：
+当前可以把 Lumen 的扩展装配分成三组：
+
+### 1. StarterKit 与基础能力
 
 - `StarterKit`
-- `BlockIdExtension`
-- `Audio`
-- `EmbedPanel`
-- `File`
-- `Bookmark`
-- `Callout`
-- `Columns`
-- `Math`
-- `OptionBox`
-- `Signature`
-- `Underline`
-- `Link`
-- `Tag`
-- `Template`
-- `TextBox`
-- `TextStyle`
-- `Subscript`
-- `Superscript`
-- `Image`
-- `Video`
-- `WebPage`
-- `PageBreak`
-- `Table`
-- `TableRow`
-- `TableCell`
-- `TableHeader`
-- `TaskList`
-- `TaskItem`
+- `UndoRedo`
 
-## 运行时扩展
+其中 `UndoRedo` 会根据是否处于协作模式切换启用策略。
 
-`editorMount.ts` 还会再加这些运行时扩展：
+### 2. 文档与业务扩展
+
+`baseDocumentExtensions` 当前已经覆盖：
+
+- 评论
+- 修订
+- AI
+- 表格
+- 图片、视频、音频、附件
+- 书签、模板、网页嵌入
+- Tag、Callout、TextBox、Signature
+- Columns、PageBreak
+
+### 3. 运行时交互扩展
+
+在 `editorMount.ts` 里还会额外挂上：
 
 - `EmbedPanelBrowserViewExtension`
 - `ActiveBlockSelectionExtension`
@@ -55,17 +46,55 @@
 - `BubbleMenu`
 - `DragHandleExtension`
 
-## 为什么分两层
+也就是说：
 
-因为这两类扩展的职责不同：
+- `documentExtensions.ts` 决定“文档支持什么”
+- `editorMount.ts` 决定“应用壳如何增强交互”
 
-- 文档扩展：决定 schema 和块能力
-- 运行时扩展：决定交互、弹层、浏览器行为和插件
+## 完整扩展总表
 
-## 推荐实践
+如果你想逐个查看当前仓库每一个扩展的用途、最小接入方式和 Lumen 参考装配，直接看：
 
-如果你要新增业务块：
+- [Lumen 扩展清单与用法](/api/lumen-extensions)
 
-1. 先做 `packages/extensions/extension-xxx`
-2. 再加到 `documentExtensions.ts`
-3. 如果它需要浏览器态增强，再在 `editorMount.ts` 追加运行时扩展
+这页会按 `packages/extensions/*` 逐个维护。
+
+## 协作模式下的扩展
+
+如果启用了协作，Lumen 还会追加：
+
+- `Collaboration`
+- `CollaborationCaret`
+
+同时把用户信息和 provider 传进去。
+
+这条链路说明协作能力不是写死在 editor 核心里，而是通过应用层装配进入。
+
+## AI 是怎么进入扩展链的
+
+AI 当前不是单独在 `App.vue` 里临时写一个面板调用接口。
+
+它的链路是：
+
+1. `AiAssistant` 扩展进入 `documentExtensions.ts`
+2. provider 由 `createLumenAiAssistantProvider()` 提供
+3. Lumen 面板负责用户交互和设置
+4. `collab-server` 负责代理到模型服务
+
+所以 AI 的正确理解是：
+
+- 文档上下文能力在扩展层
+- UI 在产品层
+- 服务接入在服务端层
+
+## 这一层不应该放什么
+
+不应该放进 `documentExtensions.ts` 的内容包括：
+
+- 页面尺寸和边距
+- 标尺 UI
+- 标注工作区
+- 右侧面板显示状态
+- footer 统计
+
+这些属于 Lumen 产品壳，不属于文档扩展装配本身。

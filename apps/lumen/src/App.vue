@@ -48,11 +48,19 @@
       <div
         ref="workspaceRef"
         :class="['doc-workspace', { 'is-side-panel-resizing': isResizingRightSidebar }]"
+        :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }"
       >
         <t-content class="doc-main">
           <div class="doc-stage">
-            <div ref="editorHost" class="editor-host"></div>
-            <AnnotationLayer :editor-view="view" :host="editorHost" :store="annotationStore" />
+            <div class="doc-ruler-shell">
+              <div class="doc-ruler-corner" aria-hidden="true"></div>
+              <DocumentRuler :editor-view="view" :locale="localeKey" />
+            </div>
+            <div class="doc-stage-body">
+              <DocumentVerticalRuler :editor-view="view" :locale="localeKey" />
+              <div ref="editorHost" class="editor-host"></div>
+              <AnnotationLayer :editor-view="view" :host="editorHost" :store="annotationStore" />
+            </div>
           </div>
           <div class="doc-floating-actions" :class="{ 'has-side-panel': !!activeSideTab }">
             <button
@@ -300,6 +308,8 @@ import AnnotationToolbar from "./components/AnnotationToolbar.vue";
 import CommentsPanel from "./components/CommentsPanel.vue";
 import CollaborationPanel from "./components/CollaborationPanel.vue";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
+import DocumentRuler from "./components/DocumentRuler.vue";
+import DocumentVerticalRuler from "./components/DocumentVerticalRuler.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import TrackChangesPanel from "./components/TrackChangesPanel.vue";
@@ -1531,8 +1541,10 @@ onBeforeUnmount(() => {
 }
 
 .doc-side-tabs {
-  position: relative;
-  flex: 0 0 var(--doc-side-panel-width, 360px);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: var(--doc-side-panel-width, 360px);
   min-width: 0;
   padding: 12px 12px 12px 0;
@@ -1554,7 +1566,7 @@ onBeforeUnmount(() => {
 }
 
 .doc-floating-actions.has-side-panel {
-  right: 14px;
+  right: calc(var(--doc-side-panel-width, 360px) + 14px);
 }
 
 .doc-floating-action {
@@ -1782,6 +1794,7 @@ onBeforeUnmount(() => {
 .doc-stage {
   position: relative;
   display: flex;
+  flex-direction: column;
   flex: 1;
   width: 100%;
   height: 100%;
@@ -1790,6 +1803,42 @@ onBeforeUnmount(() => {
   border-radius: 0;
   background: transparent;
   overflow: hidden;
+}
+
+.doc-ruler-shell {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 28px;
+  min-height: 28px;
+}
+
+.doc-ruler-corner {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  border-right: 1px solid rgba(203, 213, 225, 0.8);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.8);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+.doc-ruler-corner::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 10px;
+  height: 10px;
+  border-left: 1px solid rgba(100, 116, 139, 0.42);
+  border-top: 1px solid rgba(100, 116, 139, 0.42);
+}
+
+.doc-stage-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
 }
 
 .doc-side-panel-resize-handle {
@@ -1918,6 +1967,15 @@ onBeforeUnmount(() => {
   color: #000;
 }
 
+.doc-shell.is-high-contrast .doc-ruler-corner {
+  background: #000;
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.doc-shell.is-high-contrast .doc-ruler-corner::after {
+  border-color: rgba(255, 255, 255, 0.52);
+}
+
 .doc-shell.is-high-contrast .doc-footer-stats,
 .doc-shell.is-high-contrast .doc-footer-divider,
 .doc-shell.is-high-contrast .doc-footer-contact,
@@ -2000,6 +2058,10 @@ onBeforeUnmount(() => {
 
   .doc-footer-right {
     gap: 8px;
+  }
+
+  .doc-ruler-shell {
+    display: none;
   }
 
   .doc-floating-actions {

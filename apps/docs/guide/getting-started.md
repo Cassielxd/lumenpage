@@ -1,6 +1,6 @@
 # 快速开始
 
-本页说明如何在当前 monorepo 中启动文档、Playground 和业务应用。
+这一页只关注当前仓库最短的启动路径。
 
 ## 安装依赖
 
@@ -8,34 +8,63 @@
 pnpm install
 ```
 
-## 常用命令
+## 常用启动命令
+
+```bash
+pnpm dev                 # 启动 playground
+pnpm dev:lumen          # 启动 Lumen
+pnpm dev:collab         # 启动 collab-server
+pnpm docs:dev           # 启动文档站
+```
+
+## 推荐启动顺序
+
+### 1. 先启动协作与 AI 服务
+
+```bash
+pnpm dev:collab
+```
+
+默认会提供：
+
+- `ws://127.0.0.1:1234`：协作连接
+- `http://127.0.0.1:1234/health`：健康检查
+- `http://127.0.0.1:1234/ai/*`：AI 代理
+
+### 2. 再启动 Lumen
+
+```bash
+pnpm dev:lumen
+```
+
+Lumen 是当前最完整的产品壳，已经包含：
+
+- 分页编辑
+- 评论与修订
+- 协作状态与协作面板
+- AI 助手
+- 文档标注
+- 交互式标尺
+
+### 3. 如果只想看最小链路，再启动 Playground
 
 ```bash
 pnpm dev
-pnpm dev:lumen
+```
+
+Playground 更适合验证底层编辑器能力、扩展装配和引擎行为。
+
+## 文档站
+
+```bash
 pnpm docs:dev
-pnpm build
-pnpm docs:build
 ```
 
-## 文档站位置
+文档站位于 `apps/docs`，用于承载 LumenPage 的指南、API 和示例页面。
 
-文档站位于 `apps/docs`，使用 VitePress 构建。
+## 推荐阅读顺序
 
-## 最小接入示例
-
-```ts
-import { Editor } from "lumenpage-core";
-import { StarterKit } from "lumenpage-starter-kit";
-
-const editor = new Editor({
-  extensions: [StarterKit],
-  content: "<p>Hello Lumenpage</p>",
-});
-```
-
-## 下一步
-
-- 想看编辑器接线：读 [编辑器初始化](/guide/editor-usage)
-- 想看 API：读 [Core API](/api/core)
-- 想看例子：读 [基础编辑器 Demo](/demo/basic-editor)
+1. [从 Lumen 入口开始](/guide/lumen-entry)
+2. [Lumen 运行时配置](/guide/lumen-config)
+3. [Lumen 扩展装配](/guide/lumen-extensions)
+4. [Lumen App 入口 API](/api/lumen-app)

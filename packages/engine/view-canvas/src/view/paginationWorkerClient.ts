@@ -7,6 +7,9 @@ import {
   DEFAULT_PAGE_WIDTH,
 } from "../pageDefaults";
 
+const toNumberOrFallback = (value: unknown, fallback: number) =>
+  Number.isFinite(value) ? Number(value) : fallback;
+
 type WorkerRequestPayload = {
   runs: any[];
   totalLength: number;
@@ -18,20 +21,20 @@ type WorkerResponse =
   | { id: number; ok: false; error: string };
 
 const toSerializableSettings = (settings: any) => ({
-  pageWidth: Number(settings?.pageWidth) || DEFAULT_PAGE_WIDTH,
-  pageHeight: Number(settings?.pageHeight) || DEFAULT_PAGE_HEIGHT,
-  pageGap: Number(settings?.pageGap) || DEFAULT_PAGE_GAP,
+  pageWidth: toNumberOrFallback(settings?.pageWidth, DEFAULT_PAGE_WIDTH),
+  pageHeight: toNumberOrFallback(settings?.pageHeight, DEFAULT_PAGE_HEIGHT),
+  pageGap: toNumberOrFallback(settings?.pageGap, DEFAULT_PAGE_GAP),
   margin: {
-    left: Number(settings?.margin?.left) || DEFAULT_PAGE_MARGIN.left,
-    right: Number(settings?.margin?.right) || DEFAULT_PAGE_MARGIN.right,
-    top: Number(settings?.margin?.top) || DEFAULT_PAGE_MARGIN.top,
-    bottom: Number(settings?.margin?.bottom) || DEFAULT_PAGE_MARGIN.bottom,
+    left: toNumberOrFallback(settings?.margin?.left, DEFAULT_PAGE_MARGIN.left),
+    right: toNumberOrFallback(settings?.margin?.right, DEFAULT_PAGE_MARGIN.right),
+    top: toNumberOrFallback(settings?.margin?.top, DEFAULT_PAGE_MARGIN.top),
+    bottom: toNumberOrFallback(settings?.margin?.bottom, DEFAULT_PAGE_MARGIN.bottom),
   },
-  lineHeight: Number(settings?.lineHeight) || 26,
+  lineHeight: toNumberOrFallback(settings?.lineHeight, 26),
   font: settings?.font || "16px Arial",
   textLocale: settings?.textLocale || "zh-CN",
-  wrapTolerance: Number(settings?.wrapTolerance) || 0,
-  minLineWidth: Number(settings?.minLineWidth) || 0,
+  wrapTolerance: toNumberOrFallback(settings?.wrapTolerance, 0),
+  minLineWidth: toNumberOrFallback(settings?.minLineWidth, 0),
 });
 
 const hasComplexPaginationModel = (renderer: any) => {

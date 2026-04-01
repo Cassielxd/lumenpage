@@ -1,30 +1,52 @@
-# 如何配置编辑器
+# Lumen 运行时配置
 
-`apps/lumen/src/editor/config.ts` 是当前应用层的配置入口。
+Lumen 的运行时配置主要集中在：
 
-## 当前配置项来源
+- `apps/lumen/src/editor/config.ts`
+- `apps/lumen/src/editor/i18n.ts`
+- `apps/lumen/src/editor/collaboration.ts`
 
-`createPlaygroundDebugFlags()` 从 URL query 里读取调试和运行标志。
+其中 `config.ts` 是入口。
 
-当前支持的主要参数有：
+## `createPlaygroundDebugFlags()`
 
-- `permissionMode=full|comment|readonly`
-- `contrast=high`
-- `highContrast=1`
-- `inputRules=1`
-- `debugPerf=1`
-- `paginationWorker=1`
-- `paginationWorkerForce=1`
-- `paginationIncremental=1`
-- `paginationIncrementalOff=1`
-- `paginationMaxPages=<number>`
-- `paginationSettleMs=<number>`
-- `pageReuseProbe=<number>`
-- `pageReuseRootProbe=<number>`
+这个函数负责从 URL 和本地存储读取运行时 flags。
 
-## 页面与排版配置
+当前关键项包括：
 
-`createCanvasSettings()` 里当前最关键的参数是：
+- `locale`
+- `highContrast`
+- `permissionMode`
+- `enableInputRules`
+- `debugPerf`
+- `debugGhostTrace`
+- `enablePaginationWorker`
+- `forcePaginationWorker`
+- `collaborationEnabled`
+- `collaborationUrl`
+- `collaborationDocument`
+- `collaborationField`
+- `collaborationToken`
+- `collaborationUserName`
+- `collaborationUserColor`
+
+## 协作参数来源
+
+协作参数不是只靠 URL。
+
+当前逻辑是：
+
+- URL 可显式覆盖
+- 本地存储负责持久化
+- 页面刷新后会继续使用上次的协作设置
+
+这比把所有参数长期堆在 query 里更接近真实产品行为。
+
+## `createCanvasSettings()`
+
+这个函数决定分页视图和布局相关的核心参数。
+
+默认会产出一组页面配置，例如：
 
 ```ts
 {
@@ -36,53 +58,59 @@
   blockSpacing: 8,
   paragraphSpacingBefore: 0,
   paragraphSpacingAfter: 8,
-  font: "16px Arial"
+  font: "16px Arial",
 }
 ```
 
 这些值直接影响：
 
-- 页面尺寸
-- 每页可放内容
-- 断行高度
-- 段间距
-- Word 导出分页接近程度
+- 分页结果
+- 页面版心
+- 文本排版
+- 页面 chrome
+- 标尺拖拽后的即时重排
 
-## Worker 配置
+## 分页 worker 相关配置
 
-如果打开 `enablePaginationWorker`，会在 `editorMount.ts` 中把 `PaginationDocWorkerClient` 注入到 `settings.paginationWorker.provider`。
+Lumen 支持分页 worker，并且现在已经把“即时同步布局”和“worker 路径”做了更清晰的区分。
 
-适用场景：
+主要开关包括：
+
+- `paginationWorker`
+- `paginationWorkerForce`
+- `paginationIncremental`
+- `paginationIncrementalOff`
+- `paginationMaxPages`
+- `paginationSettleMs`
+
+适合场景：
 
 - 大文档
-- 想减少主线程分页压力
+- 高频分页重算
+- 需要降低主线程压力
 
-## 实际接线位置
+## 页面 chrome
 
-`editorMount.ts` 会这样消费配置：
+`createCanvasSettings()` 里还会注册 `renderPageChrome`。
 
-```ts
-const settings = createCanvasSettings(
-  flags.debugPerf,
-  flags.enablePaginationWorker,
-  flags.forcePaginationWorker,
-  flags.locale,
-  flags.highContrast
-);
-```
+当前 Lumen 用它做：
 
-然后把它塞进：
+- 页面 corner
+- 页面视觉辅助线
 
-```ts
-editorProps: {
-  canvasViewConfig: {
-    settings,
-  },
-}
-```
+而标尺并不直接画在 page canvas 内部，它属于 Lumen 产品壳自己的工作区 UI。
 
-## 推荐修改策略
+## 和标尺、标注的关系
 
-1. 页面尺寸、边距、字体、行高统一在 `config.ts` 改
-2. 不要把布局配置散落到扩展里
-3. 业务开关通过 `flags` 控制，避免写死在 `editorMount.ts`
+当前这两类能力分工明确：
+
+- 标尺
+  读分页信息，直接调整 `settings.margin`
+- 标注
+  不写进文档模型，属于覆盖层和工作区能力
+
+也就是说：
+
+- 页面布局配置在 `config.ts`
+- 产品壳交互在 `App.vue` 和对应组件
+- 不把产品层工作区逻辑塞回 engine 核心

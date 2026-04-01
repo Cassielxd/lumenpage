@@ -286,6 +286,12 @@ export type PlaygroundI18n = {
     disable: string;
     reset: string;
   };
+  ruler: {
+    leftMargin: string;
+    rightMargin: string;
+    topMargin: string;
+    bottomMargin: string;
+  };
   aiPanel: {
     title: string;
     ready: string;
@@ -1913,6 +1919,20 @@ PLAYGROUND_I18N["en-US"].collaborationPanel = {
   enable: "Enable",
   disable: "Disable",
   reset: "Reset",
+};
+
+PLAYGROUND_I18N["zh-CN"].ruler = {
+  leftMargin: "\u5de6\u8fb9\u8ddd",
+  rightMargin: "\u53f3\u8fb9\u8ddd",
+  topMargin: "\u4e0a\u8fb9\u8ddd",
+  bottomMargin: "\u4e0b\u8fb9\u8ddd",
+};
+
+PLAYGROUND_I18N["en-US"].ruler = {
+  leftMargin: "Left Margin",
+  rightMargin: "Right Margin",
+  topMargin: "Top Margin",
+  bottomMargin: "Bottom Margin",
 };
 
 export const PLAYGROUND_LOCALE_STORAGE_KEY = "lumenpage-lumen-locale";
