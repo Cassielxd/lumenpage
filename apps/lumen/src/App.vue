@@ -58,8 +58,41 @@
           :options="localeOptions"
           @update:model-value="handleLocaleChange"
         />
-        <t-button size="small" theme="primary">{{ i18n.app.share }}</t-button>
-        <t-avatar v-if="!debugFlags.collaborationEnabled" size="small">U</t-avatar>
+        <t-button size="small" theme="primary" @click="openShareDialog">
+          {{ i18n.app.share }}
+        </t-button>
+        <t-popup
+          :visible="accountPopupVisible"
+          trigger="click"
+          placement="bottom-right"
+          overlay-inner-class-name="topbar-account-popup"
+          @visible-change="(visible) => (accountPopupVisible = visible)"
+        >
+          <template #content>
+            <div class="topbar-account-menu">
+              <template v-if="backendSessionUser">
+                <div class="topbar-account-menu-summary">
+                  <span class="topbar-account-menu-name">{{ backendSessionUser.displayName }}</span>
+                  <span class="topbar-account-menu-email">{{ backendSessionUser.email }}</span>
+                </div>
+                <t-button size="small" variant="outline" @click="openAccountDialog('login')">
+                  {{ i18n.shareDialog.manageAccount }}
+                </t-button>
+              </template>
+              <template v-else>
+                <t-button size="small" theme="primary" @click="openAccountDialog('login')">
+                  {{ i18n.shareDialog.login }}
+                </t-button>
+                <t-button size="small" variant="outline" @click="openAccountDialog('register')">
+                  {{ i18n.shareDialog.register }}
+                </t-button>
+              </template>
+            </div>
+          </template>
+          <button type="button" class="topbar-avatar-trigger">
+            <t-avatar size="small">{{ topbarAvatarText }}</t-avatar>
+          </button>
+        </t-popup>
       </div>
     </t-header>
 
@@ -71,6 +104,7 @@
       :locale="localeKey"
       :active-menu="activeToolbarMenu"
       :session-mode="sessionMode"
+      :can-edit="effectiveCapabilities.canEdit"
       @update:session-mode="handleSessionModeUpdate"
       @toggle-toc="toggleTocPanel"
     />
@@ -215,7 +249,16 @@
             </div>
 
             <div v-else-if="activeSideTab === 'collaboration'" class="doc-side-tab-panel">
-              <CollaborationPanel :locale="localeKey" :state="collaborationState" />
+              <CollaborationPanel
+                :locale="localeKey"
+                :state="collaborationState"
+                :backend-user="backendSessionUser"
+                :document="backendDocument"
+                :access="backendDocumentAccess"
+                :effective-permission-mode="effectivePermissionMode"
+                :backend-managed="backendAccessBound"
+                :access-error="backendAccessError"
+              />
             </div>
 
             <div v-else-if="activeSideTab === 'assistant'" class="doc-side-tab-panel">
@@ -320,6 +363,21 @@
         <a class="doc-footer-link" href="mailto:348040933@qq.com">348040933@qq.com</a>
       </div>
     </t-footer>
+    <ShareWorkspaceDialog
+      v-model:visible="shareDialogVisible"
+      :locale="localeKey"
+      :collaboration-enabled="debugFlags.collaborationEnabled"
+      :collaboration-state="collaborationState"
+      :session-user="backendSessionUser"
+      @request-auth="handleShareAuthRequest"
+    />
+    <AccountWorkspaceDialog
+      v-model:visible="accountDialogVisible"
+      :locale="localeKey"
+      :collaboration-state="collaborationState"
+      :initial-mode="accountDialogMode"
+      @session-change="handleAccountSessionChange"
+    />
   </t-layout>
 </template>
 
@@ -341,6 +399,7 @@ import type { CanvasEditorView } from "lumenpage-view-canvas";
 import AiAssistantPanel from "./components/AiAssistantPanel.vue";
 import AnnotationLayer from "./components/AnnotationLayer.vue";
 import AnnotationToolbar from "./components/AnnotationToolbar.vue";
+import AccountWorkspaceDialog from "./components/AccountWorkspaceDialog.vue";
 import CommentsPanel from "./components/CommentsPanel.vue";
 import CollaborationPanel from "./components/CollaborationPanel.vue";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
@@ -348,8 +407,18 @@ import DocumentRuler from "./components/DocumentRuler.vue";
 import DocumentVerticalRuler from "./components/DocumentVerticalRuler.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
+import ShareWorkspaceDialog from "./components/ShareWorkspaceDialog.vue";
 import TrackChangesPanel from "./components/TrackChangesPanel.vue";
 import { createLumenAnnotationStore } from "./annotation/annotationStore";
+import {
+  createDocumentCollabTicket,
+  ensureCollaborationDocument,
+  getBackendSession,
+  resolveBackendUrl,
+  type BackendAccess,
+  type BackendDocument,
+  type BackendUser,
+} from "./editor/backendClient";
 import {
   createInitialLumenCollaborationState,
   type LumenCollaborationState,
@@ -405,9 +474,20 @@ const trackChangesEnabled = ref(false);
 const trackChangeRecords = ref<TrackChangeRecord[]>([]);
 const activeTrackChangeId = ref<string | null>(null);
 const activeSideTab = ref<SideTabKey | null>(null);
+const shareDialogVisible = ref(false);
+const accountDialogVisible = ref(false);
+const accountDialogMode = ref<"login" | "register">("login");
+const accountPopupVisible = ref(false);
+const pendingAccountReturnTarget = ref<"share" | null>(null);
+const accountSessionSyncing = ref(false);
+const backendSessionUser = ref<BackendUser | null>(null);
+const backendDocument = ref<BackendDocument | null>(null);
+const backendDocumentAccess = ref<BackendAccess | null>(null);
+const backendAccessError = ref<string | null>(null);
+const backendAccessBound = ref(false);
 const rightSidebarWidth = ref(360);
 const isResizingRightSidebar = ref(false);
-const footerStats = ref({
+const createInitialFooterStats = () => ({
   pageCount: 0,
   currentPage: 0,
   nodeCount: 0,
@@ -416,34 +496,51 @@ const footerStats = ref({
   selectedWordCount: 0,
   blockType: "",
 });
+const footerStats = ref(createInitialFooterStats());
 const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
 const outlineTitle = computed(() => i18n.value.shell.outline);
 const sessionMode = ref<EditorSessionMode>(
   debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
 );
-const isReadonlyPermission = computed(() => debugFlags.permissionMode === "readonly");
+const buildPermissionCapabilities = (permissionMode: "full" | "comment" | "readonly") => ({
+  canView: true,
+  canComment: permissionMode === "full" || permissionMode === "comment",
+  canEdit: permissionMode === "full",
+  canManage: permissionMode === "full",
+  permissionMode,
+});
+const effectiveCapabilities = computed(() => {
+  if (backendDocumentAccess.value?.capabilities) {
+    return backendDocumentAccess.value.capabilities;
+  }
+  if (debugFlags.collaborationEnabled && (backendAccessBound.value || backendSessionUser.value)) {
+    return buildPermissionCapabilities("readonly");
+  }
+  return buildPermissionCapabilities(debugFlags.permissionMode);
+});
+const effectivePermissionMode = computed(() => effectiveCapabilities.value.permissionMode);
+const isReadonlyPermission = computed(() => effectivePermissionMode.value === "readonly");
 const permissionLabel = computed(() => {
   if (isReadonlyPermission.value || sessionMode.value === "viewer") {
     return i18n.value.app.permissionReadonly;
   }
-  if (debugFlags.permissionMode === "comment") {
+  if (effectivePermissionMode.value === "comment") {
     return i18n.value.app.permissionComment;
   }
   return i18n.value.app.permissionEdit;
 });
 const commentCount = computed(() => commentThreads.value.length);
-const canMutateComments = computed(
-  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
-);
+const canMutateComments = computed(() => effectiveCapabilities.value.canComment && sessionMode.value !== "viewer");
 const currentCommentUserName = computed(
-  () => (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") || i18n.value.shell.you
+  () =>
+    String(backendSessionUser.value?.displayName || "").trim() ||
+    (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") ||
+    i18n.value.shell.you
 );
-const canManageAssistant = computed(
-  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
-);
+const canManageAssistant = computed(() => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer");
 const canMutateTrackChanges = computed(
-  () => !isReadonlyPermission.value && sessionMode.value !== "viewer"
+  () => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer"
 );
 const commentButtonDisabled = computed(() => !canMutateComments.value);
 const commentButtonLabel = computed(() =>
@@ -510,6 +607,125 @@ const footerPluginLabel = computed(() => t("shell.plugins", { count: footerStats
 const footerContactLabel = computed(() => i18n.value.shell.contact);
 const commentActionTexts = computed(() => i18n.value.commentActions);
 const trackChangeActionTexts = computed(() => i18n.value.trackChangeActions);
+const topbarAvatarText = computed(() => {
+  const seed =
+    String(backendSessionUser.value?.displayName || "").trim() ||
+    (debugFlags.collaborationEnabled ? String(collaborationState.value.userName || "").trim() : "") ||
+    i18n.value.shell.you;
+  return seed.slice(0, 1).toUpperCase() || "U";
+});
+const handleAccountSessionChange = async (user: BackendUser | null) => {
+  accountSessionSyncing.value = true;
+  backendSessionUser.value = user;
+  accountPopupVisible.value = false;
+  const hadMountedView = !!view.value;
+  try {
+    const runtimeFlags = await syncBackendWorkspaceAccess({
+      withCollabTicket: true,
+      preferredSessionUser: user,
+      skipSessionRefresh: true,
+    });
+    if (debugFlags.collaborationEnabled && hadMountedView) {
+      await remountPlaygroundEditor(runtimeFlags);
+    }
+    if (pendingAccountReturnTarget.value === "share" && user) {
+      shareDialogVisible.value = true;
+    }
+  } finally {
+    pendingAccountReturnTarget.value = null;
+    accountSessionSyncing.value = false;
+  }
+};
+const openShareDialog = () => {
+  pendingAccountReturnTarget.value = null;
+  shareDialogVisible.value = true;
+};
+const handleShareAuthRequest = () => {
+  pendingAccountReturnTarget.value = "share";
+  shareDialogVisible.value = false;
+  openAccountDialog("login");
+};
+const openAccountDialog = (mode: "login" | "register" = "login") => {
+  accountDialogMode.value = mode;
+  accountPopupVisible.value = false;
+  accountDialogVisible.value = true;
+};
+const syncBackendWorkspaceAccess = async (options?: {
+  withCollabTicket?: boolean;
+  preferredSessionUser?: BackendUser | null;
+  skipSessionRefresh?: boolean;
+}) => {
+  const withCollabTicket = options?.withCollabTicket === true;
+  const nextFlags = { ...debugFlags };
+  const backendUrl = resolveBackendUrl(debugFlags.collaborationUrl);
+
+  backendAccessError.value = null;
+
+  if (options?.skipSessionRefresh) {
+    backendSessionUser.value = options.preferredSessionUser ?? null;
+  } else {
+    try {
+      const session = await getBackendSession(backendUrl);
+      backendSessionUser.value = session.user;
+    } catch (error) {
+      backendSessionUser.value = null;
+      if (debugFlags.collaborationEnabled) {
+        backendAccessError.value =
+          error instanceof Error ? error.message || String(error) : i18n.value.shareDialog.loadFailed;
+      }
+    }
+  }
+
+  if (!debugFlags.collaborationEnabled) {
+    backendDocument.value = null;
+    backendDocumentAccess.value = null;
+    backendAccessBound.value = false;
+    return nextFlags;
+  }
+
+  if (!backendSessionUser.value) {
+    backendDocument.value = null;
+    backendDocumentAccess.value = null;
+    backendAccessBound.value = false;
+    return nextFlags;
+  }
+
+  try {
+    const ensured = await ensureCollaborationDocument(backendUrl, {
+      name: debugFlags.collaborationDocument,
+      title: debugFlags.collaborationDocument,
+      field: debugFlags.collaborationField,
+    });
+    backendDocument.value = ensured.document;
+    backendDocumentAccess.value = ensured.access;
+    backendAccessBound.value = true;
+    nextFlags.permissionMode = ensured.access.permissionMode;
+
+    if (withCollabTicket) {
+      const { collab } = await createDocumentCollabTicket(backendUrl, ensured.document.id, {
+        field: ensured.document.field,
+        userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
+        userColor: debugFlags.collaborationUserColor,
+      });
+      nextFlags.collaborationUrl = collab.url || nextFlags.collaborationUrl;
+      nextFlags.collaborationDocument = collab.documentName || nextFlags.collaborationDocument;
+      nextFlags.collaborationField = collab.field || nextFlags.collaborationField;
+      nextFlags.collaborationToken = collab.token || nextFlags.collaborationToken;
+      nextFlags.collaborationUserName = collab.userName || nextFlags.collaborationUserName;
+      nextFlags.collaborationUserColor = collab.userColor || nextFlags.collaborationUserColor;
+      nextFlags.permissionMode = collab.permissionMode;
+    }
+  } catch (error) {
+    backendDocument.value = null;
+    backendDocumentAccess.value = null;
+    backendAccessBound.value = false;
+    backendAccessError.value =
+      error instanceof Error ? error.message || String(error) : i18n.value.shareDialog.ensureFailed;
+    nextFlags.permissionMode = "readonly";
+  }
+
+  return nextFlags;
+};
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 let detachCommentStore: null | (() => void) = null;
@@ -575,9 +791,7 @@ const resolveAnnotationAuthorId = () => {
 };
 
 const annotationAuthorId = resolveAnnotationAuthorId();
-const annotationAuthorName = computed(() =>
-  debugFlags.collaborationEnabled ? collaborationState.value.userName || i18n.value.shell.you : i18n.value.shell.you
-);
+const annotationAuthorName = computed(() => currentCommentUserName.value);
 const annotationAuthorColor = computed(
   () => (debugFlags.collaborationEnabled ? collaborationState.value.userColor : null) || "#2563eb"
 );
@@ -720,6 +934,146 @@ const syncDebugHandles = () => {
     : null;
 };
 
+const clearMountedEditorRuntime = () => {
+  detachEditor?.();
+  detachEditor = null;
+  setTocOutlineEnabled = null;
+  detachCommentStore?.();
+  detachCommentStore = null;
+  setCommentAnchorInEditor = null;
+  activateCommentThreadInEditor = null;
+  focusCommentThreadInEditor = null;
+  removeCommentThreadInEditor = null;
+  setTrackChangesEnabledInEditor = null;
+  activateTrackChangeInEditor = null;
+  focusTrackChangeInEditor = null;
+  acceptTrackChangeInEditor = null;
+  rejectTrackChangeInEditor = null;
+  acceptAllTrackChangesInEditor = null;
+  rejectAllTrackChangesInEditor = null;
+  editor.value = null;
+  view.value = null;
+  syncDebugHandles();
+  commentThreads.value = [];
+  activeCommentThreadId.value = null;
+  trackChangesEnabled.value = false;
+  trackChangeRecords.value = [];
+  activeTrackChangeId.value = null;
+  tocItems.value = [];
+  activeTocId.value = null;
+  footerStats.value = createInitialFooterStats();
+};
+
+const attachMountedEditor = (
+  mounted: ReturnType<typeof mountPlaygroundEditor>,
+  runtimeFlags: typeof debugFlags,
+) => {
+  editor.value = mounted.editor;
+  view.value = mounted.view;
+  if (runtimeFlags.collaborationEnabled) {
+    annotationStore.useCollaborationStore(mounted.collaborationDocument, runtimeFlags.collaborationField);
+  } else {
+    annotationStore.useLocalStore();
+  }
+  syncDebugHandles();
+  setTocOutlineEnabled = mounted.setTocOutlineEnabled;
+  setCommentAnchorInEditor = mounted.setCommentAnchor;
+  activateCommentThreadInEditor = mounted.activateCommentThread;
+  focusCommentThreadInEditor = mounted.focusCommentThread;
+  removeCommentThreadInEditor = mounted.removeCommentThread;
+  setTrackChangesEnabledInEditor = mounted.setTrackChangesEnabled;
+  activateTrackChangeInEditor = mounted.activateTrackChange;
+  focusTrackChangeInEditor = mounted.focusTrackChange;
+  acceptTrackChangeInEditor = mounted.acceptTrackChange;
+  rejectTrackChangeInEditor = mounted.rejectTrackChange;
+  acceptAllTrackChangesInEditor = mounted.acceptAllTrackChanges;
+  rejectAllTrackChangesInEditor = mounted.rejectAllTrackChanges;
+  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
+  syncCommentThreads();
+  applySessionModeToView();
+  detachEditor = mounted.destroy;
+};
+
+const createEditorCallbacks = () => ({
+  onCollaborationStateChange: (state: LumenCollaborationState) => {
+    collaborationState.value = state;
+    if (!state.enabled || state.synced) {
+      syncCommentThreads();
+    }
+  },
+  onTocOutlineChange: handleTocOutlineChange,
+  tocOutlineEnabled: activeSideTab.value === "outline",
+  onCommentStateChange: ({ activeThreadId }: { activeThreadId: string | null }) => {
+    const nextThreadId = activeThreadId || null;
+    const previousThreadId = activeCommentThreadId.value;
+    activeCommentThreadId.value = nextThreadId;
+    syncCommentThreads();
+    const resolvedThreadId = activeCommentThreadId.value;
+    if (resolvedThreadId && (activeSideTab.value !== "comments" || resolvedThreadId !== previousThreadId)) {
+      openCommentsPanel(resolvedThreadId);
+      return;
+    }
+  },
+  onTrackChangeStateChange: ({
+    enabled,
+    activeChangeId,
+    changes,
+  }: {
+    enabled: boolean;
+    activeChangeId: string | null;
+    changes: TrackChangeRecord[];
+  }) => {
+    trackChangesEnabled.value = enabled;
+    trackChangeRecords.value = changes;
+    const nextActiveChangeId =
+      activeChangeId && changes.some((change) => change.changeId === activeChangeId)
+        ? activeChangeId
+        : null;
+    activeTrackChangeId.value = nextActiveChangeId;
+    if (nextActiveChangeId) {
+      openTrackChangesPanel(nextActiveChangeId);
+      return;
+    }
+    if (activeSideTab.value === "changes" && changes.length > 0) {
+      const fallbackChangeId = getNextTrackChangeId();
+      if (fallbackChangeId) {
+        activeTrackChangeId.value = fallbackChangeId;
+        activateTrackChangeInEditor?.(fallbackChangeId);
+      }
+    }
+  },
+  onStatsChange: handleStatsChange,
+});
+
+const mountOrRemountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) => {
+  collaborationState.value = createInitialLumenCollaborationState(runtimeFlags);
+  syncAnnotationAuthor();
+  if (!editorHost.value) {
+    return false;
+  }
+  clearMountedEditorRuntime();
+  if (!runtimeFlags.collaborationEnabled) {
+    restoreAnnotationSession();
+  }
+  await nextTick();
+  if (!editorHost.value) {
+    return false;
+  }
+  const mounted = mountPlaygroundEditor({
+    host: editorHost.value,
+    statusElement: toolbarRef.value?.statusEl?.value || null,
+    flags: runtimeFlags,
+    resolvePermissionMode: () => effectivePermissionMode.value,
+    ...createEditorCallbacks(),
+  });
+  attachMountedEditor(mounted, runtimeFlags);
+  return true;
+};
+
+const remountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) => {
+  await mountOrRemountPlaygroundEditor(runtimeFlags);
+};
+
 const applySessionModeToView = () => {
   const currentView = view.value;
   if (!currentView) {
@@ -731,7 +1085,7 @@ const applySessionModeToView = () => {
 };
 
 const handleSessionModeUpdate = (nextMode: EditorSessionMode) => {
-  if (isReadonlyPermission.value && nextMode !== "viewer") {
+  if (effectivePermissionMode.value === "readonly" && nextMode !== "viewer") {
     return;
   }
   sessionMode.value = nextMode;
@@ -1315,92 +1669,43 @@ const handleTocItemClick = (item: TocOutlineItem) => {
 };
 
 onMounted(async () => {
-  syncAnnotationAuthor();
+  const runtimeFlags = await syncBackendWorkspaceAccess({ withCollabTicket: true });
   window.addEventListener("pointermove", handleRightSidebarResizeMove, { passive: false });
   window.addEventListener("pointerup", handleRightSidebarResizeEnd, { passive: true });
   window.addEventListener("pointercancel", handleRightSidebarResizeEnd, { passive: true });
-  if (!editorHost.value) {
-    return;
-  }
-  if (!debugFlags.collaborationEnabled) {
-    restoreAnnotationSession();
-  }
-  await nextTick();
-  const mounted = mountPlaygroundEditor({
-    host: editorHost.value,
-    statusElement: toolbarRef.value?.statusEl?.value || null,
-    flags: debugFlags,
-    onCollaborationStateChange: (state) => {
-      collaborationState.value = state;
-      if (!state.enabled || state.synced) {
-        syncCommentThreads();
-      }
-    },
-    onTocOutlineChange: handleTocOutlineChange,
-    tocOutlineEnabled: activeSideTab.value === "outline",
-    onCommentStateChange: ({ activeThreadId }) => {
-      const nextThreadId = activeThreadId || null;
-      const previousThreadId = activeCommentThreadId.value;
-      activeCommentThreadId.value = nextThreadId;
-      syncCommentThreads();
-      const resolvedThreadId = activeCommentThreadId.value;
-      if (resolvedThreadId && (activeSideTab.value !== "comments" || resolvedThreadId !== previousThreadId)) {
-        openCommentsPanel(resolvedThreadId);
-        return;
-      }
-    },
-    onTrackChangeStateChange: ({ enabled, activeChangeId, changes }) => {
-      trackChangesEnabled.value = enabled;
-      trackChangeRecords.value = changes;
-      const nextActiveChangeId =
-        activeChangeId && changes.some((change) => change.changeId === activeChangeId)
-          ? activeChangeId
-          : null;
-      activeTrackChangeId.value = nextActiveChangeId;
-      if (nextActiveChangeId) {
-        openTrackChangesPanel(nextActiveChangeId);
-        return;
-      }
-      if (activeSideTab.value === "changes" && changes.length > 0) {
-        const fallbackChangeId = getNextTrackChangeId();
-        if (fallbackChangeId) {
-          activeTrackChangeId.value = fallbackChangeId;
-          activateTrackChangeInEditor?.(fallbackChangeId);
-        }
-      }
-    },
-    onStatsChange: handleStatsChange,
-  });
-  editor.value = mounted.editor;
-  view.value = mounted.view;
-  if (debugFlags.collaborationEnabled) {
-    annotationStore.useCollaborationStore(mounted.collaborationDocument, debugFlags.collaborationField);
-  } else {
-    annotationStore.useLocalStore();
-  }
-  syncDebugHandles();
-  setTocOutlineEnabled = mounted.setTocOutlineEnabled;
-  setCommentAnchorInEditor = mounted.setCommentAnchor;
-  activateCommentThreadInEditor = mounted.activateCommentThread;
-  focusCommentThreadInEditor = mounted.focusCommentThread;
-  removeCommentThreadInEditor = mounted.removeCommentThread;
-  setTrackChangesEnabledInEditor = mounted.setTrackChangesEnabled;
-  activateTrackChangeInEditor = mounted.activateTrackChange;
-  focusTrackChangeInEditor = mounted.focusTrackChange;
-  acceptTrackChangeInEditor = mounted.acceptTrackChange;
-  rejectTrackChangeInEditor = mounted.rejectTrackChange;
-  acceptAllTrackChangesInEditor = mounted.acceptAllTrackChanges;
-  rejectAllTrackChangesInEditor = mounted.rejectAllTrackChanges;
-  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
-  syncCommentThreads();
-  applySessionModeToView();
-  detachEditor = mounted.destroy;
+  await mountOrRemountPlaygroundEditor(runtimeFlags);
 });
+
+watch(
+  () => effectivePermissionMode.value,
+  (nextMode, previousMode) => {
+    if (nextMode === "readonly") {
+      sessionMode.value = "viewer";
+    } else if ((previousMode == null || previousMode === "readonly") && sessionMode.value === "viewer") {
+      sessionMode.value = "edit";
+    }
+    applySessionModeToView();
+  },
+  { immediate: true }
+);
 
 watch(
   () => sessionMode.value,
   () => {
     applySessionModeToView();
+  }
+);
+
+watch(
+  () => accountDialogVisible.value,
+  (visible) => {
+    if (visible || pendingAccountReturnTarget.value !== "share" || accountSessionSyncing.value) {
+      return;
+    }
+    if (backendSessionUser.value) {
+      shareDialogVisible.value = true;
+    }
+    pendingAccountReturnTarget.value = null;
   }
 );
 
@@ -1430,44 +1735,16 @@ onBeforeUnmount(() => {
   window.removeEventListener("pointerup", handleRightSidebarResizeEnd);
   window.removeEventListener("pointercancel", handleRightSidebarResizeEnd);
   stopRightSidebarResize();
-  detachEditor?.();
-  detachEditor = null;
-  setTocOutlineEnabled = null;
-  detachCommentStore?.();
-  detachCommentStore = null;
-  setCommentAnchorInEditor = null;
-  activateCommentThreadInEditor = null;
-  focusCommentThreadInEditor = null;
-  removeCommentThreadInEditor = null;
-  setTrackChangesEnabledInEditor = null;
-  activateTrackChangeInEditor = null;
-  focusTrackChangeInEditor = null;
-  acceptTrackChangeInEditor = null;
-  rejectTrackChangeInEditor = null;
-  acceptAllTrackChangesInEditor = null;
-  rejectAllTrackChangesInEditor = null;
+  clearMountedEditorRuntime();
   annotationStore.useLocalStore({ clear: true });
-  editor.value = null;
-  view.value = null;
-  syncDebugHandles();
-  commentThreads.value = [];
-  activeCommentThreadId.value = null;
-  trackChangesEnabled.value = false;
-  trackChangeRecords.value = [];
-  activeTrackChangeId.value = null;
   activeSideTab.value = null;
+  shareDialogVisible.value = false;
+  accountDialogVisible.value = false;
+  accountPopupVisible.value = false;
+  pendingAccountReturnTarget.value = null;
+  accountSessionSyncing.value = false;
   collaborationState.value = createInitialLumenCollaborationState(debugFlags);
-  tocItems.value = [];
-  activeTocId.value = null;
-  footerStats.value = {
-    pageCount: 0,
-    currentPage: 0,
-    nodeCount: 0,
-    pluginCount: 0,
-    wordCount: 0,
-    selectedWordCount: 0,
-    blockType: "",
-  };
+  footerStats.value = createInitialFooterStats();
 });
 </script>
 
@@ -1567,6 +1844,43 @@ onBeforeUnmount(() => {
 
 .topbar-locale {
   width: 132px;
+}
+
+.topbar-avatar-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.topbar-account-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+  padding: 4px;
+}
+
+.topbar-account-menu-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topbar-account-menu-name {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.topbar-account-menu-email {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #64748b;
 }
 
 .doc-content {
@@ -2046,6 +2360,14 @@ onBeforeUnmount(() => {
 
 .doc-shell.is-high-contrast .brand-logo-wordmark {
   fill: #000;
+}
+
+.doc-shell.is-high-contrast .topbar-account-menu-name {
+  color: #ffffff;
+}
+
+.doc-shell.is-high-contrast .topbar-account-menu-email {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .doc-shell.is-high-contrast .doc-ruler-corner {

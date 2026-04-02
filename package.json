@@ -37,9 +37,12 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "dev:app": "pnpm -C apps/playground dev",
-    "dev:collab": "pnpm -C apps/collab-server dev",
-    "start:collab": "pnpm -C apps/collab-server start",
-    "build:collab": "pnpm -C apps/collab-server build",
+    "dev:backend": "pnpm -C apps/backend-server dev",
+    "start:backend": "pnpm -C apps/backend-server start",
+    "build:backend": "pnpm -C apps/backend-server build",
+    "dev:collab": "pnpm -C apps/backend-server dev",
+    "start:collab": "pnpm -C apps/backend-server start",
+    "build:collab": "pnpm -C apps/backend-server build",
     "test:core:characterization": "node ./packages/core/core/tests/run-characterization-tests.mjs"
   },
   "devDependencies": {

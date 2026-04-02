@@ -39,8 +39,8 @@
                     :key="`heading-inline-${String(option.value)}`"
                     type="button"
                     class="heading-inline-option"
-                    :disabled="isViewerSession"
-                    :aria-disabled="isViewerSession"
+                    :disabled="isEditingLocked"
+                    :aria-disabled="isEditingLocked"
                     :class="{
                       'heading-inline-option--active': isHeadingInlineOptionActive(option.value),
                     }"
@@ -58,8 +58,8 @@
                     type="button"
                     ref="headingInlineMoreButtonRef"
                     class="heading-inline-more-btn"
-                    :disabled="isViewerSession"
-                    :aria-disabled="isViewerSession"
+                    :disabled="isEditingLocked"
+                    :aria-disabled="isEditingLocked"
                     :aria-expanded="headingInlineMoreOpen"
                     @mousedown.prevent
                     @click.stop="handleToggleHeadingInlineMore"
@@ -301,8 +301,8 @@
           :key="`heading-inline-more-${String(option.value)}`"
           type="button"
           class="heading-inline-option heading-inline-more-option"
-          :disabled="isViewerSession"
-          :aria-disabled="isViewerSession"
+          :disabled="isEditingLocked"
+          :aria-disabled="isEditingLocked"
           :class="{ 'heading-inline-option--active': isHeadingInlineOptionActive(option.value) }"
           @mousedown.prevent
           @click="handleHeadingInlineOptionClick(option.value)"
@@ -475,6 +475,7 @@ const props = defineProps<{
   locale?: PlaygroundLocale;
   activeMenu?: ToolbarMenuKey;
   sessionMode?: EditorSessionMode;
+  canEdit?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -490,6 +491,11 @@ const resolvedSessionMode = computed<EditorSessionMode>(() =>
   normalizeEditorSessionMode(props.sessionMode)
 );
 const isViewerSession = computed(() => resolvedSessionMode.value === "viewer");
+const canEditDocument = computed(() => props.canEdit !== false);
+const isEditingLocked = computed(() => isViewerSession.value || !canEditDocument.value);
+const toolbarAccessMode = computed<EditorSessionMode>(() =>
+  isEditingLocked.value ? "viewer" : resolvedSessionMode.value
+);
 const toolbarAriaLabel = computed(() => i18n.value.toolbar.ariaLabel);
 
 const currentGroups = computed(() => TOOLBAR_MENU_GROUPS[resolvedActiveMenu.value] || []);
@@ -845,7 +851,7 @@ const fontSizeDisplayLabel = computed(() => {
 const handleInlineFontFamilyChange = (value: unknown) => {
   const next = String(value ?? "").trim();
   fontFamilyValue.value = next;
-  if (isViewerSession.value) {
+  if (isEditingLocked.value) {
     pendingInlineStyleSelection.value = null;
     return;
   }
@@ -864,7 +870,7 @@ const handleInlineFontFamilyChange = (value: unknown) => {
 const handleInlineFontSizeChange = (value: unknown) => {
   const next = String(value ?? "").trim();
   fontSizeValue.value = next;
-  if (isViewerSession.value) {
+  if (isEditingLocked.value) {
     pendingInlineStyleSelection.value = null;
     return;
   }
@@ -1112,7 +1118,7 @@ const pageSizeMenuOptions = computed(() =>
 );
 const handlePageSizeChange = (value: unknown) => {
   const next = String(value ?? "").trim();
-  if (isViewerSession.value || !next || next.startsWith("custom:")) {
+  if (isEditingLocked.value || !next || next.startsWith("custom:")) {
     syncPageSizeControl();
     return;
   }
@@ -1383,13 +1389,13 @@ const toggleSessionMode = () => {
   setSessionMode(toggleEditorSessionMode(resolvedSessionMode.value));
 };
 const handleHeadingInlineOptionClick = (value: string | number) => {
-  if (isViewerSession.value) {
+  if (isEditingLocked.value) {
     return false;
   }
   return applyHeadingInlineOption(value);
 };
 const handleToggleHeadingInlineMore = () => {
-  if (isViewerSession.value) {
+  if (isEditingLocked.value) {
     return;
   }
   toggleHeadingInlineMore();
@@ -1397,9 +1403,9 @@ const handleToggleHeadingInlineMore = () => {
 
 const isItemDisabled = (item: ToolbarItemConfig) => {
   if (isHeadingInlineBoxItem(item)) {
-    return isViewerSession.value;
+    return isEditingLocked.value;
   }
-  if (!canUseToolbarActionInSession(resolvedSessionMode.value, item.action)) {
+  if (!canUseToolbarActionInSession(toolbarAccessMode.value, item.action)) {
     return true;
   }
   if (item.command) {

@@ -41,7 +41,7 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: "node ../collab-server/src/server.mjs",
+      command: "pnpm -C ../backend-server dev",
       cwd: appDir,
       url: collabHealthURL,
       reuseExistingServer: !process.env.CI,
@@ -49,8 +49,8 @@ export default defineConfig({
       env: {
         ...process.env,
         PORT: String(collabPort),
-        HOCUSPOCUS_QUIET: "true",
-        COLLAB_STORAGE_DIR: "./data-playwright",
+        BACKEND_QUIET: "true",
+        BACKEND_STORAGE_DIR: "./data-playwright",
       },
     },
   ],

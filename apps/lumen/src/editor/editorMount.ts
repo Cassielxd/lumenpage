@@ -58,6 +58,7 @@ type MountPlaygroundEditorParams = {
   host: HTMLElement;
   statusElement?: HTMLElement | null;
   flags: PlaygroundDebugFlags;
+  resolvePermissionMode?: (() => PlaygroundDebugFlags["permissionMode"]) | null;
   onCollaborationStateChange?: ((state: LumenCollaborationState) => void) | null;
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
@@ -353,6 +354,7 @@ export const mountPlaygroundEditor = ({
   host,
   statusElement,
   flags,
+  resolvePermissionMode,
   onCollaborationStateChange,
   onTocOutlineChange,
   tocOutlineEnabled,
@@ -431,6 +433,7 @@ export const mountPlaygroundEditor = ({
     collaborationRuntime.provider?.document || null,
     flags.collaborationField
   );
+  const getPermissionMode = () => resolvePermissionMode?.() ?? flags.permissionMode;
 
   const bubbleMenuElement = host.ownerDocument.createElement("div");
   const bubbleMenuRenderer = createLumenBubbleMenuRenderer({ locale: flags.locale });
@@ -459,6 +462,7 @@ export const mountPlaygroundEditor = ({
       element: bubbleMenuElement,
       render: bubbleMenuRenderer,
       actions: LUMEN_BUBBLE_MENU_ACTIONS,
+      shouldShow: () => getPermissionMode() === "full",
     }),
     DragHandleExtension.configure({ onlyTopLevel: true }),
   ];
@@ -467,7 +471,7 @@ export const mountPlaygroundEditor = ({
     emptyHeadingText: i18n.shell.untitledHeading,
     initialEnabled: tocOutlineEnabled !== false,
   });
-  const permissionPlugin = createPlaygroundPermissionPlugin(flags.permissionMode);
+  const permissionPlugin = createPlaygroundPermissionPlugin(getPermissionMode);
   const runtimeExtensions = [
     Extension.create({
       name: "tocOutline",
@@ -509,7 +513,7 @@ export const mountPlaygroundEditor = ({
     pos: number,
     event: MouseEvent | KeyboardEvent
   ) => {
-    if (flags.permissionMode !== "full") {
+    if (getPermissionMode() !== "full") {
       return false;
     }
     if (!Number.isFinite(pos)) {
@@ -533,7 +537,7 @@ export const mountPlaygroundEditor = ({
       const focused = args?.focused === "typing" ? i18n.toolbar.statusTyping : i18n.toolbar.statusIdle;
       return `${pageCount} ${i18n.toolbar.statusPageUnit} | ${focused}`;
     },
-    editable: () => flags.permissionMode !== "readonly",
+    editable: () => getPermissionMode() !== "readonly",
     transformPastedText: (_view: CanvasEditorView, text: string) => normalizePastedText(text),
     transformPastedHTML: (_view: CanvasEditorView, html: string) => sanitizePastedHtml(html),
     isInSpecialStructureAtPos: (_view: CanvasEditorView, state: any, pos: number) =>
@@ -589,7 +593,7 @@ export const mountPlaygroundEditor = ({
       if (!href) {
         return false;
       }
-      const wantsOpen = shouldOpenLinkOnClick(flags.permissionMode, event);
+      const wantsOpen = shouldOpenLinkOnClick(getPermissionMode(), event);
       if (!wantsOpen) {
         return false;
       }

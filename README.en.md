@@ -3,7 +3,7 @@
 [Chinese](./README.md) | [English](./README.en.md)
 
 Quick links:
-[Lumen](./apps/lumen) | [Playground](./apps/playground) | [Collab Server](./apps/collab-server) | [Docs](./apps/docs) | [Core](./packages/core/core) | [View Canvas](./packages/engine/view-canvas) | [Extensions](./packages/extensions)
+[Lumen](./apps/lumen) | [Playground](./apps/playground) | [Backend Server](./apps/backend-server) | [Docs](./apps/docs) | [Core](./packages/core/core) | [View Canvas](./packages/engine/view-canvas) | [Extensions](./packages/extensions)
 
 LumenPage is a monorepo for paginated document editing.  
 It is not a thin rich-text shell with UI on top. The repository is building a long-lived online-document foundation: document model, transaction system, pagination layout, Canvas rendering, collaboration, comments, track changes, AI, import/export, and product-level apps are all separated into explicit layers.
@@ -72,7 +72,7 @@ That boundary is a better fit for long-term evolution and for multiple product f
 ### 5. Collaboration and server abilities remain replaceable
 
 Collaboration, AI, and runtime service capabilities are not hardcoded into the frontend app.  
-They are currently handled by `apps/collab-server`, which provides:
+They are currently handled by `apps/backend-server`, which provides:
 
 - Hocuspocus / Yjs collaboration
 - health checks
@@ -114,7 +114,7 @@ apps/lumen                apps/playground                apps/docs
                                   v
                              packages/lp/*
 
-apps/collab-server
+apps/backend-server
   |- ws://...   collaboration sync
   |- /health    health checks
   |- /ai/*      AI proxy
@@ -158,8 +158,8 @@ Provides editor-side capability, context extraction, and result application.
 2. `apps/lumen`
 Provides the AI panel, provider configuration, i18n, and product interaction.
 
-3. `apps/collab-server`
-Provides request proxying so API keys do not have to live in the frontend.
+3. `apps/backend-server`
+Provides auth, sharing, collaboration tickets, and request proxying so API keys do not have to live in the frontend.
 
 This is the intended pattern: product features can be complex, while the editor core stays independent from a specific provider or UI widget.
 
@@ -256,7 +256,7 @@ The repository already covers a substantial set of features:
 
 ```txt
 apps/
-  collab-server/   collaboration service and AI proxy
+  backend-server/  unified backend for auth, sharing, collaboration, and AI proxy
   docs/            documentation site
   lumen/           main app, closest to a real product shell
   playground/      lightweight demo entry
@@ -320,7 +320,7 @@ This is the lighter demo entry, useful for validating:
 
 If you want the smallest runnable path, start here.
 
-### `apps/collab-server`
+### `apps/backend-server`
 
 This service currently handles:
 
@@ -344,7 +344,7 @@ pnpm install
 ### Start the collaboration server
 
 ```bash
-pnpm dev:collab
+pnpm dev:backend
 ```
 
 ### Start the main app
@@ -370,12 +370,12 @@ pnpm docs:dev
 ```bash
 pnpm dev                     # start playground
 pnpm dev:lumen              # start lumen
-pnpm dev:collab             # start collaboration service
+pnpm dev:backend            # start backend-server
 pnpm docs:dev               # start docs
 
 pnpm build                  # build the workspace
 pnpm build:lumen            # build lumen
-pnpm build:collab           # check collab-server
+pnpm build:backend          # check backend-server
 
 pnpm typecheck              # workspace typecheck
 pnpm format                 # format the workspace
@@ -468,7 +468,7 @@ If you are entering the repository for the first time, this is a good order:
 
 - [apps/lumen](./apps/lumen)
 - [apps/playground](./apps/playground)
-- [apps/collab-server](./apps/collab-server)
+- [apps/backend-server](./apps/backend-server)
 - [apps/docs](./apps/docs)
 - [packages/core/core](./packages/core/core)
 - [packages/engine/view-canvas](./packages/engine/view-canvas)

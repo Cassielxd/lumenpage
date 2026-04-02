@@ -3,7 +3,7 @@
 [简体中文](./README.md) | [English](./README.en.md)
 
 快速入口：
-[Lumen](./apps/lumen) | [Playground](./apps/playground) | [Collab Server](./apps/collab-server) | [Docs](./apps/docs) | [Core](./packages/core/core) | [View Canvas](./packages/engine/view-canvas) | [Extensions](./packages/extensions)
+[Lumen](./apps/lumen) | [Playground](./apps/playground) | [Backend Server](./apps/backend-server) | [Docs](./apps/docs) | [Core](./packages/core/core) | [View Canvas](./packages/engine/view-canvas) | [Extensions](./packages/extensions)
 
 LumenPage 是一个面向分页文档场景的编辑器 monorepo。  
 它不是“富文本输入框 + 一层 UI 包装”，而是在用工程化方式搭建一套可持续演进的在线文档底座：文档模型、事务系统、分页布局、Canvas 渲染、实时协作、评论、修订、AI、导入导出和产品层应用都被拆成了清晰分层。
@@ -70,7 +70,7 @@ LumenPage 把分页直接放进主链路，目标是支撑：
 ### 5. 协作与服务端能力保持可替换
 
 协作、AI、健康检查等服务能力并没有写死在前端应用里。  
-当前通过 `apps/collab-server` 承接：
+当前通过 `apps/backend-server` 承接：
 
 - Hocuspocus / Yjs 协作服务
 - 健康检查
@@ -112,7 +112,7 @@ apps/lumen                apps/playground                apps/docs
                                   v
                              packages/lp/*
 
-apps/collab-server
+apps/backend-server
   |- ws://...   协作同步
   |- /health    健康检查
   |- /ai/*      AI 代理
@@ -155,8 +155,8 @@ apps/collab-server
 2. `apps/lumen`
 负责 AI 面板、供应商配置、i18n、用户交互。
 
-3. `apps/collab-server`
-负责模型请求代理，避免把 key 暴露在前端。
+3. `apps/backend-server`
+负责账号、分享、协作票据和模型请求代理，避免把 key 暴露在前端。
 
 这条链路说明：产品功能可以很复杂，但核心编辑器并不需要直接依赖具体供应商或某一个 UI 组件。
 
@@ -255,7 +255,7 @@ apps/collab-server
 
 ```txt
 apps/
-  collab-server/   协作服务和 AI 代理服务
+  backend-server/  统一后端服务，承接账号、分享、协作和 AI 代理
   docs/            文档站点
   lumen/           主应用，最接近真实产品壳
   playground/      轻量演示入口
@@ -321,7 +321,7 @@ scripts/           仓库脚本
 
 如果你想看最小可运行链路，优先从这里开始。
 
-### `apps/collab-server`
+### `apps/backend-server`
 
 这是协作服务，同时承接：
 
@@ -345,7 +345,7 @@ pnpm install
 ### 启动协作服务
 
 ```bash
-pnpm dev:collab
+pnpm dev:backend
 ```
 
 ### 启动主应用
@@ -371,12 +371,12 @@ pnpm docs:dev
 ```bash
 pnpm dev                     # 启动 playground
 pnpm dev:lumen              # 启动 lumen
-pnpm dev:collab             # 启动协作服务
+pnpm dev:backend            # 启动 backend-server
 pnpm docs:dev               # 启动 docs
 
 pnpm build                  # 构建整个 workspace
 pnpm build:lumen            # 构建 lumen
-pnpm build:collab           # 检查 collab-server
+pnpm build:backend          # 检查 backend-server
 
 pnpm typecheck              # 全仓类型检查
 pnpm format                 # 全仓格式化
@@ -470,7 +470,7 @@ LumenPage 现在的分层，正是围绕这些条件搭建的。
 
 - [apps/lumen](./apps/lumen)
 - [apps/playground](./apps/playground)
-- [apps/collab-server](./apps/collab-server)
+- [apps/backend-server](./apps/backend-server)
 - [apps/docs](./apps/docs)
 - [packages/core/core](./packages/core/core)
 - [packages/engine/view-canvas](./packages/engine/view-canvas)

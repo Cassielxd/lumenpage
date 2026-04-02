@@ -27,7 +27,7 @@ features:
   - title: Product Shell
     details: Lumen 不只是示例页，已经具备评论、修订、协作、AI、标注和交互式标尺等产品能力。
   - title: Replaceable Services
-    details: 协作和 AI 服务通过 collab-server 接入，前端壳、协作协议和模型供应商保持解耦。
+    details: 协作和 AI 服务通过 backend-server 接入，前端壳、协作协议和模型供应商保持解耦。
 ---
 
 ## LumenPage 现在是什么
@@ -49,7 +49,7 @@ Lumen 已经不是最小 demo，而是当前项目最接近真实文档产品的
 - 交互式文档标尺，支持水平和垂直页边距拖拽
 - 浮动侧边操作和右侧工作区面板
 - `vue-i18n` 统一国际化
-- `collab-server` 统一承接 Yjs / Hocuspocus 和 AI 代理
+- `backend-server` 统一承接账号、权限、分享、Yjs / Hocuspocus 和 AI 代理
 
 ## 为什么推荐先看 `apps/lumen`
 

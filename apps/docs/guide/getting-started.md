@@ -13,7 +13,7 @@ pnpm install
 ```bash
 pnpm dev                 # 启动 playground
 pnpm dev:lumen          # 启动 Lumen
-pnpm dev:collab         # 启动 collab-server
+pnpm dev:backend        # 启动 backend-server
 pnpm docs:dev           # 启动文档站
 ```
 
@@ -22,7 +22,7 @@ pnpm docs:dev           # 启动文档站
 ### 1. 先启动协作与 AI 服务
 
 ```bash
-pnpm dev:collab
+pnpm dev:backend
 ```
 
 默认会提供：

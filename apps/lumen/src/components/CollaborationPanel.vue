@@ -16,6 +16,42 @@
       </t-button>
     </div>
 
+    <div class="doc-collaboration-panel-summary-card">
+      <div class="doc-collaboration-panel-summary-row">
+        <span class="doc-collaboration-panel-label">{{ texts.currentDocument }}</span>
+        <span class="doc-collaboration-panel-value">
+          {{ props.document?.title || props.state.documentName || "-" }}
+        </span>
+      </div>
+      <div class="doc-collaboration-panel-summary-row">
+        <span class="doc-collaboration-panel-label">{{ texts.currentUser }}</span>
+        <span class="doc-collaboration-panel-value">
+          {{ props.backendUser?.displayName || props.state.userName || "-" }}
+        </span>
+      </div>
+      <div class="doc-collaboration-panel-summary-row">
+        <span class="doc-collaboration-panel-label">{{ texts.currentRole }}</span>
+        <span class="doc-collaboration-panel-value">
+          {{ roleLabel(props.access?.role || null) }}
+        </span>
+      </div>
+      <div class="doc-collaboration-panel-summary-row">
+        <span class="doc-collaboration-panel-label">{{ texts.currentPermission }}</span>
+        <span class="doc-collaboration-panel-value">
+          {{ permissionLabel }}
+        </span>
+      </div>
+      <div class="doc-collaboration-panel-mode">
+        <t-tag size="small" variant="light" :theme="props.backendManaged ? 'primary' : 'default'">
+          {{ props.backendManaged ? texts.managedByBackend : texts.localMode }}
+        </t-tag>
+      </div>
+      <p v-if="authHint" class="doc-collaboration-panel-note">{{ authHint }}</p>
+      <p v-if="props.accessError" class="doc-collaboration-panel-error">
+        {{ texts.accessError }}: {{ props.accessError }}
+      </p>
+    </div>
+
     <div class="doc-collaboration-panel-presence">
       <CollaborationPresence v-if="props.state.enabled" :state="props.state" :locale="currentLocale" />
       <div v-else class="doc-collaboration-panel-empty">
@@ -105,6 +141,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 
+import type { BackendAccess, BackendDocument, BackendUser, BackendUserRole } from "../editor/backendClient";
 import type { PlaygroundLocale } from "../editor/i18n";
 import { coercePlaygroundLocale, createPlaygroundI18n } from "../editor/i18n";
 import type { LumenCollaborationState } from "../editor/collaboration";
@@ -124,11 +161,19 @@ const DEFAULT_COLLAB_COLOR = "#2563eb";
 const props = defineProps<{
   locale?: PlaygroundLocale | string;
   state: LumenCollaborationState;
+  backendUser?: BackendUser | null;
+  document?: BackendDocument | null;
+  access?: BackendAccess | null;
+  effectivePermissionMode?: "full" | "comment" | "readonly";
+  backendManaged?: boolean;
+  accessError?: string | null;
 }>();
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const texts = computed(() => createPlaygroundI18n(currentLocale.value).collaborationPanel);
-const settingsOpen = ref(true);
+const roleTexts = computed(() => createPlaygroundI18n(currentLocale.value).shareDialog);
+const appTexts = computed(() => createPlaygroundI18n(currentLocale.value).app);
+const settingsOpen = ref(false);
 const draft = reactive({
   url: DEFAULT_COLLAB_URL,
   documentName: DEFAULT_COLLAB_DOC,
@@ -151,6 +196,35 @@ const summaryLabel = computed(() => {
     return texts.value.synced;
   }
   return texts.value.connecting;
+});
+
+const roleLabel = (role: BackendUserRole | null) => {
+  if (role === "owner") return roleTexts.value.roleOwner;
+  if (role === "editor") return roleTexts.value.roleEditor;
+  if (role === "commenter") return roleTexts.value.roleCommenter;
+  if (role === "viewer") return roleTexts.value.roleViewer;
+  return roleTexts.value.roleUnknown;
+};
+
+const permissionLabel = computed(() => {
+  const mode = props.effectivePermissionMode || "readonly";
+  if (mode === "full") {
+    return appTexts.value.permissionEdit;
+  }
+  if (mode === "comment") {
+    return appTexts.value.permissionComment;
+  }
+  return appTexts.value.permissionReadonly;
+});
+
+const authHint = computed(() => {
+  if (!props.state.enabled) {
+    return "";
+  }
+  if (props.backendManaged && props.backendUser) {
+    return "";
+  }
+  return texts.value.authHint;
 });
 
 const syncDraftFromState = () => {
@@ -285,6 +359,45 @@ watch(
   min-height: 0;
 }
 
+.doc-collaboration-panel-summary-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.96), rgba(248, 250, 252, 0.88));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.doc-collaboration-panel-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.doc-collaboration-panel-value {
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: right;
+  word-break: break-word;
+}
+
+.doc-collaboration-panel-mode {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.doc-collaboration-panel-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #b91c1c;
+}
+
 .doc-collaboration-panel-empty {
   padding: 14px;
   border-radius: 14px;
@@ -365,7 +478,8 @@ watch(
 }
 
 :global(.doc-shell.is-high-contrast) .doc-collaboration-panel-title,
-:global(.doc-shell.is-high-contrast) .doc-collaboration-panel-empty-title {
+:global(.doc-shell.is-high-contrast) .doc-collaboration-panel-empty-title,
+:global(.doc-shell.is-high-contrast) .doc-collaboration-panel-value {
   color: #ffffff;
 }
 
@@ -379,5 +493,14 @@ watch(
 :global(.doc-shell.is-high-contrast) .doc-collaboration-panel-empty {
   background: #0f172a;
   border-color: rgba(255, 255, 255, 0.24);
+}
+
+:global(.doc-shell.is-high-contrast) .doc-collaboration-panel-summary-card {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+:global(.doc-shell.is-high-contrast) .doc-collaboration-panel-error {
+  color: #fca5a5;
 }
 </style>

@@ -79,7 +79,7 @@ AI 当前不是单独在 `App.vue` 里临时写一个面板调用接口。
 1. `AiAssistant` 扩展进入 `documentExtensions.ts`
 2. provider 由 `createLumenAiAssistantProvider()` 提供
 3. Lumen 面板负责用户交互和设置
-4. `collab-server` 负责代理到模型服务
+4. `backend-server` 负责代理到模型服务
 
 所以 AI 的正确理解是：
 

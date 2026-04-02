@@ -264,6 +264,14 @@ export type PlaygroundI18n = {
     disabled: string;
     synced: string;
     connecting: string;
+    currentUser: string;
+    currentDocument: string;
+    currentRole: string;
+    currentPermission: string;
+    managedByBackend: string;
+    localMode: string;
+    authHint: string;
+    accessError: string;
     showSettings: string;
     hideSettings: string;
     emptyTitle: string;
@@ -285,6 +293,67 @@ export type PlaygroundI18n = {
     enable: string;
     disable: string;
     reset: string;
+  };
+  shareDialog: {
+    title: string;
+    accountTitle: string;
+    manageAccount: string;
+    openAccount: string;
+    backendUrl: string;
+    backendUrlPlaceholder: string;
+    signedInAs: string;
+    loggedOut: string;
+    login: string;
+    register: string;
+    logout: string;
+    email: string;
+    emailPlaceholder: string;
+    password: string;
+    passwordPlaceholder: string;
+    displayName: string;
+    displayNamePlaceholder: string;
+    authenticate: string;
+    authenticating: string;
+    authRequired: string;
+    authRequiredHint: string;
+    collaborationRequired: string;
+    collaborationRequiredHint: string;
+    currentDocument: string;
+    currentRole: string;
+    members: string;
+    noMembers: string;
+    inviteMember: string;
+    inviteRole: string;
+    inviteAction: string;
+    shareLinks: string;
+    noShareLinks: string;
+    shareRole: string;
+    anonymousAccess: string;
+    createShareLink: string;
+    createAnonymous: string;
+    createRestricted: string;
+    copyLink: string;
+    revokeLink: string;
+    roleOwner: string;
+    roleEditor: string;
+    roleCommenter: string;
+    roleViewer: string;
+    roleUnknown: string;
+    notOwnerHint: string;
+    authFailed: string;
+    authSuccess: string;
+    logoutSuccess: string;
+    loadFailed: string;
+    ensureFailed: string;
+    inviteFailed: string;
+    inviteSuccess: string;
+    createLinkFailed: string;
+    createLinkSuccess: string;
+    revokeLinkFailed: string;
+    revokeLinkSuccess: string;
+    copyLinkSuccess: string;
+    copyLinkFailed: string;
+    saveBackendUrl: string;
   };
   ruler: {
     leftMargin: string;
@@ -837,7 +906,7 @@ export const PLAYGROUND_I18N = {
       modelPlaceholder: "例如 deepseek-chat 或你的部署模型 ID",
       serverUrlPlaceholder: "http://127.0.0.1:1234",
       systemPromptPlaceholder: "可选，不填则使用内置写作提示词。",
-      providerTip: "浏览器先请求本地 collab-server，再由服务端调用官方 DeepSeek Chat Completions API。",
+      providerTip: "浏览器先请求本地 backend-server，再由服务端调用官方 DeepSeek Chat Completions API。",
       rewrite: "改写",
       summarize: "总结",
       continueWriting: "续写",
@@ -1455,7 +1524,7 @@ export const PLAYGROUND_I18N = {
       modelPlaceholder: "Use deepseek-chat or your deployed model id",
       serverUrlPlaceholder: "http://127.0.0.1:1234",
       systemPromptPlaceholder: "Optional. Leave empty to use the built-in writing prompt.",
-      providerTip: "The browser calls your local collab-server, and the server calls the official DeepSeek Chat Completions API.",
+      providerTip: "The browser calls your local backend-server, and the server calls the official DeepSeek Chat Completions API.",
       rewrite: "Rewrite",
       summarize: "Summarize",
       continueWriting: "Continue",
@@ -1866,6 +1935,14 @@ PLAYGROUND_I18N["zh-CN"].collaborationPanel = {
   disabled: "\u672a\u5f00\u542f",
   synced: "\u5df2\u540c\u6b65",
   connecting: "\u8fde\u63a5\u4e2d",
+  currentUser: "\u5f53\u524d\u8d26\u53f7",
+  currentDocument: "\u5f53\u524d\u6587\u6863",
+  currentRole: "\u5f53\u524d\u89d2\u8272",
+  currentPermission: "\u5b9e\u9645\u6743\u9650",
+  managedByBackend: "\u540e\u7aef\u63a7\u5236",
+  localMode: "\u672c\u5730\u6a21\u5f0f",
+  authHint: "\u672a\u8fde\u63a5 backend-server \u8d26\u53f7\uff0c\u5f53\u524d\u4ecd\u4f7f\u7528\u672c\u5730\u534f\u4f5c\u8c03\u8bd5\u53c2\u6570\u3002",
+  accessError: "\u8bbf\u95ee\u72b6\u6001",
   showSettings: "\u663e\u793a\u8bbe\u7f6e",
   hideSettings: "\u6536\u8d77\u8bbe\u7f6e",
   emptyTitle: "\u5f53\u524d\u672a\u5f00\u542f\u534f\u4f5c",
@@ -1897,6 +1974,14 @@ PLAYGROUND_I18N["en-US"].collaborationPanel = {
   disabled: "Disabled",
   synced: "Synced",
   connecting: "Connecting",
+  currentUser: "Current User",
+  currentDocument: "Current Document",
+  currentRole: "Current Role",
+  currentPermission: "Effective Permission",
+  managedByBackend: "Managed by Backend",
+  localMode: "Local Mode",
+  authHint: "No backend-server account is connected yet, so the editor is still using local collaboration debug settings.",
+  accessError: "Access State",
   showSettings: "Show Settings",
   hideSettings: "Hide Settings",
   emptyTitle: "Collaboration is currently off",
@@ -1919,6 +2004,131 @@ PLAYGROUND_I18N["en-US"].collaborationPanel = {
   enable: "Enable",
   disable: "Disable",
   reset: "Reset",
+};
+
+PLAYGROUND_I18N["zh-CN"].shareDialog = {
+  title: "分享",
+  accountTitle: "账号",
+  manageAccount: "管理账号",
+  openAccount: "前往账号",
+  backendUrl: "后端地址",
+  backendUrlPlaceholder: "http://127.0.0.1:1234",
+  signedInAs: "当前账号",
+  loggedOut: "未登录",
+  login: "登录",
+  register: "注册",
+  logout: "退出登录",
+  email: "邮箱",
+  emailPlaceholder: "例如：owner@example.com",
+  password: "密码",
+  passwordPlaceholder: "至少 8 位",
+  displayName: "显示名称",
+  displayNamePlaceholder: "例如：Alice",
+  authenticate: "提交",
+  authenticating: "处理中",
+  authRequired: "登录后才能管理分享",
+  authRequiredHint: "分享链接、成员邀请和文档角色都依赖 backend-server 账号。",
+  collaborationRequired: "当前文档还未开启协作",
+  collaborationRequiredHint: "分享和成员权限依赖协作文档，请先在协作面板开启协作。",
+  currentDocument: "当前文档",
+  currentRole: "当前权限",
+  members: "成员",
+  noMembers: "暂无成员",
+  inviteMember: "邀请成员",
+  inviteRole: "邀请权限",
+  inviteAction: "添加成员",
+  shareLinks: "分享链接",
+  noShareLinks: "暂无分享链接",
+  shareRole: "链接权限",
+  anonymousAccess: "匿名访问",
+  createShareLink: "创建分享链接",
+  createAnonymous: "允许匿名",
+  createRestricted: "仅登录用户",
+  copyLink: "复制链接",
+  revokeLink: "撤销",
+  roleOwner: "所有者",
+  roleEditor: "可编辑",
+  roleCommenter: "可评论",
+  roleViewer: "只读",
+  roleUnknown: "未知",
+  notOwnerHint: "只有文档所有者可以管理成员和分享链接。",
+  authFailed: "登录或注册失败",
+  authSuccess: "账号已连接到 backend-server",
+  logoutSuccess: "已退出登录",
+  loadFailed: "读取分享信息失败",
+  ensureFailed: "绑定当前协作文档失败",
+  inviteFailed: "添加成员失败",
+  inviteSuccess: "成员已添加",
+  createLinkFailed: "创建分享链接失败",
+  createLinkSuccess: "分享链接已创建",
+  revokeLinkFailed: "撤销分享链接失败",
+  revokeLinkSuccess: "分享链接已撤销",
+  copyLinkSuccess: "分享链接已复制",
+  copyLinkFailed: "复制分享链接失败",
+  saveBackendUrl: "保存后端地址",
+};
+
+PLAYGROUND_I18N["en-US"].shareDialog = {
+  title: "Share",
+  accountTitle: "Account",
+  manageAccount: "Manage Account",
+  openAccount: "Open Account",
+  backendUrl: "Backend URL",
+  backendUrlPlaceholder: "http://127.0.0.1:1234",
+  signedInAs: "Signed in as",
+  loggedOut: "Signed out",
+  login: "Login",
+  register: "Register",
+  logout: "Log out",
+  email: "Email",
+  emailPlaceholder: "For example: owner@example.com",
+  password: "Password",
+  passwordPlaceholder: "At least 8 characters",
+  displayName: "Display Name",
+  displayNamePlaceholder: "For example: Alice",
+  authenticate: "Submit",
+  authenticating: "Working",
+  authRequired: "Sign in to manage sharing",
+  authRequiredHint: "Share links, member invites, and document roles all depend on a backend-server account.",
+  collaborationRequired: "Collaboration is not enabled for this document",
+  collaborationRequiredHint:
+    "Sharing and member permissions depend on a collaboration document. Enable collaboration first.",
+  currentDocument: "Current Document",
+  currentRole: "Current Role",
+  members: "Members",
+  noMembers: "No members yet",
+  inviteMember: "Invite Member",
+  inviteRole: "Invite Role",
+  inviteAction: "Add Member",
+  shareLinks: "Share Links",
+  noShareLinks: "No share links yet",
+  shareRole: "Link Role",
+  anonymousAccess: "Anonymous Access",
+  createShareLink: "Create Share Link",
+  createAnonymous: "Allow anonymous",
+  createRestricted: "Signed-in only",
+  copyLink: "Copy Link",
+  revokeLink: "Revoke",
+  roleOwner: "Owner",
+  roleEditor: "Editor",
+  roleCommenter: "Commenter",
+  roleViewer: "Viewer",
+  roleUnknown: "Unknown",
+  notOwnerHint: "Only the document owner can manage members and share links.",
+  authFailed: "Authentication failed",
+  authSuccess: "Account connected to backend-server",
+  logoutSuccess: "Signed out",
+  loadFailed: "Failed to load sharing data",
+  ensureFailed: "Failed to bind the current collaboration document",
+  inviteFailed: "Failed to add member",
+  inviteSuccess: "Member added",
+  createLinkFailed: "Failed to create share link",
+  createLinkSuccess: "Share link created",
+  revokeLinkFailed: "Failed to revoke share link",
+  revokeLinkSuccess: "Share link revoked",
+  copyLinkSuccess: "Share link copied",
+  copyLinkFailed: "Failed to copy share link",
+  saveBackendUrl: "Save backend URL",
 };
 
 PLAYGROUND_I18N["zh-CN"].ruler = {
