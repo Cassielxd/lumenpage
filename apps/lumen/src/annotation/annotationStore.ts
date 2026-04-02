@@ -16,6 +16,7 @@ type AnnotationState = {
   color: string;
   lineWidth: number;
   items: AnnotationItem[];
+  selectedItemId: string | null;
   currentPageIndex: number | null;
   historyDepth: number;
   viewMode: "all" | "mine";
@@ -72,6 +73,7 @@ const cloneItem = (item: AnnotationItem): AnnotationItem => {
 const cloneItems = (items: AnnotationItem[]) => items.map(cloneItem);
 
 const isAnnotationTool = (value: unknown): value is AnnotationTool =>
+  value === "select" ||
   value === "pen" ||
   value === "highlighter" ||
   value === "line" ||
@@ -193,6 +195,9 @@ export type AnnotationAuthor = {
   color: string | null;
 };
 
+const findItemIndexById = (items: AnnotationItem[], itemId: string) =>
+  items.findIndex((item) => item.id === itemId);
+
 export const createLumenAnnotationStore = () => {
   const history: AnnotationHistoryEntry[] = [];
   const state = reactive<AnnotationState>({
@@ -201,6 +206,7 @@ export const createLumenAnnotationStore = () => {
     color: DEFAULT_ANNOTATION_COLORS[0],
     lineWidth: 4,
     items: [],
+    selectedItemId: null,
     currentPageIndex: null,
     historyDepth: 0,
     viewMode: "all",
@@ -216,6 +222,12 @@ export const createLumenAnnotationStore = () => {
 
   const replaceItemsState = (nextItems: AnnotationItem[]) => {
     state.items.splice(0, state.items.length, ...cloneItems(nextItems));
+    if (
+      state.selectedItemId &&
+      !state.items.some((item) => item.id === state.selectedItemId && isVisibleItem(item))
+    ) {
+      state.selectedItemId = null;
+    }
   };
 
   const clearHistory = () => {
@@ -312,6 +324,16 @@ export const createLumenAnnotationStore = () => {
     return isOwnedByCurrentAuthor(item);
   };
 
+  const canEditItem = (item: AnnotationItem | null | undefined) => {
+    if (!item) {
+      return false;
+    }
+    if (!yjsBinding) {
+      return true;
+    }
+    return isOwnedByCurrentAuthor(item);
+  };
+
   return {
     state,
     palette: DEFAULT_ANNOTATION_COLORS,
@@ -367,12 +389,21 @@ export const createLumenAnnotationStore = () => {
     },
     setActive(active: boolean) {
       state.active = active === true;
+      if (!state.active) {
+        state.selectedItemId = null;
+      }
     },
     toggleActive() {
       state.active = !state.active;
+      if (!state.active) {
+        state.selectedItemId = null;
+      }
     },
     setTool(tool: AnnotationTool) {
       state.tool = tool;
+      if (tool !== "select") {
+        state.selectedItemId = null;
+      }
     },
     setColor(color: string) {
       if (typeof color !== "string" || color.trim().length === 0) {
@@ -388,6 +419,42 @@ export const createLumenAnnotationStore = () => {
     },
     setViewMode(mode: "all" | "mine") {
       state.viewMode = mode === "mine" ? "mine" : "all";
+      if (
+        state.selectedItemId &&
+        !state.items.some((item) => item.id === state.selectedItemId && isVisibleItem(item))
+      ) {
+        state.selectedItemId = null;
+      }
+    },
+    setSelectedItemId(itemId: string | null) {
+      const normalizedId = typeof itemId === "string" ? itemId.trim() : "";
+      if (!normalizedId) {
+        state.selectedItemId = null;
+        return;
+      }
+      const exists = state.items.some((item) => item.id === normalizedId && isVisibleItem(item));
+      state.selectedItemId = exists ? normalizedId : null;
+    },
+    clearSelection() {
+      state.selectedItemId = null;
+    },
+    getItemById(itemId: string | null | undefined) {
+      const normalizedId = typeof itemId === "string" ? itemId.trim() : "";
+      if (!normalizedId) {
+        return null;
+      }
+      const item = state.items.find((entry) => entry.id === normalizedId) || null;
+      return item ? cloneItem(item) : null;
+    },
+    getSelectedItem() {
+      if (!state.selectedItemId) {
+        return null;
+      }
+      const item = state.items.find((entry) => entry.id === state.selectedItemId) || null;
+      return item && isVisibleItem(item) ? cloneItem(item) : null;
+    },
+    canEditItem(item: AnnotationItem | null | undefined) {
+      return canEditItem(item);
     },
     isItemOwnedByCurrentAuthor(item: AnnotationItem) {
       return isOwnedByCurrentAuthor(item);
@@ -414,15 +481,97 @@ export const createLumenAnnotationStore = () => {
     },
     addItem(item: AnnotationItem) {
       mutateItems((items) => {
-        items.push(
-          cloneItem({
-            ...item,
-            authorId: item.authorId ?? state.currentAuthorId,
-            authorName: item.authorName ?? state.currentAuthorName,
-            authorColor: item.authorColor ?? state.currentAuthorColor,
-          })
-        );
+        const nextItem = cloneItem({
+          ...item,
+          authorId: item.authorId ?? state.currentAuthorId,
+          authorName: item.authorName ?? state.currentAuthorName,
+          authorColor: item.authorColor ?? state.currentAuthorColor,
+        });
+        items.push(nextItem);
+        state.selectedItemId = nextItem.id;
       });
+    },
+    replaceItem(itemId: string, nextItem: AnnotationItem) {
+      const normalizedId = String(itemId || "").trim();
+      if (!normalizedId) {
+        return false;
+      }
+      const existingItem = state.items.find((item) => item.id === normalizedId) || null;
+      if (!canEditItem(existingItem)) {
+        return false;
+      }
+      const normalizedItem = cloneItem({
+        ...nextItem,
+        id: normalizedId,
+        authorId: nextItem.authorId ?? existingItem?.authorId ?? state.currentAuthorId,
+        authorName: nextItem.authorName ?? existingItem?.authorName ?? state.currentAuthorName,
+        authorColor: nextItem.authorColor ?? existingItem?.authorColor ?? state.currentAuthorColor,
+      });
+      mutateItems((items) => {
+        const itemIndex = findItemIndexById(items, normalizedId);
+        if (itemIndex < 0) {
+          return;
+        }
+        items.splice(itemIndex, 1, normalizedItem);
+        state.selectedItemId = normalizedId;
+      });
+      return true;
+    },
+    updateSelectedStyle(options: { color?: string; width?: number }) {
+      const selectedItem = state.selectedItemId
+        ? state.items.find((item) => item.id === state.selectedItemId) || null
+        : null;
+      if (!canEditItem(selectedItem) || !state.selectedItemId) {
+        return false;
+      }
+
+      const nextColor =
+        typeof options.color === "string" && options.color.trim().length > 0
+          ? options.color.trim()
+          : selectedItem.color;
+      const nextWidth =
+        options.width == null
+          ? selectedItem.width
+          : clampPositiveNumber(Number(options.width), selectedItem.width);
+
+      const nextItem = cloneItem({
+        ...selectedItem,
+        color: nextColor,
+        width: nextWidth,
+      });
+
+      mutateItems((items) => {
+        const itemIndex = findItemIndexById(items, state.selectedItemId!);
+        if (itemIndex < 0) {
+          return;
+        }
+        items.splice(itemIndex, 1, nextItem);
+      });
+      return true;
+    },
+    deleteItemById(itemId: string | null | undefined) {
+      const normalizedId = typeof itemId === "string" ? itemId.trim() : "";
+      if (!normalizedId) {
+        return false;
+      }
+      const existingItem = state.items.find((item) => item.id === normalizedId) || null;
+      if (!canEditItem(existingItem)) {
+        return false;
+      }
+      mutateItems((items) => {
+        const itemIndex = findItemIndexById(items, normalizedId);
+        if (itemIndex >= 0) {
+          items.splice(itemIndex, 1);
+        }
+        if (state.selectedItemId === normalizedId) {
+          state.selectedItemId = null;
+        }
+      });
+      return true;
+    },
+    deleteSelectedItem() {
+      const selectedItemId = state.selectedItemId;
+      return selectedItemId ? this.deleteItemById(selectedItemId) : false;
     },
     removeTopmost(predicate: (item: AnnotationItem) => boolean) {
       const reversedIndex = [...state.items]
@@ -432,8 +581,12 @@ export const createLumenAnnotationStore = () => {
         return false;
       }
       const index = state.items.length - reversedIndex - 1;
+      const removedItemId = state.items[index]?.id || null;
       mutateItems((items) => {
         items.splice(index, 1);
+        if (state.selectedItemId === removedItemId) {
+          state.selectedItemId = null;
+        }
       });
       return true;
     },
@@ -516,6 +669,7 @@ export const createLumenAnnotationStore = () => {
       writeItems(items, { clearHistoryState: true });
       state.active = false;
       state.tool = isAnnotationTool(raw.tool) ? raw.tool : "pen";
+      state.selectedItemId = null;
       state.color =
         typeof raw.color === "string" && raw.color.trim().length > 0
           ? raw.color.trim()

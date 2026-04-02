@@ -1,4 +1,4 @@
-export type AnnotationTool = "pen" | "highlighter" | "line" | "rect" | "eraser";
+export type AnnotationTool = "select" | "pen" | "highlighter" | "line" | "rect" | "eraser";
 
 export type AnnotationStrokeTool = Extract<AnnotationTool, "pen" | "highlighter">;
 

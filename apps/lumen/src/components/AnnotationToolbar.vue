@@ -7,6 +7,10 @@
           <span>{{ texts.page }} {{ currentPageLabel }}</span>
           <span>{{ texts.hint }}</span>
         </div>
+        <div class="doc-annotation-selection-row">
+          <span class="doc-annotation-label">{{ texts.selected }}</span>
+          <span class="doc-annotation-selection-chip">{{ selectedItemSummary }}</span>
+        </div>
         <div class="doc-annotation-author-row">
           <span class="doc-annotation-label">{{ texts.author }}</span>
           <span class="doc-annotation-author-chip">
@@ -77,9 +81,9 @@
             :key="color"
             type="button"
             class="doc-annotation-color"
-            :class="{ 'is-active': store.state.color === color }"
+            :class="{ 'is-active': effectiveColor === color }"
             :style="{ '--annotation-color': color }"
-            @click="store.setColor(color)"
+            @click="handleColorSelect(color)"
           ></button>
         </div>
       </div>
@@ -95,7 +99,7 @@
           min="2"
           max="18"
           step="1"
-          :value="store.state.lineWidth"
+          :value="effectiveLineWidth"
           @input="handleLineWidthInput"
         />
       </div>
@@ -117,6 +121,14 @@
             @click="store.clearPage(store.state.currentPageIndex)"
           >
             {{ texts.clearPage }}
+          </button>
+          <button
+            type="button"
+            class="doc-annotation-action"
+            :disabled="!canDeleteSelected"
+            @click="store.deleteSelectedItem()"
+          >
+            {{ texts.deleteSelected }}
           </button>
           <button
             type="button"
@@ -165,10 +177,31 @@ const currentAuthorColor = computed(
   () => props.store.state.currentAuthorColor || "#94a3b8"
 );
 const authors = computed<AnnotationAuthor[]>(() => props.store.listAuthors());
+const selectedItem = computed(() => props.store.getSelectedItem());
+const selectedEditableItem = computed(() =>
+  props.store.canEditItem(selectedItem.value) ? selectedItem.value : null
+);
+const canDeleteSelected = computed(() => props.store.canEditItem(selectedItem.value));
+const effectiveColor = computed(() => selectedItem.value?.color || props.store.state.color);
+const effectiveLineWidth = computed(() => selectedItem.value?.width || props.store.state.lineWidth);
+const selectedItemSummary = computed(() => {
+  const item = selectedItem.value;
+  if (!item) {
+    return texts.value.noSelection;
+  }
+  if (item.kind === "stroke") {
+    return item.tool === "highlighter" ? texts.value.highlighter : texts.value.pen;
+  }
+  if (item.kind === "line") {
+    return texts.value.line;
+  }
+  return texts.value.rect;
+});
 const hasMineAnnotations = computed(() =>
   props.store.state.items.some((item) => props.store.isItemOwnedByCurrentAuthor(item))
 );
 const toolItems = computed<Array<{ value: AnnotationTool; label: string }>>(() => [
+  { value: "select", label: texts.value.select },
   { value: "pen", label: texts.value.pen },
   { value: "highlighter", label: texts.value.highlighter },
   { value: "line", label: texts.value.line },
@@ -178,7 +211,18 @@ const toolItems = computed<Array<{ value: AnnotationTool; label: string }>>(() =
 
 const handleLineWidthInput = (event: Event) => {
   const target = event.target as HTMLInputElement | null;
-  props.store.setLineWidth(Number(target?.value));
+  const nextWidth = Number(target?.value);
+  props.store.setLineWidth(nextWidth);
+  if (props.store.state.tool === "select" && selectedEditableItem.value) {
+    props.store.updateSelectedStyle({ width: nextWidth });
+  }
+};
+
+const handleColorSelect = (color: string) => {
+  props.store.setColor(color);
+  if (props.store.state.tool === "select" && selectedEditableItem.value) {
+    props.store.updateSelectedStyle({ color });
+  }
 };
 </script>
 
@@ -223,7 +267,8 @@ const handleLineWidthInput = (event: Event) => {
 }
 
 .doc-annotation-author-row,
-.doc-annotation-view-row {
+.doc-annotation-view-row,
+.doc-annotation-selection-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -263,6 +308,20 @@ const handleLineWidthInput = (event: Event) => {
   color: #0f172a;
   font-size: 12px;
   line-height: 1;
+}
+
+.doc-annotation-selection-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
 }
 
 .doc-annotation-author-dot {
@@ -383,6 +442,12 @@ const handleLineWidthInput = (event: Event) => {
   background: #0f172a;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.24);
+}
+
+:global(.doc-shell.is-high-contrast) .doc-annotation-selection-chip {
+  background: rgba(29, 78, 216, 0.24);
+  color: #ffffff;
+  border-color: rgba(147, 197, 253, 0.52);
 }
 
 :global(.doc-shell.is-high-contrast) .doc-annotation-chip.is-active {

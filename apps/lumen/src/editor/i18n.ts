@@ -424,6 +424,7 @@ export type PlaygroundI18n = {
     close: string;
     page: string;
     hint: string;
+    select: string;
     tool: string;
     pen: string;
     highlighter: string;
@@ -434,8 +435,11 @@ export type PlaygroundI18n = {
     size: string;
     author: string;
     authors: string;
+    selected: string;
+    noSelection: string;
     viewAll: string;
     viewMine: string;
+    deleteSelected: string;
     clearMine: string;
     unknownAuthor: string;
     undo: string;
@@ -1885,6 +1889,7 @@ PLAYGROUND_I18N["zh-CN"].annotationPanel = {
   close: "\u9000\u51fa\u6807\u6ce8",
   page: "\u9875\u9762",
   hint: "\u4ec5\u4fdd\u5b58\u5f53\u524d\u4f1a\u8bdd\u4e34\u65f6\u6807\u8bb0",
+  select: "\u9009\u62e9",
   tool: "\u5de5\u5177",
   pen: "\u753b\u7b14",
   highlighter: "\u8367\u5149\u7b14",
@@ -1895,8 +1900,11 @@ PLAYGROUND_I18N["zh-CN"].annotationPanel = {
   size: "\u7c97\u7ec6",
   author: "\u5f53\u524d\u6807\u6ce8\u4eba",
   authors: "\u6807\u6ce8\u6210\u5458",
+  selected: "\u5df2\u9009\u4e2d",
+  noSelection: "\u672a\u9009\u4e2d",
   viewAll: "\u5168\u90e8",
   viewMine: "\u53ea\u770b\u6211\u7684",
+  deleteSelected: "\u5220\u9664\u9009\u4e2d",
   clearMine: "\u6e05\u9664\u6211\u7684",
   unknownAuthor: "\u672a\u77e5",
   undo: "\u64a4\u9500",
@@ -1910,6 +1918,7 @@ PLAYGROUND_I18N["en-US"].annotationPanel = {
   close: "Exit Annotation",
   page: "Page",
   hint: "Temporary marks for the current session",
+  select: "Select",
   tool: "Tool",
   pen: "Pen",
   highlighter: "Highlighter",
@@ -1920,8 +1929,11 @@ PLAYGROUND_I18N["en-US"].annotationPanel = {
   size: "Size",
   author: "Current Author",
   authors: "Authors",
+  selected: "Selected",
+  noSelection: "None",
   viewAll: "All",
   viewMine: "Mine",
+  deleteSelected: "Delete Selected",
   clearMine: "Clear Mine",
   unknownAuthor: "Unknown",
   undo: "Undo",
