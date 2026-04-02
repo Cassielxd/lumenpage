@@ -2,13 +2,44 @@
   <t-layout :class="['doc-shell', { 'is-high-contrast': debugFlags.highContrast }]">
     <t-header class="topbar">
       <div class="topbar-left">
-        <div class="logo">L</div>
-        <input
-          v-model="docTitle"
-          class="title-input title-input-native"
-          type="text"
-          :placeholder="i18n.app.defaultDocTitle"
-        />
+        <div class="brand" aria-label="LumenPage">
+          <svg class="brand-logo" viewBox="0 0 164 48" role="img" aria-hidden="true">
+            <defs>
+              <linearGradient id="lumenBrandFrame" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#e7f0ff" />
+                <stop offset="100%" stop-color="#bed6ff" />
+              </linearGradient>
+              <linearGradient id="lumenBrandPanel" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.68)" />
+                <stop offset="100%" stop-color="rgba(255,255,255,0.42)" />
+              </linearGradient>
+              <linearGradient id="lumenBrandFold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#dbeafe" />
+                <stop offset="100%" stop-color="#93c5fd" />
+              </linearGradient>
+              <linearGradient id="lumenBrandSurface" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="100%" stop-color="#eff6ff" />
+              </linearGradient>
+              <linearGradient id="lumenBrandGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.46" />
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <g class="brand-logo-mark">
+              <rect class="brand-logo-frame" x="4" y="6" width="156" height="36" rx="13" />
+              <path class="brand-logo-glow" d="M17 10h115c13.8 0 23.5 4.5 28 11.5V18c0-6.6-5.4-12-12-12H17Z" />
+              <rect class="brand-logo-panel" x="12" y="10" width="140" height="28" rx="10" />
+              <rect class="brand-logo-spine" x="12" y="10" width="24" height="28" rx="10" />
+              <path class="brand-logo-page" d="M18 14.2A3.2 3.2 0 0 1 21.2 11H30a3.2 3.2 0 0 1 2.26.94l2.8 2.8A3.2 3.2 0 0 1 36 17V31a3.2 3.2 0 0 1-3.2 3.2H21.2A3.2 3.2 0 0 1 18 31Z" />
+              <path class="brand-logo-fold" d="M29.8 11.8v4.1a1.5 1.5 0 0 0 1.5 1.5h4.1Z" />
+              <path class="brand-logo-rule" d="M22.4 20.2H29" />
+              <path class="brand-logo-rule" d="M22.4 24.5h7.4" />
+              <path class="brand-logo-rule" d="M22.4 28.8h5.1" />
+              <text class="brand-logo-wordmark" x="46" y="28">LumenPage</text>
+            </g>
+          </svg>
+        </div>
         <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
         <t-tag
           v-if="debugFlags.collaborationEnabled"
@@ -59,7 +90,12 @@
             <div class="doc-stage-body">
               <DocumentVerticalRuler :editor-view="view" :locale="localeKey" />
               <div ref="editorHost" class="editor-host"></div>
-              <AnnotationLayer :editor-view="view" :host="editorHost" :store="annotationStore" />
+              <AnnotationLayer
+                v-if="annotationStore.state.active"
+                :editor-view="view"
+                :host="editorHost"
+                :store="annotationStore"
+              />
             </div>
           </div>
           <div class="doc-floating-actions" :class="{ 'has-side-panel': !!activeSideTab }">
@@ -349,11 +385,6 @@ const localeOptions = computed(() =>
     value: option.value,
     label: option.label[localeKey.value],
   }))
-);
-const docTitle = ref(
-  debugFlags.collaborationEnabled
-    ? debugFlags.collaborationDocument
-    : createPlaygroundI18n(debugFlags.locale).app.defaultDocTitle
 );
 const editorHost = ref<HTMLElement | null>(null);
 const workspaceRef = ref<HTMLElement | null>(null);
@@ -1471,45 +1502,71 @@ onBeforeUnmount(() => {
   justify-content: flex-end;
 }
 
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  width: 164px;
+  height: 48px;
+  display: block;
+  overflow: visible;
+}
+
+.brand-logo-mark {
+  filter: drop-shadow(0 10px 20px rgba(148, 184, 255, 0.16));
+}
+
+.brand-logo-frame {
+  fill: url(#lumenBrandFrame);
+  stroke: rgba(99, 136, 213, 0.28);
+  stroke-width: 1;
+}
+
+.brand-logo-panel {
+  fill: url(#lumenBrandPanel);
+}
+
+.brand-logo-glow {
+  fill: url(#lumenBrandGlow);
+}
+
+.brand-logo-spine {
+  fill: rgba(79, 143, 247, 0.16);
+}
+
+.brand-logo-page {
+  fill: url(#lumenBrandSurface);
+}
+
+.brand-logo-fold {
+  fill: url(#lumenBrandFold);
+}
+
+.brand-logo-rule {
+  fill: none;
+  stroke: rgba(37, 99, 235, 0.64);
+  stroke-linecap: round;
+  stroke-width: 1.7;
+}
+
+.brand-logo-wordmark {
+  fill: #1846a3;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  font-family:
+    "Segoe UI",
+    "PingFang SC",
+    "Microsoft YaHei UI",
+    sans-serif;
+}
+
 .topbar-locale {
   width: 132px;
-}
-
-.logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: #1a73e8;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.title-input {
-  width: 260px;
-}
-
-.title-input-native {
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #1f2329;
-  font-size: 13px;
-  line-height: 28px;
-  outline: none;
-  transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.title-input-native:focus {
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.16);
 }
 
 .doc-content {
@@ -1962,9 +2019,33 @@ onBeforeUnmount(() => {
   border-color: #fff;
 }
 
-.doc-shell.is-high-contrast .logo {
-  background: #fff;
-  color: #000;
+.doc-shell.is-high-contrast .brand-logo-mark {
+  filter: none;
+}
+
+.doc-shell.is-high-contrast .brand-logo-frame {
+  fill: #fff;
+}
+
+.doc-shell.is-high-contrast .brand-logo-panel,
+.doc-shell.is-high-contrast .brand-logo-spine {
+  fill: rgba(0, 0, 0, 0.12);
+}
+
+.doc-shell.is-high-contrast .brand-logo-page {
+  fill: #000;
+}
+
+.doc-shell.is-high-contrast .brand-logo-fold {
+  fill: rgba(0, 0, 0, 0.28);
+}
+
+.doc-shell.is-high-contrast .brand-logo-rule {
+  stroke: rgba(0, 0, 0, 0.76);
+}
+
+.doc-shell.is-high-contrast .brand-logo-wordmark {
+  fill: #000;
 }
 
 .doc-shell.is-high-contrast .doc-ruler-corner {
@@ -1981,13 +2062,6 @@ onBeforeUnmount(() => {
 .doc-shell.is-high-contrast .doc-footer-contact,
 .doc-shell.is-high-contrast .doc-footer-contact-link {
   color: #fff;
-}
-
-.doc-shell.is-high-contrast .title-input-native {
-  background: #000;
-  color: #fff;
-  border-color: #fff;
-  box-shadow: none;
 }
 
 .doc-shell.is-high-contrast .doc-footer-link {
@@ -2040,10 +2114,6 @@ onBeforeUnmount(() => {
     padding: 0 10px;
   }
 
-  .title-input {
-    width: 150px;
-  }
-
   .doc-content {
     padding: 0;
   }
@@ -2072,6 +2142,11 @@ onBeforeUnmount(() => {
   .doc-floating-action {
     min-width: 72px;
     padding: 8px 12px;
+  }
+
+  .brand-logo {
+    width: 144px;
+    height: 42px;
   }
 
   .doc-side-tabs {
