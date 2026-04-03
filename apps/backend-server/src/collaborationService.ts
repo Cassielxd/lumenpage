@@ -13,6 +13,7 @@ const encodeDocumentName = (documentName: string) => Buffer.from(documentName, "
 export interface CollaborationService {
   hocuspocus: Hocuspocus;
   ensureStorageDir: () => Promise<void>;
+  readDocumentSnapshot: (documentName: string) => Promise<Uint8Array>;
   createTicket: (input: {
     documentId: string;
     documentName: string;
@@ -67,6 +68,11 @@ export const createCollaborationService = ({
     await fs.writeFile(filePath, Buffer.from(update));
     log("store", `persisted "${documentName}"`, { filePath, bytes: update.byteLength });
     await dataService.touchDocumentByName(documentName);
+  };
+
+  const readDocumentSnapshot = async (documentName: string) => {
+    const document = await loadDocument(documentName);
+    return Y.encodeStateAsUpdate(document);
   };
 
   const createTicket = ({
@@ -170,6 +176,7 @@ export const createCollaborationService = ({
   return {
     hocuspocus,
     ensureStorageDir,
+    readDocumentSnapshot,
     createTicket,
     verifyTicket,
   };

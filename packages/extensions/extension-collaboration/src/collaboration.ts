@@ -157,9 +157,9 @@ export const Collaboration = Extension.create<CollaborationOptions, Collaboratio
             if (state.doc?.eq?.(nextDoc) !== true) {
               const tr = state.tr
                 .replaceWith(0, state.doc.content.size, nextDoc.content)
-                .setSelection(Selection.atEnd(nextDoc))
                 .setMeta("addToHistory", false)
                 .setMeta(CollaborationPluginKey, { refresh: true });
+              tr.setSelection(Selection.atEnd(tr.doc));
 
               this.editor?.view?.dispatch?.(tr);
             }
@@ -211,9 +211,9 @@ export const Collaboration = Extension.create<CollaborationOptions, Collaboratio
 
       const tr = state.tr
         .replaceWith(0, state.doc.content.size, nextDoc.content)
-        .setSelection(Selection.atEnd(nextDoc))
         .setMeta("addToHistory", false)
         .setMeta(CollaborationPluginKey, { refresh: true });
+      tr.setSelection(Selection.atEnd(tr.doc));
 
       return state.apply(tr);
     };

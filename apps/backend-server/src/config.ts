@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import type { RuntimeConfig } from "./types.js";
+import type { BackendMetadataDriver, RuntimeConfig } from "./types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const appRoot = path.resolve(__dirname, "..");
@@ -30,6 +30,11 @@ const parseBoolean = (value: unknown, fallback = false) => {
     return false;
   }
   return fallback;
+};
+
+const parseMetadataDriver = (value: unknown): BackendMetadataDriver => {
+  const normalized = trimText(value).toLowerCase();
+  return normalized === "sqlite" ? "sqlite" : "json";
 };
 
 const splitCsv = (value: unknown, fallback: string[]) => {
@@ -124,6 +129,8 @@ export const createRuntimeConfig = (): RuntimeConfig => {
     defaultDeepSeekBaseUrl;
   const deepSeekDefaultModel = trimText(process.env.DEEPSEEK_MODEL);
   const allowedOrigins = splitCsv(process.env.BACKEND_ALLOWED_ORIGINS, defaultAllowedOrigins);
+  const metadataDriver = parseMetadataDriver(process.env.BACKEND_METADATA_DRIVER);
+  const metadataDatabaseUrl = trimText(process.env.BACKEND_METADATA_DATABASE_URL) || null;
 
   return {
     appRoot,
@@ -136,6 +143,8 @@ export const createRuntimeConfig = (): RuntimeConfig => {
     maxDebounce,
     storageDir,
     metadataFilePath: path.join(storageDir, "backend-metadata.json"),
+    metadataDriver,
+    metadataDatabaseUrl,
     sessionCookieName,
     sessionTtlMs: sessionTtlDays * 24 * 60 * 60 * 1000,
     collabTicketTtlMs: collabTicketTtlMinutes * 60 * 1000,

@@ -355,6 +355,37 @@ export type PlaygroundI18n = {
     copyLinkFailed: string;
     saveBackendUrl: string;
   };
+  documentCenter: {
+    title: string;
+    subtitle: string;
+    description: string;
+    documentTitle: string;
+    documentTitlePlaceholder: string;
+    createDocument: string;
+    openDocument: string;
+    refresh: string;
+    documents: string;
+    loading: string;
+    empty: string;
+    authHint: string;
+    loadFailed: string;
+    createFailed: string;
+  };
+  shareLanding: {
+    backHome: string;
+    loading: string;
+    loadFailed: string;
+    invalidLink: string;
+    kicker: string;
+    description: string;
+    documentName: string;
+    permission: string;
+    accessMode: string;
+    anonymousAccess: string;
+    loggedInAccess: string;
+    openDocument: string;
+    refresh: string;
+  };
   ruler: {
     leftMargin: string;
     rightMargin: string;
@@ -1959,7 +1990,7 @@ PLAYGROUND_I18N["zh-CN"].collaborationPanel = {
   hideSettings: "\u6536\u8d77\u8bbe\u7f6e",
   emptyTitle: "\u5f53\u524d\u672a\u5f00\u542f\u534f\u4f5c",
   emptyCopy:
-    "\u5728\u8fd9\u91cc\u914d\u7f6e\u534f\u4f5c\u670d\u52a1\u3001\u6587\u6863\u540d\u548c\u7528\u6237\u8eab\u4efd\uff0c\u5e94\u7528\u540e\u5c06\u5237\u65b0\u9875\u9762\u5e76\u91cd\u65b0\u8fde\u63a5\u3002",
+    "\u5f53\u524d\u5148\u4ee5\u53ea\u8bfb\u5feb\u7167\u67e5\u770b\u6587\u6863\u3002\u5728\u8fd9\u91cc\u4e3b\u52a8\u5f00\u542f\u534f\u4f5c\u540e\uff0c\u9875\u9762\u4f1a\u5237\u65b0\u5e76\u91cd\u65b0\u5efa\u7acb\u5b9e\u65f6\u8fde\u63a5\u3002",
   url: "\u534f\u4f5c\u5730\u5740",
   urlPlaceholder: "ws://127.0.0.1:1234",
   document: "\u6587\u6863\u540d",
@@ -1998,7 +2029,7 @@ PLAYGROUND_I18N["en-US"].collaborationPanel = {
   hideSettings: "Hide Settings",
   emptyTitle: "Collaboration is currently off",
   emptyCopy:
-    "Configure the collaboration server, document, and user identity here. Applying the settings reloads the page and reconnects.",
+    "The document is currently shown from a read-only snapshot. Enable collaboration here to reload the page and join the live session.",
   url: "Server URL",
   urlPlaceholder: "ws://127.0.0.1:1234",
   document: "Document",
@@ -2141,6 +2172,74 @@ PLAYGROUND_I18N["en-US"].shareDialog = {
   copyLinkSuccess: "Share link copied",
   copyLinkFailed: "Failed to copy share link",
   saveBackendUrl: "Save backend URL",
+};
+
+PLAYGROUND_I18N["zh-CN"].documentCenter = {
+  title: "文档中心",
+  subtitle: "LumenPage Workspace",
+  description: "从这里创建、打开和管理你的协作文档。后端权限、分享和实时协作都会围绕同一个文档入口组织。",
+  documentTitle: "文档标题",
+  documentTitlePlaceholder: "例如：产品规划、会议纪要、设计评审",
+  createDocument: "新建文档",
+  openDocument: "打开",
+  refresh: "刷新",
+  documents: "我的文档",
+  loading: "正在加载文档列表…",
+  empty: "还没有文档，先创建一篇。",
+  authHint: "登录 backend-server 账号后才能查看和创建文档。",
+  loadFailed: "加载文档列表失败",
+  createFailed: "创建文档失败",
+};
+
+PLAYGROUND_I18N["en-US"].documentCenter = {
+  title: "Document Center",
+  subtitle: "LumenPage Workspace",
+  description:
+    "Create, open, and manage your collaborative documents here. Backend permissions, sharing, and realtime collaboration all hang off the same document entry.",
+  documentTitle: "Document Title",
+  documentTitlePlaceholder: "For example: Product Plan, Meeting Notes, Design Review",
+  createDocument: "Create Document",
+  openDocument: "Open",
+  refresh: "Refresh",
+  documents: "My Documents",
+  loading: "Loading documents...",
+  empty: "No documents yet. Create your first one.",
+  authHint: "Sign in to backend-server before browsing or creating documents.",
+  loadFailed: "Failed to load documents",
+  createFailed: "Failed to create document",
+};
+
+PLAYGROUND_I18N["zh-CN"].shareLanding = {
+  backHome: "返回文档中心",
+  loading: "正在读取分享信息…",
+  loadFailed: "读取分享信息失败",
+  invalidLink: "分享链接无效。",
+  kicker: "共享文档",
+  description: "这个页面用于确认分享权限和访问方式。进入文档后，协作连接会自动按当前分享身份建立。",
+  documentName: "文档标识",
+  permission: "分享权限",
+  accessMode: "访问方式",
+  anonymousAccess: "允许匿名访问",
+  loggedInAccess: "需要登录访问",
+  openDocument: "打开文档",
+  refresh: "重新检查",
+};
+
+PLAYGROUND_I18N["en-US"].shareLanding = {
+  backHome: "Back to Document Center",
+  loading: "Loading share access...",
+  loadFailed: "Failed to load share access",
+  invalidLink: "The share link is invalid.",
+  kicker: "Shared Document",
+  description:
+    "Use this page to confirm the granted permission and access mode before entering the document workspace.",
+  documentName: "Document Key",
+  permission: "Permission",
+  accessMode: "Access Mode",
+  anonymousAccess: "Anonymous access allowed",
+  loggedInAccess: "Signed-in access only",
+  openDocument: "Open Document",
+  refresh: "Refresh",
 };
 
 PLAYGROUND_I18N["zh-CN"].ruler = {

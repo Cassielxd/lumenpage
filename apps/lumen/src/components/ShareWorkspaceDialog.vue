@@ -23,7 +23,7 @@
         </div>
       </div>
 
-      <div v-if="!props.collaborationEnabled" class="doc-share-empty">
+      <div v-if="!props.workspaceEnabled" class="doc-share-empty">
         <p class="doc-share-empty-title">{{ texts.collaborationRequired }}</p>
         <p class="doc-share-empty-copy">{{ texts.collaborationRequiredHint }}</p>
       </div>
@@ -47,6 +47,9 @@
             </t-tag>
           </div>
           <div v-if="workspaceLoading" class="doc-share-loading">{{ texts.authenticating }}...</div>
+          <div v-else-if="workspaceError" class="doc-share-note doc-share-note-error">
+            {{ workspaceError }}
+          </div>
           <div v-else-if="currentDocument" class="doc-share-current-document">
             <div class="doc-share-current-title">{{ currentDocument.title }}</div>
             <div class="doc-share-current-meta">
@@ -161,19 +164,12 @@
 
 <script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive } from "vue";
+import { useWorkspaceSharing } from "../composables/useWorkspaceSharing";
 import type { LumenCollaborationState } from "../editor/collaboration";
 import {
-  addDocumentMemberByEmail,
-  createDocumentShareLink,
-  ensureCollaborationDocument,
-  listDocumentMembers,
-  listDocumentShareLinks,
-  resolveBackendUrl,
-  revokeDocumentShareLink,
   type BackendAccess,
   type BackendDocument,
-  type BackendMember,
   type BackendShareLink,
   type BackendUser,
   type BackendUserRole,
@@ -183,9 +179,11 @@ import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } f
 const props = defineProps<{
   visible: boolean;
   locale?: PlaygroundLocale | string;
-  collaborationEnabled: boolean;
+  workspaceEnabled: boolean;
   collaborationState: LumenCollaborationState;
   sessionUser?: BackendUser | null;
+  document?: BackendDocument | null;
+  documentAccess?: BackendAccess | null;
 }>();
 
 const emit = defineEmits<{
@@ -195,12 +193,29 @@ const emit = defineEmits<{
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const texts = computed(() => createPlaygroundI18n(currentLocale.value).shareDialog);
-const backendUrl = computed(() => resolveBackendUrl(props.collaborationState.url));
-const workspaceLoading = ref(false);
-const currentDocument = ref<BackendDocument | null>(null);
-const documentAccess = ref<BackendAccess | null>(null);
-const members = ref<BackendMember[]>([]);
-const shareLinks = ref<BackendShareLink[]>([]);
+const {
+  workspaceLoading,
+  workspaceError,
+  currentDocument,
+  documentAccess,
+  members,
+  shareLinks,
+  inviteMember,
+  createShareLink,
+  revokeShareLink,
+} = useWorkspaceSharing({
+  visible: computed(() => props.visible),
+  workspaceEnabled: computed(() => props.workspaceEnabled),
+  collaborationUrl: computed(() => props.collaborationState.url),
+  collaborationDocumentName: computed(() => props.collaborationState.documentName),
+  collaborationField: computed(() => props.collaborationState.field),
+  sessionUser: computed(() => props.sessionUser),
+  document: computed(() => props.document),
+  documentAccess: computed(() => props.documentAccess),
+  messages: {
+    ensureFailed: computed(() => texts.value.ensureFailed),
+  },
+});
 
 const inviteDraft = reactive<{
   email: string;
@@ -245,44 +260,6 @@ const anonymousOptions = computed(() => [
   { value: "restricted", label: texts.value.createRestricted },
 ]);
 
-const resetWorkspaceState = () => {
-  currentDocument.value = null;
-  documentAccess.value = null;
-  members.value = [];
-  shareLinks.value = [];
-};
-
-const refreshWorkspace = async () => {
-  resetWorkspaceState();
-  if (!props.collaborationEnabled || !props.sessionUser) {
-    return;
-  }
-
-  workspaceLoading.value = true;
-  try {
-    const ensured = await ensureCollaborationDocument(backendUrl.value, {
-      name: props.collaborationState.documentName,
-      title: props.collaborationState.documentName,
-      field: props.collaborationState.field,
-    });
-    currentDocument.value = ensured.document;
-    documentAccess.value = ensured.access;
-
-    if (ensured.access.capabilities.canManage) {
-      const [memberResult, shareResult] = await Promise.all([
-        listDocumentMembers(backendUrl.value, ensured.document.id),
-        listDocumentShareLinks(backendUrl.value, ensured.document.id),
-      ]);
-      members.value = memberResult.members;
-      shareLinks.value = shareResult.shareLinks;
-    }
-  } catch (error) {
-    MessagePlugin.error(error instanceof Error ? error.message || texts.value.ensureFailed : texts.value.ensureFailed);
-  } finally {
-    workspaceLoading.value = false;
-  }
-};
-
 const handleVisibleChange = (nextVisible: boolean) => {
   emit("update:visible", nextVisible);
 };
@@ -292,17 +269,15 @@ const handleClose = () => {
 };
 
 const handleInviteMember = async () => {
-  if (!currentDocument.value) {
+  if (!currentDocument.value || documentAccess.value?.capabilities.canManage !== true) {
     return;
   }
   try {
-    await addDocumentMemberByEmail(backendUrl.value, currentDocument.value.id, {
+    await inviteMember({
       email: inviteDraft.email.trim(),
       role: inviteDraft.role,
     });
     inviteDraft.email = "";
-    const memberResult = await listDocumentMembers(backendUrl.value, currentDocument.value.id);
-    members.value = memberResult.members;
     MessagePlugin.success(texts.value.inviteSuccess);
   } catch (error) {
     MessagePlugin.error(error instanceof Error ? error.message || texts.value.inviteFailed : texts.value.inviteFailed);
@@ -310,16 +285,14 @@ const handleInviteMember = async () => {
 };
 
 const handleCreateShareLink = async () => {
-  if (!currentDocument.value) {
+  if (!currentDocument.value || documentAccess.value?.capabilities.canManage !== true) {
     return;
   }
   try {
-    await createDocumentShareLink(backendUrl.value, currentDocument.value.id, {
+    await createShareLink({
       role: shareDraft.role,
       allowAnonymous: shareDraft.allowAnonymous,
     });
-    const shareResult = await listDocumentShareLinks(backendUrl.value, currentDocument.value.id);
-    shareLinks.value = shareResult.shareLinks;
     MessagePlugin.success(texts.value.createLinkSuccess);
   } catch (error) {
     MessagePlugin.error(
@@ -344,11 +317,7 @@ const handleCopyShareLink = async (shareLink: BackendShareLink) => {
 
 const handleRevokeShareLink = async (shareLink: BackendShareLink) => {
   try {
-    await revokeDocumentShareLink(backendUrl.value, shareLink.id);
-    if (currentDocument.value) {
-      const shareResult = await listDocumentShareLinks(backendUrl.value, currentDocument.value.id);
-      shareLinks.value = shareResult.shareLinks;
-    }
+    await revokeShareLink(shareLink.id);
     MessagePlugin.success(texts.value.revokeLinkSuccess);
   } catch (error) {
     MessagePlugin.error(
@@ -356,17 +325,6 @@ const handleRevokeShareLink = async (shareLink: BackendShareLink) => {
     );
   }
 };
-
-watch(
-  () => [props.visible, props.sessionUser?.id || "", props.collaborationState.documentName, props.collaborationState.field],
-  async ([visible]) => {
-    if (!visible) {
-      return;
-    }
-    await refreshWorkspace();
-  },
-  { immediate: true }
-);
 </script>
 
 <style scoped>
@@ -459,6 +417,12 @@ watch(
   background: #eff6ff;
   color: #1e3a8a;
   border: 1px solid rgba(59, 130, 246, 0.18);
+}
+
+.doc-share-note-error {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: rgba(249, 115, 22, 0.2);
 }
 
 .doc-share-empty-title {

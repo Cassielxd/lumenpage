@@ -29,8 +29,10 @@ export type BackendCapabilities = {
 
 export type BackendAccess = {
   role: BackendUserRole;
+  source?: "owner" | "member" | "share-link";
   permissionMode: "full" | "comment" | "readonly";
   capabilities: BackendCapabilities;
+  shareLink?: BackendShareLink | null;
 };
 
 export type BackendMember = {
@@ -63,6 +65,14 @@ export type BackendCollabTicket = {
   userColor: string;
   expiresAt: string;
 };
+
+export type BackendCollabSnapshot = {
+  document: BackendDocument;
+  field: string;
+  snapshot: string;
+};
+
+const SHARE_ACCESS_TOKEN_PREFIX = "lumenpage-share-access-token";
 
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:1234";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost"]);
@@ -148,13 +158,27 @@ const unwrapResponse = async <T>(response: Response): Promise<T> => {
   return data as T;
 };
 
-const backendFetch = async <T>(backendUrl: string, path: string, init?: RequestInit): Promise<T> => {
+type BackendRequestOptions = RequestInit & {
+  shareToken?: string | null;
+};
+
+const backendFetch = async <T>(
+  backendUrl: string,
+  path: string,
+  init?: BackendRequestOptions,
+): Promise<T> => {
+  const headers = new Headers(init?.headers || {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const shareToken = trimText(init?.shareToken);
+  if (shareToken) {
+    headers.set("X-Share-Token", shareToken);
+  }
+
   const response = await fetch(`${normalizeBackendUrl(backendUrl)}${path}`, {
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
+    headers,
     ...init,
   });
 
@@ -203,10 +227,48 @@ export const ensureCollaborationDocument = async (
     body: JSON.stringify(payload),
   });
 
+export const listBackendDocuments = async (backendUrl: string) =>
+  backendFetch<{ ok: true; documents: BackendDocument[] }>(backendUrl, "/api/documents", {
+    method: "GET",
+  });
+
+export const createBackendDocument = async (
+  backendUrl: string,
+  payload: { title?: string; name?: string; field?: string },
+) =>
+  backendFetch<{ ok: true; document: BackendDocument }>(backendUrl, "/api/documents", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const getBackendDocumentAccess = async (
+  backendUrl: string,
+  documentId: string,
+  options?: { shareToken?: string | null },
+) =>
+  backendFetch<{
+    ok: true;
+    document: BackendDocument;
+    access: BackendAccess;
+  }>(backendUrl, `/api/documents/${documentId}`, {
+    method: "GET",
+    shareToken: options?.shareToken,
+  });
+
+export const getBackendShareLink = async (backendUrl: string, shareToken: string) =>
+  backendFetch<{
+    ok: true;
+    shareLink: BackendShareLink;
+    document: BackendDocument;
+    permissionMode: "full" | "comment" | "readonly";
+  }>(backendUrl, `/api/share-links/${encodeURIComponent(trimText(shareToken))}`, {
+    method: "GET",
+  });
+
 export const createDocumentCollabTicket = async (
   backendUrl: string,
   documentId: string,
-  payload: { userName?: string; userColor?: string; field?: string },
+  payload: { userName?: string; userColor?: string; field?: string; shareToken?: string | null },
 ) =>
   backendFetch<{ ok: true; collab: BackendCollabTicket }>(
     backendUrl,
@@ -214,6 +276,21 @@ export const createDocumentCollabTicket = async (
     {
       method: "POST",
       body: JSON.stringify(payload),
+      shareToken: payload.shareToken,
+    },
+  );
+
+export const getDocumentCollabSnapshot = async (
+  backendUrl: string,
+  documentId: string,
+  options?: { shareToken?: string | null },
+) =>
+  backendFetch<{ ok: true } & BackendCollabSnapshot>(
+    backendUrl,
+    `/api/documents/${documentId}/collab-snapshot`,
+    {
+      method: "GET",
+      shareToken: options?.shareToken,
     },
   );
 
@@ -274,3 +351,44 @@ export const revokeDocumentShareLink = async (
       method: "DELETE",
     },
   );
+
+const resolveShareAccessStorageKey = (documentId: string) =>
+  `${SHARE_ACCESS_TOKEN_PREFIX}:${encodeURIComponent(trimText(documentId))}`;
+
+export const rememberShareAccessToken = (documentId: string, token: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const normalizedDocumentId = trimText(documentId);
+  const normalizedToken = trimText(token);
+  if (!normalizedDocumentId || !normalizedToken) {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(resolveShareAccessStorageKey(normalizedDocumentId), normalizedToken);
+  } catch (_error) {
+    // ignore
+  }
+};
+
+export const resolveStoredShareAccessToken = (documentId: string) => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  try {
+    return trimText(window.sessionStorage.getItem(resolveShareAccessStorageKey(documentId)));
+  } catch (_error) {
+    return "";
+  }
+};
+
+export const clearStoredShareAccessToken = (documentId: string) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.removeItem(resolveShareAccessStorageKey(documentId));
+  } catch (_error) {
+    // ignore
+  }
+};

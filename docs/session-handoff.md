@@ -6,8 +6,9 @@
 ## 本次先读
 
 1. `docs/session-handoff.md`
-2. `docs/pagination-architecture-migration-plan-2026-03-19.md`
-3. `docs/architecture-analysis.md`
+2. `docs/lumen-product-requirements.md`
+3. `docs/pagination-architecture-migration-plan-2026-03-19.md`
+4. `docs/architecture-analysis.md`
 
 ## 当前结论
 

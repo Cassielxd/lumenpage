@@ -41,7 +41,7 @@ import type { PlaygroundLocale } from "./i18n";
 export type LumenCollaborationExtensionsOptions = {
   document: any;
   field?: string;
-  provider: any;
+  provider?: any | null;
   user: Record<string, any>;
   onUsersChange?: (users: CollaborationCaretUser[]) => void;
 };
@@ -107,14 +107,17 @@ export const createLumenDocumentExtensions = (
       Collaboration.configure({
         document: collaboration.document,
         field: collaboration.field || "default",
-        provider: collaboration.provider,
-      }),
-      CollaborationCaret.configure({
-        provider: collaboration.provider,
-        user: collaboration.user,
-        onUpdate: collaboration.onUsersChange || (() => undefined),
       })
     );
+    if (collaboration.provider) {
+      extensions.push(
+        CollaborationCaret.configure({
+          provider: collaboration.provider,
+          user: collaboration.user,
+          onUpdate: collaboration.onUsersChange || (() => undefined),
+        })
+      );
+    }
   }
 
   return extensions;

@@ -1,100 +1,23 @@
 <template>
   <t-layout :class="['doc-shell', { 'is-high-contrast': debugFlags.highContrast }]">
-    <t-header class="topbar">
-      <div class="topbar-left">
-        <div class="brand" aria-label="LumenPage">
-          <svg class="brand-logo" viewBox="0 0 164 48" role="img" aria-hidden="true">
-            <defs>
-              <linearGradient id="lumenBrandFrame" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#e7f0ff" />
-                <stop offset="100%" stop-color="#bed6ff" />
-              </linearGradient>
-              <linearGradient id="lumenBrandPanel" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.68)" />
-                <stop offset="100%" stop-color="rgba(255,255,255,0.42)" />
-              </linearGradient>
-              <linearGradient id="lumenBrandFold" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#dbeafe" />
-                <stop offset="100%" stop-color="#93c5fd" />
-              </linearGradient>
-              <linearGradient id="lumenBrandSurface" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ffffff" />
-                <stop offset="100%" stop-color="#eff6ff" />
-              </linearGradient>
-              <linearGradient id="lumenBrandGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.46" />
-                <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-              </linearGradient>
-            </defs>
-            <g class="brand-logo-mark">
-              <rect class="brand-logo-frame" x="4" y="6" width="156" height="36" rx="13" />
-              <path class="brand-logo-glow" d="M17 10h115c13.8 0 23.5 4.5 28 11.5V18c0-6.6-5.4-12-12-12H17Z" />
-              <rect class="brand-logo-panel" x="12" y="10" width="140" height="28" rx="10" />
-              <rect class="brand-logo-spine" x="12" y="10" width="24" height="28" rx="10" />
-              <path class="brand-logo-page" d="M18 14.2A3.2 3.2 0 0 1 21.2 11H30a3.2 3.2 0 0 1 2.26.94l2.8 2.8A3.2 3.2 0 0 1 36 17V31a3.2 3.2 0 0 1-3.2 3.2H21.2A3.2 3.2 0 0 1 18 31Z" />
-              <path class="brand-logo-fold" d="M29.8 11.8v4.1a1.5 1.5 0 0 0 1.5 1.5h4.1Z" />
-              <path class="brand-logo-rule" d="M22.4 20.2H29" />
-              <path class="brand-logo-rule" d="M22.4 24.5h7.4" />
-              <path class="brand-logo-rule" d="M22.4 28.8h5.1" />
-              <text class="brand-logo-wordmark" x="46" y="28">LumenPage</text>
-            </g>
-          </svg>
-        </div>
-        <t-tag size="small" variant="light">{{ permissionLabel }}</t-tag>
-        <t-tag
-          v-if="debugFlags.collaborationEnabled"
-          size="small"
-          theme="primary"
-          variant="light"
-        >
-          {{ collaborationState.documentName }}
-        </t-tag>
-      </div>
-      <div class="topbar-right">
-        <t-select
-          class="topbar-locale"
-          size="small"
-          :model-value="localeKey"
-          :options="localeOptions"
-          @update:model-value="handleLocaleChange"
-        />
-        <t-button size="small" theme="primary" @click="openShareDialog">
-          {{ i18n.app.share }}
-        </t-button>
-        <t-popup
-          :visible="accountPopupVisible"
-          trigger="click"
-          placement="bottom-right"
-          overlay-inner-class-name="topbar-account-popup"
-          @visible-change="(visible) => (accountPopupVisible = visible)"
-        >
-          <template #content>
-            <div class="topbar-account-menu">
-              <template v-if="backendSessionUser">
-                <div class="topbar-account-menu-summary">
-                  <span class="topbar-account-menu-name">{{ backendSessionUser.displayName }}</span>
-                  <span class="topbar-account-menu-email">{{ backendSessionUser.email }}</span>
-                </div>
-                <t-button size="small" variant="outline" @click="openAccountDialog('login')">
-                  {{ i18n.shareDialog.manageAccount }}
-                </t-button>
-              </template>
-              <template v-else>
-                <t-button size="small" theme="primary" @click="openAccountDialog('login')">
-                  {{ i18n.shareDialog.login }}
-                </t-button>
-                <t-button size="small" variant="outline" @click="openAccountDialog('register')">
-                  {{ i18n.shareDialog.register }}
-                </t-button>
-              </template>
-            </div>
-          </template>
-          <button type="button" class="topbar-avatar-trigger">
-            <t-avatar size="small">{{ topbarAvatarText }}</t-avatar>
-          </button>
-        </t-popup>
-      </div>
-    </t-header>
+    <WorkspaceTopbar
+      :collaboration-enabled="realtimeCollaborationEnabled"
+      :collaboration-document-name="collaborationState.documentName"
+      :permission-label="permissionLabel"
+      :locale-key="localeKey"
+      :locale-options="localeOptions"
+      :share-label="i18n.app.share"
+      :backend-session-user="backendSessionUser"
+      :manage-account-label="i18n.shareDialog.manageAccount"
+      :login-label="i18n.shareDialog.login"
+      :register-label="i18n.shareDialog.register"
+      :avatar-text="topbarAvatarText"
+      :account-popup-visible="accountPopupVisible"
+      @locale-change="handleLocaleChange"
+      @open-share="openShareDialog"
+      @open-account="openAccountDialog"
+      @account-popup-visible-change="(visible) => (accountPopupVisible = visible)"
+    />
 
     <EditorMenuBar v-model:active-menu="activeToolbarMenu" :locale="localeKey" />
     <EditorToolbar
@@ -116,86 +39,48 @@
         :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }"
       >
         <t-content class="doc-main">
-          <div class="doc-stage">
-            <div class="doc-ruler-shell">
-              <div class="doc-ruler-corner" aria-hidden="true"></div>
-              <DocumentRuler :editor-view="view" :locale="localeKey" />
-            </div>
-            <div class="doc-stage-body">
-              <DocumentVerticalRuler :editor-view="view" :locale="localeKey" />
+          <WorkspaceStage
+            v-if="!workspaceError"
+            :editor-view="view"
+            :editor-host="editorHost"
+            :annotation-store="annotationStore"
+            :locale="localeKey"
+          >
+            <template #editor-host>
               <div ref="editorHost" class="editor-host"></div>
-              <AnnotationLayer
-                v-if="annotationStore.state.active"
-                :editor-view="view"
-                :host="editorHost"
-                :store="annotationStore"
-              />
+            </template>
+          </WorkspaceStage>
+          <div v-if="workspaceLoading || workspaceError" class="doc-workspace-status">
+            <div class="doc-workspace-status-card">
+              <span class="doc-workspace-status-title">
+                {{ workspaceLoading ? documentStatusLoadingLabel : documentStatusErrorLabel }}
+              </span>
+              <p class="doc-workspace-status-copy">
+                {{ workspaceLoading ? documentStatusLoadingCopy : workspaceError }}
+              </p>
             </div>
           </div>
-          <div class="doc-floating-actions" :class="{ 'has-side-panel': !!activeSideTab }">
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'outline' }"
-              @click="handleFloatingActionClick('outline')"
-            >
-              <span class="doc-floating-action-label">{{ outlineTabLabel }}</span>
-            </button>
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'comments' }"
-              @click="handleFloatingActionClick('comments')"
-            >
-              <span class="doc-floating-action-label">{{ commentButtonLabel }}</span>
-            </button>
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'collaboration' }"
-              @click="handleFloatingActionClick('collaboration')"
-            >
-              <span class="doc-floating-action-label">{{ collaborationButtonLabel }}</span>
-            </button>
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'assistant' }"
-              @click="handleFloatingActionClick('assistant')"
-            >
-              <span class="doc-floating-action-label">{{ assistantButtonLabel }}</span>
-            </button>
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'changes' }"
-              @click="handleFloatingActionClick('changes')"
-            >
-              <span class="doc-floating-action-label">{{ trackChangesButtonLabel }}</span>
-            </button>
-            <button
-              type="button"
-              class="doc-floating-action"
-              :class="{ 'is-active': activeSideTab === 'annotation' && annotationStore.state.active }"
-              @click="handleFloatingActionClick('annotation')"
-            >
-              <span class="doc-floating-action-label">{{ annotationActionLabel }}</span>
-            </button>
-          </div>
+          <template v-if="!workspaceLoading && !workspaceError">
+            <WorkspaceFloatingActions
+              :active-side-tab="activeSideTab"
+              :annotation-active="annotationStore.state.active"
+              :outline-label="outlineTabLabel"
+              :comments-label="commentButtonLabel"
+              :collaboration-label="collaborationButtonLabel"
+              :assistant-label="assistantButtonLabel"
+              :changes-label="trackChangesButtonLabel"
+              :annotation-label="annotationActionLabel"
+              @select="handleFloatingActionClick"
+            />
+          </template>
         </t-content>
-        <t-aside
-          v-if="activeSideTab"
-          class="doc-side-tabs"
-          :style="{ '--doc-side-panel-width': `${rightSidebarWidth}px` }"
+        <WorkspaceSidePanel
+          :active-tab="activeSideTab"
+          :width="rightSidebarWidth"
+          @resize-start="handleRightSidebarResizeStart"
         >
-          <button
-            type="button"
-            class="doc-side-panel-resize-handle"
-            aria-label="Resize panel"
-            @pointerdown="handleRightSidebarResizeStart"
-          ></button>
-          <div class="doc-side-panel-card">
-            <div v-if="activeSideTab === 'outline'" class="doc-side-tab-panel doc-side-tab-panel-outline">
+          <template #outline>
+            <div class="doc-side-tab-panel doc-side-tab-panel-outline">
               <div class="doc-side-tab-header">
                 <div class="doc-side-tab-heading">
                   <span class="doc-side-tab-title">{{ outlineTitle }}</span>
@@ -219,8 +104,10 @@
                 </button>
               </div>
             </div>
+          </template>
 
-            <div v-else-if="activeSideTab === 'comments'" class="doc-side-tab-panel">
+          <template #comments>
+            <div class="doc-side-tab-panel">
               <div class="doc-side-tab-actions">
                 <t-button
                   size="small"
@@ -247,8 +134,10 @@
                 @delete="handleCommentThreadDelete"
               />
             </div>
+          </template>
 
-            <div v-else-if="activeSideTab === 'collaboration'" class="doc-side-tab-panel">
+          <template #collaboration>
+            <div class="doc-side-tab-panel">
               <CollaborationPanel
                 :locale="localeKey"
                 :state="collaborationState"
@@ -260,8 +149,10 @@
                 :access-error="backendAccessError"
               />
             </div>
+          </template>
 
-            <div v-else-if="activeSideTab === 'assistant'" class="doc-side-tab-panel">
+          <template #assistant>
+            <div class="doc-side-tab-panel">
               <AiAssistantPanel
                 :locale="localeKey"
                 :editor="editor"
@@ -269,8 +160,10 @@
                 @close="closeAssistantPanel"
               />
             </div>
+          </template>
 
-            <div v-else-if="activeSideTab === 'changes'" class="doc-side-tab-panel">
+          <template #changes>
+            <div class="doc-side-tab-panel">
               <div class="doc-side-tab-actions">
                 <t-button
                   size="small"
@@ -304,12 +197,14 @@
                 @reject-all="handleTrackChangesRejectAll"
               />
             </div>
+          </template>
 
-            <div v-else-if="activeSideTab === 'annotation'" class="doc-side-tab-panel">
+          <template #annotation>
+            <div class="doc-side-tab-panel">
               <AnnotationToolbar :locale="localeKey" :store="annotationStore" />
             </div>
-          </div>
-        </t-aside>
+          </template>
+        </WorkspaceSidePanel>
       </div>
     </t-content>
     <t-footer class="doc-footer">
@@ -335,7 +230,7 @@
       </div>
       <div v-if="false" class="doc-footer-right">
         <CollaborationPresence
-          v-if="debugFlags.collaborationEnabled"
+          v-if="realtimeCollaborationEnabled"
           :state="collaborationState"
           :locale="localeKey"
           compact
@@ -347,7 +242,7 @@
       </div>
       <div class="doc-footer-right">
         <CollaborationPresence
-          v-if="debugFlags.collaborationEnabled"
+          v-if="realtimeCollaborationEnabled"
           :state="collaborationState"
           :locale="localeKey"
           compact
@@ -366,9 +261,11 @@
     <ShareWorkspaceDialog
       v-model:visible="shareDialogVisible"
       :locale="localeKey"
-      :collaboration-enabled="debugFlags.collaborationEnabled"
+      :workspace-enabled="workspaceAccessEnabled"
       :collaboration-state="collaborationState"
       :session-user="backendSessionUser"
+      :document="backendDocument"
+      :document-access="backendDocumentAccess"
       @request-auth="handleShareAuthRequest"
     />
     <AccountWorkspaceDialog
@@ -393,37 +290,34 @@ import {
   type Ref,
 } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRoute } from "vue-router";
 import type { Editor as LumenEditor } from "lumenpage-core";
 import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 import AiAssistantPanel from "./components/AiAssistantPanel.vue";
-import AnnotationLayer from "./components/AnnotationLayer.vue";
 import AnnotationToolbar from "./components/AnnotationToolbar.vue";
 import AccountWorkspaceDialog from "./components/AccountWorkspaceDialog.vue";
 import CommentsPanel from "./components/CommentsPanel.vue";
 import CollaborationPanel from "./components/CollaborationPanel.vue";
 import CollaborationPresence from "./components/CollaborationPresence.vue";
-import DocumentRuler from "./components/DocumentRuler.vue";
-import DocumentVerticalRuler from "./components/DocumentVerticalRuler.vue";
 import EditorMenuBar from "./components/EditorMenuBar.vue";
 import EditorToolbar from "./components/EditorToolbar.vue";
 import ShareWorkspaceDialog from "./components/ShareWorkspaceDialog.vue";
 import TrackChangesPanel from "./components/TrackChangesPanel.vue";
+import WorkspaceFloatingActions from "./components/workspace/WorkspaceFloatingActions.vue";
+import WorkspaceSidePanel from "./components/workspace/WorkspaceSidePanel.vue";
+import WorkspaceStage from "./components/workspace/WorkspaceStage.vue";
+import WorkspaceTopbar from "./components/workspace/WorkspaceTopbar.vue";
 import { createLumenAnnotationStore } from "./annotation/annotationStore";
-import {
-  createDocumentCollabTicket,
-  ensureCollaborationDocument,
-  getBackendSession,
-  resolveBackendUrl,
-  type BackendAccess,
-  type BackendDocument,
-  type BackendUser,
-} from "./editor/backendClient";
+import { useAnnotationSession } from "./composables/useAnnotationSession";
+import { useWorkspaceSidePanel } from "./composables/useWorkspaceSidePanel";
+import { useWorkspaceAccess } from "./composables/useWorkspaceAccess";
+import { resolveStoredShareAccessToken } from "./editor/backendClient";
 import {
   createInitialLumenCollaborationState,
   type LumenCollaborationState,
 } from "./editor/collaboration";
-import { createPlaygroundDebugFlags } from "./editor/config";
+import { createPlaygroundDebugFlags, type PlaygroundDebugFlags } from "./editor/config";
 import {
   PLAYGROUND_LOCALE_OPTIONS,
   coercePlaygroundLocale,
@@ -446,9 +340,21 @@ import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
 const debugFlags = createPlaygroundDebugFlags();
 const { locale: globalLocale, t } = useI18n();
+const route = useRoute();
 globalLocale.value = debugFlags.locale;
 const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(globalLocale.value));
 const i18n = computed(() => createPlaygroundI18n(localeKey.value));
+const routeDocumentId = computed(() => {
+  const raw = route.params.documentId;
+  return typeof raw === "string" ? raw.trim() : "";
+});
+const routeShareToken = computed(() =>
+  routeDocumentId.value ? resolveStoredShareAccessToken(routeDocumentId.value) : ""
+);
+const realtimeCollaborationEnabled = computed(() => debugFlags.collaborationEnabled);
+const workspaceAccessEnabled = computed(
+  () => routeDocumentId.value.length > 0 || realtimeCollaborationEnabled.value
+);
 const localeOptions = computed(() =>
   PLAYGROUND_LOCALE_OPTIONS.map((option) => ({
     value: option.value,
@@ -458,35 +364,24 @@ const localeOptions = computed(() =>
 const editorHost = ref<HTMLElement | null>(null);
 const workspaceRef = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
+type PendingRuntimeContext = {
+  flags: PlaygroundDebugFlags;
+  snapshotBase64: string | null;
+};
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
 const editor = shallowRef<LumenEditor | null>(null);
 const view = shallowRef<CanvasEditorView | null>(null);
 const annotationStore = createLumenAnnotationStore();
-const ANNOTATION_STORAGE_PREFIX = "lumenpage-lumen-annotation-v1";
-const ANNOTATION_AUTHOR_STORAGE_KEY = "lumenpage-lumen-annotation-author-id";
 const collaborationState = ref<LumenCollaborationState>(
   createInitialLumenCollaborationState(debugFlags)
 );
+const pendingRuntime = ref<PendingRuntimeContext | null>(null);
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
 const activeCommentThreadId = ref<string | null>(null);
 const trackChangesEnabled = ref(false);
 const trackChangeRecords = ref<TrackChangeRecord[]>([]);
 const activeTrackChangeId = ref<string | null>(null);
-const activeSideTab = ref<SideTabKey | null>(null);
-const shareDialogVisible = ref(false);
-const accountDialogVisible = ref(false);
-const accountDialogMode = ref<"login" | "register">("login");
-const accountPopupVisible = ref(false);
-const pendingAccountReturnTarget = ref<"share" | null>(null);
-const accountSessionSyncing = ref(false);
-const backendSessionUser = ref<BackendUser | null>(null);
-const backendDocument = ref<BackendDocument | null>(null);
-const backendDocumentAccess = ref<BackendAccess | null>(null);
-const backendAccessError = ref<string | null>(null);
-const backendAccessBound = ref(false);
-const rightSidebarWidth = ref(360);
-const isResizingRightSidebar = ref(false);
 const createInitialFooterStats = () => ({
   pageCount: 0,
   currentPage: 0,
@@ -500,6 +395,41 @@ const footerStats = ref(createInitialFooterStats());
 const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
 const outlineTitle = computed(() => i18n.value.shell.outline);
+const {
+  shareDialogVisible,
+  accountDialogVisible,
+  accountDialogMode,
+  accountPopupVisible,
+  backendSessionUser,
+  backendDocument,
+  backendDocumentAccess,
+  backendAccessError,
+  backendAccessBound,
+  workspaceLoading,
+  workspaceError,
+  handleAccountSessionChange,
+  openShareDialog,
+  openAccountDialog,
+  handleShareAuthRequest,
+  loadWorkspace,
+  resetWorkspaceAccessState,
+} = useWorkspaceAccess({
+  debugFlags,
+  workspaceAccessEnabled,
+  realtimeCollaborationEnabled,
+  routeDocumentId,
+  routeShareToken,
+  messages: {
+    shareDialogLoadFailed: computed(() => i18n.value.shareDialog.loadFailed),
+    shareDialogEnsureFailed: computed(() => i18n.value.shareDialog.ensureFailed),
+    shareLandingLoadFailed: computed(() => i18n.value.shareLanding.loadFailed),
+  },
+  applyRuntime: (runtimeFlags: PlaygroundDebugFlags, snapshotBase64?: string | null) =>
+    mountOrRemountPlaygroundEditor(runtimeFlags, snapshotBase64 || null),
+  clearRuntime: () => {
+    clearMountedEditorRuntime();
+  },
+});
 const sessionMode = ref<EditorSessionMode>(
   debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
 );
@@ -511,10 +441,13 @@ const buildPermissionCapabilities = (permissionMode: "full" | "comment" | "reado
   permissionMode,
 });
 const effectiveCapabilities = computed(() => {
+  if (routeDocumentId.value.length > 0 && !realtimeCollaborationEnabled.value) {
+    return buildPermissionCapabilities("readonly");
+  }
   if (backendDocumentAccess.value?.capabilities) {
     return backendDocumentAccess.value.capabilities;
   }
-  if (debugFlags.collaborationEnabled && (backendAccessBound.value || backendSessionUser.value)) {
+  if (workspaceAccessEnabled.value && (backendAccessBound.value || backendSessionUser.value)) {
     return buildPermissionCapabilities("readonly");
   }
   return buildPermissionCapabilities(debugFlags.permissionMode);
@@ -535,7 +468,7 @@ const canMutateComments = computed(() => effectiveCapabilities.value.canComment 
 const currentCommentUserName = computed(
   () =>
     String(backendSessionUser.value?.displayName || "").trim() ||
-    (debugFlags.collaborationEnabled ? collaborationState.value.userName : "") ||
+    (realtimeCollaborationEnabled.value ? collaborationState.value.userName : "") ||
     i18n.value.shell.you
 );
 const canManageAssistant = computed(() => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer");
@@ -565,6 +498,9 @@ const trackChangesStatusLabel = computed(() =>
 const outlineTabLabel = computed(() => i18n.value.shell.outline);
 const collaborationButtonLabel = computed(() => i18n.value.collaborationPanel.title);
 const annotationActionLabel = computed(() => i18n.value.annotationPanel.title);
+const documentStatusLoadingLabel = computed(() => i18n.value.documentCenter.loading);
+const documentStatusLoadingCopy = computed(() => i18n.value.documentCenter.description);
+const documentStatusErrorLabel = computed(() => i18n.value.shareLanding.loadFailed);
 const trackChangesButtonLabel = computed(() =>
   trackChangeCount.value > 0
     ? t("shell.trackChangesCount", { count: trackChangeCount.value })
@@ -610,122 +546,12 @@ const trackChangeActionTexts = computed(() => i18n.value.trackChangeActions);
 const topbarAvatarText = computed(() => {
   const seed =
     String(backendSessionUser.value?.displayName || "").trim() ||
-    (debugFlags.collaborationEnabled ? String(collaborationState.value.userName || "").trim() : "") ||
+    (realtimeCollaborationEnabled.value
+      ? String(collaborationState.value.userName || "").trim()
+      : "") ||
     i18n.value.shell.you;
   return seed.slice(0, 1).toUpperCase() || "U";
 });
-const handleAccountSessionChange = async (user: BackendUser | null) => {
-  accountSessionSyncing.value = true;
-  backendSessionUser.value = user;
-  accountPopupVisible.value = false;
-  const hadMountedView = !!view.value;
-  try {
-    const runtimeFlags = await syncBackendWorkspaceAccess({
-      withCollabTicket: true,
-      preferredSessionUser: user,
-      skipSessionRefresh: true,
-    });
-    if (debugFlags.collaborationEnabled && hadMountedView) {
-      await remountPlaygroundEditor(runtimeFlags);
-    }
-    if (pendingAccountReturnTarget.value === "share" && user) {
-      shareDialogVisible.value = true;
-    }
-  } finally {
-    pendingAccountReturnTarget.value = null;
-    accountSessionSyncing.value = false;
-  }
-};
-const openShareDialog = () => {
-  pendingAccountReturnTarget.value = null;
-  shareDialogVisible.value = true;
-};
-const handleShareAuthRequest = () => {
-  pendingAccountReturnTarget.value = "share";
-  shareDialogVisible.value = false;
-  openAccountDialog("login");
-};
-const openAccountDialog = (mode: "login" | "register" = "login") => {
-  accountDialogMode.value = mode;
-  accountPopupVisible.value = false;
-  accountDialogVisible.value = true;
-};
-const syncBackendWorkspaceAccess = async (options?: {
-  withCollabTicket?: boolean;
-  preferredSessionUser?: BackendUser | null;
-  skipSessionRefresh?: boolean;
-}) => {
-  const withCollabTicket = options?.withCollabTicket === true;
-  const nextFlags = { ...debugFlags };
-  const backendUrl = resolveBackendUrl(debugFlags.collaborationUrl);
-
-  backendAccessError.value = null;
-
-  if (options?.skipSessionRefresh) {
-    backendSessionUser.value = options.preferredSessionUser ?? null;
-  } else {
-    try {
-      const session = await getBackendSession(backendUrl);
-      backendSessionUser.value = session.user;
-    } catch (error) {
-      backendSessionUser.value = null;
-      if (debugFlags.collaborationEnabled) {
-        backendAccessError.value =
-          error instanceof Error ? error.message || String(error) : i18n.value.shareDialog.loadFailed;
-      }
-    }
-  }
-
-  if (!debugFlags.collaborationEnabled) {
-    backendDocument.value = null;
-    backendDocumentAccess.value = null;
-    backendAccessBound.value = false;
-    return nextFlags;
-  }
-
-  if (!backendSessionUser.value) {
-    backendDocument.value = null;
-    backendDocumentAccess.value = null;
-    backendAccessBound.value = false;
-    return nextFlags;
-  }
-
-  try {
-    const ensured = await ensureCollaborationDocument(backendUrl, {
-      name: debugFlags.collaborationDocument,
-      title: debugFlags.collaborationDocument,
-      field: debugFlags.collaborationField,
-    });
-    backendDocument.value = ensured.document;
-    backendDocumentAccess.value = ensured.access;
-    backendAccessBound.value = true;
-    nextFlags.permissionMode = ensured.access.permissionMode;
-
-    if (withCollabTicket) {
-      const { collab } = await createDocumentCollabTicket(backendUrl, ensured.document.id, {
-        field: ensured.document.field,
-        userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
-        userColor: debugFlags.collaborationUserColor,
-      });
-      nextFlags.collaborationUrl = collab.url || nextFlags.collaborationUrl;
-      nextFlags.collaborationDocument = collab.documentName || nextFlags.collaborationDocument;
-      nextFlags.collaborationField = collab.field || nextFlags.collaborationField;
-      nextFlags.collaborationToken = collab.token || nextFlags.collaborationToken;
-      nextFlags.collaborationUserName = collab.userName || nextFlags.collaborationUserName;
-      nextFlags.collaborationUserColor = collab.userColor || nextFlags.collaborationUserColor;
-      nextFlags.permissionMode = collab.permissionMode;
-    }
-  } catch (error) {
-    backendDocument.value = null;
-    backendDocumentAccess.value = null;
-    backendAccessBound.value = false;
-    backendAccessError.value =
-      error instanceof Error ? error.message || String(error) : i18n.value.shareDialog.ensureFailed;
-    nextFlags.permissionMode = "readonly";
-  }
-
-  return nextFlags;
-};
 let detachEditor: null | (() => void) = null;
 let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
 let detachCommentStore: null | (() => void) = null;
@@ -749,14 +575,6 @@ type LumenSelectionSnapshot = {
   type: string | null;
 };
 
-type SideTabKey =
-  | "outline"
-  | "comments"
-  | "collaboration"
-  | "assistant"
-  | "changes"
-  | "annotation";
-
 type LumenTestApi = {
   forceRender: () => boolean;
   getSelection: () => LumenSelectionSnapshot | null;
@@ -767,98 +585,6 @@ type LumenTestApi = {
 type LumenDebugWindow = Window & {
   __lumenView?: CanvasEditorView | null;
   __lumenTestApi?: LumenTestApi | null;
-};
-
-const resolveAnnotationAuthorId = () => {
-  if (typeof window === "undefined") {
-    return "server";
-  }
-  try {
-    const stored = window.localStorage.getItem(ANNOTATION_AUTHOR_STORAGE_KEY);
-    const normalized = typeof stored === "string" ? stored.trim() : "";
-    if (normalized) {
-      return normalized;
-    }
-    const nextId =
-      typeof window.crypto?.randomUUID === "function"
-        ? window.crypto.randomUUID()
-        : `annotation-author-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    window.localStorage.setItem(ANNOTATION_AUTHOR_STORAGE_KEY, nextId);
-    return nextId;
-  } catch (_error) {
-    return `annotation-author-${Date.now().toString(36)}`;
-  }
-};
-
-const annotationAuthorId = resolveAnnotationAuthorId();
-const annotationAuthorName = computed(() => currentCommentUserName.value);
-const annotationAuthorColor = computed(
-  () => (debugFlags.collaborationEnabled ? collaborationState.value.userColor : null) || "#2563eb"
-);
-
-const annotationStorageKey =
-  typeof window === "undefined"
-    ? `${ANNOTATION_STORAGE_PREFIX}:server`
-    : [
-        ANNOTATION_STORAGE_PREFIX,
-        debugFlags.collaborationEnabled ? "collab" : "local",
-        debugFlags.collaborationDocument,
-        debugFlags.collaborationField,
-        window.location.pathname,
-      ]
-        .map((part) => encodeURIComponent(String(part || "")))
-        .join(":");
-
-const restoreAnnotationSession = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  if (annotationStore.isCollaborationBacked() || debugFlags.collaborationEnabled) {
-    return;
-  }
-  try {
-    const raw = window.sessionStorage.getItem(annotationStorageKey);
-    if (!raw) {
-      return;
-    }
-    const restored = annotationStore.hydrate(JSON.parse(raw));
-    if (!restored) {
-      window.sessionStorage.removeItem(annotationStorageKey);
-    }
-  } catch (_error) {
-    try {
-      window.sessionStorage.removeItem(annotationStorageKey);
-    } catch (_nestedError) {
-      // Ignore storage cleanup failures.
-    }
-  }
-};
-
-const persistAnnotationSession = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  if (annotationStore.isCollaborationBacked() || debugFlags.collaborationEnabled) {
-    return;
-  }
-  try {
-    const snapshot = annotationStore.snapshot();
-    if (snapshot.items.length === 0) {
-      window.sessionStorage.removeItem(annotationStorageKey);
-      return;
-    }
-    window.sessionStorage.setItem(annotationStorageKey, JSON.stringify(snapshot));
-  } catch (_error) {
-    // Ignore storage failures in restricted environments.
-  }
-};
-
-const syncAnnotationAuthor = () => {
-  annotationStore.setCurrentAuthor({
-    id: annotationAuthorId,
-    name: annotationAuthorName.value,
-    color: annotationAuthorColor.value,
-  });
 };
 
 const clampSelectionPos = (doc: CanvasEditorView["state"]["doc"] | null | undefined, pos: number) => {
@@ -1045,12 +771,33 @@ const createEditorCallbacks = () => ({
   onStatsChange: handleStatsChange,
 });
 
-const mountOrRemountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) => {
+const decodeSnapshotBase64 = (value: string | null | undefined) => {
+  const normalized = String(value || "").trim();
+  if (!normalized || typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const binary = window.atob(normalized);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const mountOrRemountPlaygroundEditor = async (
+  runtimeFlags: typeof debugFlags,
+  snapshotBase64: string | null = null,
+) => {
+  pendingRuntime.value = {
+    flags: runtimeFlags,
+    snapshotBase64,
+  };
   collaborationState.value = createInitialLumenCollaborationState(runtimeFlags);
   syncAnnotationAuthor();
-  if (!editorHost.value) {
-    return false;
-  }
   clearMountedEditorRuntime();
   if (!runtimeFlags.collaborationEnabled) {
     restoreAnnotationSession();
@@ -1063,10 +810,12 @@ const mountOrRemountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) =
     host: editorHost.value,
     statusElement: toolbarRef.value?.statusEl?.value || null,
     flags: runtimeFlags,
+    initialCollaborationSnapshot: decodeSnapshotBase64(snapshotBase64),
     resolvePermissionMode: () => effectivePermissionMode.value,
     ...createEditorCallbacks(),
   });
   attachMountedEditor(mounted, runtimeFlags);
+  pendingRuntime.value = null;
   return true;
 };
 
@@ -1116,133 +865,8 @@ const clearActiveTrackChange = () => {
   }
 };
 
-const setActiveSideTab = (nextTab: SideTabKey | null) => {
-  if (activeSideTab.value === "annotation" && nextTab !== "annotation") {
-    annotationStore.setActive(false);
-  }
-  activeSideTab.value = nextTab;
-  setTocOutlineEnabled?.(nextTab === "outline");
-};
-
-const setTocPanelEnabled = (enabled: boolean) => {
-  if (enabled) {
-    clearActiveCommentThread();
-    clearActiveTrackChange();
-    setActiveSideTab("outline");
-    return;
-  }
-  if (activeSideTab.value === "outline") {
-    setActiveSideTab(null);
-    return;
-  }
-  setTocOutlineEnabled?.(false);
-};
-
-const toggleTocPanel = () => {
-  handleFloatingActionClick("outline");
-};
-
-const closeCommentsPanel = () => {
-  clearActiveCommentThread();
-  if (activeSideTab.value === "comments") {
-    setActiveSideTab(null);
-  }
-};
-
-const closeAssistantPanel = () => {
-  if (activeSideTab.value === "assistant") {
-    setActiveSideTab(null);
-  }
-};
-
-const closeAnnotationPanel = () => {
-  annotationStore.setActive(false);
-  if (activeSideTab.value === "annotation") {
-    setActiveSideTab(null);
-  }
-};
-
 const getNextTrackChangeId = (excludeChangeId?: string | null) =>
   trackChangeRecords.value.find((change) => change.changeId !== excludeChangeId)?.changeId || null;
-
-const closeTrackChangesPanel = () => {
-  clearActiveTrackChange();
-  if (activeSideTab.value === "changes") {
-    setActiveSideTab(null);
-  }
-};
-
-const openTrackChangesPanel = (preferredChangeId?: string | null) => {
-  clearActiveCommentThread();
-  setActiveSideTab("changes");
-  const nextChangeId =
-    preferredChangeId || activeTrackChangeId.value || trackChangeRecords.value[0]?.changeId || null;
-  if (nextChangeId && nextChangeId !== activeTrackChangeId.value) {
-    activeTrackChangeId.value = nextChangeId;
-    activateTrackChangeInEditor?.(nextChangeId);
-  }
-};
-
-const getNextCommentThreadId = (excludeThreadId?: string | null) =>
-  commentThreads.value.find((thread) => thread.id !== excludeThreadId)?.id || null;
-
-const openCommentsPanel = (preferredThreadId?: string | null) => {
-  clearActiveTrackChange();
-  setActiveSideTab("comments");
-  const nextThreadId = preferredThreadId || activeCommentThreadId.value || getNextCommentThreadId();
-  if (nextThreadId && nextThreadId !== activeCommentThreadId.value) {
-    activeCommentThreadId.value = nextThreadId;
-    activateCommentThreadInEditor?.(nextThreadId);
-  }
-};
-
-const handleFloatingActionClick = (tab: SideTabKey) => {
-  if (tab === "outline") {
-    setTocPanelEnabled(activeSideTab.value !== "outline");
-    return;
-  }
-  if (tab === "comments") {
-    if (activeSideTab.value === "comments") {
-      closeCommentsPanel();
-      return;
-    }
-    openCommentsPanel(activeCommentThreadId.value);
-    return;
-  }
-  if (tab === "changes") {
-    if (activeSideTab.value === "changes") {
-      closeTrackChangesPanel();
-      return;
-    }
-    openTrackChangesPanel(activeTrackChangeId.value);
-    return;
-  }
-  if (tab === "assistant") {
-    if (activeSideTab.value === "assistant") {
-      closeAssistantPanel();
-      return;
-    }
-    openAssistantPanel();
-    return;
-  }
-  if (tab === "collaboration") {
-    if (activeSideTab.value === "collaboration") {
-      setActiveSideTab(null);
-      return;
-    }
-    clearActiveCommentThread();
-    clearActiveTrackChange();
-    setActiveSideTab("collaboration");
-    return;
-  }
-  if (tab === "annotation") {
-    if (activeSideTab.value === "annotation" && annotationStore.state.active) {
-      closeAnnotationPanel();
-      return;
-    }
-    openAnnotationPanel();
-  }
-};
 
 const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
   tocItems.value = Array.isArray(snapshot?.items) ? snapshot.items : [];
@@ -1269,68 +893,47 @@ const handleStatsChange = (stats: {
   };
 };
 
-const RIGHT_SIDEBAR_MIN_WIDTH = 280;
-const RIGHT_SIDEBAR_MAX_WIDTH = 460;
-
-const clampRightSidebarWidth = (value: number) =>
-  Math.min(RIGHT_SIDEBAR_MAX_WIDTH, Math.max(RIGHT_SIDEBAR_MIN_WIDTH, Math.round(value)));
-
-const updateRightSidebarWidthFromPointer = (clientX: number) => {
-  const rect = workspaceRef.value?.getBoundingClientRect();
-  if (!rect) {
-    return;
-  }
-  rightSidebarWidth.value = clampRightSidebarWidth(rect.right - clientX);
-};
-
-const stopRightSidebarResize = () => {
-  if (!isResizingRightSidebar.value) {
-    return;
-  }
-  isResizingRightSidebar.value = false;
-  if (typeof document !== "undefined") {
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  }
-};
-
-const openAssistantPanel = () => {
-  clearActiveCommentThread();
-  clearActiveTrackChange();
-  setActiveSideTab("assistant");
-};
-
-const openAnnotationPanel = () => {
-  clearActiveCommentThread();
-  clearActiveTrackChange();
-  annotationStore.setActive(true);
-  setActiveSideTab("annotation");
-};
-
-const handleRightSidebarResizeMove = (event: PointerEvent) => {
-  if (!isResizingRightSidebar.value) {
-    return;
-  }
-  event.preventDefault();
-  updateRightSidebarWidthFromPointer(event.clientX);
-};
-
-const handleRightSidebarResizeEnd = () => {
-  stopRightSidebarResize();
-};
-
-const handleRightSidebarResizeStart = (event: PointerEvent) => {
-  if (event.button !== 0) {
-    return;
-  }
-  event.preventDefault();
-  isResizingRightSidebar.value = true;
-  updateRightSidebarWidthFromPointer(event.clientX);
-  if (typeof document !== "undefined") {
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-  }
-};
+const {
+  activeSideTab,
+  rightSidebarWidth,
+  isResizingRightSidebar,
+  toggleTocPanel,
+  closeCommentsPanel,
+  closeTrackChangesPanel,
+  openTrackChangesPanel,
+  openCommentsPanel,
+  handleFloatingActionClick,
+  handleRightSidebarResizeStart,
+  resetWorkspaceSidePanelState,
+} = useWorkspaceSidePanel({
+  annotationStore,
+  workspaceRef,
+  commentThreads,
+  activeCommentThreadId,
+  trackChangeRecords,
+  activeTrackChangeId,
+  clearActiveCommentThread,
+  clearActiveTrackChange,
+  setTocOutlineEnabled: (enabled) => {
+    setTocOutlineEnabled?.(enabled);
+  },
+  activateCommentThread: (threadId) => {
+    activateCommentThreadInEditor?.(threadId);
+  },
+  activateTrackChange: (changeId) => {
+    activateTrackChangeInEditor?.(changeId);
+  },
+});
+const { restoreAnnotationSession, syncAnnotationAuthor } = useAnnotationSession({
+  annotationStore,
+  currentCommentUserName,
+  realtimeCollaborationEnabled,
+  collaborationUserColor: computed(() => collaborationState.value.userColor || null),
+  routeDocumentId,
+  backendDocumentField: computed(() => backendDocument.value?.field || null),
+  fallbackDocumentName: debugFlags.collaborationDocument,
+  fallbackField: debugFlags.collaborationField,
+});
 
 const createCommentEntityId = (prefix: string) => {
   const randomUuid =
@@ -1387,7 +990,7 @@ const pruneOrphanCommentThreads = () => {
   if (!currentView?.state) {
     return false;
   }
-  if (debugFlags.collaborationEnabled && !collaborationState.value.synced) {
+  if (realtimeCollaborationEnabled.value && !collaborationState.value.synced) {
     return false;
   }
 
@@ -1669,11 +1272,7 @@ const handleTocItemClick = (item: TocOutlineItem) => {
 };
 
 onMounted(async () => {
-  const runtimeFlags = await syncBackendWorkspaceAccess({ withCollabTicket: true });
-  window.addEventListener("pointermove", handleRightSidebarResizeMove, { passive: false });
-  window.addEventListener("pointerup", handleRightSidebarResizeEnd, { passive: true });
-  window.addEventListener("pointercancel", handleRightSidebarResizeEnd, { passive: true });
-  await mountOrRemountPlaygroundEditor(runtimeFlags);
+  await loadWorkspace({ withCollabTicket: true });
 });
 
 watch(
@@ -1697,52 +1296,33 @@ watch(
 );
 
 watch(
-  () => accountDialogVisible.value,
-  (visible) => {
-    if (visible || pendingAccountReturnTarget.value !== "share" || accountSessionSyncing.value) {
+  () => editorHost.value,
+  (host) => {
+    if (!host || !pendingRuntime.value || view.value) {
       return;
     }
-    if (backendSessionUser.value) {
-      shareDialogVisible.value = true;
-    }
-    pendingAccountReturnTarget.value = null;
+    void mountOrRemountPlaygroundEditor(
+      pendingRuntime.value.flags,
+      pendingRuntime.value.snapshotBase64,
+    );
   }
 );
 
 watch(
-  () => [annotationAuthorName.value, annotationAuthorColor.value],
-  () => {
-    syncAnnotationAuthor();
-  },
-  { immediate: true }
-);
-
-watch(
-  () => ({
-    items: annotationStore.state.items,
-    tool: annotationStore.state.tool,
-    color: annotationStore.state.color,
-    lineWidth: annotationStore.state.lineWidth,
-  }),
-  () => {
-    persistAnnotationSession();
-  },
-  { deep: true }
+  () => routeDocumentId.value,
+  (nextDocumentId, previousDocumentId) => {
+    if (!nextDocumentId || nextDocumentId === previousDocumentId) {
+      return;
+    }
+    void loadWorkspace({ withCollabTicket: true });
+  }
 );
 
 onBeforeUnmount(() => {
-  window.removeEventListener("pointermove", handleRightSidebarResizeMove);
-  window.removeEventListener("pointerup", handleRightSidebarResizeEnd);
-  window.removeEventListener("pointercancel", handleRightSidebarResizeEnd);
-  stopRightSidebarResize();
+  resetWorkspaceSidePanelState();
   clearMountedEditorRuntime();
   annotationStore.useLocalStore({ clear: true });
-  activeSideTab.value = null;
-  shareDialogVisible.value = false;
-  accountDialogVisible.value = false;
-  accountPopupVisible.value = false;
-  pendingAccountReturnTarget.value = null;
-  accountSessionSyncing.value = false;
+  resetWorkspaceAccessState();
   collaborationState.value = createInitialLumenCollaborationState(debugFlags);
   footerStats.value = createInitialFooterStats();
 });
@@ -1885,6 +1465,7 @@ onBeforeUnmount(() => {
 
 .doc-content {
   position: relative;
+  display: flex;
   min-height: 0;
   flex: 1;
   padding: 0;
@@ -1896,9 +1477,9 @@ onBeforeUnmount(() => {
   position: relative;
   display: flex;
   flex: 1;
+  width: 100%;
   min-width: 0;
   min-height: 0;
-  height: 100%;
   background: transparent;
 }
 
@@ -1909,6 +1490,42 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   background: transparent;
+}
+
+.doc-workspace-status {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.doc-workspace-status-card {
+  max-width: 420px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.doc-workspace-status-title {
+  display: block;
+  font-size: 15px;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.doc-workspace-status-copy {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #475569;
 }
 
 .doc-side-tabs {
@@ -2261,14 +1878,14 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.editor-host .lumenpage-editor {
+.editor-host :deep(.lumenpage-editor) {
   position: relative;
   width: 100%;
   height: 100%;
   margin: 0 auto;
 }
 
-.editor-host .lumenpage-viewport {
+.editor-host :deep(.lumenpage-viewport) {
   width: 100%;
   height: 100%;
 }

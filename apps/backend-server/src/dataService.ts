@@ -1,6 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { createId, createOpaqueToken } from "./security.js";
+import type { BackendMetadataStore } from "./metadataStore.js";
 import type {
   BackendDatabase,
   BackendDocument,
@@ -15,15 +14,6 @@ import type {
   PermissionMode,
   UserRole,
 } from "./types.js";
-
-const DEFAULT_DB: BackendDatabase = {
-  version: 1,
-  users: [],
-  sessions: [],
-  documents: [],
-  memberships: [],
-  shareLinks: [],
-};
 
 const ROLE_RANK: Record<UserRole, number> = {
   viewer: 1,
@@ -88,67 +78,6 @@ const sanitizeShareLink = (shareLink: BackendShareLinkRecord): BackendShareLink 
 
 const isRoleAtLeast = (role: UserRole, minimumRole: UserRole) =>
   (ROLE_RANK[normalizeRole(role)] || 0) >= (ROLE_RANK[normalizeRole(minimumRole)] || 0);
-
-type JsonStore = {
-  read: () => Promise<BackendDatabase>;
-  transact: <T>(mutator: (data: BackendDatabase) => Promise<T> | T) => Promise<T>;
-};
-
-const buildStore = ({ filePath }: { filePath: string }): JsonStore => {
-  let state: BackendDatabase | null = null;
-  let writeQueue = Promise.resolve();
-
-  const ensureLoaded = async (): Promise<BackendDatabase> => {
-    if (state) {
-      return state;
-    }
-
-    try {
-      const raw = await fs.readFile(filePath, "utf8");
-      state = {
-        ...clone(DEFAULT_DB),
-        ...(JSON.parse(raw) as Partial<BackendDatabase>),
-      };
-      return state;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
-        throw error;
-      }
-
-      state = clone(DEFAULT_DB);
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, JSON.stringify(state, null, 2));
-      return state;
-    }
-  };
-
-  const persist = async (nextState: BackendDatabase) => {
-    state = nextState;
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, JSON.stringify(state, null, 2));
-  };
-
-  return {
-    async read() {
-      return clone(await ensureLoaded());
-    },
-    async transact<T>(mutator: (data: BackendDatabase) => Promise<T> | T) {
-      const operation = writeQueue.then(async () => {
-        const current = clone(await ensureLoaded());
-        const result = await mutator(current);
-        await persist(current);
-        return result;
-      });
-
-      writeQueue = operation.then(
-        () => undefined,
-        () => undefined,
-      );
-
-      return operation;
-    },
-  };
-};
 
 export const roleToPermissionMode = (role: UserRole): PermissionMode => {
   const normalized = normalizeRole(role);
@@ -224,8 +153,7 @@ export interface BackendDataService {
   revokeShareLink: (shareId: string) => Promise<BackendShareLink>;
 }
 
-export const createBackendDataService = ({ filePath }: { filePath: string }): BackendDataService => {
-  const store = buildStore({ filePath });
+export const createBackendDataService = ({ store }: { store: BackendMetadataStore }): BackendDataService => {
 
   const pruneInPlace = (data: BackendDatabase) => {
     const currentTime = Date.now();

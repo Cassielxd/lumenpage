@@ -30,6 +30,7 @@ import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
 import { SlashCommandExtension } from "lumenpage-extension-slash-command";
+import * as Y from "yjs";
 
 import type { PlaygroundDebugFlags } from "./config";
 import { LUMEN_BUBBLE_MENU_ACTIONS, createLumenBubbleMenuRenderer } from "./bubbleMenuRenderer";
@@ -58,6 +59,7 @@ type MountPlaygroundEditorParams = {
   host: HTMLElement;
   statusElement?: HTMLElement | null;
   flags: PlaygroundDebugFlags;
+  initialCollaborationSnapshot?: Uint8Array | null;
   resolvePermissionMode?: (() => PlaygroundDebugFlags["permissionMode"]) | null;
   onCollaborationStateChange?: ((state: LumenCollaborationState) => void) | null;
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
@@ -354,6 +356,7 @@ export const mountPlaygroundEditor = ({
   host,
   statusElement,
   flags,
+  initialCollaborationSnapshot,
   resolvePermissionMode,
   onCollaborationStateChange,
   onTocOutlineChange,
@@ -429,8 +432,17 @@ export const mountPlaygroundEditor = ({
     flags,
     onStateChange: onCollaborationStateChange || null,
   });
+  const localSnapshotDocument =
+    !collaborationRuntime.provider && initialCollaborationSnapshot?.byteLength
+      ? (() => {
+          const document = new Y.Doc();
+          Y.applyUpdate(document, initialCollaborationSnapshot);
+          return document;
+        })()
+      : null;
+  const collaborationDocument = collaborationRuntime.provider?.document || localSnapshotDocument || null;
   lumenCommentsStore.useCollaborationStore(
-    collaborationRuntime.provider?.document || null,
+    collaborationDocument,
     flags.collaborationField
   );
   const getPermissionMode = () => resolvePermissionMode?.() ?? flags.permissionMode;
@@ -440,11 +452,11 @@ export const mountPlaygroundEditor = ({
 
   const extensions = [
     ...createLumenDocumentExtensions({
-      collaboration: collaborationRuntime.provider
+      collaboration: collaborationDocument
         ? {
-            document: collaborationRuntime.provider.document,
+            document: collaborationDocument,
             field: flags.collaborationField,
-            provider: collaborationRuntime.provider,
+            provider: collaborationRuntime.provider || null,
             user: {
               name: flags.collaborationUserName,
               color: flags.collaborationUserColor,
@@ -608,7 +620,7 @@ export const mountPlaygroundEditor = ({
   const editor = new Editor({
     element: host,
     extensions: [...extensions, ...runtimeExtensions],
-    content: collaborationRuntime.provider ? "" : initialDocJson,
+    content: collaborationDocument ? "" : initialDocJson,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,

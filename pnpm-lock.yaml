@@ -227,6 +227,9 @@ importers:
       mammoth:
         specifier: ^1.12.0
         version: 1.12.0
+      pinia:
+        specifier: ^3.0.3
+        version: 3.0.4(typescript@5.9.3)(vue@3.5.28(typescript@5.9.3))
       tdesign-icons-vue-next:
         specifier: ^0.3.4
         version: 0.3.7(vue@3.5.28(typescript@5.9.3))
@@ -242,6 +245,9 @@ importers:
       vue-konva:
         specifier: ^3.2.6
         version: 3.4.0(konva@9.3.22)(vue@3.5.28(typescript@5.9.3))
+      vue-router:
+        specifier: ^4.5.1
+        version: 4.6.4(vue@3.5.28(typescript@5.9.3))
       yjs:
         specifier: ^13.6.30
         version: 13.6.30
@@ -3688,6 +3694,15 @@ packages:
     resolution: {integrity: sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g==}
     engines: {node: '>=6'}
 
+  pinia@3.0.4:
+    resolution: {integrity: sha512-l7pqLUFTI/+ESXn6k3nu30ZIzW5E2WZF/LaHJEpoq6ElcLD+wduZoB2kBN19du6K/4FDpPMazY2wJr+IndBtQw==}
+    peerDependencies:
+      typescript: '>=4.5.0'
+      vue: ^3.5.11
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   pino-abstract-transport@3.0.0:
     resolution: {integrity: sha512-wlfUczU+n7Hy/Ha5j9a/gZNy7We5+cXp8YL+X+PG8S0KXxw7n/JXA3c46Y0zQznIJ83URJiwy7Lh56WLokNuxg==}
 
@@ -4211,6 +4226,11 @@ packages:
     peerDependencies:
       konva: '>7'
       vue: ^3
+
+  vue-router@4.6.4:
+    resolution: {integrity: sha512-Hz9q5sa33Yhduglwz6g9skT8OBPii+4bFn88w6J+J4MfEo4KRRpmiNG/hHHkdbRFlLBOqxN8y8gf2Fb0MTUgVg==}
+    peerDependencies:
+      vue: ^3.5.0
 
   vue@3.5.28:
     resolution: {integrity: sha512-BRdrNfeoccSoIZeIhyPBfvWSLFP4q8J3u8Ju8Ug5vu3LdD+yTM13Sg4sKtljxozbnuMu1NB1X5HBHRYUzFocKg==}
@@ -6615,6 +6635,13 @@ snapshots:
 
   pify@4.0.1: {}
 
+  pinia@3.0.4(typescript@5.9.3)(vue@3.5.28(typescript@5.9.3)):
+    dependencies:
+      '@vue/devtools-api': 7.7.9
+      vue: 3.5.28(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+
   pino-abstract-transport@3.0.0:
     dependencies:
       split2: 4.2.0
@@ -7187,6 +7214,11 @@ snapshots:
   vue-konva@3.4.0(konva@9.3.22)(vue@3.5.28(typescript@5.9.3)):
     dependencies:
       konva: 9.3.22
+      vue: 3.5.28(typescript@5.9.3)
+
+  vue-router@4.6.4(vue@3.5.28(typescript@5.9.3)):
+    dependencies:
+      '@vue/devtools-api': 6.6.4
       vue: 3.5.28(typescript@5.9.3)
 
   vue@3.5.28(typescript@5.9.3):

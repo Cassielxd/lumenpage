@@ -5,6 +5,7 @@ import { createAiService, type DeepSeekChatRequest } from "./aiService.js";
 import { createRuntimeConfig, toPublicHttpUrl, toPublicWsUrl } from "./config.js";
 import { createCollaborationService } from "./collaborationService.js";
 import { createBackendDataService, roleToPermissionMode } from "./dataService.js";
+import { createBackendMetadataStore } from "./metadataStore.js";
 import {
   clearCookie,
   hashPassword,
@@ -21,6 +22,7 @@ declare module "fastify" {
 }
 
 const config = createRuntimeConfig();
+const metadataStore = createBackendMetadataStore(config);
 
 const log = (scope: string, message: string, extra: unknown = null) => {
   const parts = ["[backend-server]", `[${scope}]`, message];
@@ -43,7 +45,7 @@ const headerValueToText = (value: string | string[] | undefined) =>
   Array.isArray(value) ? trimText(value[0]) : trimText(value);
 
 const dataService = createBackendDataService({
-  filePath: config.metadataFilePath,
+  store: metadataStore,
 });
 const aiService = createAiService({ config });
 const collaborationService = createCollaborationService({
@@ -335,6 +337,19 @@ fastify.get("/api/documents/:documentId", async (request) => {
       capabilities: buildCapabilities(access.role),
       shareLink: access.shareLink,
     },
+  };
+});
+
+fastify.get("/api/documents/:documentId/collab-snapshot", async (request) => {
+  const params = getParams<{ documentId: string }>(request);
+  const access = await requireDocumentAccess(request, params.documentId, "viewer");
+  const snapshot = await collaborationService.readDocumentSnapshot(access.document.name);
+
+  return {
+    ok: true,
+    document: access.document,
+    field: access.document.field,
+    snapshot: Buffer.from(snapshot).toString("base64"),
   };
 });
 

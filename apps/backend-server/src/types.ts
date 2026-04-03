@@ -2,6 +2,8 @@ export type UserRole = "owner" | "editor" | "commenter" | "viewer";
 
 export type PermissionMode = "full" | "comment" | "readonly";
 
+export type BackendMetadataDriver = "json" | "sqlite";
+
 export interface RuntimeConfig {
   appRoot: string;
   envFilePath: string;
@@ -13,6 +15,8 @@ export interface RuntimeConfig {
   maxDebounce: number;
   storageDir: string;
   metadataFilePath: string;
+  metadataDriver: BackendMetadataDriver;
+  metadataDatabaseUrl: string | null;
   sessionCookieName: string;
   sessionTtlMs: number;
   collabTicketTtlMs: number;
