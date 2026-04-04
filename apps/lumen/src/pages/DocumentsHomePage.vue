@@ -134,7 +134,12 @@ const { openWorkspaceDocument } = useDocumentNavigation();
 const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(globalLocale.value));
 const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const texts = computed(() => i18n.value.documentCenter);
-const localeOptions = PLAYGROUND_LOCALE_OPTIONS;
+const localeOptions = computed(() =>
+  PLAYGROUND_LOCALE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.label[localeKey.value],
+  })),
+);
 const accountCollaborationState = createInitialLumenCollaborationState(baseFlags);
 const accountDialogVisible = ref(false);
 const accountDialogMode = ref<"login" | "register">("login");
@@ -204,7 +209,7 @@ const handleAccountDialogSessionChange = async (user: Parameters<typeof handleAc
 };
 
 const openDocument = (documentId: string) => {
-  void openWorkspaceDocument(documentId);
+  void openWorkspaceDocument(documentId, { locale: localeKey.value });
 };
 
 const handleCreateDocument = async () => {
@@ -292,7 +297,8 @@ onMounted(async () => {
 }
 
 .doc-home-locale {
-  width: 128px;
+  width: 172px;
+  min-width: 172px;
 }
 
 .doc-home-content {

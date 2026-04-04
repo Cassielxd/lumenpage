@@ -9,6 +9,18 @@ const backendStorageKey = "lumenpage-lumen-backend-url";
 
 const createSeed = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const expectWorkspaceUrl = async (page: import("@playwright/test").Page, documentId: string) => {
+  await expect
+    .poll(
+      async () => {
+        const currentUrl = new URL(page.url());
+        return `${currentUrl.pathname}?locale=${currentUrl.searchParams.get("locale") || ""}`;
+      },
+      { message: "expected documents home navigation to preserve the requested locale" },
+    )
+    .toBe(`/docs/${documentId}?locale=en-US`);
+};
+
 test("documents home creates a document and opens an editable local workspace", async ({ page }) => {
   const guards = attachConsoleGuards(page);
   const api = page.context().request;
@@ -42,7 +54,7 @@ test("documents home creates a document and opens an editable local workspace", 
     [backendStorageKey, backendBaseUrl] as const,
   );
 
-  await page.goto("/", {
+  await page.goto("/?locale=en-US", {
     waitUntil: "networkidle",
   });
 
@@ -51,7 +63,10 @@ test("documents home creates a document and opens an editable local workspace", 
   await createSection.locator(".t-input__inner").fill(title);
   await createSection.getByRole("button").click();
 
-  await expect(page).toHaveURL(/\/docs\/[^/?#]+$/);
+  await page.waitForURL(/\/docs\/[^/?#]+(?:\?.*)?$/);
+  const workspaceDocumentId = page.url().match(/\/docs\/([^/?#]+)/)?.[1];
+  expect(workspaceDocumentId).toBeTruthy();
+  await expectWorkspaceUrl(page, String(workspaceDocumentId));
   await expect(page.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
   await expect(page.locator(".collab-status-label")).toHaveCount(0);
 

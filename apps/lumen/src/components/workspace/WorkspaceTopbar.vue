@@ -206,7 +206,8 @@ const emit = defineEmits<{
 }
 
 .topbar-locale {
-  width: 112px;
+  width: 172px;
+  min-width: 172px;
 }
 
 .topbar-account-menu {
@@ -257,7 +258,8 @@ const emit = defineEmits<{
   }
 
   .topbar-locale {
-    width: 96px;
+    width: 148px;
+    min-width: 148px;
   }
 }
 </style>

@@ -39,9 +39,13 @@
               </span>
             </div>
           </div>
+          <div v-if="requiresAuthToOpen" class="doc-share-page-note">
+            <p class="doc-share-page-note-title">{{ texts.authRequired }}</p>
+            <p class="doc-share-page-note-copy">{{ texts.authRequiredHint }}</p>
+          </div>
           <div class="doc-share-page-actions-row">
-            <t-button theme="primary" @click="openSharedDocument">
-              {{ texts.openDocument }}
+            <t-button theme="primary" @click="handlePrimaryAction">
+              {{ primaryActionLabel }}
             </t-button>
             <t-button variant="outline" @click="refreshShareLink">
               {{ texts.refresh }}
@@ -98,6 +102,14 @@ const document = ref<BackendDocument | null>(null);
 const shareLink = ref<BackendShareLink | null>(null);
 const permissionMode = ref<"full" | "comment" | "readonly">("readonly");
 const accountDialogVisible = ref(false);
+const pendingOpenAfterAuth = ref(false);
+
+const requiresAuthToOpen = computed(
+  () => shareLink.value?.allowAnonymous === false && !sessionUser.value,
+);
+const primaryActionLabel = computed(() =>
+  requiresAuthToOpen.value ? texts.value.signInToOpen : texts.value.openDocument,
+);
 
 const permissionLabel = computed(() => {
   if (permissionMode.value === "full") {
@@ -137,16 +149,35 @@ const openSharedDocument = () => {
   }
   void openWorkspaceDocument(document.value.id, {
     shareToken: shareLink.value.token,
+    locale: localeKey.value,
   });
+};
+
+const handlePrimaryAction = () => {
+  if (requiresAuthToOpen.value) {
+    pendingOpenAfterAuth.value = true;
+    accountDialogVisible.value = true;
+    return;
+  }
+  pendingOpenAfterAuth.value = false;
+  openSharedDocument();
 };
 
 const handleAccountSessionChange = async (user: BackendUser | null) => {
   setSessionUser(user);
   await refreshShareLink();
+  if (pendingOpenAfterAuth.value && user && document.value && shareLink.value) {
+    pendingOpenAfterAuth.value = false;
+    openSharedDocument();
+    return;
+  }
+  if (!user) {
+    pendingOpenAfterAuth.value = false;
+  }
 };
 
 const goHome = () => {
-  void goToDocumentsHome();
+  void goToDocumentsHome({ locale: localeKey.value });
 };
 
 onMounted(async () => {
@@ -262,6 +293,28 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   margin-top: 24px;
+}
+
+.doc-share-page-note {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: rgba(239, 246, 255, 0.9);
+  color: #1e3a8a;
+}
+
+.doc-share-page-note-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.doc-share-page-note-copy {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .doc-share-page-empty {

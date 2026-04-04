@@ -25,6 +25,15 @@ const applyBackendBootstrap = async (page: Page) => {
   );
 };
 
+const waitForSyncedStatus = async (page: Page) => {
+  await expect
+    .poll(
+      async () => (await page.locator(".collab-presence.is-success").count()) > 0,
+      { timeout: 15000, message: "expected collaboration status to reach Synced" },
+    )
+    .toBeTruthy();
+};
+
 const waitForSnapshotContent = async (
   request: APIRequestContext,
   documentId: string,
@@ -39,6 +48,38 @@ const waitForSnapshotContent = async (
       return String(payload.snapshot || "");
     })
     .not.toBe("");
+};
+
+const expectWorkspaceUrl = async (
+  page: Page,
+  documentId: string,
+  locale: string = "en-US",
+) => {
+  await expect
+    .poll(
+      async () => {
+        const currentUrl = new URL(page.url());
+        return `${currentUrl.pathname}?locale=${currentUrl.searchParams.get("locale") || ""}`;
+      },
+      { message: "expected document workspace URL to preserve the requested locale" },
+    )
+    .toBe(`/docs/${documentId}?locale=${locale}`);
+};
+
+const expectAddCommentUnavailable = async (page: Page) => {
+  await expect
+    .poll(
+      async () => {
+        const button = page.getByRole("button", { name: "Add Comment" });
+        const count = await button.count();
+        if (count === 0) {
+          return "hidden";
+        }
+        return (await button.isDisabled()) ? "disabled" : "enabled";
+      },
+      { message: "expected add comment action to stay unavailable" },
+    )
+    .not.toBe("enabled");
 };
 
 const seedSnapshotThroughOwnerWorkspace = async (
@@ -61,7 +102,113 @@ const seedSnapshotThroughOwnerWorkspace = async (
   await waitForSnapshotContent(ownerApi, documentId);
 };
 
-test("comment-only member can comment but cannot edit, readonly share viewer cannot mutate", async ({
+const loginThroughAccountDialog = async (page: Page, email: string, password: string) => {
+  const dialog = page.locator(".t-dialog");
+  await expect(dialog).toBeVisible();
+  const inputs = dialog.locator(".doc-account-auth-grid .t-input__inner");
+  await inputs.nth(0).fill(email);
+  await inputs.nth(1).fill(password);
+  await dialog.getByRole("button", { name: "Submit" }).click();
+};
+
+const setReloadMarker = async (page: Page, value: string) => {
+  await page.evaluate((marker) => {
+    (window as typeof window & { __pwCollabMarker?: string }).__pwCollabMarker = marker;
+  }, value);
+};
+
+const expectReloadMarker = async (page: Page, value: string) => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () => (window as typeof window & { __pwCollabMarker?: string }).__pwCollabMarker || null,
+        ),
+      { message: "collaboration should start without a full page reload" },
+    )
+    .toBe(value);
+};
+
+const enableCollaborationFromPanel = async (page: Page, marker: string) => {
+  await setReloadMarker(page, marker);
+  await page.locator('[data-floating-action="collaboration"]').click();
+  await expect(page.locator(".doc-collaboration-panel-empty-title")).toBeVisible();
+  await page.locator('[data-collaboration-action="apply"]').click();
+  await waitForSyncedStatus(page);
+  await expectReloadMarker(page, marker);
+};
+
+const registerBackendUser = async (
+  request: APIRequestContext,
+  email: string,
+  displayName: string,
+) => {
+  const response = await request.post(`${backendBaseUrl}/api/auth/register`, {
+    data: {
+      email,
+      password: "password123",
+      displayName,
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+};
+
+const createBackendDocument = async (ownerApi: APIRequestContext, title: string) => {
+  const createResponse = await ownerApi.post(`${backendBaseUrl}/api/documents`, {
+    data: {
+      title,
+    },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const createPayload = (await createResponse.json()) as {
+    document?: {
+      id?: string;
+    };
+  };
+  const documentId = String(createPayload.document?.id || "");
+  expect(documentId).not.toBe("");
+  return documentId;
+};
+
+const addDocumentMember = async (
+  ownerApi: APIRequestContext,
+  documentId: string,
+  email: string,
+  role: "editor" | "commenter" | "viewer",
+) => {
+  const inviteResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/members`, {
+    data: {
+      email,
+      role,
+    },
+  });
+  expect(inviteResponse.ok()).toBeTruthy();
+};
+
+const createDocumentShareToken = async (
+  ownerApi: APIRequestContext,
+  documentId: string,
+  role: "editor" | "commenter" | "viewer",
+  allowAnonymous: boolean,
+) => {
+  const shareResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/share-links`, {
+    data: {
+      role,
+      allowAnonymous,
+    },
+  });
+  expect(shareResponse.ok()).toBeTruthy();
+  const sharePayload = (await shareResponse.json()) as {
+    shareLink?: {
+      token?: string;
+    };
+  };
+  const shareToken = String(sharePayload.shareLink?.token || "");
+  expect(shareToken).not.toBe("");
+  return shareToken;
+};
+
+test("comment-only member can comment but cannot edit, anonymous readonly share viewer cannot mutate", async ({
   browser,
 }) => {
   const ownerContext = await browser.newContext();
@@ -83,60 +230,12 @@ test("comment-only member can comment but cannot edit, readonly share viewer can
   const viewerGuards = attachConsoleGuards(viewerPage);
 
   try {
-    const ownerRegisterResponse = await ownerApi.post(`${backendBaseUrl}/api/auth/register`, {
-      data: {
-        email: ownerEmail,
-        password: "password123",
-        displayName: "Permissions Owner",
-      },
-    });
-    expect(ownerRegisterResponse.ok()).toBeTruthy();
+    await registerBackendUser(ownerApi, ownerEmail, "Permissions Owner");
+    await registerBackendUser(commenterApi, commenterEmail, "Permissions Commenter");
 
-    const commenterRegisterResponse = await commenterApi.post(`${backendBaseUrl}/api/auth/register`, {
-      data: {
-        email: commenterEmail,
-        password: "password123",
-        displayName: "Permissions Commenter",
-      },
-    });
-    expect(commenterRegisterResponse.ok()).toBeTruthy();
-
-    const createResponse = await ownerApi.post(`${backendBaseUrl}/api/documents`, {
-      data: {
-        title: `Permissions ${seed}`,
-      },
-    });
-    expect(createResponse.ok()).toBeTruthy();
-    const createPayload = (await createResponse.json()) as {
-      document?: {
-        id?: string;
-      };
-    };
-    const documentId = String(createPayload.document?.id || "");
-    expect(documentId).not.toBe("");
-
-    const inviteResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/members`, {
-      data: {
-        email: commenterEmail,
-        role: "commenter",
-      },
-    });
-    expect(inviteResponse.ok()).toBeTruthy();
-
-    const shareResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/share-links`, {
-      data: {
-        role: "viewer",
-        allowAnonymous: true,
-      },
-    });
-    expect(shareResponse.ok()).toBeTruthy();
-    const sharePayload = (await shareResponse.json()) as {
-      shareLink?: {
-        token?: string;
-      };
-    };
-    const shareToken = String(sharePayload.shareLink?.token || "");
-    expect(shareToken).not.toBe("");
+    const documentId = await createBackendDocument(ownerApi, `Permissions ${seed}`);
+    await addDocumentMember(ownerApi, documentId, commenterEmail, "commenter");
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", true);
 
     await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
 
@@ -181,7 +280,7 @@ test("comment-only member can comment but cannot edit, readonly share viewer can
       waitUntil: "networkidle",
     });
     await viewerPage.getByRole("button", { name: "Open Document" }).click();
-    await expect(viewerPage).toHaveURL(new RegExp(`/docs/${documentId}$`));
+    await expectWorkspaceUrl(viewerPage, documentId);
     await expect(viewerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
     await expect
       .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
@@ -196,7 +295,7 @@ test("comment-only member can comment but cannot edit, readonly share viewer can
       .toBe(viewerBaseline);
 
     await viewerPage.locator('[data-floating-action="comments"]').click();
-    await expect(viewerPage.getByRole("button", { name: "Add Comment" })).toHaveCount(0);
+    await expectAddCommentUnavailable(viewerPage);
 
     ownerGuards.assertClean();
     commenterGuards.assertClean();
@@ -204,6 +303,575 @@ test("comment-only member can comment but cannot edit, readonly share viewer can
   } finally {
     await ownerContext.close();
     await commenterContext.close();
+    await viewerContext.close();
+  }
+});
+
+test("editor member keeps edit access when entering through a readonly share link", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const editorApi = editorContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const editorEmail = `editor-${seed}@example.com`;
+  const seededParagraph = `Editor share precedence ${seed}`;
+  const editorEdit = ` editor-update-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const editorPage = await editorContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const editorGuards = attachConsoleGuards(editorPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Share Owner");
+    await registerBackendUser(editorApi, editorEmail, "Share Editor");
+
+    const documentId = await createBackendDocument(ownerApi, `Editor Share ${seed}`);
+    await addDocumentMember(ownerApi, documentId, editorEmail, "editor");
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", true);
+
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(editorPage);
+    await editorPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await editorPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(editorPage, documentId);
+    await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toContain(seededParagraph);
+
+    await focusEditor(editorPage);
+    await editorPage.keyboard.type(editorEdit);
+    await waitForLayoutIdle(editorPage);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toContain(editorEdit);
+    await waitForSnapshotContent(ownerApi, documentId);
+
+    ownerGuards.assertClean();
+    editorGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await editorContext.close();
+  }
+});
+
+test("signed-in-only share link prompts login before opening readonly workspace", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const memberContext = await browser.newContext();
+  const shareContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const memberApi = memberContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const viewerEmail = `restricted-viewer-${seed}@example.com`;
+  const seededParagraph = `Restricted share ${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const sharePage = await shareContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const shareGuards = attachConsoleGuards(sharePage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Restricted Share Owner");
+    await registerBackendUser(memberApi, viewerEmail, "Restricted Share Viewer");
+
+    const documentId = await createBackendDocument(ownerApi, `Restricted Share ${seed}`);
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", false);
+
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(sharePage);
+    await sharePage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await expect(sharePage.locator(".doc-share-page-meta")).toContainText("Signed-in access only");
+    await expect(sharePage.locator(".doc-share-page-note")).toContainText(
+      "Sign in before opening this shared document",
+    );
+
+    await sharePage
+      .locator(".doc-share-page-actions-row")
+      .getByRole("button", { name: "Sign In to Open" })
+      .click();
+    await expect(sharePage).toHaveURL(new RegExp(`/share/${shareToken}`));
+
+    await loginThroughAccountDialog(sharePage, viewerEmail, "password123");
+
+    await expectWorkspaceUrl(sharePage, documentId);
+    await expect(sharePage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(sharePage)).textContent)
+      .toContain(seededParagraph);
+
+    ownerGuards.assertClean();
+    shareGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await memberContext.close();
+    await shareContext.close();
+  }
+});
+
+test("comment-only member keeps comment access when entering through a readonly share link", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const commenterContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const commenterApi = commenterContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const commenterEmail = `commenter-share-${seed}@example.com`;
+  const seededParagraph = `Comment share precedence ${seed}`;
+  const blockedEdit = ` comment-share-blocked-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const commenterPage = await commenterContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const commenterGuards = attachConsoleGuards(commenterPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Comment Share Owner");
+    await registerBackendUser(commenterApi, commenterEmail, "Comment Share Member");
+
+    const documentId = await createBackendDocument(ownerApi, `Comment Share ${seed}`);
+    await addDocumentMember(ownerApi, documentId, commenterEmail, "commenter");
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", true);
+
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(commenterPage);
+    await commenterPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await commenterPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(commenterPage, documentId);
+    await expect(commenterPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toContain(seededParagraph);
+
+    const commenterBaseline = (await getDocumentSnapshot(commenterPage)).textContent;
+    await focusEditor(commenterPage);
+    await commenterPage.keyboard.type(blockedEdit);
+    await commenterPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toBe(commenterBaseline);
+
+    const commenterSelectionStart = await getParagraphDocPos(commenterPage, 0, 0);
+    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
+    expect(commenterSelectionStart).not.toBeNull();
+    expect(commenterSelectionEnd).not.toBeNull();
+    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
+    await commenterPage.locator('[data-floating-action="comments"]').click();
+    const addCommentButton = commenterPage.getByRole("button", { name: "Add Comment" });
+    await expect(addCommentButton).toBeEnabled();
+    await addCommentButton.click();
+    await expect(commenterPage.locator(".doc-comments-item")).toHaveCount(1);
+    await commenterPage
+      .locator(".doc-comments-composer-input textarea")
+      .fill("Readonly share should not override commenter access.");
+    await commenterPage
+      .locator(".doc-comments-composer-footer")
+      .getByRole("button", { name: "Reply" })
+      .click();
+    await expect(commenterPage.locator(".doc-comments-message-body")).toContainText(
+      "Readonly share should not override commenter access.",
+    );
+
+    ownerGuards.assertClean();
+    commenterGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await commenterContext.close();
+  }
+});
+
+test("editor share link does not escalate commenter or viewer members", async ({ browser }) => {
+  const ownerContext = await browser.newContext();
+  const commenterContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const commenterApi = commenterContext.request;
+  const viewerApi = viewerContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const commenterEmail = `editor-share-commenter-${seed}@example.com`;
+  const viewerEmail = `editor-share-viewer-${seed}@example.com`;
+  const seededParagraph = `Editor share should not escalate members ${seed}`;
+  const blockedCommenterEdit = ` blocked-commenter-${seed}`;
+  const blockedViewerEdit = ` blocked-viewer-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const commenterPage = await commenterContext.newPage();
+  const viewerPage = await viewerContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const commenterGuards = attachConsoleGuards(commenterPage);
+  const viewerGuards = attachConsoleGuards(viewerPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Editor Share Owner");
+    await registerBackendUser(commenterApi, commenterEmail, "Editor Share Commenter");
+    await registerBackendUser(viewerApi, viewerEmail, "Editor Share Viewer");
+
+    const documentId = await createBackendDocument(ownerApi, `Editor Share No Escalation ${seed}`);
+    await addDocumentMember(ownerApi, documentId, commenterEmail, "commenter");
+    await addDocumentMember(ownerApi, documentId, viewerEmail, "viewer");
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "editor", true);
+
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(commenterPage);
+    await commenterPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await commenterPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(commenterPage, documentId);
+    await expect(commenterPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toContain(seededParagraph);
+
+    const commenterBaseline = (await getDocumentSnapshot(commenterPage)).textContent;
+    await focusEditor(commenterPage);
+    await commenterPage.keyboard.type(blockedCommenterEdit);
+    await commenterPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toBe(commenterBaseline);
+
+    const commenterSelectionStart = await getParagraphDocPos(commenterPage, 0, 0);
+    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
+    expect(commenterSelectionStart).not.toBeNull();
+    expect(commenterSelectionEnd).not.toBeNull();
+    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
+    await commenterPage.locator('[data-floating-action="comments"]').click();
+    const commenterAddCommentButton = commenterPage.getByRole("button", { name: "Add Comment" });
+    await expect(commenterAddCommentButton).toBeEnabled();
+    await commenterAddCommentButton.click();
+    await expect(commenterPage.locator(".doc-comments-item")).toHaveCount(1);
+    await commenterPage
+      .locator(".doc-comments-composer-input textarea")
+      .fill("Editor share should not promote commenter permissions.");
+    await commenterPage
+      .locator(".doc-comments-composer-footer")
+      .getByRole("button", { name: "Reply" })
+      .click();
+    await expect(commenterPage.locator(".doc-comments-message-body")).toContainText(
+      "Editor share should not promote commenter permissions.",
+    );
+
+    await applyBackendBootstrap(viewerPage);
+    await viewerPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await viewerPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(viewerPage, documentId);
+    await expect(viewerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toContain(seededParagraph);
+
+    const viewerBaseline = (await getDocumentSnapshot(viewerPage)).textContent;
+    await focusEditor(viewerPage);
+    await viewerPage.keyboard.type(blockedViewerEdit);
+    await viewerPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toBe(viewerBaseline);
+    await viewerPage.locator('[data-floating-action="comments"]').click();
+    await expectAddCommentUnavailable(viewerPage);
+
+    ownerGuards.assertClean();
+    commenterGuards.assertClean();
+    viewerGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await commenterContext.close();
+    await viewerContext.close();
+  }
+});
+
+test("signed-in-only commenter share link prompts login before opening comment-only workspace", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const memberContext = await browser.newContext();
+  const shareContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const memberApi = memberContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const commenterEmail = `restricted-commenter-${seed}@example.com`;
+  const seededParagraph = `Restricted commenter share ${seed}`;
+  const blockedEdit = ` restricted-commenter-blocked-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const sharePage = await shareContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const shareGuards = attachConsoleGuards(sharePage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Restricted Comment Share Owner");
+    await registerBackendUser(memberApi, commenterEmail, "Restricted Comment Share Member");
+
+    const documentId = await createBackendDocument(ownerApi, `Restricted Comment Share ${seed}`);
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "commenter", false);
+
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(sharePage);
+    await sharePage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await expect(sharePage.locator(".doc-share-page-meta")).toContainText("Signed-in access only");
+    await sharePage
+      .locator(".doc-share-page-actions-row")
+      .getByRole("button", { name: "Sign In to Open" })
+      .click();
+    await expect(sharePage).toHaveURL(new RegExp(`/share/${shareToken}`));
+
+    await loginThroughAccountDialog(sharePage, commenterEmail, "password123");
+
+    await expectWorkspaceUrl(sharePage, documentId);
+    await expect(sharePage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(sharePage)).textContent)
+      .toContain(seededParagraph);
+
+    const shareBaseline = (await getDocumentSnapshot(sharePage)).textContent;
+    await focusEditor(sharePage);
+    await sharePage.keyboard.type(blockedEdit);
+    await sharePage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(sharePage)).textContent)
+      .toBe(shareBaseline);
+
+    const selectionStart = await getParagraphDocPos(sharePage, 0, 0);
+    const selectionEnd = await getParagraphDocPos(sharePage, 0, 10);
+    expect(selectionStart).not.toBeNull();
+    expect(selectionEnd).not.toBeNull();
+    await setTextSelection(sharePage, selectionStart!, selectionEnd!);
+    await sharePage.locator('[data-floating-action="comments"]').click();
+    const addCommentButton = sharePage.getByRole("button", { name: "Add Comment" });
+    await expect(addCommentButton).toBeEnabled();
+    await addCommentButton.click();
+    await expect(sharePage.locator(".doc-comments-item")).toHaveCount(1);
+    await sharePage
+      .locator(".doc-comments-composer-input textarea")
+      .fill("Signed-in commenter share can still review.");
+    await sharePage
+      .locator(".doc-comments-composer-footer")
+      .getByRole("button", { name: "Reply" })
+      .click();
+    await expect(sharePage.locator(".doc-comments-message-body")).toContainText(
+      "Signed-in commenter share can still review.",
+    );
+
+    ownerGuards.assertClean();
+    shareGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await memberContext.close();
+    await shareContext.close();
+  }
+});
+
+test("direct member workspace entry keeps editor editable and viewer readonly", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const editorApi = editorContext.request;
+  const viewerApi = viewerContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const editorEmail = `editor-member-${seed}@example.com`;
+  const viewerEmail = `viewer-member-${seed}@example.com`;
+  const seededParagraph = `Member roles ${seed}`;
+  const editorEdit = ` editor-member-update-${seed}`;
+  const blockedEdit = ` viewer-member-blocked-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const editorPage = await editorContext.newPage();
+  const viewerPage = await viewerContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const editorGuards = attachConsoleGuards(editorPage);
+  const viewerGuards = attachConsoleGuards(viewerPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Member Matrix Owner");
+    await registerBackendUser(editorApi, editorEmail, "Member Matrix Editor");
+    await registerBackendUser(viewerApi, viewerEmail, "Member Matrix Viewer");
+
+    const documentId = await createBackendDocument(ownerApi, `Member Matrix ${seed}`);
+    await addDocumentMember(ownerApi, documentId, editorEmail, "editor");
+    await addDocumentMember(ownerApi, documentId, viewerEmail, "viewer");
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(editorPage);
+    await editorPage.goto(`/docs/${documentId}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toContain(seededParagraph);
+    await focusEditor(editorPage);
+    await editorPage.keyboard.type(editorEdit);
+    await waitForLayoutIdle(editorPage);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toContain(editorEdit);
+
+    await applyBackendBootstrap(viewerPage);
+    await viewerPage.goto(`/docs/${documentId}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await expect(viewerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toContain(seededParagraph);
+    const viewerBaseline = (await getDocumentSnapshot(viewerPage)).textContent;
+    await focusEditor(viewerPage);
+    await viewerPage.keyboard.type(blockedEdit);
+    await viewerPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toBe(viewerBaseline);
+    await viewerPage.locator('[data-floating-action="comments"]').click();
+    await expectAddCommentUnavailable(viewerPage);
+
+    ownerGuards.assertClean();
+    editorGuards.assertClean();
+    viewerGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await editorContext.close();
+    await viewerContext.close();
+  }
+});
+
+test("comment-only member stays comment-only after starting realtime collaboration", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const commenterContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const commenterApi = commenterContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const commenterEmail = `commenter-collab-${seed}@example.com`;
+  const seededParagraph = `Comment collaboration ${seed}`;
+  const blockedEdit = ` blocked-collab-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const commenterPage = await commenterContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const commenterGuards = attachConsoleGuards(commenterPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Comment Collab Owner");
+    await registerBackendUser(commenterApi, commenterEmail, "Comment Collab Member");
+
+    const documentId = await createBackendDocument(ownerApi, `Comment Collab ${seed}`);
+    await addDocumentMember(ownerApi, documentId, commenterEmail, "commenter");
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(commenterPage);
+    await commenterPage.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+      waitUntil: "networkidle",
+    });
+    await expect(commenterPage.locator(".collab-status-label")).toHaveCount(0);
+    await expect(commenterPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toContain(seededParagraph);
+
+    await enableCollaborationFromPanel(commenterPage, `commenter-collab-${seed}`);
+
+    const commenterBaseline = (await getDocumentSnapshot(commenterPage)).textContent;
+    await focusEditor(commenterPage);
+    await commenterPage.keyboard.type(blockedEdit);
+    await commenterPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
+      .toBe(commenterBaseline);
+
+    await commenterPage.locator('[data-floating-action="comments"]').click();
+    await expect(commenterPage.getByRole("button", { name: "Add Comment" })).toBeVisible();
+
+    ownerGuards.assertClean();
+    commenterGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await commenterContext.close();
+  }
+});
+
+test("anonymous readonly share viewer stays readonly after starting realtime collaboration", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-${seed}@example.com`;
+  const seededParagraph = `Readonly collab ${seed}`;
+  const blockedEdit = ` readonly-collab-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const viewerPage = await viewerContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const viewerGuards = attachConsoleGuards(viewerPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Readonly Collab Owner");
+
+    const documentId = await createBackendDocument(ownerApi, `Readonly Collab ${seed}`);
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", true);
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(viewerPage);
+    await viewerPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await viewerPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(viewerPage, documentId);
+    await expect(viewerPage.locator(".collab-status-label")).toHaveCount(0);
+    await expect(viewerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toContain(seededParagraph);
+
+    await enableCollaborationFromPanel(viewerPage, `viewer-collab-${seed}`);
+
+    const viewerBaseline = (await getDocumentSnapshot(viewerPage)).textContent;
+    await focusEditor(viewerPage);
+    await viewerPage.keyboard.type(blockedEdit);
+    await viewerPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(viewerPage)).textContent)
+      .toBe(viewerBaseline);
+    await viewerPage.locator('[data-floating-action="comments"]').click();
+    await expectAddCommentUnavailable(viewerPage);
+
+    ownerGuards.assertClean();
+    viewerGuards.assertClean();
+  } finally {
+    await ownerContext.close();
     await viewerContext.close();
   }
 });

@@ -383,6 +383,9 @@ export type PlaygroundI18n = {
     accessMode: string;
     anonymousAccess: string;
     loggedInAccess: string;
+    authRequired: string;
+    authRequiredHint: string;
+    signInToOpen: string;
     openDocument: string;
     refresh: string;
   };
@@ -2222,6 +2225,9 @@ PLAYGROUND_I18N["zh-CN"].shareLanding = {
   accessMode: "访问方式",
   anonymousAccess: "允许匿名访问",
   loggedInAccess: "需要登录访问",
+  authRequired: "登录后才能打开共享文档",
+  authRequiredHint: "这个分享链接不允许匿名访问，请先登录再继续进入文档工作区。",
+  signInToOpen: "登录后打开",
   openDocument: "打开文档",
   refresh: "重新检查",
 };
@@ -2239,6 +2245,10 @@ PLAYGROUND_I18N["en-US"].shareLanding = {
   accessMode: "Access Mode",
   anonymousAccess: "Anonymous access allowed",
   loggedInAccess: "Signed-in access only",
+  authRequired: "Sign in before opening this shared document",
+  authRequiredHint:
+    "This share link does not allow anonymous access, so you need to sign in before continuing into the workspace.",
+  signInToOpen: "Sign In to Open",
   openDocument: "Open Document",
   refresh: "Refresh",
 };

@@ -1,13 +1,33 @@
 import { useRouter } from "vue-router";
 import { rememberShareAccessToken } from "../editor/backendClient";
+import {
+  coercePlaygroundLocale,
+  resolvePlaygroundLocale,
+  type PlaygroundLocale,
+} from "../editor/i18n";
 
 type OpenWorkspaceDocumentOptions = {
   shareToken?: string | null;
   replace?: boolean;
+  locale?: PlaygroundLocale | string | null;
+};
+
+type DocumentsHomeNavigationOptions = {
+  replace?: boolean;
+  locale?: PlaygroundLocale | string | null;
 };
 
 export const useDocumentNavigation = () => {
   const router = useRouter();
+  const resolveNavigationLocale = (
+    value?: PlaygroundLocale | string | null,
+  ): PlaygroundLocale => {
+    const normalized = String(value || "").trim();
+    if (normalized) {
+      return coercePlaygroundLocale(normalized);
+    }
+    return resolvePlaygroundLocale();
+  };
 
   const openWorkspaceDocument = async (
     documentId: string,
@@ -28,6 +48,9 @@ export const useDocumentNavigation = () => {
       params: {
         documentId: normalizedDocumentId,
       },
+      query: {
+        locale: resolveNavigationLocale(options.locale),
+      },
     } as const;
 
     if (options.replace) {
@@ -39,13 +62,20 @@ export const useDocumentNavigation = () => {
     return true;
   };
 
-  const goToDocumentsHome = async (options: { replace?: boolean } = {}) => {
+  const goToDocumentsHome = async (options: DocumentsHomeNavigationOptions = {}) => {
+    const navigation = {
+      name: "documents-home",
+      query: {
+        locale: resolveNavigationLocale(options.locale),
+      },
+    } as const;
+
     if (options.replace) {
-      await router.replace({ name: "documents-home" });
+      await router.replace(navigation);
       return true;
     }
 
-    await router.push({ name: "documents-home" });
+    await router.push(navigation);
     return true;
   };
 

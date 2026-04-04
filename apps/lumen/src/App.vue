@@ -281,22 +281,9 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-  shallowRef,
-  watch,
-  type Ref,
-} from "vue";
+import { computed, onBeforeUnmount, reactive, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { onBeforeRouteLeave, useRoute } from "vue-router";
-import type { Editor as LumenEditor } from "lumenpage-core";
-import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
-import type { CanvasEditorView } from "lumenpage-view-canvas";
+import { useRoute } from "vue-router";
 import AiAssistantPanel from "./components/AiAssistantPanel.vue";
 import AnnotationToolbar from "./components/AnnotationToolbar.vue";
 import AccountWorkspaceDialog from "./components/AccountWorkspaceDialog.vue";
@@ -315,37 +302,24 @@ import { createLumenAnnotationStore } from "./annotation/annotationStore";
 import { useAnnotationSession } from "./composables/useAnnotationSession";
 import { useWorkspaceSidePanel } from "./composables/useWorkspaceSidePanel";
 import { useWorkspaceAccess } from "./composables/useWorkspaceAccess";
+import { useWorkspaceCapabilities } from "./composables/useWorkspaceCapabilities";
+import { useWorkspaceEditorRuntime } from "./composables/useWorkspaceEditorRuntime";
+import { useWorkspaceReview } from "./composables/useWorkspaceReview";
+import { useWorkspaceShellUi } from "./composables/useWorkspaceShellUi";
 import { useWorkspaceSnapshotPersistence } from "./composables/useWorkspaceSnapshotPersistence";
 import { resolveStoredShareAccessToken } from "./editor/backendClient";
 import {
   createInitialLumenCollaborationState,
   type LumenCollaborationState,
 } from "./editor/collaboration";
+import { createPlaygroundDebugFlags, type PlaygroundDebugFlags } from "./editor/config";
 import {
-  createPlaygroundDebugFlags,
-  setPlaygroundCollaborationSettings,
-  type PlaygroundCollaborationSettings,
-  type PlaygroundDebugFlags,
-} from "./editor/config";
-import {
-  PLAYGROUND_LOCALE_OPTIONS,
   coercePlaygroundLocale,
   createPlaygroundI18n,
-  setPlaygroundLocale,
   type PlaygroundLocale,
 } from "./editor/i18n";
-import { lumenCommentsStore, type LumenCommentThread } from "./editor/commentsStore";
-import { mountPlaygroundEditor } from "./editor/editorMount";
 import { showToolbarMessage } from "./editor/toolbarActions/ui/message";
-import {
-  findHeadingPosById,
-  type TocOutlineItem,
-  type TocOutlineSnapshot,
-} from "./editor/tocOutlinePlugin";
 import type { ToolbarMenuKey } from "./editor/toolbarCatalog";
-import type { EditorSessionMode } from "./editor/sessionMode";
-import { findCommentAnchorRanges } from "lumenpage-extension-comment";
-import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
 const debugFlags = reactive(createPlaygroundDebugFlags()) as PlaygroundDebugFlags;
 const { locale: globalLocale, t } = useI18n();
@@ -364,47 +338,15 @@ const realtimeCollaborationEnabled = computed(() => debugFlags.collaborationEnab
 const workspaceAccessEnabled = computed(
   () => routeDocumentId.value.length > 0 || realtimeCollaborationEnabled.value
 );
-const localeOptions = computed(() =>
-  PLAYGROUND_LOCALE_OPTIONS.map((option) => ({
-    value: option.value,
-    label: option.label[localeKey.value],
-  }))
-);
 const editorHost = ref<HTMLElement | null>(null);
 const workspaceRef = ref<HTMLElement | null>(null);
 type ToolbarExpose = { statusEl: Ref<HTMLElement | null> };
-type PendingRuntimeContext = {
-  flags: PlaygroundDebugFlags;
-  snapshotBase64: string | null;
-};
 const toolbarRef = ref<ToolbarExpose | null>(null);
 const activeToolbarMenu = ref<ToolbarMenuKey>("base");
-const editor = shallowRef<LumenEditor | null>(null);
-const view = shallowRef<CanvasEditorView | null>(null);
 const annotationStore = createLumenAnnotationStore();
 const collaborationState = ref<LumenCollaborationState>(
   createInitialLumenCollaborationState(debugFlags)
 );
-const collaborationSwitching = ref(false);
-const pendingRuntime = ref<PendingRuntimeContext | null>(null);
-const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
-const activeCommentThreadId = ref<string | null>(null);
-const trackChangesEnabled = ref(false);
-const trackChangeRecords = ref<TrackChangeRecord[]>([]);
-const activeTrackChangeId = ref<string | null>(null);
-const createInitialFooterStats = () => ({
-  pageCount: 0,
-  currentPage: 0,
-  nodeCount: 0,
-  pluginCount: 0,
-  wordCount: 0,
-  selectedWordCount: 0,
-  blockType: "",
-});
-const footerStats = ref(createInitialFooterStats());
-const tocItems = ref<TocOutlineItem[]>([]);
-const activeTocId = ref<string | null>(null);
-const outlineTitle = computed(() => i18n.value.shell.outline);
 const {
   backendUrl,
   shareDialogVisible,
@@ -430,6 +372,7 @@ const {
   realtimeCollaborationEnabled,
   routeDocumentId,
   routeShareToken,
+  flushPendingSnapshotSave: () => flushWorkspaceSnapshotSave(),
   messages: {
     shareDialogLoadFailed: computed(() => i18n.value.shareDialog.loadFailed),
     shareDialogEnsureFailed: computed(() => i18n.value.shareDialog.ensureFailed),
@@ -441,32 +384,35 @@ const {
     clearMountedEditorRuntime();
   },
 });
-const sessionMode = ref<EditorSessionMode>(
-  debugFlags.permissionMode === "readonly" ? "viewer" : "edit"
-);
-const buildPermissionCapabilities = (permissionMode: "full" | "comment" | "readonly") => ({
-  canView: true,
-  canComment: permissionMode === "full" || permissionMode === "comment",
-  canEdit: permissionMode === "full",
-  canManage: permissionMode === "full",
-  permissionMode,
+const {
+  sessionMode,
+  collaborationSwitching,
+  effectiveCapabilities,
+  effectivePermissionMode,
+  canWriteLocalSnapshot,
+  permissionLabel,
+  canMutateComments,
+  currentCommentUserName,
+  canManageAssistant,
+  canMutateTrackChanges,
+  topbarAvatarText,
+  trackChangesCountLabel,
+  handleCollaborationApply,
+  handleSessionModeUpdate,
+} = useWorkspaceCapabilities({
+  debugFlags,
+  i18n,
+  translate: (key, params) => String(t(key, params)),
+  routeDocumentId,
+  workspaceAccessEnabled,
+  realtimeCollaborationEnabled,
+  backendSessionUser,
+  backendDocumentAccess,
+  backendAccessBound,
+  collaborationState,
+  flushPendingSnapshotSave: () => flushWorkspaceSnapshotSave(),
+  loadWorkspace,
 });
-const effectiveCapabilities = computed(() => {
-  if (backendDocumentAccess.value?.capabilities) {
-    return backendDocumentAccess.value.capabilities;
-  }
-  if (routeDocumentId.value.length > 0 && !realtimeCollaborationEnabled.value) {
-    return buildPermissionCapabilities("readonly");
-  }
-  if (workspaceAccessEnabled.value && (backendAccessBound.value || backendSessionUser.value)) {
-    return buildPermissionCapabilities("readonly");
-  }
-  return buildPermissionCapabilities(debugFlags.permissionMode);
-});
-const effectivePermissionMode = computed(() => effectiveCapabilities.value.permissionMode);
-const canWriteLocalSnapshot = computed(
-  () => effectiveCapabilities.value.canEdit || effectiveCapabilities.value.canComment
-);
 const {
   flushWorkspaceSnapshotSave,
   scheduleWorkspaceSnapshotSave,
@@ -484,486 +430,110 @@ const {
     showToolbarMessage(message, "error");
   },
 });
-const isReadonlyPermission = computed(() => effectivePermissionMode.value === "readonly");
-const permissionLabel = computed(() => {
-  if (isReadonlyPermission.value || sessionMode.value === "viewer") {
-    return i18n.value.app.permissionReadonly;
-  }
-  if (effectivePermissionMode.value === "comment") {
-    return i18n.value.app.permissionComment;
-  }
-  return i18n.value.app.permissionEdit;
-});
-const commentCount = computed(() => commentThreads.value.length);
-const canMutateComments = computed(() => effectiveCapabilities.value.canComment && sessionMode.value !== "viewer");
-const currentCommentUserName = computed(
-  () =>
-    String(backendSessionUser.value?.displayName || "").trim() ||
-    (realtimeCollaborationEnabled.value ? collaborationState.value.userName : "") ||
-    i18n.value.shell.you
-);
-const canManageAssistant = computed(() => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer");
-const canMutateTrackChanges = computed(
-  () => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer"
-);
 const commentButtonDisabled = computed(() => !canMutateComments.value);
-const commentButtonLabel = computed(() =>
-  commentCount.value > 0
-    ? `${i18n.value.app.comment} (${commentCount.value})`
-    : i18n.value.app.comment
-);
-const assistantButtonLabel = computed(() => i18n.value.shell.assistant);
-const trackChangeCount = computed(() => trackChangeRecords.value.length);
-const outlineEmptyLabel = computed(() => i18n.value.shell.outlineEmpty);
-const commentActionLabel = computed(() => i18n.value.shell.addComment);
-const trackChangesActionLabel = computed(() =>
-  trackChangesEnabled.value
-    ? i18n.value.shell.trackChangesDisable
-    : i18n.value.shell.trackChangesEnable
-);
-const trackChangesStatusLabel = computed(() =>
-  trackChangesEnabled.value
-    ? i18n.value.shell.trackChangesEnabled
-    : i18n.value.shell.trackChangesDisabled
-);
-const outlineTabLabel = computed(() => i18n.value.shell.outline);
-const collaborationButtonLabel = computed(() => i18n.value.collaborationPanel.title);
-const annotationActionLabel = computed(() => i18n.value.annotationPanel.title);
-const documentStatusLoadingLabel = computed(() => i18n.value.documentCenter.loading);
-const documentStatusLoadingCopy = computed(() => i18n.value.documentCenter.description);
-const documentStatusErrorLabel = computed(() => i18n.value.shareLanding.loadFailed);
-const trackChangesButtonLabel = computed(() =>
-  trackChangeCount.value > 0
-    ? t("shell.trackChangesCount", { count: trackChangeCount.value })
-    : i18n.value.shell.trackChanges
-);
-const footerPageLabel = computed(() => t("shell.totalPages", { count: footerStats.value.pageCount }));
-const footerCurrentPageLabel = computed(() =>
-  t("shell.currentPage", { count: footerStats.value.currentPage || 0 })
-);
-const footerWordLabel = computed(() => t("shell.words", { count: footerStats.value.wordCount }));
-const footerSelectionWordLabel = computed(() =>
-  t("shell.selectedWords", { count: footerStats.value.selectedWordCount })
-);
-const resolveBlockTypeLabel = (value: string) => {
-  if (value === "paragraph") return i18n.value.shell.blockTypeParagraph;
-  if (value === "heading") return i18n.value.shell.blockTypeHeading;
-  if (value === "blockquote") return i18n.value.shell.blockTypeBlockquote;
-  if (value === "codeBlock") return i18n.value.shell.blockTypeCodeBlock;
-  if (value === "bulletList") return i18n.value.shell.blockTypeBulletList;
-  if (value === "orderedList") return i18n.value.shell.blockTypeOrderedList;
-  if (value === "taskList") return i18n.value.shell.blockTypeTaskList;
-  if (value === "table") return i18n.value.shell.blockTypeTable;
-  return value || i18n.value.shell.blockTypeUnknown;
-};
-const footerBlockTypeLabel = computed(() =>
-  t("shell.block", { type: resolveBlockTypeLabel(footerStats.value.blockType) })
-);
-const footerStatItems = computed(() => {
-  const items = [footerCurrentPageLabel.value, footerPageLabel.value, footerWordLabel.value];
-  if (footerStats.value.selectedWordCount > 0) {
-    items.push(footerSelectionWordLabel.value);
-  }
-  if (footerStats.value.blockType) {
-    items.push(footerBlockTypeLabel.value);
-  }
-  return items;
-});
-const footerNodeLabel = computed(() => t("shell.nodes", { count: footerStats.value.nodeCount }));
-const footerPluginLabel = computed(() => t("shell.plugins", { count: footerStats.value.pluginCount }));
-const footerContactLabel = computed(() => i18n.value.shell.contact);
 const commentActionTexts = computed(() => i18n.value.commentActions);
 const trackChangeActionTexts = computed(() => i18n.value.trackChangeActions);
-const topbarAvatarText = computed(() => {
-  const seed =
-    String(backendSessionUser.value?.displayName || "").trim() ||
-    (realtimeCollaborationEnabled.value
-      ? String(collaborationState.value.userName || "").trim()
-      : "") ||
-    i18n.value.shell.you;
-  return seed.slice(0, 1).toUpperCase() || "U";
-});
-let detachEditor: null | (() => void) = null;
-let setTocOutlineEnabled: null | ((enabled: boolean) => void) = null;
-let detachCommentStore: null | (() => void) = null;
-let setCommentAnchorInEditor: null | ((options: { threadId: string; anchorId: string }) => boolean) = null;
-let activateCommentThreadInEditor: null | ((threadId: string | null) => boolean) = null;
-let focusCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
-let removeCommentThreadInEditor: null | ((threadId: string) => boolean) = null;
-let isPruningCommentThreads = false;
-let setTrackChangesEnabledInEditor: null | ((enabled: boolean) => boolean) = null;
-let activateTrackChangeInEditor: null | ((changeId: string | null) => boolean) = null;
-let focusTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
-let acceptTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
-let rejectTrackChangeInEditor: null | ((changeId: string) => boolean) = null;
-let acceptAllTrackChangesInEditor: null | (() => boolean) = null;
-let rejectAllTrackChangesInEditor: null | (() => boolean) = null;
 
-type LumenSelectionSnapshot = {
-  from: number;
-  to: number;
-  empty: boolean;
-  type: string | null;
-};
-
-type LumenTestApi = {
-  forceRender: () => boolean;
-  getSelection: () => LumenSelectionSnapshot | null;
-  setJSON: (docJson: unknown) => boolean;
-  setSelection: (from: number, to: number) => boolean;
-};
-
-type LumenDebugWindow = Window & {
-  __lumenView?: CanvasEditorView | null;
-  __lumenTestApi?: LumenTestApi | null;
-};
-
-const clampSelectionPos = (doc: CanvasEditorView["state"]["doc"] | null | undefined, pos: number) => {
-  const contentSize = Number(doc?.content?.size);
-  if (!Number.isFinite(contentSize)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(contentSize, Math.floor(pos)));
-};
-
-const readSelectionSnapshot = (currentView: CanvasEditorView | null): LumenSelectionSnapshot | null => {
-  const selection = currentView?.state?.selection;
-  if (!selection) {
-    return null;
-  }
-  const jsonType = selection.toJSON?.()?.type ?? null;
-  return {
-    from: Number(selection.from),
-    to: Number(selection.to),
-    empty: selection.empty === true,
-    type:
-      selection instanceof NodeSelection
-        ? "NodeSelection"
-        : selection instanceof TextSelection
-          ? "TextSelection"
-          : jsonType === "all"
-            ? "AllSelection"
-            : jsonType === "node"
-              ? "NodeSelection"
-              : jsonType === "text"
-                ? "TextSelection"
-                : jsonType,
-  };
-};
-
-const setViewSelection = (currentView: CanvasEditorView | null, from: number, to: number) => {
-  const doc = currentView?.state?.doc;
-  const tr = currentView?.state?.tr;
-  if (!doc || !tr) {
-    return false;
-  }
-  const anchor = clampSelectionPos(doc, from);
-  const head = clampSelectionPos(doc, to);
-  try {
-    const nextSelection =
-      anchor === head
-        ? Selection.near(doc.resolve(head), 1)
-        : TextSelection.create(doc, Math.min(anchor, head), Math.max(anchor, head));
-    currentView.dispatch(tr.setSelection(nextSelection).scrollIntoView());
-    return true;
-  } catch (_error) {
-    return false;
-  }
-};
-
-const syncDebugHandles = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-  const debugWindow = window as LumenDebugWindow;
-  const currentView = view.value;
-  debugWindow.__lumenView = currentView ?? null;
-  debugWindow.__lumenTestApi = currentView
-    ? {
-        forceRender: () => {
-          currentView.forceRender();
-          return true;
-        },
-        getSelection: () => readSelectionSnapshot(currentView),
-        setJSON: (docJson: unknown) => currentView.setJSON(docJson),
-        setSelection: (from: number, to: number) => setViewSelection(currentView, from, to),
-      }
-    : null;
-};
-
-const clearMountedEditorRuntime = () => {
-  resetWorkspaceSnapshotPersistence();
-  detachEditor?.();
-  detachEditor = null;
-  setTocOutlineEnabled = null;
-  detachCommentStore?.();
-  detachCommentStore = null;
-  setCommentAnchorInEditor = null;
-  activateCommentThreadInEditor = null;
-  focusCommentThreadInEditor = null;
-  removeCommentThreadInEditor = null;
-  setTrackChangesEnabledInEditor = null;
-  activateTrackChangeInEditor = null;
-  focusTrackChangeInEditor = null;
-  acceptTrackChangeInEditor = null;
-  rejectTrackChangeInEditor = null;
-  acceptAllTrackChangesInEditor = null;
-  rejectAllTrackChangesInEditor = null;
-  editor.value = null;
-  view.value = null;
-  syncDebugHandles();
-  commentThreads.value = [];
-  activeCommentThreadId.value = null;
-  trackChangesEnabled.value = false;
-  trackChangeRecords.value = [];
-  activeTrackChangeId.value = null;
-  tocItems.value = [];
-  activeTocId.value = null;
-  footerStats.value = createInitialFooterStats();
-};
-
-const attachMountedEditor = (
-  mounted: ReturnType<typeof mountPlaygroundEditor>,
-  runtimeFlags: typeof debugFlags,
-) => {
-  editor.value = mounted.editor;
-  view.value = mounted.view;
-  setSnapshotDocument(mounted.collaborationDocument);
-  if (runtimeFlags.collaborationEnabled) {
-    annotationStore.useCollaborationStore(mounted.collaborationDocument, runtimeFlags.collaborationField);
-  } else {
-    annotationStore.useLocalStore();
-  }
-  syncDebugHandles();
-  setTocOutlineEnabled = mounted.setTocOutlineEnabled;
-  setCommentAnchorInEditor = mounted.setCommentAnchor;
-  activateCommentThreadInEditor = mounted.activateCommentThread;
-  focusCommentThreadInEditor = mounted.focusCommentThread;
-  removeCommentThreadInEditor = mounted.removeCommentThread;
-  setTrackChangesEnabledInEditor = mounted.setTrackChangesEnabled;
-  activateTrackChangeInEditor = mounted.activateTrackChange;
-  focusTrackChangeInEditor = mounted.focusTrackChange;
-  acceptTrackChangeInEditor = mounted.acceptTrackChange;
-  rejectTrackChangeInEditor = mounted.rejectTrackChange;
-  acceptAllTrackChangesInEditor = mounted.acceptAllTrackChanges;
-  rejectAllTrackChangesInEditor = mounted.rejectAllTrackChanges;
-  detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
-  syncCommentThreads();
-  applySessionModeToView();
-  detachEditor = mounted.destroy;
-};
-
-const createEditorCallbacks = () => ({
-  onCollaborationStateChange: (state: LumenCollaborationState) => {
-    collaborationState.value = state;
-    if (!state.enabled || state.synced) {
-      syncCommentThreads();
-    }
-  },
-  onTocOutlineChange: handleTocOutlineChange,
-  tocOutlineEnabled: activeSideTab.value === "outline",
-  onCommentStateChange: ({ activeThreadId }: { activeThreadId: string | null }) => {
-    const nextThreadId = activeThreadId || null;
-    const previousThreadId = activeCommentThreadId.value;
-    activeCommentThreadId.value = nextThreadId;
-    syncCommentThreads();
-    const resolvedThreadId = activeCommentThreadId.value;
-    if (resolvedThreadId && (activeSideTab.value !== "comments" || resolvedThreadId !== previousThreadId)) {
-      openCommentsPanel(resolvedThreadId);
-      return;
-    }
-  },
-  onTrackChangeStateChange: ({
-    enabled,
-    activeChangeId,
-    changes,
-  }: {
-    enabled: boolean;
-    activeChangeId: string | null;
-    changes: TrackChangeRecord[];
-  }) => {
-    trackChangesEnabled.value = enabled;
-    trackChangeRecords.value = changes;
-    const nextActiveChangeId =
-      activeChangeId && changes.some((change) => change.changeId === activeChangeId)
-        ? activeChangeId
-        : null;
-    activeTrackChangeId.value = nextActiveChangeId;
-    if (nextActiveChangeId) {
-      openTrackChangesPanel(nextActiveChangeId);
-      return;
-    }
-    if (activeSideTab.value === "changes" && changes.length > 0) {
-      const fallbackChangeId = getNextTrackChangeId();
-      if (fallbackChangeId) {
-        activeTrackChangeId.value = fallbackChangeId;
-        activateTrackChangeInEditor?.(fallbackChangeId);
-      }
-    }
-  },
-  onDocumentChange: ({ docChanged }: { docChanged: boolean }) => {
-    if (docChanged) {
-      scheduleWorkspaceSnapshotSave();
-    }
-  },
-  onStatsChange: handleStatsChange,
+const { restoreAnnotationSession, syncAnnotationAuthor } = useAnnotationSession({
+  annotationStore,
+  currentCommentUserName,
+  realtimeCollaborationEnabled,
+  collaborationUserColor: computed(() => collaborationState.value.userColor || null),
+  routeDocumentId,
+  backendDocumentField: computed(() => backendDocument.value?.field || null),
+  fallbackDocumentName: debugFlags.collaborationDocument,
+  fallbackField: debugFlags.collaborationField,
 });
 
-const decodeSnapshotBase64 = (value: string | null | undefined) => {
-  if (value == null || typeof window === "undefined") {
-    return null;
-  }
-  const normalized = String(value).trim();
-  if (!normalized) {
-    return new Uint8Array(0);
-  }
-  try {
-    const binary = window.atob(normalized);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
-    }
-    return bytes;
-  } catch (_error) {
-    return null;
-  }
-};
-
-const mountOrRemountPlaygroundEditor = async (
-  runtimeFlags: typeof debugFlags,
-  snapshotBase64: string | null = null,
-) => {
-  pendingRuntime.value = {
-    flags: runtimeFlags,
-    snapshotBase64,
-  };
-  collaborationState.value = createInitialLumenCollaborationState(runtimeFlags);
-  syncAnnotationAuthor();
-  clearMountedEditorRuntime();
-  if (!runtimeFlags.collaborationEnabled) {
-    restoreAnnotationSession();
-  }
-  await nextTick();
-  if (!editorHost.value) {
-    return false;
-  }
-  const mounted = mountPlaygroundEditor({
-    host: editorHost.value,
-    statusElement: toolbarRef.value?.statusEl?.value || null,
-    flags: runtimeFlags,
-    initialCollaborationSnapshot: decodeSnapshotBase64(snapshotBase64),
-    resolvePermissionMode: () => effectivePermissionMode.value,
-    ...createEditorCallbacks(),
-  });
-  attachMountedEditor(mounted, runtimeFlags);
-  pendingRuntime.value = null;
-  return true;
-};
-
-const handleCollaborationApply = async (settings: {
-  enabled: boolean;
-  collaborationUrl: string;
-  collaborationDocument: string;
-  collaborationField: string;
-  collaborationToken: string;
-  collaborationUserName: string;
-  collaborationUserColor: string;
-}) => {
-  if (collaborationSwitching.value) {
-    return;
-  }
-  collaborationSwitching.value = true;
-  await flushWorkspaceSnapshotSave();
-  const nextSettings = setPlaygroundCollaborationSettings({
-    collaborationEnabled: settings.enabled,
-    collaborationUrl: settings.collaborationUrl,
-    collaborationDocument: settings.collaborationDocument,
-    collaborationField: settings.collaborationField,
-    collaborationToken: settings.collaborationToken,
-    collaborationUserName: settings.collaborationUserName,
-    collaborationUserColor: settings.collaborationUserColor,
-  } satisfies PlaygroundCollaborationSettings);
-  Object.assign(debugFlags, nextSettings);
-  try {
-    await loadWorkspace({ withCollabTicket: true });
-  } finally {
-    collaborationSwitching.value = false;
-  }
-};
-
-const remountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) => {
-  await mountOrRemountPlaygroundEditor(runtimeFlags);
-};
-
-const applySessionModeToView = () => {
-  const currentView = view.value;
-  if (!currentView) {
-    return;
-  }
-  currentView.setProps({
-    editable: () => !isReadonlyPermission.value && sessionMode.value !== "viewer",
-  });
-};
-
-const handleSessionModeUpdate = (nextMode: EditorSessionMode) => {
-  if (effectivePermissionMode.value === "readonly" && nextMode !== "viewer") {
-    return;
-  }
-  sessionMode.value = nextMode;
-};
-
-const handleLocaleChange = (value: string | number) => {
-  const nextLocale = coercePlaygroundLocale(value);
-  if (nextLocale === localeKey.value) {
-    return;
-  }
-  globalLocale.value = nextLocale;
-  setPlaygroundLocale(nextLocale);
-};
-
-const clearActiveCommentThread = () => {
-  const hadActiveThread = !!activeCommentThreadId.value;
-  activeCommentThreadId.value = null;
-  if (hadActiveThread) {
-    activateCommentThreadInEditor?.(null);
-  }
-};
-
-const clearActiveTrackChange = () => {
-  const hadActiveChange = !!activeTrackChangeId.value;
-  activeTrackChangeId.value = null;
-  if (hadActiveChange) {
-    activateTrackChangeInEditor?.(null);
-  }
-};
-
-const getNextTrackChangeId = (excludeChangeId?: string | null) =>
-  trackChangeRecords.value.find((change) => change.changeId !== excludeChangeId)?.changeId || null;
-
-const handleTocOutlineChange = (snapshot: TocOutlineSnapshot) => {
-  tocItems.value = Array.isArray(snapshot?.items) ? snapshot.items : [];
-  activeTocId.value = snapshot?.activeId || null;
-};
-
-const handleStatsChange = (stats: {
-  pageCount: number;
-  currentPage: number;
-  nodeCount: number;
-  pluginCount: number;
-  wordCount: number;
-  selectedWordCount: number;
-  blockType: string;
-}) => {
-  footerStats.value = {
-    pageCount: Math.max(0, Number(stats?.pageCount) || 0),
-    currentPage: Math.max(0, Number(stats?.currentPage) || 0),
-    nodeCount: Math.max(0, Number(stats?.nodeCount) || 0),
-    pluginCount: Math.max(0, Number(stats?.pluginCount) || 0),
-    wordCount: Math.max(0, Number(stats?.wordCount) || 0),
-    selectedWordCount: Math.max(0, Number(stats?.selectedWordCount) || 0),
-    blockType: String(stats?.blockType || ""),
-  };
-};
+const {
+  commentThreads,
+  activeCommentThreadId,
+  trackChangesEnabled,
+  trackChangeRecords,
+  activeTrackChangeId,
+  commentCount,
+  trackChangeCount,
+  clearActiveCommentThread,
+  clearActiveTrackChange,
+  syncCommentThreads,
+  handleCommentRuntimeStateChange,
+  handleTrackChangeRuntimeStateChange,
+  handleCommentClick,
+  handleCommentThreadSelect,
+  handleCommentThreadResolved,
+  handleCommentThreadReply,
+  handleCommentMessageEdit,
+  handleCommentMessageDelete,
+  handleCommentThreadDelete,
+  handleTrackChangesToggle,
+  handleTrackChangeSelect,
+  handleTrackChangeAccept,
+  handleTrackChangeReject,
+  handleTrackChangesAcceptAll,
+  handleTrackChangesRejectAll,
+  resetReviewState,
+} = useWorkspaceReview({
+  getView: () => view.value,
+  realtimeCollaborationEnabled,
+  collaborationState,
+  currentCommentUserName,
+  canMutateComments,
+  canMutateTrackChanges,
+  commentActionTexts,
+  trackChangeActionTexts,
+  getActiveSideTab: () => activeSideTab.value,
+  openCommentsPanel: (preferredThreadId) => openCommentsPanel(preferredThreadId),
+  openTrackChangesPanel: (preferredChangeId) => openTrackChangesPanel(preferredChangeId),
+  setCommentAnchor: (options) => setCommentAnchor(options),
+  activateCommentThread: (threadId) => activateCommentThread(threadId),
+  focusCommentThread: (threadId) => focusCommentThread(threadId),
+  removeCommentThread: (threadId) => removeCommentThread(threadId),
+  setTrackChangesEnabled: (enabled) => setTrackChangesEnabled(enabled),
+  activateTrackChange: (changeId) => activateTrackChange(changeId),
+  focusTrackChange: (changeId) => focusTrackChange(changeId),
+  acceptTrackChange: (changeId) => acceptTrackChange(changeId),
+  rejectTrackChange: (changeId) => rejectTrackChange(changeId),
+  acceptAllTrackChanges: () => acceptAllTrackChanges(),
+  rejectAllTrackChanges: () => rejectAllTrackChanges(),
+});
+const {
+  localeOptions,
+  tocItems,
+  activeTocId,
+  outlineTitle,
+  commentButtonLabel,
+  assistantButtonLabel,
+  outlineEmptyLabel,
+  commentActionLabel,
+  trackChangesActionLabel,
+  trackChangesStatusLabel,
+  outlineTabLabel,
+  collaborationButtonLabel,
+  annotationActionLabel,
+  documentStatusLoadingLabel,
+  documentStatusLoadingCopy,
+  documentStatusErrorLabel,
+  trackChangesButtonLabel,
+  footerStatItems,
+  footerNodeLabel,
+  footerPluginLabel,
+  footerContactLabel,
+  handleLocaleChange,
+  handleTocOutlineChange,
+  handleStatsChange,
+  handleTocItemClick,
+  resetWorkspaceShellUiState,
+} = useWorkspaceShellUi({
+  localeKey,
+  globalLocale,
+  i18n,
+  translate: (key, params) => String(t(key, params)),
+  getView: () => view.value,
+  commentCount,
+  trackChangeCount,
+  trackChangesEnabled,
+  trackChangesCountLabel,
+});
 
 const {
   activeSideTab,
@@ -987,414 +557,66 @@ const {
   clearActiveCommentThread,
   clearActiveTrackChange,
   setTocOutlineEnabled: (enabled) => {
-    setTocOutlineEnabled?.(enabled);
+    setTocOutlineEnabled(enabled);
   },
   activateCommentThread: (threadId) => {
-    activateCommentThreadInEditor?.(threadId);
+    activateCommentThread(threadId);
   },
   activateTrackChange: (changeId) => {
-    activateTrackChangeInEditor?.(changeId);
+    activateTrackChange(changeId);
   },
 });
-const { restoreAnnotationSession, syncAnnotationAuthor } = useAnnotationSession({
+const {
+  editor,
+  view,
+  clearMountedEditorRuntime,
+  mountOrRemountPlaygroundEditor,
+  setTocOutlineEnabled,
+  setCommentAnchor,
+  activateCommentThread,
+  focusCommentThread,
+  removeCommentThread,
+  setTrackChangesEnabled,
+  activateTrackChange,
+  focusTrackChange,
+  acceptTrackChange,
+  rejectTrackChange,
+  acceptAllTrackChanges,
+  rejectAllTrackChanges,
+} = useWorkspaceEditorRuntime({
+  editorHost,
+  getStatusElement: () => toolbarRef.value?.statusEl?.value || null,
+  effectivePermissionMode,
+  sessionMode,
   annotationStore,
-  currentCommentUserName,
-  realtimeCollaborationEnabled,
-  collaborationUserColor: computed(() => collaborationState.value.userColor || null),
-  routeDocumentId,
-  backendDocumentField: computed(() => backendDocument.value?.field || null),
-  fallbackDocumentName: debugFlags.collaborationDocument,
-  fallbackField: debugFlags.collaborationField,
-});
-
-const createCommentEntityId = (prefix: string) => {
-  const randomUuid =
-    typeof globalThis.crypto?.randomUUID === "function" ? globalThis.crypto.randomUUID() : null;
-  if (randomUuid) {
-    return `${prefix}-${randomUuid}`;
-  }
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-};
-
-const readSelectedCommentQuote = (currentView: CanvasEditorView) => {
-  const state = currentView?.state;
-  const from = Number(state?.selection?.from);
-  const to = Number(state?.selection?.to);
-  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
-    return null;
-  }
-  if (typeof state?.doc?.textBetween !== "function") {
-    return null;
-  }
-  const text = String(state.doc.textBetween(from, to, "\n", "\n") || "").trim();
-  return text || null;
-};
-
-const findSelectedCommentAnchor = (currentView: CanvasEditorView) => {
-  const state = currentView?.state;
-  const selection = state?.selection;
-  const from = Number(selection?.from);
-  const to = Number(selection?.to);
-  if (!(selection instanceof TextSelection) || selection.empty === true) {
-    return null;
-  }
-  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
-    return null;
-  }
-
-  const ranges = findCommentAnchorRanges(state);
-  if (!Array.isArray(ranges) || ranges.length === 0) {
-    return null;
-  }
-
-  const exactMatch =
-    ranges.find((range) => range.from === from && range.to === to) ||
-    ranges.find((range) => from >= range.from && to <= range.to);
-
-  return exactMatch || null;
-};
-
-const pruneOrphanCommentThreads = () => {
-  if (isPruningCommentThreads) {
-    return false;
-  }
-  const currentView = view.value;
-  if (!currentView?.state) {
-    return false;
-  }
-  if (realtimeCollaborationEnabled.value && !collaborationState.value.synced) {
-    return false;
-  }
-
-  const anchorThreadIds = new Set(
-    findCommentAnchorRanges(currentView.state)
-      .map((range) => range.threadId)
-      .filter((threadId): threadId is string => !!threadId)
-  );
-  const orphanThreadIds = lumenCommentsStore
-    .listThreads()
-    .filter((thread) => !anchorThreadIds.has(thread.id))
-    .map((thread) => thread.id);
-
-  if (orphanThreadIds.length === 0) {
-    return false;
-  }
-
-  isPruningCommentThreads = true;
-  try {
-    for (const threadId of orphanThreadIds) {
-      lumenCommentsStore.removeThread(threadId);
-    }
-  } finally {
-    isPruningCommentThreads = false;
-  }
-  return true;
-};
-
-const syncCommentThreads = () => {
-  pruneOrphanCommentThreads();
-  const threads = lumenCommentsStore.listThreads();
-  commentThreads.value = threads;
-  const hasActiveThread =
-    !!activeCommentThreadId.value &&
-    threads.some((thread) => thread.id === activeCommentThreadId.value);
-  if (!hasActiveThread) {
-    activeCommentThreadId.value = null;
-    if (activeSideTab.value === "comments" && threads.length > 0) {
-      openCommentsPanel(threads[0]?.id || null);
-    }
-  }
-};
-
-const handleCommentClick = () => {
-  const texts = commentActionTexts.value;
-  const currentView = view.value;
-  const selection = currentView?.state?.selection;
-  const hasSelection = !!currentView && selection instanceof TextSelection && selection.empty !== true;
-
-  if (canMutateComments.value && hasSelection) {
-    const existingAnchor = findSelectedCommentAnchor(currentView);
-    if (existingAnchor) {
-      if (!lumenCommentsStore.getThread(existingAnchor.threadId)) {
-        const now = new Date().toISOString();
-        lumenCommentsStore.upsertThread({
-          id: existingAnchor.threadId,
-          anchorId: existingAnchor.anchorId,
-          quote: readSelectedCommentQuote(currentView),
-          messages: [],
-          status: "open",
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-      openCommentsPanel(existingAnchor.threadId);
-      focusCommentThreadInEditor?.(existingAnchor.threadId);
-      return;
-    }
-
-    const threadId = createCommentEntityId("thread");
-    const anchorId = createCommentEntityId("anchor");
-    const applied = setCommentAnchorInEditor?.({ threadId, anchorId }) === true;
-    if (!applied) {
-      showToolbarMessage(texts.failed, "error");
-      return;
-    }
-
-    const now = new Date().toISOString();
-    lumenCommentsStore.upsertThread({
-      id: threadId,
-      anchorId,
-      quote: readSelectedCommentQuote(currentView),
-      messages: [],
-      status: "open",
-      createdAt: now,
-      updatedAt: now,
-    });
-    activateCommentThreadInEditor?.(threadId);
-    openCommentsPanel(threadId);
-    showToolbarMessage(texts.created, "success");
-    return;
-  }
-
-  if (!canMutateComments.value) {
-    showToolbarMessage(texts.disabled, "warning");
-    return;
-  }
-  showToolbarMessage(texts.requiresSelection, "warning");
-};
-
-const handleCommentThreadSelect = (threadId: string) => {
-  const texts = commentActionTexts.value;
-  openCommentsPanel(threadId);
-  const focused = focusCommentThreadInEditor?.(threadId) === true;
-  if (!focused) {
-    const activated = activateCommentThreadInEditor?.(threadId) === true;
-    if (!activated) {
-      showToolbarMessage(texts.missingAnchor, "warning");
-    }
-  }
-};
-
-const handleCommentThreadResolved = ({
-  threadId,
-  resolved,
-}: {
-  threadId: string;
-  resolved: boolean;
-}) => {
-  lumenCommentsStore.setResolved(threadId, resolved);
-};
-
-const handleCommentThreadReply = ({
-  threadId,
-  body,
-}: {
-  threadId: string;
-  body: string;
-}) => {
-  const texts = commentActionTexts.value;
-  const nextMessage = lumenCommentsStore.addMessage(threadId, {
-    body,
-    authorId: currentCommentUserName.value,
-    authorName: currentCommentUserName.value,
-  });
-  if (!nextMessage) {
-    showToolbarMessage(texts.replyFailed, "warning");
-    return;
-  }
-  openCommentsPanel(threadId);
-};
-
-const handleCommentMessageEdit = ({
-  threadId,
-  messageId,
-  body,
-}: {
-  threadId: string;
-  messageId: string;
-  body: string;
-}) => {
-  const texts = commentActionTexts.value;
-  const nextMessage = lumenCommentsStore.updateMessage(threadId, messageId, {
-    body,
-    authorId: currentCommentUserName.value,
-    authorName: currentCommentUserName.value,
-  });
-  if (!nextMessage) {
-    showToolbarMessage(texts.editFailed, "warning");
-    return;
-  }
-  openCommentsPanel(threadId);
-  showToolbarMessage(texts.edited, "success");
-};
-
-const handleCommentMessageDelete = ({
-  threadId,
-  messageId,
-}: {
-  threadId: string;
-  messageId: string;
-}) => {
-  const texts = commentActionTexts.value;
-  const removed = lumenCommentsStore.removeMessage(threadId, messageId);
-  if (!removed) {
-    showToolbarMessage(texts.deleteMessageFailed, "warning");
-    return;
-  }
-  openCommentsPanel(threadId);
-  showToolbarMessage(texts.messageRemoved, "success");
-};
-
-const handleCommentThreadDelete = (threadId: string) => {
-  const texts = commentActionTexts.value;
-  const nextThreadId = getNextCommentThreadId(threadId);
-  removeCommentThreadInEditor?.(threadId);
-  lumenCommentsStore.removeThread(threadId);
-  if (activeCommentThreadId.value === threadId) {
-    activeCommentThreadId.value = nextThreadId;
-    activateCommentThreadInEditor?.(nextThreadId);
-  }
-  showToolbarMessage(texts.removed, "success");
-};
-
-const handleTrackChangesToggle = () => {
-  const texts = trackChangeActionTexts.value;
-  if (!canMutateTrackChanges.value) {
-    showToolbarMessage(texts.disabled, "warning");
-    return;
-  }
-  const nextEnabled = !trackChangesEnabled.value;
-  const applied = setTrackChangesEnabledInEditor?.(nextEnabled) === true;
-  if (!applied) {
-    showToolbarMessage(texts.enableFailed, "error");
-    return;
-  }
-  if (nextEnabled) {
-    openTrackChangesPanel();
-    showToolbarMessage(texts.enabled, "success");
-    return;
-  }
-  showToolbarMessage(texts.disabledDone, "success");
-};
-
-const handleTrackChangeSelect = (changeId: string) => {
-  const texts = trackChangeActionTexts.value;
-  openTrackChangesPanel(changeId);
-  const focused = focusTrackChangeInEditor?.(changeId) === true;
-  if (!focused) {
-    const activated = activateTrackChangeInEditor?.(changeId) === true;
-    if (!activated) {
-      showToolbarMessage(texts.focusFailed, "warning");
-    }
-  }
-};
-
-const handleTrackChangeAccept = (changeId: string) => {
-  const texts = trackChangeActionTexts.value;
-  if (acceptTrackChangeInEditor?.(changeId) !== true) {
-    showToolbarMessage(texts.acceptFailed, "warning");
-    return;
-  }
-  showToolbarMessage(texts.accepted, "success");
-};
-
-const handleTrackChangeReject = (changeId: string) => {
-  const texts = trackChangeActionTexts.value;
-  if (rejectTrackChangeInEditor?.(changeId) !== true) {
-    showToolbarMessage(texts.rejectFailed, "warning");
-    return;
-  }
-  showToolbarMessage(texts.rejected, "success");
-};
-
-const handleTrackChangesAcceptAll = () => {
-  const texts = trackChangeActionTexts.value;
-  if (acceptAllTrackChangesInEditor?.() !== true) {
-    showToolbarMessage(texts.acceptAllFailed, "warning");
-    return;
-  }
-  showToolbarMessage(texts.acceptedAll, "success");
-};
-
-const handleTrackChangesRejectAll = () => {
-  const texts = trackChangeActionTexts.value;
-  if (rejectAllTrackChangesInEditor?.() !== true) {
-    showToolbarMessage(texts.rejectAllFailed, "warning");
-    return;
-  }
-  showToolbarMessage(texts.rejectedAll, "success");
-};
-
-const handleTocItemClick = (item: TocOutlineItem) => {
-  const currentView = view.value;
-  if (!currentView?.state?.doc || !currentView?.state?.tr || !item?.id) {
-    return;
-  }
-  const pos = findHeadingPosById(currentView.state.doc, item.id);
-  if (!Number.isFinite(pos)) {
-    return;
-  }
-  try {
-    const tr = currentView.state.tr.setSelection(TextSelection.create(currentView.state.doc, Number(pos)));
-    currentView.dispatch(tr.scrollIntoView());
-    // Keep current focus state to avoid caret jumping to document tail after TOC jump.
-  } catch (_error) {
-    // noop
-  }
-};
-
-onMounted(async () => {
-  await loadWorkspace({ withCollabTicket: true });
-});
-
-watch(
-  () => effectivePermissionMode.value,
-  (nextMode, previousMode) => {
-    if (nextMode === "readonly") {
-      sessionMode.value = "viewer";
-    } else if ((previousMode == null || previousMode === "readonly") && sessionMode.value === "viewer") {
-      sessionMode.value = "edit";
-    }
-    applySessionModeToView();
+  restoreAnnotationSession,
+  syncAnnotationAuthor,
+  setSnapshotDocument,
+  resetWorkspaceSnapshotPersistence,
+  resetRuntimeState: () => {
+    resetReviewState();
+    resetWorkspaceShellUiState();
   },
-  { immediate: true }
-);
-
-watch(
-  () => sessionMode.value,
-  () => {
-    applySessionModeToView();
-  }
-);
-
-watch(
-  () => editorHost.value,
-  (host) => {
-    if (!host || !pendingRuntime.value || view.value) {
-      return;
+  syncCommentThreads,
+  setCollaborationState: (state) => {
+    collaborationState.value = state;
+  },
+  isTocOutlineEnabled: () => activeSideTab.value === "outline",
+  onCollaborationStateChange: (state) => {
+    collaborationState.value = state;
+    if (!state.enabled || state.synced) {
+      syncCommentThreads();
     }
-    void mountOrRemountPlaygroundEditor(
-      pendingRuntime.value.flags,
-      pendingRuntime.value.snapshotBase64,
-    );
-  }
-);
-
-watch(
-  () => routeDocumentId.value,
-  (nextDocumentId, previousDocumentId) => {
-    if (!nextDocumentId || nextDocumentId === previousDocumentId) {
-      return;
+  },
+  onTocOutlineChange: handleTocOutlineChange,
+  onCommentStateChange: handleCommentRuntimeStateChange,
+  onTrackChangeStateChange: handleTrackChangeRuntimeStateChange,
+  onDocumentChange: ({ docChanged }) => {
+    if (docChanged) {
+      scheduleWorkspaceSnapshotSave();
     }
-    void (async () => {
-      await flushWorkspaceSnapshotSave();
-      await loadWorkspace({ withCollabTicket: true });
-    })();
-  }
-);
-
-onBeforeRouteLeave(async () => {
-  await flushWorkspaceSnapshotSave();
+  },
+  onStatsChange: handleStatsChange,
 });
 
 onBeforeUnmount(() => {
@@ -1404,7 +626,6 @@ onBeforeUnmount(() => {
   annotationStore.useLocalStore({ clear: true });
   resetWorkspaceAccessState();
   collaborationState.value = createInitialLumenCollaborationState(debugFlags);
-  footerStats.value = createInitialFooterStats();
 });
 </script>
 
