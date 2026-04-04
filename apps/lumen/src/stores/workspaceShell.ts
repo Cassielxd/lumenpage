@@ -1,13 +1,12 @@
 import { ref } from "vue";
 import { defineStore } from "pinia";
-import type { BackendAccess, BackendDocument, BackendUser } from "../editor/backendClient";
+import type { BackendAccess, BackendDocument } from "../editor/backendClient";
 
 export const useWorkspaceShellStore = defineStore("lumen-workspace-shell", () => {
   const shareDialogVisible = ref(false);
   const accountDialogVisible = ref(false);
   const accountDialogMode = ref<"login" | "register">("login");
   const accountPopupVisible = ref(false);
-  const backendSessionUser = ref<BackendUser | null>(null);
   const backendDocument = ref<BackendDocument | null>(null);
   const backendDocumentAccess = ref<BackendAccess | null>(null);
   const backendAccessError = ref<string | null>(null);
@@ -20,7 +19,6 @@ export const useWorkspaceShellStore = defineStore("lumen-workspace-shell", () =>
     accountDialogVisible.value = false;
     accountDialogMode.value = "login";
     accountPopupVisible.value = false;
-    backendSessionUser.value = null;
     backendDocument.value = null;
     backendDocumentAccess.value = null;
     backendAccessError.value = null;
@@ -34,7 +32,6 @@ export const useWorkspaceShellStore = defineStore("lumen-workspace-shell", () =>
     accountDialogVisible,
     accountDialogMode,
     accountPopupVisible,
-    backendSessionUser,
     backendDocument,
     backendDocumentAccess,
     backendAccessError,

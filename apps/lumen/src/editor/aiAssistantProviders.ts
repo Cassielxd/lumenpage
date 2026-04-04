@@ -11,7 +11,7 @@ export interface LumenAiProviderConfig {
   systemPrompt: string;
 }
 
-const DEFAULT_AI_SERVER_URL = "http://127.0.0.1:1234";
+const DEFAULT_AI_SERVER_URL = "http://localhost:1234";
 const DEFAULT_DEEPSEEK_MODEL = "deepseek-chat";
 const DEFAULT_DEMO_MODEL = "demo-balanced";
 const STORAGE_KEY = "lumen.ai.provider.config.v2";

@@ -6,15 +6,14 @@ import {
   ensureCollaborationDocument,
   listDocumentMembers,
   listDocumentShareLinks,
-  resolveBackendUrl,
   revokeDocumentShareLink,
   type BackendAccess,
   type BackendDocument,
   type BackendMember,
   type BackendShareLink,
-  type BackendUser,
   type BackendUserRole,
 } from "../editor/backendClient";
+import { useBackendConnection } from "./useBackendConnection";
 import { useWorkspaceSharingStore } from "../stores/workspaceSharing";
 
 type WorkspaceSharingMessages = {
@@ -27,7 +26,6 @@ type UseWorkspaceSharingOptions = {
   collaborationUrl: ComputedRef<string>;
   collaborationDocumentName: ComputedRef<string>;
   collaborationField: ComputedRef<string>;
-  sessionUser: ComputedRef<BackendUser | null | undefined>;
   document: ComputedRef<BackendDocument | null | undefined>;
   documentAccess: ComputedRef<BackendAccess | null | undefined>;
   messages: WorkspaceSharingMessages;
@@ -39,7 +37,6 @@ export const useWorkspaceSharing = ({
   collaborationUrl,
   collaborationDocumentName,
   collaborationField,
-  sessionUser,
   document,
   documentAccess,
   messages,
@@ -54,7 +51,9 @@ export const useWorkspaceSharing = ({
     shareLinks,
   } = storeToRefs(workspaceSharingStore);
 
-  const backendUrl = computed(() => resolveBackendUrl(collaborationUrl.value));
+  const { backendUrl, sessionUser } = useBackendConnection({
+    fallbackUrl: collaborationUrl,
+  });
   const canManageSharing = computed(
     () => currentDocumentAccess.value?.capabilities.canManage === true && !!currentDocument.value
   );

@@ -67,15 +67,13 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AccountWorkspaceDialog from "../components/AccountWorkspaceDialog.vue";
+import { useBackendConnection } from "../composables/useBackendConnection";
 import {
-  getBackendSession,
   getBackendShareLink,
   rememberShareAccessToken,
-  resolveBackendUrl,
   type BackendDocument,
   type BackendShareLink,
   type BackendUser,
-  type BackendUserRole,
 } from "../editor/backendClient";
 import { createInitialLumenCollaborationState } from "../editor/collaboration";
 import { createPlaygroundDebugFlags } from "../editor/config";
@@ -89,12 +87,13 @@ const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(global
 const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const texts = computed(() => i18n.value.shareLanding);
 const shareToken = computed(() => String(route.params.token || "").trim());
-const backendUrl = computed(() => resolveBackendUrl(baseFlags.collaborationUrl));
 const accountCollaborationState = createInitialLumenCollaborationState(baseFlags);
+const { backendUrl, sessionUser, setSessionUser, refreshSession } = useBackendConnection({
+  fallbackUrl: computed(() => baseFlags.collaborationUrl),
+});
 
 const loading = ref(false);
 const errorMessage = ref("");
-const sessionUser = ref<BackendUser | null>(null);
 const document = ref<BackendDocument | null>(null);
 const shareLink = ref<BackendShareLink | null>(null);
 const permissionMode = ref<"full" | "comment" | "readonly">("readonly");
@@ -114,11 +113,11 @@ const refreshShareLink = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
-    const [session, result] = await Promise.all([
-      getBackendSession(backendUrl.value).catch(() => ({ ok: true as const, user: null })),
+    const [nextSessionUser, result] = await Promise.all([
+      refreshSession({ suppressError: true }),
       getBackendShareLink(backendUrl.value, shareToken.value),
     ]);
-    sessionUser.value = session.user;
+    setSessionUser(nextSessionUser);
     document.value = result.document;
     shareLink.value = result.shareLink;
     permissionMode.value = result.permissionMode;
@@ -146,7 +145,7 @@ const openSharedDocument = () => {
 };
 
 const handleAccountSessionChange = async (user: BackendUser | null) => {
-  sessionUser.value = user;
+  setSessionUser(user);
   await refreshShareLink();
 };
 

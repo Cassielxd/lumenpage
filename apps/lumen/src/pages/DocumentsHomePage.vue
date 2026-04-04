@@ -105,7 +105,7 @@
       :locale="localeKey"
       :collaboration-state="accountCollaborationState"
       :initial-mode="accountDialogMode"
-      @session-change="handleAccountSessionChange"
+      @session-change="handleAccountDialogSessionChange"
     />
   </div>
 </template>
@@ -116,15 +116,8 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import AccountWorkspaceDialog from "../components/AccountWorkspaceDialog.vue";
-import {
-  createBackendDocument,
-  getBackendSession,
-  listBackendDocuments,
-  resolveBackendUrl,
-  type BackendDocument,
-  type BackendUser,
-  type BackendUserRole,
-} from "../editor/backendClient";
+import type { BackendUserRole } from "../editor/backendClient";
+import { useDocumentsHome } from "../composables/useDocumentsHome";
 import { createInitialLumenCollaborationState } from "../editor/collaboration";
 import { createPlaygroundDebugFlags } from "../editor/config";
 import {
@@ -143,15 +136,25 @@ const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const texts = computed(() => i18n.value.documentCenter);
 const localeOptions = PLAYGROUND_LOCALE_OPTIONS;
 const accountCollaborationState = createInitialLumenCollaborationState(baseFlags);
-const backendUrl = computed(() => resolveBackendUrl(baseFlags.collaborationUrl));
-
-const loading = ref(false);
-const creatingDocument = ref(false);
-const sessionUser = ref<BackendUser | null>(null);
-const documents = ref<BackendDocument[]>([]);
 const accountDialogVisible = ref(false);
 const accountDialogMode = ref<"login" | "register">("login");
 const draftTitle = ref("");
+const {
+  loading,
+  creatingDocument,
+  sessionUser,
+  documents,
+  error,
+  refreshDocumentsHome,
+  createDocument,
+  handleAccountSessionChange,
+} = useDocumentsHome({
+  collaborationUrl: computed(() => baseFlags.collaborationUrl),
+  messages: {
+    loadFailed: computed(() => texts.value.loadFailed),
+    createFailed: computed(() => texts.value.createFailed),
+  },
+});
 
 const handleLocaleChange = (value: string | number) => {
   const nextLocale = coercePlaygroundLocale(value);
@@ -181,36 +184,23 @@ const formatDate = (value: string) => {
   }
 };
 
-const refreshWorkspace = async () => {
-  loading.value = true;
-  try {
-    const session = await getBackendSession(backendUrl.value);
-    sessionUser.value = session.user;
-    if (!session.user) {
-      documents.value = [];
-      return;
-    }
-    const result = await listBackendDocuments(backendUrl.value);
-    documents.value = result.documents;
-  } catch (error) {
-    sessionUser.value = null;
-    documents.value = [];
-    MessagePlugin.error(
-      error instanceof Error ? error.message || texts.value.loadFailed : texts.value.loadFailed,
-    );
-  } finally {
-    loading.value = false;
-  }
-};
-
 const openAccountDialog = (mode: "login" | "register") => {
   accountDialogMode.value = mode;
   accountDialogVisible.value = true;
 };
 
-const handleAccountSessionChange = async (user: BackendUser | null) => {
-  sessionUser.value = user;
-  await refreshWorkspace();
+const refreshWorkspace = async () => {
+  await refreshDocumentsHome();
+  if (error.value) {
+    MessagePlugin.error(error.value);
+  }
+};
+
+const handleAccountDialogSessionChange = async (user: Parameters<typeof handleAccountSessionChange>[0]) => {
+  await handleAccountSessionChange(user);
+  if (error.value) {
+    MessagePlugin.error(error.value);
+  }
 };
 
 const openDocument = (documentId: string) => {
@@ -226,24 +216,22 @@ const handleCreateDocument = async () => {
     return;
   }
 
-  creatingDocument.value = true;
-  try {
-    const result = await createBackendDocument(backendUrl.value, {
-      title: draftTitle.value.trim() || undefined,
-    });
-    draftTitle.value = "";
-    openDocument(result.document.id);
-  } catch (error) {
+  const document = await createDocument(draftTitle.value);
+  if (!document) {
     MessagePlugin.error(
-      error instanceof Error ? error.message || texts.value.createFailed : texts.value.createFailed,
+      error.value || texts.value.createFailed,
     );
-  } finally {
-    creatingDocument.value = false;
+    return;
   }
+  draftTitle.value = "";
+  openDocument(document.id);
 };
 
 onMounted(async () => {
-  await refreshWorkspace();
+  await refreshDocumentsHome();
+  if (error.value) {
+    MessagePlugin.error(error.value);
+  }
 });
 </script>
 

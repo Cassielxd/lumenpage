@@ -9,7 +9,12 @@ export const appRoot = path.resolve(__dirname, "..");
 const envFilePath = path.resolve(appRoot, ".env");
 const defaultStorageDir = "./data";
 const defaultDeepSeekBaseUrl = "https://api.deepseek.com";
-const defaultAllowedOrigins = ["http://127.0.0.1:5173", "http://localhost:5173"];
+const defaultAllowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
+];
 
 const trimText = (value: unknown) => String(value ?? "").trim();
 
@@ -160,6 +165,6 @@ export const createRuntimeConfig = (): RuntimeConfig => {
   };
 };
 
-export const toPublicHttpUrl = (config: RuntimeConfig) => `http://127.0.0.1:${config.port}`;
+export const toPublicHttpUrl = (config: RuntimeConfig) => `http://localhost:${config.port}`;
 
-export const toPublicWsUrl = (config: RuntimeConfig) => `ws://127.0.0.1:${config.port}`;
+export const toPublicWsUrl = (config: RuntimeConfig) => `ws://localhost:${config.port}`;

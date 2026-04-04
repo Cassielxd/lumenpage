@@ -11,15 +11,15 @@
       <div class="doc-share-section">
         <div class="doc-share-section-header">
           <span class="doc-share-section-title">
-            {{ props.sessionUser ? texts.signedInAs : texts.loggedOut }}
+            {{ sessionUser ? texts.signedInAs : texts.loggedOut }}
           </span>
           <t-button size="small" variant="outline" @click="emit('request-auth')">
-            {{ props.sessionUser ? texts.manageAccount : texts.openAccount }}
+            {{ sessionUser ? texts.manageAccount : texts.openAccount }}
           </t-button>
         </div>
-        <div v-if="props.sessionUser" class="doc-share-account-summary">
-          <div class="doc-share-account-name">{{ props.sessionUser.displayName }}</div>
-          <div class="doc-share-account-email">{{ props.sessionUser.email }}</div>
+        <div v-if="sessionUser" class="doc-share-account-summary">
+          <div class="doc-share-account-name">{{ sessionUser.displayName }}</div>
+          <div class="doc-share-account-email">{{ sessionUser.email }}</div>
         </div>
       </div>
 
@@ -28,7 +28,7 @@
         <p class="doc-share-empty-copy">{{ texts.collaborationRequiredHint }}</p>
       </div>
 
-      <div v-else-if="!props.sessionUser" class="doc-share-empty">
+      <div v-else-if="!sessionUser" class="doc-share-empty">
         <p class="doc-share-empty-title">{{ texts.authRequired }}</p>
         <p class="doc-share-empty-copy">{{ texts.authRequiredHint }}</p>
         <div class="doc-share-inline-row">
@@ -165,13 +165,13 @@
 <script setup lang="ts">
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import { computed, reactive } from "vue";
+import { useBackendConnection } from "../composables/useBackendConnection";
 import { useWorkspaceSharing } from "../composables/useWorkspaceSharing";
 import type { LumenCollaborationState } from "../editor/collaboration";
 import {
   type BackendAccess,
   type BackendDocument,
   type BackendShareLink,
-  type BackendUser,
   type BackendUserRole,
 } from "../editor/backendClient";
 import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
@@ -181,7 +181,6 @@ const props = defineProps<{
   locale?: PlaygroundLocale | string;
   workspaceEnabled: boolean;
   collaborationState: LumenCollaborationState;
-  sessionUser?: BackendUser | null;
   document?: BackendDocument | null;
   documentAccess?: BackendAccess | null;
 }>();
@@ -193,6 +192,9 @@ const emit = defineEmits<{
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const texts = computed(() => createPlaygroundI18n(currentLocale.value).shareDialog);
+const { sessionUser } = useBackendConnection({
+  fallbackUrl: computed(() => props.collaborationState.url),
+});
 const {
   workspaceLoading,
   workspaceError,
@@ -209,7 +211,6 @@ const {
   collaborationUrl: computed(() => props.collaborationState.url),
   collaborationDocumentName: computed(() => props.collaborationState.documentName),
   collaborationField: computed(() => props.collaborationState.field),
-  sessionUser: computed(() => props.sessionUser),
   document: computed(() => props.document),
   documentAccess: computed(() => props.documentAccess),
   messages: {

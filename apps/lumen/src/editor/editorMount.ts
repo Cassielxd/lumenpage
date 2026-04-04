@@ -66,6 +66,7 @@ type MountPlaygroundEditorParams = {
   tocOutlineEnabled?: boolean;
   onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
   onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
+  onDocumentChange?: ((snapshot: { docChanged: boolean }) => void) | null;
   onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
 };
 
@@ -363,6 +364,7 @@ export const mountPlaygroundEditor = ({
   tocOutlineEnabled,
   onCommentStateChange,
   onTrackChangeStateChange,
+  onDocumentChange,
   onStatsChange,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
@@ -433,10 +435,12 @@ export const mountPlaygroundEditor = ({
     onStateChange: onCollaborationStateChange || null,
   });
   const localSnapshotDocument =
-    !collaborationRuntime.provider && initialCollaborationSnapshot?.byteLength
+    !collaborationRuntime.provider && initialCollaborationSnapshot
       ? (() => {
           const document = new Y.Doc();
-          Y.applyUpdate(document, initialCollaborationSnapshot);
+          if (initialCollaborationSnapshot.byteLength > 0) {
+            Y.applyUpdate(document, initialCollaborationSnapshot);
+          }
           return document;
         })()
       : null;
@@ -694,7 +698,11 @@ export const mountPlaygroundEditor = ({
     typeof view.dispatchTransaction === "function" ? view.dispatchTransaction.bind(view) : null;
   if (baseDispatchTransaction) {
     view.dispatchTransaction = (transaction: any) => {
+      const docChanged = transaction?.docChanged === true;
       baseDispatchTransaction(transaction);
+      if (docChanged) {
+        onDocumentChange?.({ docChanged: true });
+      }
       emitCommentState();
       scheduleTrackChangeStateEmit();
     };
@@ -987,7 +995,7 @@ export const mountPlaygroundEditor = ({
   return {
     editor,
     view,
-    collaborationDocument: collaborationRuntime.provider?.document ?? null,
+    collaborationDocument,
     setTocOutlineEnabled: (enabled: boolean) => {
       tocOutlineController.setEnabled(enabled);
     },

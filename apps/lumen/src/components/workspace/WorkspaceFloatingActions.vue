@@ -5,6 +5,7 @@
       :key="action.key"
       type="button"
       class="doc-floating-action"
+      :data-floating-action="action.key"
       :class="{ 'is-active': action.active }"
       @click="emit('select', action.key)"
     >

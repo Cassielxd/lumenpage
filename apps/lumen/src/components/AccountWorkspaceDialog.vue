@@ -14,7 +14,7 @@
         </div>
         <div class="doc-account-inline-row">
           <t-input
-            :model-value="backendUrl"
+            :model-value="backendUrlDraft"
             :placeholder="texts.backendUrlPlaceholder"
             @update:model-value="handleBackendUrlChange"
           />
@@ -104,15 +104,12 @@
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import { computed, reactive, ref, watch } from "vue";
 import {
-  getBackendSession,
   loginBackendUser,
   logoutBackendUser,
-  normalizeBackendUrl,
-  persistBackendUrl,
   registerBackendUser,
-  resolveBackendUrl,
   type BackendUser,
 } from "../editor/backendClient";
+import { useBackendConnection } from "../composables/useBackendConnection";
 import type { LumenCollaborationState } from "../editor/collaboration";
 import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
@@ -130,32 +127,33 @@ const emit = defineEmits<{
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const texts = computed(() => createPlaygroundI18n(currentLocale.value).shareDialog);
+const { backendUrl, sessionUser, saveBackendUrl, setSessionUser, refreshSession } = useBackendConnection({
+  fallbackUrl: computed(() => props.collaborationState.url),
+});
 
-const backendUrl = ref(resolveBackendUrl(props.collaborationState.url));
+const backendUrlDraft = ref(backendUrl.value);
 const authMode = ref<"login" | "register">(props.initialMode || "login");
 const authLoading = ref(false);
-const sessionUser = ref<BackendUser | null>(null);
 const authDraft = reactive({
   email: "",
   password: "",
   displayName: "",
 });
 
-const refreshSession = async (emitChange = true) => {
-  const session = await getBackendSession(backendUrl.value);
-  sessionUser.value = session.user;
+const refreshAccountSession = async (emitChange = true) => {
+  const user = await refreshSession();
   if (emitChange) {
-    emit("session-change", session.user);
+    emit("session-change", user);
   }
 };
 
 const initializeDialog = async () => {
-  backendUrl.value = resolveBackendUrl(props.collaborationState.url);
+  backendUrlDraft.value = backendUrl.value;
   authMode.value = props.initialMode || "login";
   try {
-    await refreshSession(false);
+    await refreshAccountSession(false);
   } catch (error) {
-    sessionUser.value = null;
+    setSessionUser(null);
     MessagePlugin.warning(error instanceof Error ? error.message || texts.value.loadFailed : texts.value.loadFailed);
   }
 };
@@ -169,11 +167,11 @@ const handleClose = () => {
 };
 
 const handleBackendUrlChange = (value: string | number) => {
-  backendUrl.value = normalizeBackendUrl(String(value ?? ""));
+  backendUrlDraft.value = String(value ?? "");
 };
 
 const handleSaveBackendUrl = async () => {
-  persistBackendUrl(backendUrl.value);
+  backendUrlDraft.value = saveBackendUrl(backendUrlDraft.value);
   await initializeDialog();
   MessagePlugin.success(texts.value.saveBackendUrl);
 };
@@ -185,7 +183,7 @@ const handleAuthFieldChange = (field: "email" | "password" | "displayName", valu
 const handleAuthenticate = async () => {
   authLoading.value = true;
   try {
-    persistBackendUrl(backendUrl.value);
+    backendUrlDraft.value = saveBackendUrl(backendUrlDraft.value);
     let authenticatedUser: BackendUser;
     if (authMode.value === "register") {
       const result = await registerBackendUser(backendUrl.value, {
@@ -202,7 +200,7 @@ const handleAuthenticate = async () => {
       authenticatedUser = result.user;
     }
 
-    sessionUser.value = authenticatedUser;
+    setSessionUser(authenticatedUser);
     authDraft.password = "";
     MessagePlugin.success(texts.value.authSuccess);
     emit("session-change", authenticatedUser);
@@ -216,9 +214,9 @@ const handleAuthenticate = async () => {
 
 const handleLogout = async () => {
   try {
-    persistBackendUrl(backendUrl.value);
+    backendUrlDraft.value = saveBackendUrl(backendUrlDraft.value);
     await logoutBackendUser(backendUrl.value);
-    sessionUser.value = null;
+    setSessionUser(null);
     emit("session-change", null);
     MessagePlugin.success(texts.value.logoutSuccess);
     emit("update:visible", false);

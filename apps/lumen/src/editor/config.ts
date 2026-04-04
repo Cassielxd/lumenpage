@@ -25,6 +25,17 @@ export type PlaygroundDebugFlags = {
   collaborationUserColor: string;
 };
 
+export type PlaygroundCollaborationSettings = Pick<
+  PlaygroundDebugFlags,
+  | "collaborationEnabled"
+  | "collaborationUrl"
+  | "collaborationDocument"
+  | "collaborationField"
+  | "collaborationToken"
+  | "collaborationUserName"
+  | "collaborationUserColor"
+>;
+
 const STORAGE_KEYS = {
   collaborationUrl: "lumenpage-lumen-collab-url",
   collaborationDocument: "lumenpage-lumen-collab-document",
@@ -34,7 +45,7 @@ const STORAGE_KEYS = {
   collaborationUserColor: "lumenpage-lumen-collab-user-color",
 } as const;
 
-const DEFAULT_COLLABORATION_URL = "ws://127.0.0.1:1234";
+const DEFAULT_COLLABORATION_URL = "ws://localhost:1234";
 const DEFAULT_COLLABORATION_DOCUMENT = "lumen-demo";
 const DEFAULT_COLLABORATION_FIELD = "default";
 const COLLABORATION_COLORS = [
@@ -220,6 +231,56 @@ const resolveCollaborationUserColor = () => {
     const index = Math.floor(Math.random() * COLLABORATION_COLORS.length);
     return COLLABORATION_COLORS[index];
   });
+};
+
+const syncPlaygroundCollaborationToUrl = (enabled: boolean) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.set("collab", enabled ? "1" : "0");
+  url.searchParams.delete("collabUrl");
+  url.searchParams.delete("collabDoc");
+  url.searchParams.delete("collabField");
+  url.searchParams.delete("collabToken");
+  url.searchParams.delete("collabUser");
+  url.searchParams.delete("collabColor");
+  window.history.replaceState(window.history.state, "", url.toString());
+};
+
+export const normalizePlaygroundCollaborationSettings = (
+  settings: PlaygroundCollaborationSettings,
+): PlaygroundCollaborationSettings => ({
+  collaborationEnabled: settings.collaborationEnabled === true,
+  collaborationUrl: String(settings.collaborationUrl || "").trim() || DEFAULT_COLLABORATION_URL,
+  collaborationDocument:
+    String(settings.collaborationDocument || "").trim() || DEFAULT_COLLABORATION_DOCUMENT,
+  collaborationField: String(settings.collaborationField || "").trim() || DEFAULT_COLLABORATION_FIELD,
+  collaborationToken: String(settings.collaborationToken || "").trim(),
+  collaborationUserName: String(settings.collaborationUserName || "").trim() || resolveCollaborationUserName(),
+  collaborationUserColor:
+    String(settings.collaborationUserColor || "").trim() || resolveCollaborationUserColor(),
+});
+
+export const setPlaygroundCollaborationSettings = (
+  settings: PlaygroundCollaborationSettings,
+  options: { syncUrl?: boolean } = {},
+) => {
+  const normalized = normalizePlaygroundCollaborationSettings(settings);
+  writeLocalStorage(STORAGE_KEYS.collaborationUrl, normalized.collaborationUrl);
+  writeLocalStorage(STORAGE_KEYS.collaborationDocument, normalized.collaborationDocument);
+  writeLocalStorage(STORAGE_KEYS.collaborationField, normalized.collaborationField);
+  writeLocalStorage(STORAGE_KEYS.collaborationUserName, normalized.collaborationUserName);
+  writeLocalStorage(STORAGE_KEYS.collaborationUserColor, normalized.collaborationUserColor);
+  if (normalized.collaborationToken) {
+    writeLocalStorage(STORAGE_KEYS.collaborationToken, normalized.collaborationToken);
+  } else {
+    removeLocalStorage(STORAGE_KEYS.collaborationToken);
+  }
+  if (options.syncUrl !== false) {
+    syncPlaygroundCollaborationToUrl(normalized.collaborationEnabled);
+  }
+  return normalized;
 };
 
 const drawPageCornerBracket = ({

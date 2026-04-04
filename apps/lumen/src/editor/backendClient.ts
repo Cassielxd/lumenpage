@@ -74,7 +74,7 @@ export type BackendCollabSnapshot = {
 
 const SHARE_ACCESS_TOKEN_PREFIX = "lumenpage-share-access-token";
 
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:1234";
+const DEFAULT_BACKEND_URL = "http://localhost:1234";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost"]);
 
 const trimText = (value: unknown) => String(value ?? "").trim();
@@ -291,6 +291,23 @@ export const getDocumentCollabSnapshot = async (
     {
       method: "GET",
       shareToken: options?.shareToken,
+    },
+  );
+
+export const saveDocumentCollabSnapshot = async (
+  backendUrl: string,
+  documentId: string,
+  payload: { snapshot: string; shareToken?: string | null },
+) =>
+  backendFetch<{ ok: true; document: BackendDocument; field: string }>(
+    backendUrl,
+    `/api/documents/${documentId}/collab-snapshot`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        snapshot: payload.snapshot,
+      }),
+      shareToken: payload.shareToken,
     },
   );
 

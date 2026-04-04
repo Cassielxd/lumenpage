@@ -353,6 +353,30 @@ fastify.get("/api/documents/:documentId/collab-snapshot", async (request) => {
   };
 });
 
+fastify.put("/api/documents/:documentId/collab-snapshot", async (request) => {
+  const params = getParams<{ documentId: string }>(request);
+  const body = getBody(request);
+  const access = await requireDocumentAccess(request, params.documentId, "commenter");
+  const snapshotBase64 = trimText(body.snapshot);
+  if (!snapshotBase64 && snapshotBase64 !== "") {
+    throw createHttpError(400, "A collaboration snapshot is required.", "invalid_snapshot");
+  }
+  let snapshot: Uint8Array;
+  try {
+    snapshot = new Uint8Array(Buffer.from(snapshotBase64, "base64"));
+  } catch (_error) {
+    throw createHttpError(400, "The collaboration snapshot is invalid.", "invalid_snapshot");
+  }
+
+  await collaborationService.writeDocumentSnapshot(access.document.name, snapshot);
+
+  return {
+    ok: true,
+    document: access.document,
+    field: access.document.field,
+  };
+});
+
 fastify.patch("/api/documents/:documentId", async (request) => {
   const params = getParams<{ documentId: string }>(request);
   const body = getBody(request);

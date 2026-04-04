@@ -125,13 +125,27 @@
     </div>
 
     <div class="doc-collaboration-panel-actions">
-      <t-button size="small" theme="primary" @click="handleApply">
+      <t-button
+        size="small"
+        theme="primary"
+        :loading="props.busy"
+        data-collaboration-action="apply"
+        @click="handleApply"
+      >
         {{ props.state.enabled ? texts.update : texts.enable }}
       </t-button>
-      <t-button size="small" variant="outline" @click="handleReset">
+      <t-button size="small" variant="outline" :disabled="props.busy" @click="handleReset">
         {{ texts.reset }}
       </t-button>
-      <t-button v-if="props.state.enabled" size="small" theme="danger" variant="outline" @click="handleDisable">
+      <t-button
+        v-if="props.state.enabled"
+        size="small"
+        theme="danger"
+        variant="outline"
+        :disabled="props.busy"
+        data-collaboration-action="disable"
+        @click="handleDisable"
+      >
         {{ texts.disable }}
       </t-button>
     </div>
@@ -147,13 +161,7 @@ import { coercePlaygroundLocale, createPlaygroundI18n } from "../editor/i18n";
 import type { LumenCollaborationState } from "../editor/collaboration";
 import CollaborationPresence from "./CollaborationPresence.vue";
 
-const COLLAB_USER_NAME_STORAGE_KEY = "lumenpage-lumen-collab-user-name";
-const COLLAB_USER_COLOR_STORAGE_KEY = "lumenpage-lumen-collab-user-color";
-const COLLAB_URL_STORAGE_KEY = "lumenpage-lumen-collab-url";
-const COLLAB_DOC_STORAGE_KEY = "lumenpage-lumen-collab-document";
-const COLLAB_FIELD_STORAGE_KEY = "lumenpage-lumen-collab-field";
-const COLLAB_TOKEN_STORAGE_KEY = "lumenpage-lumen-collab-token";
-const DEFAULT_COLLAB_URL = "ws://127.0.0.1:1234";
+const DEFAULT_COLLAB_URL = "ws://localhost:1234";
 const DEFAULT_COLLAB_DOC = "lumen-demo";
 const DEFAULT_COLLAB_FIELD = "default";
 const DEFAULT_COLLAB_COLOR = "#2563eb";
@@ -167,6 +175,20 @@ const props = defineProps<{
   effectivePermissionMode?: "full" | "comment" | "readonly";
   backendManaged?: boolean;
   accessError?: string | null;
+  collaborationToken?: string;
+  busy?: boolean;
+}>();
+
+const emit = defineEmits<{
+  (event: "apply", value: {
+    enabled: boolean;
+    collaborationUrl: string;
+    collaborationDocument: string;
+    collaborationField: string;
+    collaborationToken: string;
+    collaborationUserName: string;
+    collaborationUserColor: string;
+  }): void;
 }>();
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
@@ -232,6 +254,7 @@ const syncDraftFromState = () => {
   draft.documentName =
     String(props.state.documentName || DEFAULT_COLLAB_DOC).trim() || DEFAULT_COLLAB_DOC;
   draft.field = String(props.state.field || DEFAULT_COLLAB_FIELD).trim() || DEFAULT_COLLAB_FIELD;
+  draft.token = String(props.collaborationToken || "").trim();
   draft.userName = String(props.state.userName || "").trim();
   draft.userColor = String(props.state.userColor || DEFAULT_COLLAB_COLOR).trim() || DEFAULT_COLLAB_COLOR;
 };
@@ -243,56 +266,24 @@ const handleFieldChange = (
   draft[field] = String(value ?? "");
 };
 
-const updateUrl = (enabled: boolean) => {
-  const url = new URL(window.location.href);
-  const params = url.searchParams;
-  params.set("collab", enabled ? "1" : "0");
-  params.delete("collabUrl");
-  params.delete("collabDoc");
-  params.delete("collabField");
-  params.delete("collabToken");
-  params.delete("collabUser");
-  params.delete("collabColor");
-  url.search = params.toString();
-  window.location.href = url.toString();
-};
-
-const persistLocalHints = () => {
-  try {
-    window.localStorage.setItem(COLLAB_URL_STORAGE_KEY, draft.url.trim() || DEFAULT_COLLAB_URL);
-    window.localStorage.setItem(
-      COLLAB_DOC_STORAGE_KEY,
-      draft.documentName.trim() || DEFAULT_COLLAB_DOC
-    );
-    window.localStorage.setItem(COLLAB_FIELD_STORAGE_KEY, draft.field.trim() || DEFAULT_COLLAB_FIELD);
-    if (draft.token.trim()) {
-      window.localStorage.setItem(COLLAB_TOKEN_STORAGE_KEY, draft.token.trim());
-    } else {
-      window.localStorage.removeItem(COLLAB_TOKEN_STORAGE_KEY);
-    }
-    if (draft.userName.trim()) {
-      window.localStorage.setItem(COLLAB_USER_NAME_STORAGE_KEY, draft.userName.trim());
-    } else {
-      window.localStorage.removeItem(COLLAB_USER_NAME_STORAGE_KEY);
-    }
-    if (draft.userColor.trim()) {
-      window.localStorage.setItem(COLLAB_USER_COLOR_STORAGE_KEY, draft.userColor.trim());
-    } else {
-      window.localStorage.removeItem(COLLAB_USER_COLOR_STORAGE_KEY);
-    }
-  } catch (_error) {
-    // Ignore storage errors in restricted environments.
-  }
+const buildPayload = (enabled: boolean) => {
+  return {
+    enabled,
+    collaborationUrl: draft.url.trim() || DEFAULT_COLLAB_URL,
+    collaborationDocument: draft.documentName.trim() || DEFAULT_COLLAB_DOC,
+    collaborationField: draft.field.trim() || DEFAULT_COLLAB_FIELD,
+    collaborationToken: draft.token.trim(),
+    collaborationUserName: draft.userName.trim() || props.state.userName || "",
+    collaborationUserColor: normalizedColor.value,
+  };
 };
 
 const handleApply = () => {
-  persistLocalHints();
-  updateUrl(true);
+  emit("apply", buildPayload(true));
 };
 
 const handleDisable = () => {
-  persistLocalHints();
-  updateUrl(false);
+  emit("apply", buildPayload(false));
 };
 
 const handleReset = () => {

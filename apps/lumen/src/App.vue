@@ -147,6 +147,9 @@
                 :effective-permission-mode="effectivePermissionMode"
                 :backend-managed="backendAccessBound"
                 :access-error="backendAccessError"
+                :collaboration-token="debugFlags.collaborationToken"
+                :busy="collaborationSwitching"
+                @apply="handleCollaborationApply"
               />
             </div>
           </template>
@@ -263,7 +266,6 @@
       :locale="localeKey"
       :workspace-enabled="workspaceAccessEnabled"
       :collaboration-state="collaborationState"
-      :session-user="backendSessionUser"
       :document="backendDocument"
       :document-access="backendDocumentAccess"
       @request-auth="handleShareAuthRequest"
@@ -284,6 +286,7 @@ import {
   nextTick,
   onBeforeUnmount,
   onMounted,
+  reactive,
   ref,
   shallowRef,
   watch,
@@ -312,12 +315,18 @@ import { createLumenAnnotationStore } from "./annotation/annotationStore";
 import { useAnnotationSession } from "./composables/useAnnotationSession";
 import { useWorkspaceSidePanel } from "./composables/useWorkspaceSidePanel";
 import { useWorkspaceAccess } from "./composables/useWorkspaceAccess";
+import { useWorkspaceSnapshotPersistence } from "./composables/useWorkspaceSnapshotPersistence";
 import { resolveStoredShareAccessToken } from "./editor/backendClient";
 import {
   createInitialLumenCollaborationState,
   type LumenCollaborationState,
 } from "./editor/collaboration";
-import { createPlaygroundDebugFlags, type PlaygroundDebugFlags } from "./editor/config";
+import {
+  createPlaygroundDebugFlags,
+  setPlaygroundCollaborationSettings,
+  type PlaygroundCollaborationSettings,
+  type PlaygroundDebugFlags,
+} from "./editor/config";
 import {
   PLAYGROUND_LOCALE_OPTIONS,
   coercePlaygroundLocale,
@@ -338,7 +347,7 @@ import type { EditorSessionMode } from "./editor/sessionMode";
 import { findCommentAnchorRanges } from "lumenpage-extension-comment";
 import type { TrackChangeRecord } from "lumenpage-extension-track-change";
 
-const debugFlags = createPlaygroundDebugFlags();
+const debugFlags = reactive(createPlaygroundDebugFlags()) as PlaygroundDebugFlags;
 const { locale: globalLocale, t } = useI18n();
 const route = useRoute();
 globalLocale.value = debugFlags.locale;
@@ -376,6 +385,7 @@ const annotationStore = createLumenAnnotationStore();
 const collaborationState = ref<LumenCollaborationState>(
   createInitialLumenCollaborationState(debugFlags)
 );
+const collaborationSwitching = ref(false);
 const pendingRuntime = ref<PendingRuntimeContext | null>(null);
 const commentThreads = ref<LumenCommentThread[]>(lumenCommentsStore.listThreads());
 const activeCommentThreadId = ref<string | null>(null);
@@ -396,6 +406,7 @@ const tocItems = ref<TocOutlineItem[]>([]);
 const activeTocId = ref<string | null>(null);
 const outlineTitle = computed(() => i18n.value.shell.outline);
 const {
+  backendUrl,
   shareDialogVisible,
   accountDialogVisible,
   accountDialogMode,
@@ -425,7 +436,7 @@ const {
     shareLandingLoadFailed: computed(() => i18n.value.shareLanding.loadFailed),
   },
   applyRuntime: (runtimeFlags: PlaygroundDebugFlags, snapshotBase64?: string | null) =>
-    mountOrRemountPlaygroundEditor(runtimeFlags, snapshotBase64 || null),
+    mountOrRemountPlaygroundEditor(runtimeFlags, snapshotBase64 ?? null),
   clearRuntime: () => {
     clearMountedEditorRuntime();
   },
@@ -441,11 +452,11 @@ const buildPermissionCapabilities = (permissionMode: "full" | "comment" | "reado
   permissionMode,
 });
 const effectiveCapabilities = computed(() => {
-  if (routeDocumentId.value.length > 0 && !realtimeCollaborationEnabled.value) {
-    return buildPermissionCapabilities("readonly");
-  }
   if (backendDocumentAccess.value?.capabilities) {
     return backendDocumentAccess.value.capabilities;
+  }
+  if (routeDocumentId.value.length > 0 && !realtimeCollaborationEnabled.value) {
+    return buildPermissionCapabilities("readonly");
   }
   if (workspaceAccessEnabled.value && (backendAccessBound.value || backendSessionUser.value)) {
     return buildPermissionCapabilities("readonly");
@@ -453,6 +464,26 @@ const effectiveCapabilities = computed(() => {
   return buildPermissionCapabilities(debugFlags.permissionMode);
 });
 const effectivePermissionMode = computed(() => effectiveCapabilities.value.permissionMode);
+const canWriteLocalSnapshot = computed(
+  () => effectiveCapabilities.value.canEdit || effectiveCapabilities.value.canComment
+);
+const {
+  flushWorkspaceSnapshotSave,
+  scheduleWorkspaceSnapshotSave,
+  setSnapshotDocument,
+  resetWorkspaceSnapshotPersistence,
+} = useWorkspaceSnapshotPersistence({
+  backendUrl,
+  routeDocumentId,
+  routeShareToken,
+  realtimeCollaborationEnabled,
+  backendDocumentId: computed(() => String(backendDocument.value?.id || "").trim()),
+  canWriteSnapshot: canWriteLocalSnapshot,
+  saveFailedMessage: computed(() => i18n.value.shareDialog.ensureFailed),
+  onSaveError: (message) => {
+    showToolbarMessage(message, "error");
+  },
+});
 const isReadonlyPermission = computed(() => effectivePermissionMode.value === "readonly");
 const permissionLabel = computed(() => {
   if (isReadonlyPermission.value || sessionMode.value === "viewer") {
@@ -661,6 +692,7 @@ const syncDebugHandles = () => {
 };
 
 const clearMountedEditorRuntime = () => {
+  resetWorkspaceSnapshotPersistence();
   detachEditor?.();
   detachEditor = null;
   setTocOutlineEnabled = null;
@@ -696,6 +728,7 @@ const attachMountedEditor = (
 ) => {
   editor.value = mounted.editor;
   view.value = mounted.view;
+  setSnapshotDocument(mounted.collaborationDocument);
   if (runtimeFlags.collaborationEnabled) {
     annotationStore.useCollaborationStore(mounted.collaborationDocument, runtimeFlags.collaborationField);
   } else {
@@ -768,13 +801,21 @@ const createEditorCallbacks = () => ({
       }
     }
   },
+  onDocumentChange: ({ docChanged }: { docChanged: boolean }) => {
+    if (docChanged) {
+      scheduleWorkspaceSnapshotSave();
+    }
+  },
   onStatsChange: handleStatsChange,
 });
 
 const decodeSnapshotBase64 = (value: string | null | undefined) => {
-  const normalized = String(value || "").trim();
-  if (!normalized || typeof window === "undefined") {
+  if (value == null || typeof window === "undefined") {
     return null;
+  }
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return new Uint8Array(0);
   }
   try {
     const binary = window.atob(normalized);
@@ -817,6 +858,37 @@ const mountOrRemountPlaygroundEditor = async (
   attachMountedEditor(mounted, runtimeFlags);
   pendingRuntime.value = null;
   return true;
+};
+
+const handleCollaborationApply = async (settings: {
+  enabled: boolean;
+  collaborationUrl: string;
+  collaborationDocument: string;
+  collaborationField: string;
+  collaborationToken: string;
+  collaborationUserName: string;
+  collaborationUserColor: string;
+}) => {
+  if (collaborationSwitching.value) {
+    return;
+  }
+  collaborationSwitching.value = true;
+  await flushWorkspaceSnapshotSave();
+  const nextSettings = setPlaygroundCollaborationSettings({
+    collaborationEnabled: settings.enabled,
+    collaborationUrl: settings.collaborationUrl,
+    collaborationDocument: settings.collaborationDocument,
+    collaborationField: settings.collaborationField,
+    collaborationToken: settings.collaborationToken,
+    collaborationUserName: settings.collaborationUserName,
+    collaborationUserColor: settings.collaborationUserColor,
+  } satisfies PlaygroundCollaborationSettings);
+  Object.assign(debugFlags, nextSettings);
+  try {
+    await loadWorkspace({ withCollabTicket: true });
+  } finally {
+    collaborationSwitching.value = false;
+  }
 };
 
 const remountPlaygroundEditor = async (runtimeFlags: typeof debugFlags) => {
@@ -1314,11 +1386,15 @@ watch(
     if (!nextDocumentId || nextDocumentId === previousDocumentId) {
       return;
     }
-    void loadWorkspace({ withCollabTicket: true });
+    void (async () => {
+      await flushWorkspaceSnapshotSave();
+      await loadWorkspace({ withCollabTicket: true });
+    })();
   }
 );
 
 onBeforeUnmount(() => {
+  void flushWorkspaceSnapshotSave();
   resetWorkspaceSidePanelState();
   clearMountedEditorRuntime();
   annotationStore.useLocalStore({ clear: true });

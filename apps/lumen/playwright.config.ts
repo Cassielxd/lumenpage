@@ -3,12 +3,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PORT = Number(process.env.PW_PORT || "4173");
-const HOST = process.env.PW_HOST || "127.0.0.1";
+const HOST = process.env.PW_HOST || "localhost";
 const baseURL = process.env.PW_BASE_URL || `http://${HOST}:${PORT}`;
 const collabPort = Number(process.env.PW_COLLAB_PORT || "15345");
 const collabHost = process.env.PW_COLLAB_HOST || HOST;
 const collabHealthURL = process.env.PW_COLLAB_HEALTH_URL || `http://${collabHost}:${collabPort}/health`;
 const appDir = path.dirname(fileURLToPath(import.meta.url));
+const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const backendServerCommand = `${pnpmCommand} -C ../backend-server build && node ../backend-server/dist/server.js`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -37,14 +39,14 @@ export default defineConfig({
       command: `node ./e2e/preview-server.mjs ${HOST} ${PORT}`,
       cwd: appDir,
       url: baseURL,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120 * 1000,
     },
     {
-      command: "pnpm -C ../backend-server dev",
+      command: backendServerCommand,
       cwd: appDir,
       url: collabHealthURL,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 120 * 1000,
       env: {
         ...process.env,

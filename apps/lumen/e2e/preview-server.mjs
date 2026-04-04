@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appDir = path.dirname(__dirname);
 const distDir = path.join(appDir, "dist");
-const host = process.env.PW_HOST || process.argv[2] || "127.0.0.1";
+const host = process.env.PW_HOST || process.argv[2] || "localhost";
 const port = Number(process.env.PW_PORT || process.argv[3] || "4173");
 
 const MIME_TYPES = {
@@ -69,4 +69,3 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, host, () => {
   process.stdout.write(`preview-server listening on http://${host}:${port}\n`);
 });
-

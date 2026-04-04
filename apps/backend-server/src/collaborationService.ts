@@ -14,6 +14,7 @@ export interface CollaborationService {
   hocuspocus: Hocuspocus;
   ensureStorageDir: () => Promise<void>;
   readDocumentSnapshot: (documentName: string) => Promise<Uint8Array>;
+  writeDocumentSnapshot: (documentName: string, snapshot: Uint8Array) => Promise<void>;
   createTicket: (input: {
     documentId: string;
     documentName: string;
@@ -35,6 +36,7 @@ export const createCollaborationService = ({
   dataService: BackendDataService;
   log: (scope: string, message: string, extra?: unknown) => void;
 }): CollaborationService => {
+  const liveDocuments = new Map<string, Y.Doc>();
   const resolveDocumentFile = (documentName: string) =>
     path.join(config.storageDir, `${encodeDocumentName(documentName)}.bin`);
 
@@ -43,18 +45,25 @@ export const createCollaborationService = ({
   };
 
   const loadDocument = async (documentName: string) => {
+    const liveDocument = liveDocuments.get(documentName);
+    if (liveDocument) {
+      return liveDocument;
+    }
     const filePath = resolveDocumentFile(documentName);
 
     try {
       const persisted = await fs.readFile(filePath);
       const document = new Y.Doc();
       Y.applyUpdate(document, persisted);
+      liveDocuments.set(documentName, document);
       log("load", `loaded "${documentName}" from disk`, filePath);
       return document;
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
         log("load", `created empty document "${documentName}"`);
-        return new Y.Doc();
+        const document = new Y.Doc();
+        liveDocuments.set(documentName, document);
+        return document;
       }
       throw error;
     }
@@ -64,6 +73,7 @@ export const createCollaborationService = ({
     const filePath = resolveDocumentFile(documentName);
     const update = Y.encodeStateAsUpdate(document);
 
+    liveDocuments.set(documentName, document);
     await ensureStorageDir();
     await fs.writeFile(filePath, Buffer.from(update));
     log("store", `persisted "${documentName}"`, { filePath, bytes: update.byteLength });
@@ -71,8 +81,17 @@ export const createCollaborationService = ({
   };
 
   const readDocumentSnapshot = async (documentName: string) => {
-    const document = await loadDocument(documentName);
+    const document = liveDocuments.get(documentName) || (await loadDocument(documentName));
     return Y.encodeStateAsUpdate(document);
+  };
+
+  const writeDocumentSnapshot = async (documentName: string, snapshot: Uint8Array) => {
+    const document = new Y.Doc();
+    if (snapshot.byteLength > 0) {
+      Y.applyUpdate(document, snapshot);
+    }
+    liveDocuments.set(documentName, document);
+    await storeDocument(documentName, document);
   };
 
   const createTicket = ({
@@ -177,6 +196,7 @@ export const createCollaborationService = ({
     hocuspocus,
     ensureStorageDir,
     readDocumentSnapshot,
+    writeDocumentSnapshot,
     createTicket,
     verifyTicket,
   };

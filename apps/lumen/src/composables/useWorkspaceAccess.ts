@@ -1,4 +1,4 @@
-import { ref, watch, type ComputedRef } from "vue";
+import { computed, ref, watch, type ComputedRef } from "vue";
 import { storeToRefs } from "pinia";
 import {
   clearStoredShareAccessToken,
@@ -6,11 +6,10 @@ import {
   ensureCollaborationDocument,
   getDocumentCollabSnapshot,
   getBackendDocumentAccess,
-  getBackendSession,
-  resolveBackendUrl,
   type BackendUser,
 } from "../editor/backendClient";
 import type { PlaygroundDebugFlags } from "../editor/config";
+import { useBackendConnection } from "./useBackendConnection";
 import { useWorkspaceShellStore } from "../stores/workspaceShell";
 
 type WorkspaceAccessMessages = {
@@ -51,11 +50,18 @@ export const useWorkspaceAccess = ({
 }: UseWorkspaceAccessOptions) => {
   const workspaceShellStore = useWorkspaceShellStore();
   const {
+    backendUrl,
+    sessionUser: backendSessionUser,
+    setSessionUser: setBackendSessionUser,
+    refreshSession,
+  } = useBackendConnection({
+    fallbackUrl: computed(() => debugFlags.collaborationUrl),
+  });
+  const {
     shareDialogVisible,
     accountDialogVisible,
     accountDialogMode,
     accountPopupVisible,
-    backendSessionUser,
     backendDocument,
     backendDocumentAccess,
     backendAccessError,
@@ -73,20 +79,18 @@ export const useWorkspaceAccess = ({
       ...debugFlags,
       collaborationEnabled: realtimeCollaborationEnabled.value,
     };
-    const backendUrl = resolveBackendUrl(debugFlags.collaborationUrl);
     const currentRouteDocumentId = routeDocumentId.value;
     const currentRouteShareToken = routeShareToken.value;
 
     backendAccessError.value = null;
 
     if (options?.skipSessionRefresh) {
-      backendSessionUser.value = options.preferredSessionUser ?? null;
+      setBackendSessionUser(options.preferredSessionUser ?? null);
     } else {
       try {
-        const session = await getBackendSession(backendUrl);
-        backendSessionUser.value = session.user;
+        await refreshSession();
       } catch (error) {
-        backendSessionUser.value = null;
+        setBackendSessionUser(null);
         if (workspaceAccessEnabled.value) {
           backendAccessError.value =
             error instanceof Error
@@ -108,7 +112,7 @@ export const useWorkspaceAccess = ({
 
     try {
       if (currentRouteDocumentId) {
-        const resolved = await getBackendDocumentAccess(backendUrl, currentRouteDocumentId, {
+        const resolved = await getBackendDocumentAccess(backendUrl.value, currentRouteDocumentId, {
           shareToken: currentRouteShareToken,
         });
         backendDocument.value = resolved.document;
@@ -123,14 +127,14 @@ export const useWorkspaceAccess = ({
         }
 
         if (!nextFlags.collaborationEnabled) {
-          const snapshot = await getDocumentCollabSnapshot(backendUrl, resolved.document.id, {
+          const snapshot = await getDocumentCollabSnapshot(backendUrl.value, resolved.document.id, {
             shareToken: currentRouteShareToken,
           });
           snapshotBase64 = snapshot.snapshot;
         }
 
         if (withCollabTicket && nextFlags.collaborationEnabled) {
-          const { collab } = await createDocumentCollabTicket(backendUrl, resolved.document.id, {
+          const { collab } = await createDocumentCollabTicket(backendUrl.value, resolved.document.id, {
             field: resolved.document.field,
             userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
             userColor: debugFlags.collaborationUserColor,
@@ -161,7 +165,7 @@ export const useWorkspaceAccess = ({
         };
       }
 
-      const ensured = await ensureCollaborationDocument(backendUrl, {
+      const ensured = await ensureCollaborationDocument(backendUrl.value, {
         name: debugFlags.collaborationDocument,
         title: debugFlags.collaborationDocument,
         field: debugFlags.collaborationField,
@@ -172,7 +176,7 @@ export const useWorkspaceAccess = ({
       nextFlags.permissionMode = ensured.access.permissionMode;
 
       if (withCollabTicket && nextFlags.collaborationEnabled) {
-        const { collab } = await createDocumentCollabTicket(backendUrl, ensured.document.id, {
+        const { collab } = await createDocumentCollabTicket(backendUrl.value, ensured.document.id, {
           field: ensured.document.field,
           userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
           userColor: debugFlags.collaborationUserColor,
@@ -228,7 +232,7 @@ export const useWorkspaceAccess = ({
 
   const handleAccountSessionChange = async (user: BackendUser | null) => {
     accountSessionSyncing.value = true;
-    backendSessionUser.value = user;
+    setBackendSessionUser(user);
     accountPopupVisible.value = false;
     try {
       await loadWorkspace({
@@ -282,6 +286,7 @@ export const useWorkspaceAccess = ({
   );
 
   return {
+    backendUrl,
     shareDialogVisible,
     accountDialogVisible,
     accountDialogMode,
