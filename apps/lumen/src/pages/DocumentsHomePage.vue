@@ -114,10 +114,10 @@
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRouter } from "vue-router";
 import AccountWorkspaceDialog from "../components/AccountWorkspaceDialog.vue";
 import type { BackendUserRole } from "../editor/backendClient";
 import { useDocumentsHome } from "../composables/useDocumentsHome";
+import { useDocumentNavigation } from "../composables/useDocumentNavigation";
 import { createInitialLumenCollaborationState } from "../editor/collaboration";
 import { createPlaygroundDebugFlags } from "../editor/config";
 import {
@@ -128,9 +128,9 @@ import {
   type PlaygroundLocale,
 } from "../editor/i18n";
 
-const router = useRouter();
 const { locale: globalLocale } = useI18n();
 const baseFlags = createPlaygroundDebugFlags();
+const { openWorkspaceDocument } = useDocumentNavigation();
 const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(globalLocale.value));
 const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const texts = computed(() => i18n.value.documentCenter);
@@ -204,10 +204,7 @@ const handleAccountDialogSessionChange = async (user: Parameters<typeof handleAc
 };
 
 const openDocument = (documentId: string) => {
-  void router.push({
-    name: "document-workspace",
-    params: { documentId },
-  });
+  void openWorkspaceDocument(documentId);
 };
 
 const handleCreateDocument = async () => {

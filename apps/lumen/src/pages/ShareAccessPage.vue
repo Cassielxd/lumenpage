@@ -65,12 +65,12 @@
 import { MessagePlugin } from "tdesign-vue-next/es/message/plugin";
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute } from "vue-router";
 import AccountWorkspaceDialog from "../components/AccountWorkspaceDialog.vue";
 import { useBackendConnection } from "../composables/useBackendConnection";
+import { useDocumentNavigation } from "../composables/useDocumentNavigation";
 import {
   getBackendShareLink,
-  rememberShareAccessToken,
   type BackendDocument,
   type BackendShareLink,
   type BackendUser,
@@ -80,9 +80,9 @@ import { createPlaygroundDebugFlags } from "../editor/config";
 import { coercePlaygroundLocale, createPlaygroundI18n, type PlaygroundLocale } from "../editor/i18n";
 
 const route = useRoute();
-const router = useRouter();
 const { locale: globalLocale } = useI18n();
 const baseFlags = createPlaygroundDebugFlags();
+const { goToDocumentsHome, openWorkspaceDocument } = useDocumentNavigation();
 const localeKey = computed<PlaygroundLocale>(() => coercePlaygroundLocale(globalLocale.value));
 const i18n = computed(() => createPlaygroundI18n(localeKey.value));
 const texts = computed(() => i18n.value.shareLanding);
@@ -135,12 +135,8 @@ const openSharedDocument = () => {
   if (!document.value || !shareLink.value) {
     return;
   }
-  rememberShareAccessToken(document.value.id, shareLink.value.token);
-  void router.push({
-    name: "document-workspace",
-    params: {
-      documentId: document.value.id,
-    },
+  void openWorkspaceDocument(document.value.id, {
+    shareToken: shareLink.value.token,
   });
 };
 
@@ -150,7 +146,7 @@ const handleAccountSessionChange = async (user: BackendUser | null) => {
 };
 
 const goHome = () => {
-  void router.push({ name: "documents-home" });
+  void goToDocumentsHome();
 };
 
 onMounted(async () => {
