@@ -620,6 +620,10 @@ export const mountPlaygroundEditor = ({
       return true;
     },
   };
+  let handleViewChange = (_nextView: CanvasEditorView, _event: any) => {};
+  viewProps.onChange = (nextView: CanvasEditorView, event: any) => {
+    handleViewChange(nextView, event);
+  };
 
   const editor = new Editor({
     element: host,
@@ -643,6 +647,8 @@ export const mountPlaygroundEditor = ({
     });
   };
   let trackChangeFrameId = 0;
+  let pendingPostChangeSync = false;
+  let pendingDocChanged = false;
   let cachedTrackChangeDoc: any = null;
   let cachedTrackChangeRevision: number | null = null;
   let cachedTrackChangeRecords: TrackChangeRecord[] = [];
@@ -694,19 +700,25 @@ export const mountPlaygroundEditor = ({
     }
     emitTrackChangeState();
   };
-  const baseDispatchTransaction =
-    typeof view.dispatchTransaction === "function" ? view.dispatchTransaction.bind(view) : null;
-  if (baseDispatchTransaction) {
-    view.dispatchTransaction = (transaction: any) => {
-      const docChanged = transaction?.docChanged === true;
-      baseDispatchTransaction(transaction);
-      if (docChanged) {
-        onDocumentChange?.({ docChanged: true });
-      }
-      emitCommentState();
-      scheduleTrackChangeStateEmit();
-    };
-  }
+  const flushPostChangeSync = () => {
+    pendingPostChangeSync = false;
+    if (pendingDocChanged) {
+      pendingDocChanged = false;
+      onDocumentChange?.({ docChanged: true });
+    }
+    emitCommentState();
+    scheduleTrackChangeStateEmit();
+  };
+  handleViewChange = (_nextView: CanvasEditorView, event: any) => {
+    if (event?.docChanged === true) {
+      pendingDocChanged = true;
+    }
+    if (pendingPostChangeSync) {
+      return;
+    }
+    pendingPostChangeSync = true;
+    queueMicrotask(flushPostChangeSync);
+  };
   const setCommentAnchor = (options: { threadId: string; anchorId: string }) =>
     editor.commands.setCommentAnchor?.(options) === true;
   const activateCommentThread = (threadId: string | null) =>

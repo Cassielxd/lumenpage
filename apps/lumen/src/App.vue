@@ -293,7 +293,7 @@ import {
   type Ref,
 } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute } from "vue-router";
+import { onBeforeRouteLeave, useRoute } from "vue-router";
 import type { Editor as LumenEditor } from "lumenpage-core";
 import { NodeSelection, Selection, TextSelection } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
@@ -1392,6 +1392,10 @@ watch(
     })();
   }
 );
+
+onBeforeRouteLeave(async () => {
+  await flushWorkspaceSnapshotSave();
+});
 
 onBeforeUnmount(() => {
   void flushWorkspaceSnapshotSave();

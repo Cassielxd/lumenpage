@@ -1,4 +1,5 @@
 import { COMMENT_MUTATION_META } from "lumenpage-extension-comment";
+import { CollaborationPluginKey } from "lumenpage-extension-collaboration";
 import { Plugin } from "lumenpage-state";
 
 export type PlaygroundPermissionMode = "full" | "comment" | "readonly";
@@ -20,6 +21,9 @@ export const createPlaygroundPermissionPlugin = (
         return true;
       }
       if (!tr.docChanged) {
+        return true;
+      }
+      if (tr.getMeta?.(CollaborationPluginKey) != null) {
         return true;
       }
 

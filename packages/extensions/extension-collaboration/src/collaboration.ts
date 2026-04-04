@@ -214,7 +214,6 @@ export const Collaboration = Extension.create<CollaborationOptions, Collaboratio
         .setMeta("addToHistory", false)
         .setMeta(CollaborationPluginKey, { refresh: true });
       tr.setSelection(Selection.atEnd(tr.doc));
-
       return state.apply(tr);
     };
   },
