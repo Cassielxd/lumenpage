@@ -1,124 +1,242 @@
-﻿# 会话接手入口（2026-03-19）
+# 会话接手入口（2026-04-04）
 
-这份文档现在是唯一的接手入口。
-历史交接内容已经并入这里，重复的临时 handoff 文档已删除。
+这份文档现在是 Lumen 产品化主线的唯一接手入口。
+下次继续前，先读这份，再按这里的顺序恢复上下文，不要再从旧的 pagination handoff 开始。
 
-## 本次先读
+## 下次先读
 
 1. `docs/session-handoff.md`
 2. `docs/lumen-product-requirements.md`
-3. `docs/pagination-architecture-migration-plan-2026-03-19.md`
-4. `docs/architecture-analysis.md`
+3. 最近 4 个 commit
+4. 下面列出的关键文件
 
-## 当前结论
+推荐直接执行：
 
-- 默认分页运行链已经切到 modern 协议：`measure / paginate / render`
-- 仓库内默认 renderer 和 extension renderer 不再依赖 runtime legacy adapter
-- `table` 已完成 modern 接入，主问题已经从“架构迁移”转到“复杂场景回归”
-- 当前重点是 table 复杂分页、光标、拖拽、overlay/page surface 同步
+```powershell
+git log --oneline -4
+git status --short
+pnpm.cmd typecheck
+```
 
-## 当前稳定状态
+## 当前阶段判断
 
-- `pnpm typecheck` 通过
-- `apps/lumen/e2e/lumen-pagination-regressions.spec.ts` 通过
-- `apps/lumen/e2e/lumen-list-pagination.spec.ts` 通过
-- `apps/lumen/e2e/lumen-selection.spec.ts` 通过
-- `rowspan/colspan` merged cell 跨页回归已补，并通过 `lumen-pagination-regressions.spec.ts`
+- `apps/lumen` 已经是产品壳，不再是单纯 playground。
+- 当前主线已经从“功能接线”转成“产品壳收口 + 权限/快照/协作主链路稳定化”。
+- 默认行为已经调整为：
+  - 打开文档先加载真实快照
+  - 默认不自动开启实时协作
+  - 实时协作需要主动开启
+- 当前主矛盾不再是“编辑器能不能挂起来”，而是：
+  - 工作区入口虽然已拆到 `useWorkspaceAccessLoader / Dialogs / Lifecycle`，但页面层编排还没完全收口
+  - `App.vue` 已拆出 runtime / review / capabilities / shell UI，但页面壳仍然偏重
+  - 权限矩阵和分享链路已经能稳定回归，但还没补成完整产品矩阵
 
-## 这轮新增结论
+## 当前稳定基线
 
-### 1. table 光标边界映射已收紧
+- `pnpm.cmd typecheck` 通过
+- `pnpm.cmd -C apps/lumen build` 通过
+- `apps/lumen/e2e/lumen-documents-home-workspace.spec.ts` 通过
+- `apps/lumen/e2e/lumen-permissions-matrix.spec.ts` 通过
 
-文件：
+说明：
 
-- `packages/extensions/extension-table/src/table/specs.ts`
+- 上面两条 E2E 是当前最值得信任的产品壳主链路基线
+- `lumen-permissions-matrix.spec.ts` 当前共 9 条用例通过
+- 这轮没有重新跑完整套 lumen E2E
+
+## 最近关键提交
+
+1. `85ae767`
+   `lumen: split workspace flows and harden access coverage`
+
+2. `2e6f1bb`
+   `lumen: unify document entry navigation`
+
+3. `0e094cc`
+   `lumen: fix snapshot permissions and post-update sync`
+
+4. `b50efa2`
+   `view-canvas: render applied async layouts immediately`
+
+## 这几次真正解决了什么
+
+### 1. 输入内容不立即显示
+
+根因：
+
+- 异步分页 worker 已经 apply 了新 layout
+- 但 render 被 pending 状态错误拦住
+- 结果是 state/layout 已更新，canvas 没及时刷新
+
+修复：
+
+- `packages/engine/view-canvas/src/view/renderSync.ts`
 
 结果：
 
-- 当 offset 命中 `cell/row/table` 分隔符时，不再返回结构边界位
-- 现在会回落到当前容器里最后一个可落文本光标的位置
-- 直接缓解了“单行 table 持续回车后，光标串到第二个 cell”这类问题
+- 首输字符、空格、数字不再依赖下一次事件才一起出现
 
-### 2. 内部拖拽节点范围越界已修复
+### 2. 打开文档是空白或内容没进来
 
-文件：
+根因：
 
-- `packages/engine/view-canvas/src/view/editorView/drag/helpers.ts`
-- `packages/engine/view-canvas/src/view/editorView/drag/internalDrag.ts`
-- `packages/engine/view-canvas/src/view/editorView/drag/domHandlers.ts`
+- 不是快照没拿到
+- 也不是协作扩展没生成 `nextDoc`
+- 真正问题是权限插件把协作初始化事务也当成“本地写入”拦掉了
+
+修复：
+
+- `apps/lumen/src/editor/permissionPlugin.ts`
 
 结果：
 
-- `startInternalDragFromNodePos` 不再直接用 `nodeAt(nodePos) + node.nodeSize`
-- 现在会先解析真实可拖拽节点边界，再生成 `from/to`
-- 已修复这条错误：
-  - `RangeError: Position xxx out of range`
+- `comment / readonly` 模式下，真实快照现在可以正常加载进工作区
 
-### 3. 拖拽与选区回归已补
+### 3. 权限链路里偶发栈溢出
 
-文件：
+根因：
 
-- `apps/lumen/e2e/lumen-selection.spec.ts`
+- `view-canvas` 的 `onChange` 回调发生在 `view.updateState()` 之前
+- 之前在这个时机里直接做评论同步、文档变更处理
+- 会把副作用重新拉进 dispatch 栈，形成重入
 
-覆盖：
+修复：
 
-- 选区与坐标映射冒烟
-- 内部拖拽从块位置开始时，不再越界，并且能正确重排段落
+- `apps/lumen/src/editor/editorMount.ts`
 
-### 4. `rowspan/colspan` 跨页回归已补
+结果：
 
-文件：
+- 现在改成 post-update microtask flush
+- 文档保存触发、评论状态同步、track changes 状态同步不再在更新栈里重入
 
-- `apps/lumen/e2e/lumen-pagination-regressions.spec.ts`
+### 4. 首页进入、分享页进入、工作区进入入口分散
 
-覆盖：
+修复：
 
-- `rowspan + colspan` merged cell 跨多页续排
-- merged cell 跨页时下游 row 不丢失
-- merged span 场景下 table fragment 继续走 modern continuation
+- 新增 `apps/lumen/src/composables/useDocumentNavigation.ts`
+- `DocumentsHomePage.vue`
+- `ShareAccessPage.vue`
 
-## 本次已提交
+结果：
 
-1. `e29741b`
-   `view-canvas: fix drag node ranges and table caret mapping`
+- “打开文档 / 回首页 / share token 记忆”已经统一到一套导航入口
+- 后面继续收工作区路由加载时，不需要重复改两套页面逻辑
 
-2. `560e9e5`
-   `apps/lumen: add selection and internal drag regression`
+### 5. 工作区壳层和权限回归已经拆出明确边界
 
-## 还没收口的功能
+修复：
 
-1. table 复杂分页
-   - 合并单元格后的继续输入、删除回流
-   - 多行多列同时跨页时的命中和选区
+- 新增 `useWorkspaceEditorRuntime.ts`
+- 新增 `useWorkspaceReview.ts`
+- 新增 `useWorkspaceCapabilities.ts`
+- 新增 `useWorkspaceShellUi.ts`
+- 新增 `useWorkspaceAccessLoader.ts`
+- 新增 `useWorkspaceAccessDialogs.ts`
+- 新增 `useWorkspaceAccessLifecycle.ts`
 
-2. table 光标与可视 caret
-   - 逻辑 selection 可能已正确，但视觉 caret 还缺专项回归
+结果：
 
-3. overlay / page surface 同步
-   - 删除回流
-   - 跨页边界附近继续输入
-   - progressive pass 与 full pass 的中间态一致性
+- `App.vue` 现在主要做页面接线，不再直接塞满 runtime / review / capability 细节
+- `useWorkspaceAccess.ts` 现在主要做组合接线，后端加载、弹窗返回流、路由生命周期已经分层
+- 首页和分享页进入工作区时会保留 `?locale=...`
+- 权限矩阵已经补到“成员权限优先于 share link，不因更强 share role 被抬权”
 
-4. 输入法与大文档 worker 路径
-   - 中文 IME 组合态
-   - worker 开启时的 table / caret / pagination
+## 当前关键文件
 
-## 下次直接从这里开始
+下次继续时，优先看这些文件：
+
+1. `apps/lumen/src/App.vue`
+2. `apps/lumen/src/composables/useWorkspaceAccess.ts`
+3. `apps/lumen/src/composables/useWorkspaceAccessLoader.ts`
+4. `apps/lumen/src/composables/useWorkspaceAccessDialogs.ts`
+5. `apps/lumen/src/composables/useWorkspaceAccessLifecycle.ts`
+6. `apps/lumen/src/editor/editorMount.ts`
+7. `apps/lumen/src/editor/permissionPlugin.ts`
+8. `apps/lumen/src/composables/useDocumentNavigation.ts`
+9. `apps/lumen/e2e/lumen-documents-home-workspace.spec.ts`
+10. `apps/lumen/e2e/lumen-permissions-matrix.spec.ts`
+
+## 当前还没收口的功能
+
+### 1. 工作区路由加载编排
+
+- 首页进入文档、分享页进入文档、工作区内切文档虽然已统一入口
+- `useWorkspaceAccess.ts` 已拆成 loader / dialogs / lifecycle，但 share/auth 返回流和页面层接线还没有完全收成最终边界
+- 下一步应该继续把“文档入口 -> 工作区加载”做成更稳定的组合层
+
+### 2. `App.vue` 仍然过重
+
+- 顶层页面编排
+- 文档工作区壳层接线
+- 顶部栏 / 页面动作 / 侧边浮层之间的组合关系
+
+这些职责虽然比之前薄很多，但还没有完全拆开
+
+### 3. 权限矩阵覆盖还不够全
+
+当前已覆盖：
+
+- owner 本地可编辑
+- editor 成员直接进入工作区可编辑
+- editor 成员经 readonly share 入口仍保持可编辑
+- commenter 直接进入、经 readonly share、经 signed-in-only commenter share 都保持 comment-only
+- viewer 直接进入、匿名 readonly share、开启 realtime 后都保持只读
+- 更强的 `editor` share link 不会抬升已有 commenter / viewer 成员权限
+
+还没系统补齐：
+
+- owner / editor / commenter / viewer 更完整的 share role 交叉矩阵
+- signed-in / anonymous share 的更完整排列组合
+- realtime collaboration 打开后的更完整矩阵
+
+### 4. 手动协作开启链路还需要继续回归
+
+- 当前主链路是默认本地快照 + 手动开启协作
+- 这个方向已经定了
+- 但协作开启后的更多交互回归还没补全
+
+## 下次恢复时怎么读
+
+如果下次继续，我会按这个顺序恢复：
+
+1. 先看 `docs/session-handoff.md`
+   - 确认当前主线、最近修复、剩余任务
+
+2. 再看 `docs/lumen-product-requirements.md`
+   - 确认产品口径，不把“功能已接线”误判成“产品已完成”
+
+3. 再看最近 commit
+   - 重点看 `85ae767`、`2e6f1bb`、`0e094cc`
+
+4. 然后打开关键文件
+   - `App.vue`
+   - `useWorkspaceAccess.ts`
+   - `useWorkspaceAccessLoader.ts`
+   - `editorMount.ts`
+   - `permissionPlugin.ts`
+
+5. 最后先跑基线
+   - `pnpm.cmd typecheck`
+   - `pnpm.cmd -C apps/lumen build`
+   - `pnpm.cmd -C apps/lumen exec playwright test e2e/lumen-documents-home-workspace.spec.ts e2e/lumen-permissions-matrix.spec.ts`
+
+## 下次建议直接从这里开始
 
 优先级顺序：
 
-1. 补 table caret 必须落在当前 cell box 内的可视回归
-2. 补合并单元格编辑/删除回流回归
-3. 补删除回流时 overlay/page surface 不残留的回归
-4. 补 IME + table + pagination 回归
+1. 继续拆 `App.vue` 的工作区路由加载和 runtime 编排
+2. 把“文档入口 -> 工作区加载”收成更清晰的 composable / store 边界
+3. 扩权限矩阵回归，补登录分享、匿名分享、实时协作后的权限行为
+4. 再继续收手动协作开启后的主链路回归
 
 ## 文档约定
 
 - `docs/session-handoff.md`
-  唯一入口，下一次先读这份
+  唯一接手入口，下次先读这份
 
-- `docs/pagination-architecture-migration-plan-2026-03-19.md`
-  保留详细迁移过程和架构背景
+- `docs/lumen-product-requirements.md`
+  产品需求基线，判断“是不是产品完成”以这份为准
 
-- 其他 handoff 类临时文档
-  不再继续堆新文件，除非是明确的专项方案文档
+- 新的临时 handoff
+  尽量不再新建
+  除非是明确的专项方案文档

@@ -541,6 +541,7 @@ const {
   isResizingRightSidebar,
   toggleTocPanel,
   closeCommentsPanel,
+  closeAssistantPanel,
   closeTrackChangesPanel,
   openTrackChangesPanel,
   openCommentsPanel,
