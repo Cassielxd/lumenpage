@@ -97,6 +97,11 @@ export const createRenderSync = ({
 
   const hasPendingLayoutWork = () => layoutPassCoordinator?.isPending() === true;
   const hasPendingDocLayout = () => getPendingChangeSummary?.()?.docChanged === true;
+  const hasUnrenderedLayoutVersion = () => {
+    const layoutVersion = Number(getLayout?.()?.__version ?? 0);
+    const renderedLayoutVersion = Number(renderer?.lastLayoutVersion ?? 0);
+    return Number.isFinite(layoutVersion) && layoutVersion > renderedLayoutVersion;
+  };
 
   const cancelScheduledRender = () => {
     const renderRafId = getRafId();
@@ -108,7 +113,9 @@ export const createRenderSync = ({
   };
 
   const scheduleRender = () => {
-    if (hasPendingLayoutWork() || hasPendingDocLayout()) {
+    // Async pagination can apply a newer layout before the worker settles.
+    // That newer layout still needs a render frame even while layout work is pending.
+    if ((hasPendingLayoutWork() || hasPendingDocLayout()) && !hasUnrenderedLayoutVersion()) {
       return;
     }
     renderFrameCoordinator?.scheduleRender();
