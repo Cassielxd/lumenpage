@@ -2,6 +2,10 @@
   <t-aside
     v-if="activeTab"
     class="doc-side-tabs"
+    :class="{
+      'is-side-panel-resizing': resizing,
+      'is-high-contrast': highContrast,
+    }"
     :style="{ '--doc-side-panel-width': `${width}px` }"
   >
     <button
@@ -25,6 +29,8 @@
 defineProps<{
   activeTab: "outline" | "comments" | "collaboration" | "assistant" | "changes" | "annotation" | null;
   width: number;
+  resizing?: boolean;
+  highContrast?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,10 +45,10 @@ const emit = defineEmits<{
   right: 16px;
   bottom: 56px;
   width: var(--doc-side-panel-width, 360px);
-  z-index: 18;
   display: flex;
   min-width: 0;
   background: transparent;
+  z-index: 18;
 }
 
 .doc-side-panel-card {
@@ -79,6 +85,22 @@ const emit = defineEmits<{
   width: 2px;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.42);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.doc-side-tabs:hover .doc-side-panel-resize-handle::after,
+.doc-side-tabs.is-side-panel-resizing .doc-side-panel-resize-handle::after {
+  opacity: 1;
+}
+
+.doc-side-tabs.is-high-contrast .doc-side-panel-card {
+  background: #000;
+  border: 1px solid #fff;
+}
+
+.doc-side-tabs.is-high-contrast .doc-side-panel-resize-handle::after {
+  background: rgba(255, 255, 255, 0.55);
 }
 
 @media (max-width: 960px) {
@@ -87,6 +109,10 @@ const emit = defineEmits<{
     right: 12px;
     left: 12px;
     width: auto;
+  }
+
+  .doc-side-panel-resize-handle {
+    display: none;
   }
 }
 </style>

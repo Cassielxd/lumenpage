@@ -1,5 +1,5 @@
 <template>
-  <t-footer class="doc-footer">
+  <t-footer class="doc-footer" :class="{ 'is-high-contrast': highContrast }">
     <div class="doc-footer-stats">
       <template v-for="(item, index) in footerStatItems" :key="`footer-${index}-${item}`">
         <span v-if="index > 0" class="doc-footer-divider">|</span>
@@ -36,6 +36,7 @@ defineProps<{
   collaborationEnabled: boolean;
   collaborationState: LumenCollaborationState;
   locale: PlaygroundLocale;
+  highContrast?: boolean;
 }>();
 </script>
 
@@ -45,46 +46,67 @@ defineProps<{
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 40px;
+  min-height: 32px;
   padding: 0 16px;
-  border-top: 1px solid #dfe1e5;
-  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
 }
 
 .doc-footer-stats,
 .doc-footer-right {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   min-width: 0;
 }
 
 .doc-footer-stats {
-  flex: 1 1 auto;
   flex-wrap: wrap;
+  gap: 8px;
   font-size: 12px;
-  color: #475569;
+  line-height: 1;
+  color: #6b7280;
+}
+
+.doc-footer-stat {
+  white-space: nowrap;
 }
 
 .doc-footer-divider {
-  color: #cbd5e1;
+  color: #c0c4cc;
 }
 
 .doc-footer-link {
-  color: #475569;
+  color: #2563eb;
   text-decoration: none;
   font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .doc-footer-link:hover {
   color: #1d4ed8;
+  text-decoration: underline;
 }
 
-@media (max-width: 960px) {
+.doc-footer.is-high-contrast {
+  background: #000;
+  border-color: #fff;
+}
+
+.doc-footer.is-high-contrast .doc-footer-stats,
+.doc-footer.is-high-contrast .doc-footer-divider,
+.doc-footer.is-high-contrast .doc-footer-link {
+  color: #fff;
+}
+
+@media (max-width: 768px) {
   .doc-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px 16px;
+    padding: 0 10px;
+  }
+
+  .doc-footer-right {
+    gap: 8px;
   }
 }
 </style>

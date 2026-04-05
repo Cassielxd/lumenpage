@@ -146,14 +146,6 @@ export const useWorkspaceShellUi = ({
     }
     return items;
   });
-  const footerNodeLabel = computed(() =>
-    translate("shell.nodes", { count: footerStats.value.nodeCount }),
-  );
-  const footerPluginLabel = computed(() =>
-    translate("shell.plugins", { count: footerStats.value.pluginCount }),
-  );
-  const footerContactLabel = computed(() => i18n.value.shell.contact);
-
   const handleLocaleChange = (value: string | number) => {
     const nextLocale = coercePlaygroundLocale(value);
     if (nextLocale === localeKey.value) {
@@ -217,9 +209,6 @@ export const useWorkspaceShellUi = ({
     documentStatusErrorLabel,
     trackChangesButtonLabel,
     footerStatItems,
-    footerNodeLabel,
-    footerPluginLabel,
-    footerContactLabel,
     handleLocaleChange,
     handleTocOutlineChange,
     handleStatsChange,

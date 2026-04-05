@@ -1,5 +1,5 @@
 <template>
-  <t-header class="topbar">
+  <t-header class="topbar" :class="{ 'is-high-contrast': highContrast }">
     <div class="topbar-left">
       <RouterLink class="brand" aria-label="LumenPage" to="/">
         <svg class="brand-logo" viewBox="0 0 164 48" role="img" aria-hidden="true">
@@ -107,6 +107,7 @@ defineProps<{
   permissionLabel: string;
   localeKey: PlaygroundLocale;
   localeOptions: Array<{ value: PlaygroundLocale; label: string }>;
+  highContrast?: boolean;
   shareLabel: string;
   backendSessionUser: BackendUser | null;
   manageAccountLabel: string;
@@ -244,6 +245,48 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.topbar.is-high-contrast {
+  background: #000;
+  border-color: #fff;
+}
+
+.topbar.is-high-contrast .brand-logo-mark {
+  filter: none;
+}
+
+.topbar.is-high-contrast .brand-logo-frame {
+  fill: #fff;
+}
+
+.topbar.is-high-contrast .brand-logo-panel,
+.topbar.is-high-contrast .brand-logo-spine {
+  fill: rgba(0, 0, 0, 0.12);
+}
+
+.topbar.is-high-contrast .brand-logo-page {
+  fill: #000;
+}
+
+.topbar.is-high-contrast .brand-logo-fold {
+  fill: rgba(0, 0, 0, 0.28);
+}
+
+.topbar.is-high-contrast .brand-logo-rule {
+  stroke: rgba(0, 0, 0, 0.76);
+}
+
+.topbar.is-high-contrast .brand-logo-wordmark {
+  fill: #000;
+}
+
+.topbar.is-high-contrast .topbar-account-menu-name {
+  color: #ffffff;
+}
+
+.topbar.is-high-contrast .topbar-account-menu-email {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 @media (max-width: 720px) {
