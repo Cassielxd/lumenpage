@@ -46,50 +46,33 @@ export type LumenCollaborationExtensionsOptions = {
   onUsersChange?: (users: CollaborationCaretUser[]) => void;
 };
 
-const baseDocumentExtensions = [
-  BlockIdExtension,
-  Audio,
-  EmbedPanel,
-  File,
-  Bookmark,
-  Callout,
-  Columns,
-  Comments.configure({
-    store: lumenCommentsStore,
-    showResolved: true,
-  }),
-  TrackChanges,
-  Math,
-  OptionBox,
-  Signature,
-  Underline,
-  Link,
-  Tag,
-  Template,
-  TextBox,
-  TextStyle,
-  Subscript,
-  Superscript,
-  Image,
-  Video,
-  WebPage,
-  PageBreak,
-  Table,
-  TableRow,
-  TableCell,
-  TableHeader,
-  TaskList,
-  TaskItem,
-] as const;
+type LumenTrackChangesUserOptions = {
+  userId?: string | null;
+  userName?: string | null;
+};
+
+const resolveTrackChangesExtension = (user?: LumenTrackChangesUserOptions | null) => {
+  const userId = String(user?.userId || "").trim();
+  const userName = String(user?.userName || "").trim();
+  if (!userId && !userName) {
+    return TrackChanges;
+  }
+  return TrackChanges.configure({
+    ...(userId ? { userId } : {}),
+    ...(userName ? { userName } : {}),
+  });
+};
 
 export const createLumenDocumentExtensions = (
   options: {
     collaboration?: LumenCollaborationExtensionsOptions | null;
+    trackChangesUser?: LumenTrackChangesUserOptions | null;
     locale?: PlaygroundLocale;
   } = {}
 ) => {
   const collaboration = options.collaboration ?? null;
   const locale = options.locale || "zh-CN";
+  const trackChangesUser = options.trackChangesUser ?? null;
   const starterKit = StarterKit.configure({ undoRedo: false });
   const extensions = [
     starterKit,
@@ -99,7 +82,39 @@ export const createLumenDocumentExtensions = (
         locale,
       }),
     }),
-    ...baseDocumentExtensions,
+    BlockIdExtension,
+    Audio,
+    EmbedPanel,
+    File,
+    Bookmark,
+    Callout,
+    Columns,
+    Comments.configure({
+      store: lumenCommentsStore,
+      showResolved: true,
+    }),
+    resolveTrackChangesExtension(trackChangesUser),
+    Math,
+    OptionBox,
+    Signature,
+    Underline,
+    Link,
+    Tag,
+    Template,
+    TextBox,
+    TextStyle,
+    Subscript,
+    Superscript,
+    Image,
+    Video,
+    WebPage,
+    PageBreak,
+    Table,
+    TableRow,
+    TableCell,
+    TableHeader,
+    TaskList,
+    TaskItem,
   ];
 
   if (collaboration) {

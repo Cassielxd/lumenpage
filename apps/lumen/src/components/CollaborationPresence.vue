@@ -135,6 +135,12 @@ const statusLabel = computed(() => {
 });
 
 const userCountLabel = computed(() => {
+  if (props.state.error) {
+    return props.state.error;
+  }
+  if (props.state.status === "disconnected") {
+    return i18n.value.collaboration.statusDisconnected;
+  }
   const count = visibleUsers.value.length;
   return t("collaboration.onlineCount", { count });
 });

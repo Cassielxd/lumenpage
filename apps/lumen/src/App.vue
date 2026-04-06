@@ -224,6 +224,7 @@ const {
   resetWorkspaceAccessState,
 } = useWorkspaceAccess({
   debugFlags,
+  locale: localeKey,
   workspaceAccessEnabled,
   realtimeCollaborationEnabled,
   routeDocumentId,

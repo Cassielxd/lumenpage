@@ -17,6 +17,11 @@ type DocumentsHomeNavigationOptions = {
   locale?: PlaygroundLocale | string | null;
 };
 
+type ShareAccessNavigationOptions = {
+  replace?: boolean;
+  locale?: PlaygroundLocale | string | null;
+};
+
 export const useDocumentNavigation = () => {
   const router = useRouter();
   const resolveNavigationLocale = (
@@ -62,6 +67,34 @@ export const useDocumentNavigation = () => {
     return true;
   };
 
+  const openShareAccess = async (
+    shareToken: string,
+    options: ShareAccessNavigationOptions = {},
+  ) => {
+    const normalizedShareToken = String(shareToken || "").trim();
+    if (!normalizedShareToken) {
+      return false;
+    }
+
+    const navigation = {
+      name: "share-access",
+      params: {
+        token: normalizedShareToken,
+      },
+      query: {
+        locale: resolveNavigationLocale(options.locale),
+      },
+    } as const;
+
+    if (options.replace) {
+      await router.replace(navigation);
+      return true;
+    }
+
+    await router.push(navigation);
+    return true;
+  };
+
   const goToDocumentsHome = async (options: DocumentsHomeNavigationOptions = {}) => {
     const navigation = {
       name: "documents-home",
@@ -81,6 +114,7 @@ export const useDocumentNavigation = () => {
 
   return {
     openWorkspaceDocument,
+    openShareAccess,
     goToDocumentsHome,
   };
 };

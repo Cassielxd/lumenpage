@@ -468,6 +468,10 @@ export const mountPlaygroundEditor = ({
             onUsersChange: collaborationRuntime.updateUsers,
           }
         : null,
+      trackChangesUser: {
+        userId: String(flags.collaborationUserName || "").trim() || null,
+        userName: String(flags.collaborationUserName || "").trim() || null,
+      },
       locale: flags.locale,
     }),
     EmbedPanelBrowserViewExtension,

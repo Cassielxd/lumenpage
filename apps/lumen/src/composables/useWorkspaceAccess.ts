@@ -9,9 +9,11 @@ import {
 import { useWorkspaceAccessDialogs } from "./useWorkspaceAccessDialogs";
 import { useWorkspaceAccessLifecycle } from "./useWorkspaceAccessLifecycle";
 import { useWorkspaceShellStore } from "../stores/workspaceShell";
+import { useDocumentNavigation } from "./useDocumentNavigation";
 
 type UseWorkspaceAccessOptions = {
   debugFlags: PlaygroundDebugFlags;
+  locale: ComputedRef<string>;
   workspaceAccessEnabled: ComputedRef<boolean>;
   realtimeCollaborationEnabled: ComputedRef<boolean>;
   routeDocumentId: ComputedRef<string>;
@@ -27,6 +29,7 @@ type UseWorkspaceAccessOptions = {
 
 export const useWorkspaceAccess = ({
   debugFlags,
+  locale,
   workspaceAccessEnabled,
   realtimeCollaborationEnabled,
   routeDocumentId,
@@ -45,6 +48,7 @@ export const useWorkspaceAccess = ({
   } = useBackendConnection({
     fallbackUrl: computed(() => debugFlags.collaborationUrl),
   });
+  const { openShareAccess } = useDocumentNavigation();
   const {
     shareDialogVisible,
     accountDialogVisible,
@@ -77,6 +81,11 @@ export const useWorkspaceAccess = ({
     workspaceLoading,
     workspaceError,
     messages,
+    redirectToShareAccess: (shareToken: string) =>
+      openShareAccess(shareToken, {
+        locale: locale.value,
+        replace: true,
+      }),
     applyRuntime,
     clearRuntime,
   });

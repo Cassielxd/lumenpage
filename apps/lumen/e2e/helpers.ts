@@ -209,36 +209,43 @@ const buildParagraphDocJson = (paragraphs: string[]) => ({
 });
 
 export const setDocumentJson = async (page: Page, json: unknown) => {
-  const result = await page.evaluate((docJson) => {
-    const testApi = (globalThis as typeof globalThis & { __lumenTestApi?: LumenTestApi })
-      .__lumenTestApi;
-    const viaTestApi = testApi?.setJSON?.(docJson);
-    if (viaTestApi === true) {
-      return true;
-    }
-    const globalView = (globalThis as typeof globalThis & { __lumenView?: unknown }).__lumenView;
-    const app = document.querySelector("#app") as
-      | (Element & {
-          __vue_app__?: {
-            _instance?: {
-              setupState?: Record<string, unknown>;
-            };
-          };
-        })
-      | null;
-    const view = (globalView ?? app?.__vue_app__?._instance?.setupState?.view) as
-      | {
-          setJSON?: (value: unknown) => boolean;
-          forceLayout?: (options?: { immediate?: boolean }) => boolean;
+  await expect
+    .poll(async () => {
+      return page.evaluate((docJson) => {
+        const testApi = (globalThis as typeof globalThis & { __lumenTestApi?: LumenTestApi })
+          .__lumenTestApi;
+        const viaTestApi = testApi?.setJSON?.(docJson);
+        if (viaTestApi === true) {
+          return "applied";
         }
-      | undefined;
-    const ok = view?.setJSON?.(docJson) === true;
-    if (ok) {
-      view?.forceLayout?.({ immediate: true });
-    }
-    return ok;
-  }, json);
-  expect(result).toBeTruthy();
+        const globalView = (globalThis as typeof globalThis & { __lumenView?: unknown }).__lumenView;
+        const app = document.querySelector("#app") as
+          | (Element & {
+              __vue_app__?: {
+                _instance?: {
+                  setupState?: Record<string, unknown>;
+                };
+              };
+            })
+          | null;
+        const view = (globalView ?? app?.__vue_app__?._instance?.setupState?.view) as
+          | {
+              setJSON?: (value: unknown) => boolean;
+              forceLayout?: (options?: { immediate?: boolean }) => boolean;
+            }
+          | undefined;
+        if (typeof view?.setJSON !== "function") {
+          return "pending";
+        }
+        const ok = view.setJSON(docJson) === true;
+        if (ok) {
+          view.forceLayout?.({ immediate: true });
+          return "applied";
+        }
+        return "rejected";
+      }, json);
+    }, { message: "expected editor JSON API to accept the requested document" })
+    .toBe("applied");
 };
 
 export const getDocumentSnapshot = async (page: Page) =>

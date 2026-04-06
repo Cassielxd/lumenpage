@@ -5,6 +5,7 @@ import {
   ensureCollaborationDocument,
   getDocumentCollabSnapshot,
   getBackendDocumentAccess,
+  getBackendShareLink,
   type BackendAccess,
   type BackendDocument,
   type BackendUser,
@@ -40,6 +41,7 @@ type UseWorkspaceAccessLoaderOptions = {
   workspaceLoading: Ref<boolean>;
   workspaceError: Ref<string | null>;
   messages: WorkspaceAccessMessages;
+  redirectToShareAccess: (shareToken: string) => Promise<boolean>;
   applyRuntime: (
     runtimeFlags: PlaygroundDebugFlags,
     snapshotBase64?: string | null,
@@ -77,9 +79,35 @@ export const useWorkspaceAccessLoader = ({
   workspaceLoading,
   workspaceError,
   messages,
+  redirectToShareAccess,
   applyRuntime,
   clearRuntime,
 }: UseWorkspaceAccessLoaderOptions) => {
+  const resolveErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message || String(error) : fallback;
+  const disableCollaborationFallback = (runtimeFlags: PlaygroundDebugFlags, message: string) => {
+    backendAccessError.value = message;
+    runtimeFlags.collaborationEnabled = false;
+    runtimeFlags.collaborationToken = "";
+    debugFlags.collaborationEnabled = false;
+    debugFlags.collaborationToken = "";
+  };
+  const redirectToRestrictedShareLandingIfNeeded = async (shareToken: string) => {
+    const normalizedShareToken = String(shareToken || "").trim();
+    if (!normalizedShareToken || backendSessionUser.value) {
+      return false;
+    }
+
+    try {
+      const shareAccess = await getBackendShareLink(backendUrl.value, normalizedShareToken);
+      if (shareAccess.shareLink.allowAnonymous) {
+        return false;
+      }
+      return redirectToShareAccess(normalizedShareToken);
+    } catch (_error) {
+      return false;
+    }
+  };
   const syncBackendWorkspaceAccess = async (options?: SyncWorkspaceAccessOptions) => {
     const withCollabTicket = options?.withCollabTicket === true;
     let snapshotBase64: string | null = null;
@@ -89,6 +117,7 @@ export const useWorkspaceAccessLoader = ({
     };
     const currentRouteDocumentId = routeDocumentId.value;
     const currentRouteShareToken = routeShareToken.value;
+    let redirectedToShareAccess = false;
 
     backendAccessError.value = null;
 
@@ -108,6 +137,12 @@ export const useWorkspaceAccessLoader = ({
       }
     }
 
+    const sessionDisplayName = String(backendSessionUser.value?.displayName || "").trim();
+    if (sessionDisplayName) {
+      runtimeFlags.collaborationUserName = sessionDisplayName;
+      debugFlags.collaborationUserName = sessionDisplayName;
+    }
+
     if (!workspaceAccessEnabled.value) {
       backendDocument.value = null;
       backendDocumentAccess.value = null;
@@ -117,9 +152,29 @@ export const useWorkspaceAccessLoader = ({
 
     try {
       if (currentRouteDocumentId) {
-        const resolved = await getBackendDocumentAccess(backendUrl.value, currentRouteDocumentId, {
-          shareToken: currentRouteShareToken,
-        });
+        if (await redirectToRestrictedShareLandingIfNeeded(currentRouteShareToken)) {
+          backendDocument.value = null;
+          backendDocumentAccess.value = null;
+          backendAccessBound.value = false;
+          redirectedToShareAccess = true;
+          return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
+        }
+
+        let resolved: Awaited<ReturnType<typeof getBackendDocumentAccess>>;
+        try {
+          resolved = await getBackendDocumentAccess(backendUrl.value, currentRouteDocumentId, {
+            shareToken: currentRouteShareToken,
+          });
+        } catch (error) {
+          if (await redirectToRestrictedShareLandingIfNeeded(currentRouteShareToken)) {
+            backendDocument.value = null;
+            backendDocumentAccess.value = null;
+            backendAccessBound.value = false;
+            redirectedToShareAccess = true;
+            return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
+          }
+          throw error;
+        }
         backendDocument.value = resolved.document;
         backendDocumentAccess.value = resolved.access;
         backendAccessBound.value = true;
@@ -127,7 +182,7 @@ export const useWorkspaceAccessLoader = ({
         runtimeFlags.collaborationField = resolved.document.field;
         runtimeFlags.permissionMode = resolved.access.permissionMode;
 
-        if (resolved.access.source !== "share-link") {
+        if (resolved.access.source !== "share-link" && !currentRouteShareToken) {
           clearStoredShareAccessToken(currentRouteDocumentId);
         }
 
@@ -139,27 +194,38 @@ export const useWorkspaceAccessLoader = ({
         }
 
         if (withCollabTicket && runtimeFlags.collaborationEnabled) {
-          const { collab } = await createDocumentCollabTicket(
-            backendUrl.value,
-            resolved.document.id,
-            {
-              field: resolved.document.field,
-              userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
-              userColor: debugFlags.collaborationUserColor,
+          try {
+            const { collab } = await createDocumentCollabTicket(
+              backendUrl.value,
+              resolved.document.id,
+              {
+                field: resolved.document.field,
+                userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
+                userColor: debugFlags.collaborationUserColor,
+                shareToken: currentRouteShareToken,
+              },
+            );
+            applyCollaborationTicketToFlags(runtimeFlags, collab);
+          } catch (error) {
+            disableCollaborationFallback(
+              runtimeFlags,
+              resolveErrorMessage(error, messages.shareDialogEnsureFailed.value),
+            );
+            const snapshot = await getDocumentCollabSnapshot(backendUrl.value, resolved.document.id, {
               shareToken: currentRouteShareToken,
-            },
-          );
-          applyCollaborationTicketToFlags(runtimeFlags, collab);
+            });
+            snapshotBase64 = snapshot.snapshot;
+          }
         }
 
-        return { runtimeFlags, snapshotBase64 };
+        return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
       }
 
       if (!backendSessionUser.value) {
         backendDocument.value = null;
         backendDocumentAccess.value = null;
         backendAccessBound.value = false;
-        return { runtimeFlags, snapshotBase64 };
+        return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
       }
 
       const ensured = await ensureCollaborationDocument(backendUrl.value, {
@@ -173,32 +239,41 @@ export const useWorkspaceAccessLoader = ({
       runtimeFlags.permissionMode = ensured.access.permissionMode;
 
       if (withCollabTicket && runtimeFlags.collaborationEnabled) {
-        const { collab } = await createDocumentCollabTicket(backendUrl.value, ensured.document.id, {
-          field: ensured.document.field,
-          userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
-          userColor: debugFlags.collaborationUserColor,
-        });
-        applyCollaborationTicketToFlags(runtimeFlags, collab);
+        try {
+          const { collab } = await createDocumentCollabTicket(backendUrl.value, ensured.document.id, {
+            field: ensured.document.field,
+            userName: backendSessionUser.value?.displayName || debugFlags.collaborationUserName,
+            userColor: debugFlags.collaborationUserColor,
+          });
+          applyCollaborationTicketToFlags(runtimeFlags, collab);
+        } catch (error) {
+          disableCollaborationFallback(
+            runtimeFlags,
+            resolveErrorMessage(error, messages.shareDialogEnsureFailed.value),
+          );
+        }
       }
     } catch (error) {
       backendDocument.value = null;
       backendDocumentAccess.value = null;
       backendAccessBound.value = false;
-      backendAccessError.value =
-        error instanceof Error
-          ? error.message || String(error)
-          : messages.shareDialogEnsureFailed.value;
+      backendAccessError.value = resolveErrorMessage(error, messages.shareDialogEnsureFailed.value);
       runtimeFlags.permissionMode = "readonly";
     }
 
-    return { runtimeFlags, snapshotBase64 };
+    return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
   };
 
   const applyWorkspaceRuntime = async (
     runtimeFlags: PlaygroundDebugFlags,
+    redirectedToShareAccess: boolean,
     snapshotBase64?: string | null,
   ) => {
     workspaceError.value = null;
+    if (redirectedToShareAccess) {
+      workspaceLoading.value = false;
+      return false;
+    }
     if (routeDocumentId.value && !backendDocument.value) {
       clearRuntime();
       workspaceError.value = backendAccessError.value || messages.shareLandingLoadFailed.value;
@@ -213,8 +288,9 @@ export const useWorkspaceAccessLoader = ({
 
   const loadWorkspace = async (options?: SyncWorkspaceAccessOptions) => {
     workspaceLoading.value = true;
-    const { runtimeFlags, snapshotBase64 } = await syncBackendWorkspaceAccess(options);
-    await applyWorkspaceRuntime(runtimeFlags, snapshotBase64);
+    const { runtimeFlags, snapshotBase64, redirectedToShareAccess } =
+      await syncBackendWorkspaceAccess(options);
+    await applyWorkspaceRuntime(runtimeFlags, redirectedToShareAccess, snapshotBase64);
     return runtimeFlags;
   };
 

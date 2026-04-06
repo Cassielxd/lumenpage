@@ -290,6 +290,8 @@ export type PlaygroundI18n = {
     userColorPlaceholder: string;
     reloadHint: string;
     update: string;
+    reconnect: string;
+    retry: string;
     enable: string;
     disable: string;
     reset: string;
@@ -2009,6 +2011,8 @@ PLAYGROUND_I18N["zh-CN"].collaborationPanel = {
   reloadHint:
     "\u5e94\u7528\u540e\u5de5\u4f5c\u533a\u4f1a\u6309\u5f53\u524d\u53c2\u6570\u91cd\u65b0\u5efa\u7acb\u534f\u4f5c\u8fde\u63a5\uff0c\u4e0d\u518d\u6574\u9875\u5237\u65b0\u3002",
   update: "\u66f4\u65b0\u534f\u4f5c",
+  reconnect: "\u91cd\u8fde\u534f\u4f5c",
+  retry: "\u91cd\u8bd5\u534f\u4f5c",
   enable: "\u5f00\u542f\u534f\u4f5c",
   disable: "\u5173\u95ed\u534f\u4f5c",
   reset: "\u91cd\u7f6e",
@@ -2048,6 +2052,8 @@ PLAYGROUND_I18N["en-US"].collaborationPanel = {
   reloadHint:
     "Applying the settings reconnects the workspace with the current parameters without a full page reload.",
   update: "Update",
+  reconnect: "Reconnect",
+  retry: "Retry",
   enable: "Enable",
   disable: "Disable",
   reset: "Reset",

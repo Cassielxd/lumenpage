@@ -47,6 +47,9 @@
         </t-tag>
       </div>
       <p v-if="authHint" class="doc-collaboration-panel-note">{{ authHint }}</p>
+      <p v-if="props.state.error" class="doc-collaboration-panel-error">
+        {{ props.state.error }}
+      </p>
       <p v-if="props.accessError" class="doc-collaboration-panel-error">
         {{ texts.accessError }}: {{ props.accessError }}
       </p>
@@ -132,7 +135,7 @@
         data-collaboration-action="apply"
         @click="handleApply"
       >
-        {{ props.state.enabled ? texts.update : texts.enable }}
+        {{ primaryActionLabel }}
       </t-button>
       <t-button size="small" variant="outline" :disabled="props.busy" @click="handleReset">
         {{ texts.reset }}
@@ -193,6 +196,7 @@ const emit = defineEmits<{
 
 const currentLocale = computed<PlaygroundLocale>(() => coercePlaygroundLocale(props.locale));
 const texts = computed(() => createPlaygroundI18n(currentLocale.value).collaborationPanel);
+const collaborationTexts = computed(() => createPlaygroundI18n(currentLocale.value).collaboration);
 const roleTexts = computed(() => createPlaygroundI18n(currentLocale.value).shareDialog);
 const appTexts = computed(() => createPlaygroundI18n(currentLocale.value).app);
 const settingsOpen = ref(false);
@@ -214,8 +218,20 @@ const summaryLabel = computed(() => {
   if (!props.state.enabled) {
     return texts.value.disabled;
   }
+  if (props.state.error) {
+    return collaborationTexts.value.statusAuthFailed;
+  }
   if (props.state.synced) {
     return texts.value.synced;
+  }
+  if (props.state.status === "connected") {
+    return collaborationTexts.value.statusSyncing;
+  }
+  if (props.state.status === "connecting") {
+    return collaborationTexts.value.statusConnecting;
+  }
+  if (props.state.status === "disconnected") {
+    return collaborationTexts.value.statusDisconnected;
   }
   return texts.value.connecting;
 });
@@ -247,6 +263,19 @@ const authHint = computed(() => {
     return "";
   }
   return texts.value.authHint;
+});
+
+const primaryActionLabel = computed(() => {
+  if (!props.state.enabled) {
+    return texts.value.enable;
+  }
+  if (props.state.error) {
+    return texts.value.retry;
+  }
+  if (props.state.status === "disconnected") {
+    return texts.value.reconnect;
+  }
+  return texts.value.update;
 });
 
 const syncDraftFromState = () => {
