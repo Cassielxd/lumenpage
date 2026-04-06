@@ -295,8 +295,8 @@ test("comment-only member can comment but cannot edit, anonymous readonly share 
     const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
     expect(commenterSelectionStart).not.toBeNull();
     expect(commenterSelectionEnd).not.toBeNull();
-    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
     await commenterPage.locator('[data-floating-action="comments"]').click();
+    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
     const addCommentButton = commenterPage.getByRole("button", { name: "Add Comment" });
     await expect(addCommentButton).toBeEnabled();
     await addCommentButton.click();
@@ -961,6 +961,7 @@ test("comment-only member stays comment-only after starting realtime collaborati
   const commenterEmail = `commenter-collab-${seed}@example.com`;
   const seededParagraph = `Comment collaboration ${seed}`;
   const blockedEdit = ` blocked-collab-${seed}`;
+  const commentReply = `Realtime comment-only note ${seed}`;
 
   const ownerPage = await ownerContext.newPage();
   const commenterPage = await commenterContext.newPage();
@@ -995,8 +996,22 @@ test("comment-only member stays comment-only after starting realtime collaborati
       .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
       .toBe(commenterBaseline);
 
+    const commenterSelectionStart = await getParagraphDocPos(commenterPage, 0, 0);
+    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
+    expect(commenterSelectionStart).not.toBeNull();
+    expect(commenterSelectionEnd).not.toBeNull();
+    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
     await commenterPage.locator('[data-floating-action="comments"]').click();
-    await expect(commenterPage.getByRole("button", { name: "Add Comment" })).toBeVisible();
+    const addCommentButton = commenterPage.getByRole("button", { name: "Add Comment" });
+    await expect(addCommentButton).toBeEnabled();
+    await addCommentButton.click();
+    await expect(commenterPage.locator(".doc-comments-item")).toHaveCount(1);
+    await commenterPage.locator(".doc-comments-composer-input textarea").fill(commentReply);
+    await commenterPage
+      .locator(".doc-comments-composer-footer")
+      .getByRole("button", { name: "Reply" })
+      .click();
+    await expect(commenterPage.locator(".doc-comments-message-body")).toContainText(commentReply);
 
     ownerGuards.assertClean();
     commenterGuards.assertClean();

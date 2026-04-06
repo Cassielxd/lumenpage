@@ -532,6 +532,22 @@ export const setTextSelection = async (page: Page, from: number, to: number) => 
     { selectionFrom: from, selectionTo: to },
   );
   expect(ok).toBeTruthy();
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const testApi = (globalThis as typeof globalThis & { __lumenTestApi?: LumenTestApi })
+            .__lumenTestApi;
+          return testApi?.getSelection?.() ?? null;
+        }),
+      { message: "expected the editor text selection to settle before continuing" },
+    )
+    .toMatchObject({
+      from: Math.min(from, to),
+      to: Math.max(from, to),
+      empty: false,
+      type: "TextSelection",
+    });
 };
 
 export const getParagraphDocPos = async (

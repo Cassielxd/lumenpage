@@ -47,6 +47,11 @@ type LumenSelectionSnapshot = {
   type: string | null;
 };
 
+type LumenTextSelectionSnapshot = {
+  from: number;
+  to: number;
+};
+
 type LumenTestApi = {
   forceRender: () => boolean;
   getSelection: () => LumenSelectionSnapshot | null;
@@ -111,6 +116,24 @@ const readSelectionSnapshot = (currentView: CanvasEditorView | null): LumenSelec
               : jsonType === "text"
                 ? "TextSelection"
                 : jsonType,
+  };
+};
+
+const readTextSelectionSnapshot = (
+  currentView: CanvasEditorView | null,
+): LumenTextSelectionSnapshot | null => {
+  const selection = currentView?.state?.selection;
+  const from = Number(selection?.from);
+  const to = Number(selection?.to);
+  if (!(selection instanceof TextSelection) || selection.empty === true) {
+    return null;
+  }
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+    return null;
+  }
+  return {
+    from,
+    to,
   };
 };
 
@@ -181,6 +204,7 @@ export const useWorkspaceEditorRuntime = ({
 
   let detachEditor: null | (() => void) = null;
   let detachCommentStore: null | (() => void) = null;
+  let detachSelectionTracking: null | (() => void) = null;
   let setTocOutlineEnabledHandle: null | ((enabled: boolean) => void) = null;
   let setCommentAnchorHandle: null | ((options: { threadId: string; anchorId: string }) => boolean) = null;
   let activateCommentThreadHandle: null | ((threadId: string | null) => boolean) = null;
@@ -193,6 +217,7 @@ export const useWorkspaceEditorRuntime = ({
   let rejectTrackChangeHandle: null | ((changeId: string) => boolean) = null;
   let acceptAllTrackChangesHandle: null | (() => boolean) = null;
   let rejectAllTrackChangesHandle: null | (() => boolean) = null;
+  let lastTextSelectionSnapshot: LumenTextSelectionSnapshot | null = null;
 
   const applySessionModeToView = () => {
     const currentView = view.value;
@@ -225,12 +250,36 @@ export const useWorkspaceEditorRuntime = ({
       : null;
   };
 
+  const syncLastTextSelectionSnapshot = (currentView: CanvasEditorView | null) => {
+    const nextSelection = readTextSelectionSnapshot(currentView);
+    if (nextSelection) {
+      lastTextSelectionSnapshot = nextSelection;
+    }
+  };
+
+  const restoreLastTextSelection = () => {
+    if (!lastTextSelectionSnapshot || !view.value) {
+      return false;
+    }
+    const restored = setViewSelection(
+      view.value,
+      lastTextSelectionSnapshot.from,
+      lastTextSelectionSnapshot.to,
+    );
+    if (restored) {
+      view.value.focus();
+    }
+    return restored;
+  };
+
   const clearMountedEditorRuntime = () => {
     resetWorkspaceSnapshotPersistence();
     detachEditor?.();
     detachEditor = null;
     detachCommentStore?.();
     detachCommentStore = null;
+    detachSelectionTracking?.();
+    detachSelectionTracking = null;
     setTocOutlineEnabledHandle = null;
     setCommentAnchorHandle = null;
     activateCommentThreadHandle = null;
@@ -243,6 +292,7 @@ export const useWorkspaceEditorRuntime = ({
     rejectTrackChangeHandle = null;
     acceptAllTrackChangesHandle = null;
     rejectAllTrackChangesHandle = null;
+    lastTextSelectionSnapshot = null;
     editor.value = null;
     view.value = null;
     syncDebugHandles();
@@ -277,6 +327,14 @@ export const useWorkspaceEditorRuntime = ({
     rejectTrackChangeHandle = mounted.rejectTrackChange;
     acceptAllTrackChangesHandle = mounted.acceptAllTrackChanges;
     rejectAllTrackChangesHandle = mounted.rejectAllTrackChanges;
+    syncLastTextSelectionSnapshot(mounted.view);
+    const handleSelectionUpdate = () => {
+      syncLastTextSelectionSnapshot(view.value);
+    };
+    mounted.editor.on("selectionUpdate", handleSelectionUpdate);
+    detachSelectionTracking = () => {
+      mounted.editor.off("selectionUpdate", handleSelectionUpdate);
+    };
     detachCommentStore = lumenCommentsStore.subscribe(syncCommentThreads) || null;
     syncCommentThreads();
     applySessionModeToView();
@@ -367,6 +425,7 @@ export const useWorkspaceEditorRuntime = ({
       activateCommentThreadHandle?.(threadId) === true,
     focusCommentThread: (threadId: string) =>
       focusCommentThreadHandle?.(threadId) === true,
+    restoreLastTextSelection,
     removeCommentThread: (threadId: string) =>
       removeCommentThreadHandle?.(threadId) === true,
     setTrackChangesEnabled: (enabled: boolean) =>

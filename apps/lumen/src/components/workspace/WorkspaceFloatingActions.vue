@@ -7,6 +7,7 @@
       class="doc-floating-action"
       :data-floating-action="action.key"
       :class="{ 'is-active': action.active }"
+      @mousedown.prevent
       @click="emit('select', action.key)"
     >
       <span class="doc-floating-action-label">{{ action.label }}</span>

@@ -25,6 +25,7 @@ type UseWorkspaceReviewOptions = {
   setCommentAnchor: (options: { threadId: string; anchorId: string }) => boolean;
   activateCommentThread: (threadId: string | null) => boolean;
   focusCommentThread: (threadId: string) => boolean;
+  restoreLastTextSelection: () => boolean;
   removeCommentThread: (threadId: string) => boolean;
   setTrackChangesEnabled: (enabled: boolean) => boolean;
   activateTrackChange: (changeId: string | null) => boolean;
@@ -50,6 +51,7 @@ export const useWorkspaceReview = ({
   setCommentAnchor,
   activateCommentThread,
   focusCommentThread,
+  restoreLastTextSelection,
   removeCommentThread,
   setTrackChangesEnabled,
   activateTrackChange,
@@ -136,6 +138,26 @@ export const useWorkspaceReview = ({
       ranges.find((range) => from >= range.from && to <= range.to) ||
       null
     );
+  };
+
+  const resolveCommentSelectionView = () => {
+    const currentView = getView();
+    const selection = currentView?.state?.selection;
+    if (currentView && selection instanceof TextSelection && selection.empty !== true) {
+      return currentView;
+    }
+    if (restoreLastTextSelection()) {
+      const restoredView = getView();
+      const restoredSelection = restoredView?.state?.selection;
+      if (
+        restoredView &&
+        restoredSelection instanceof TextSelection &&
+        restoredSelection.empty !== true
+      ) {
+        return restoredView;
+      }
+    }
+    return currentView ?? null;
   };
 
   const pruneOrphanCommentThreads = () => {
@@ -232,7 +254,7 @@ export const useWorkspaceReview = ({
 
   const handleCommentClick = () => {
     const texts = commentActionTexts.value;
-    const currentView = getView();
+    const currentView = resolveCommentSelectionView();
     const selection = currentView?.state?.selection;
     const hasSelection =
       !!currentView && selection instanceof TextSelection && selection.empty !== true;

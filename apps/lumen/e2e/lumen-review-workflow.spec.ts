@@ -69,6 +69,29 @@ const addDocumentMember = async (
   expect(response.ok()).toBeTruthy();
 };
 
+const createDocumentShareToken = async (
+  ownerRequest: APIRequestContext,
+  documentId: string,
+  role: "editor" | "commenter" | "viewer",
+  allowAnonymous: boolean,
+) => {
+  const response = await ownerRequest.post(`${backendBaseUrl}/api/documents/${documentId}/share-links`, {
+    data: {
+      role,
+      allowAnonymous,
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+  const payload = (await response.json()) as {
+    shareLink?: {
+      token?: string;
+    };
+  };
+  const shareToken = String(payload.shareLink?.token || "");
+  expect(shareToken).not.toBe("");
+  return shareToken;
+};
+
 const waitForBackendSnapshotContaining = async (
   request: APIRequestContext,
   documentId: string,
@@ -100,6 +123,47 @@ const waitForBackendSnapshotContaining = async (
 const openTrackChangesPanel = async (page: Page) => {
   await page.locator('[data-floating-action="changes"]').click();
   await expect(page.locator(".doc-track-changes")).toBeVisible();
+};
+
+const waitForSyncedStatus = async (page: Page) => {
+  await expect
+    .poll(
+      async () => {
+        const labels = await page.locator(".collab-status-label").allTextContents();
+        return labels.some((label) => label.trim() === "Synced");
+      },
+      { timeout: 15000, message: "expected collaboration status to reach Synced" },
+    )
+    .toBeTruthy();
+};
+
+const setReloadMarker = async (page: Page, value: string) => {
+  await page.evaluate((marker) => {
+    (window as typeof window & { __pwReviewReloadMarker?: string }).__pwReviewReloadMarker = marker;
+  }, value);
+};
+
+const expectReloadMarker = async (page: Page, value: string) => {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () =>
+            (window as typeof window & { __pwReviewReloadMarker?: string }).__pwReviewReloadMarker ||
+            null,
+        ),
+      { message: "enabling realtime collaboration should not reload the page" },
+    )
+    .toBe(value);
+};
+
+const enableCollaborationFromPanel = async (page: Page, marker: string) => {
+  await setReloadMarker(page, marker);
+  await page.locator('[data-floating-action="collaboration"]').click();
+  await expect(page.locator(".doc-collaboration-panel-empty-title")).toBeVisible();
+  await page.locator('[data-collaboration-action="apply"]').click();
+  await waitForSyncedStatus(page);
+  await expectReloadMarker(page, marker);
 };
 
 const expectTrackChangeCount = async (page: Page, count: number) => {
@@ -263,5 +327,201 @@ test("comment-only members can review tracked changes but cannot manage them", a
   } finally {
     await ownerContext.close();
     await commenterContext.close();
+  }
+});
+
+test("owner can manage tracked changes after starting realtime collaboration in place", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const ownerPage = await ownerContext.newPage();
+  const ownerRequest = ownerContext.request;
+  const guards = attachConsoleGuards(ownerPage);
+  const seed = createSeed();
+  const ownerEmail = `review-realtime-owner-${seed}@example.com`;
+  const baseText = `Realtime review base ${seed}`;
+  const insertedText = ` realtime-${seed}`;
+
+  try {
+    await registerBackendUser(ownerPage, ownerEmail, "Realtime Review Owner");
+    const documentId = await createBackendDocument(ownerRequest, `Realtime review ${seed}`);
+
+    await applyBackendBootstrap(ownerPage);
+    await ownerPage.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+      waitUntil: "networkidle",
+    });
+    await expect(ownerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+
+    await focusEditor(ownerPage);
+    await ownerPage.keyboard.type(baseText);
+    await waitForLayoutIdle(ownerPage);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(ownerPage)).textContent)
+      .toContain(baseText);
+    await waitForBackendSnapshotContaining(ownerRequest, documentId, baseText);
+
+    await enableCollaborationFromPanel(ownerPage, `review-realtime-${seed}`);
+
+    await openTrackChangesPanel(ownerPage);
+    await ownerPage.getByRole("button", { name: "Enable Tracking" }).click();
+    await expect(ownerPage.getByRole("button", { name: "Disable Tracking" })).toBeVisible();
+    await expect(ownerPage.locator(".doc-side-tab-actions .t-tag")).toContainText("On");
+
+    await focusEditor(ownerPage);
+    await ownerPage.keyboard.type(insertedText);
+    await waitForLayoutIdle(ownerPage);
+    await expect
+      .poll(async () => {
+        const textContent = (await getDocumentSnapshot(ownerPage)).textContent;
+        return textContent.includes(baseText) && textContent.includes(insertedText);
+      })
+      .toBeTruthy();
+    await expectTrackChangeCount(ownerPage, 1);
+
+    await ownerPage
+      .locator(".doc-track-changes-detail-actions")
+      .getByRole("button", { name: "Reject" })
+      .click();
+    await waitForLayoutIdle(ownerPage);
+
+    await expect
+      .poll(async () => (await getDocumentSnapshot(ownerPage)).textContent)
+      .toBe(baseText);
+    await expectTrackChangeCount(ownerPage, 0);
+
+    guards.assertClean();
+  } finally {
+    await ownerContext.close();
+  }
+});
+
+test("comment-only members can review tracked changes after starting realtime collaboration", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const commenterContext = await browser.newContext();
+  const ownerPage = await ownerContext.newPage();
+  const commenterPage = await commenterContext.newPage();
+  const ownerRequest = ownerContext.request;
+  const guardsOwner = attachConsoleGuards(ownerPage);
+  const guardsCommenter = attachConsoleGuards(commenterPage);
+  const seed = createSeed();
+  const ownerEmail = `review-realtime-owner-${seed}@example.com`;
+  const commenterEmail = `review-realtime-commenter-${seed}@example.com`;
+  const baseText = `Realtime comment review ${seed}`;
+  const insertedText = ` collab-review-${seed}`;
+
+  try {
+    await registerBackendUser(ownerPage, ownerEmail, "Realtime Review Owner");
+    await registerBackendUser(commenterPage, commenterEmail, "Realtime Review Commenter");
+
+    const documentId = await createBackendDocument(ownerRequest, `Realtime comment review ${seed}`);
+    await addDocumentMember(ownerRequest, documentId, commenterEmail, "commenter");
+
+    await seedTrackedInsertThroughOwnerWorkspace({
+      page: ownerPage,
+      ownerRequest,
+      documentId,
+      baseText,
+      insertedText,
+    });
+
+    await applyBackendBootstrap(commenterPage);
+    await commenterPage.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+      waitUntil: "networkidle",
+    });
+    await expect(commenterPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await enableCollaborationFromPanel(commenterPage, `review-realtime-commenter-${seed}`);
+
+    await openTrackChangesPanel(commenterPage);
+    await expectTrackChangeCount(commenterPage, 1);
+    await expect(commenterPage.locator(".doc-track-changes-item-author")).toContainText(
+      "Realtime Review Owner",
+    );
+    await expect(commenterPage.locator(".doc-track-changes-item-text.is-insert")).toContainText(
+      insertedText.trim(),
+    );
+    await expect(commenterPage.getByRole("button", { name: "Enable Tracking" })).toBeDisabled();
+    await expect(
+      commenterPage
+        .locator(".doc-track-changes-detail-actions")
+        .getByRole("button", { name: "Accept" }),
+    ).toBeDisabled();
+    await expect(
+      commenterPage
+        .locator(".doc-track-changes-detail-actions")
+        .getByRole("button", { name: "Reject" }),
+    ).toBeDisabled();
+
+    guardsOwner.assertClean();
+    guardsCommenter.assertClean();
+  } finally {
+    await ownerContext.close();
+    await commenterContext.close();
+  }
+});
+
+test("readonly share viewers can review tracked changes after starting realtime collaboration", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const viewerContext = await browser.newContext();
+  const ownerPage = await ownerContext.newPage();
+  const viewerPage = await viewerContext.newPage();
+  const ownerRequest = ownerContext.request;
+  const guardsOwner = attachConsoleGuards(ownerPage);
+  const guardsViewer = attachConsoleGuards(viewerPage);
+  const seed = createSeed();
+  const ownerEmail = `review-realtime-owner-${seed}@example.com`;
+  const baseText = `Realtime readonly review ${seed}`;
+  const insertedText = ` readonly-review-${seed}`;
+
+  try {
+    await registerBackendUser(ownerPage, ownerEmail, "Realtime Review Owner");
+
+    const documentId = await createBackendDocument(ownerRequest, `Realtime readonly review ${seed}`);
+    const shareToken = await createDocumentShareToken(ownerRequest, documentId, "viewer", true);
+
+    await seedTrackedInsertThroughOwnerWorkspace({
+      page: ownerPage,
+      ownerRequest,
+      documentId,
+      baseText,
+      insertedText,
+    });
+
+    await applyBackendBootstrap(viewerPage);
+    await viewerPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await viewerPage.getByRole("button", { name: "Open Document" }).click();
+    await expect(viewerPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await enableCollaborationFromPanel(viewerPage, `review-realtime-viewer-${seed}`);
+
+    await openTrackChangesPanel(viewerPage);
+    await expectTrackChangeCount(viewerPage, 1);
+    await expect(viewerPage.locator(".doc-track-changes-item-author")).toContainText(
+      "Realtime Review Owner",
+    );
+    await expect(viewerPage.locator(".doc-track-changes-item-text.is-insert")).toContainText(
+      insertedText.trim(),
+    );
+    await expect(viewerPage.getByRole("button", { name: "Enable Tracking" })).toBeDisabled();
+    await expect(
+      viewerPage
+        .locator(".doc-track-changes-detail-actions")
+        .getByRole("button", { name: "Accept" }),
+    ).toBeDisabled();
+    await expect(
+      viewerPage
+        .locator(".doc-track-changes-detail-actions")
+        .getByRole("button", { name: "Reject" }),
+    ).toBeDisabled();
+
+    guardsOwner.assertClean();
+    guardsViewer.assertClean();
+  } finally {
+    await ownerContext.close();
+    await viewerContext.close();
   }
 });
