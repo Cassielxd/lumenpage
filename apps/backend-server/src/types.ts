@@ -132,6 +132,7 @@ export interface CollabTicketPayload {
   documentName: string;
   role: UserRole;
   userId: string | null;
+  shareToken: string | null;
   userName: string | null;
   userColor: string | null;
   field: string;

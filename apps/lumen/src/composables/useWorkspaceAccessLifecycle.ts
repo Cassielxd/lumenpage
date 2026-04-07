@@ -6,6 +6,7 @@ type UseWorkspaceAccessLifecycleOptions = {
   routeDocumentId: ComputedRef<string>;
   routeShareToken: ComputedRef<string>;
   realtimeCollaborationEnabled: ComputedRef<boolean>;
+  collaborationAuthError: ComputedRef<string | null>;
   loadWorkspace: (options?: SyncWorkspaceAccessOptions) => Promise<unknown>;
   flushPendingSnapshotSave: () => Promise<unknown> | void;
 };
@@ -14,6 +15,7 @@ export const useWorkspaceAccessLifecycle = ({
   routeDocumentId,
   routeShareToken,
   realtimeCollaborationEnabled,
+  collaborationAuthError,
   loadWorkspace,
   flushPendingSnapshotSave,
 }: UseWorkspaceAccessLifecycleOptions) => {
@@ -76,6 +78,19 @@ export const useWorkspaceAccessLifecycle = ({
         return;
       }
       void refreshWorkspaceAccess({ flushSnapshot: true });
+    },
+  );
+
+  watch(
+    () => collaborationAuthError.value,
+    (nextError, previousError) => {
+      if (!nextError || nextError === previousError) {
+        return;
+      }
+      if (!routeDocumentId.value || !realtimeCollaborationEnabled.value) {
+        return;
+      }
+      void refreshWorkspaceAccess();
     },
   );
 

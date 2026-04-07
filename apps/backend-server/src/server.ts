@@ -433,11 +433,15 @@ fastify.post("/api/documents/:documentId/members", async (request) => {
 fastify.put("/api/documents/:documentId/members/:userId", async (request) => {
   const params = getParams<{ documentId: string; userId: string }>(request);
   const body = getBody(request);
-  await requireDocumentAccess(request, params.documentId, "owner");
+  const access = await requireDocumentAccess(request, params.documentId, "owner");
   const member = await dataService.setMemberRole({
     documentId: params.documentId,
     userId: params.userId,
     role: (trimText(body.role) || "viewer") as UserRole,
+  });
+  collaborationService.disconnectDocumentClients({
+    documentName: access.document.name,
+    userId: params.userId,
   });
 
   return {
@@ -448,9 +452,13 @@ fastify.put("/api/documents/:documentId/members/:userId", async (request) => {
 
 fastify.delete("/api/documents/:documentId/members/:userId", async (request) => {
   const params = getParams<{ documentId: string; userId: string }>(request);
-  await requireDocumentAccess(request, params.documentId, "owner");
+  const access = await requireDocumentAccess(request, params.documentId, "owner");
   const removed = await dataService.removeMember({
     documentId: params.documentId,
+    userId: params.userId,
+  });
+  collaborationService.disconnectDocumentClients({
+    documentName: access.document.name,
     userId: params.userId,
   });
 
@@ -516,8 +524,13 @@ fastify.delete("/api/share-links/:shareId", async (request) => {
     throw createHttpError(404, "Share link not found.", "share_link_not_found");
   }
 
-  await requireDocumentAccess(request, shareLink.documentId, "owner");
+  const access = await requireDocumentAccess(request, shareLink.documentId, "owner");
   const revoked = await dataService.revokeShareLink(params.shareId);
+  collaborationService.disconnectDocumentClients({
+    documentName: access.document.name,
+    shareToken: revoked.token,
+    accessSource: "share-link",
+  });
   return {
     ok: true,
     shareLink: revoked,
@@ -540,6 +553,7 @@ fastify.post("/api/documents/:documentId/collab-ticket", async (request) => {
     documentName: access.document.name,
     role: access.role,
     userId: request.actor?.user?.id || null,
+    shareToken: request.actor?.shareToken || "",
     userName: requestedUserName,
     userColor: requestedUserColor,
     field,

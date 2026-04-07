@@ -3,10 +3,11 @@ import path from "node:path";
 import { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { signPayload, verifySignedPayload } from "./security.js";
-import type { BackendDataService } from "./dataService.js";
+import { roleToPermissionMode, type BackendDataService } from "./dataService.js";
 import type { CollabTicketPayload, RuntimeConfig, UserRole } from "./types.js";
 
 const trimText = (value: unknown) => String(value ?? "").trim();
+const accessChangedCloseReason = "Access changed";
 
 const encodeDocumentName = (documentName: string) => Buffer.from(documentName, "utf8").toString("base64url");
 
@@ -20,11 +21,18 @@ export interface CollaborationService {
     documentName: string;
     role: UserRole;
     userId: string | null;
+    shareToken?: string | null;
     userName: string;
     userColor: string;
     field: string;
   }) => { token: string; expiresAt: string };
   verifyTicket: (token: string, documentName: string) => CollabTicketPayload | null;
+  disconnectDocumentClients: (input: {
+    documentName: string;
+    userId?: string | null;
+    shareToken?: string | null;
+    accessSource?: "owner" | "member" | "share-link";
+  }) => number;
 }
 
 export const createCollaborationService = ({
@@ -99,6 +107,7 @@ export const createCollaborationService = ({
     documentName,
     role,
     userId,
+    shareToken,
     userName,
     userColor,
     field,
@@ -107,6 +116,7 @@ export const createCollaborationService = ({
     documentName: string;
     role: UserRole;
     userId: string | null;
+    shareToken?: string | null;
     userName: string;
     userColor: string;
     field: string;
@@ -119,6 +129,7 @@ export const createCollaborationService = ({
           documentName,
           role,
           userId: userId || null,
+          shareToken: trimText(shareToken) || null,
           userName: trimText(userName) || null,
           userColor: trimText(userColor) || null,
           field: trimText(field) || "default",
@@ -141,15 +152,82 @@ export const createCollaborationService = ({
     return payload;
   };
 
+  const disconnectDocumentClients = ({
+    documentName,
+    userId,
+    shareToken,
+    accessSource,
+  }: {
+    documentName: string;
+    userId?: string | null;
+    shareToken?: string | null;
+    accessSource?: "owner" | "member" | "share-link";
+  }) => {
+    const document = hocuspocus.documents.get(documentName);
+    if (!document) {
+      return 0;
+    }
+
+    const normalizedUserId = trimText(userId);
+    const normalizedShareToken = trimText(shareToken);
+    let closedCount = 0;
+
+    document.getConnections().forEach((connection) => {
+      const context = (connection.context || {}) as {
+        userId?: string | null;
+        shareToken?: string | null;
+        accessSource?: "owner" | "member" | "share-link";
+      };
+
+      if (normalizedUserId && trimText(context.userId) !== normalizedUserId) {
+        return;
+      }
+      if (normalizedShareToken && trimText(context.shareToken) !== normalizedShareToken) {
+        return;
+      }
+      if (accessSource && context.accessSource !== accessSource) {
+        return;
+      }
+
+      connection.close({
+        code: 1008,
+        reason: accessChangedCloseReason,
+      });
+      closedCount += 1;
+    });
+
+    return closedCount;
+  };
+
   const hocuspocus = new Hocuspocus({
     name: config.backendName,
     quiet: config.quiet,
     debounce: config.debounce,
     maxDebounce: config.maxDebounce,
-    async onAuthenticate({ token, documentName, requestParameters }) {
+    async onAuthenticate({ token, documentName, requestParameters, connectionConfig }) {
       const validTicket = verifyTicket(String(token ?? ""), documentName);
       if (validTicket) {
-        return;
+        const currentAccess = await dataService.resolveDocumentAccess({
+          documentId: validTicket.documentId,
+          userId: validTicket.userId,
+          shareToken: validTicket.shareToken || "",
+        });
+        if (!currentAccess || currentAccess.document.name !== documentName) {
+          log("auth", `rejected stale ticket for "${documentName}"`, {
+            userId: validTicket.userId,
+            shareToken: validTicket.shareToken || null,
+          });
+          throw new Error("Not authorized");
+        }
+        connectionConfig.readOnly = roleToPermissionMode(currentAccess.role) === "readonly";
+        return {
+          documentId: currentAccess.document.id,
+          userId: validTicket.userId,
+          shareToken: validTicket.shareToken || null,
+          accessSource: currentAccess.source,
+          role: currentAccess.role,
+          permissionMode: roleToPermissionMode(currentAccess.role),
+        };
       }
 
       if (config.legacyCollabAuthToken) {
@@ -199,5 +277,6 @@ export const createCollaborationService = ({
     writeDocumentSnapshot,
     createTicket,
     verifyTicket,
+    disconnectDocumentClients,
   };
 };

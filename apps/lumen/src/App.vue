@@ -227,6 +227,7 @@ const {
   locale: localeKey,
   workspaceAccessEnabled,
   realtimeCollaborationEnabled,
+  collaborationAuthError: computed(() => collaborationState.value.error),
   routeDocumentId,
   routeShareToken,
   flushPendingSnapshotSave: () => flushWorkspaceSnapshotSave(),

@@ -1157,9 +1157,6 @@ test("realtime member workspace downgrades to readonly after the owner changes t
     await updateDocumentMemberRole(ownerApi, documentId, memberUserId, "viewer");
 
     await setReloadMarker(memberPage, `role-refresh-${seed}`);
-    await memberPage.evaluate(() => {
-      window.dispatchEvent(new Event("focus"));
-    });
     await expectReloadMarker(memberPage, `role-refresh-${seed}`);
     await expect(memberPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
     await expect
@@ -1228,9 +1225,6 @@ test("realtime direct member workspace falls into a workspace error after the ow
     await removeDocumentMember(ownerApi, documentId, memberUserId);
 
     await setReloadMarker(memberPage, `member-remove-${seed}`);
-    await memberPage.evaluate(() => {
-      window.dispatchEvent(new Event("focus"));
-    });
     await expectReloadMarker(memberPage, `member-remove-${seed}`);
     await expect(memberPage.locator(".doc-workspace-status-copy")).toContainText(
       "Document not found or access denied.",
@@ -1284,9 +1278,6 @@ test("anonymous realtime share returns to the share landing after the owner revo
     await revokeDocumentShareLink(ownerApi, shareId);
 
     await setReloadMarker(sharePage, `share-revoke-${seed}`);
-    await sharePage.evaluate(() => {
-      window.dispatchEvent(new Event("focus"));
-    });
     await expectReloadMarker(sharePage, `share-revoke-${seed}`);
     await expectShareAccessUrl(sharePage, shareToken);
     await expect(sharePage.locator(".doc-share-page-empty.is-error")).toContainText(
@@ -1573,9 +1564,6 @@ test("member collaboration session downgrades back to readonly share access afte
     await removeDocumentMember(ownerApi, documentId, memberUserId);
 
     await setReloadMarker(editorPage, `editor-share-remove-${seed}`);
-    await editorPage.evaluate(() => {
-      window.dispatchEvent(new Event("focus"));
-    });
     await waitForSyncedStatus(editorPage);
     await expectReloadMarker(editorPage, `editor-share-remove-${seed}`);
     await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");

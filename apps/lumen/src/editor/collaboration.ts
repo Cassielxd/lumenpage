@@ -4,6 +4,8 @@ import * as Y from "yjs";
 
 import type { PlaygroundDebugFlags } from "./config";
 
+const accessChangedCloseReason = "Access changed";
+
 export type LumenCollaborationState = {
   enabled: boolean;
   url: string;
@@ -96,7 +98,16 @@ export const createLumenCollaborationRuntime = ({
     onDisconnect: () => {
       emitState({ synced: false });
     },
-    onClose: () => {
+    onClose: ({ event }) => {
+      const reason = String(event?.reason || "").trim();
+      if (reason === accessChangedCloseReason) {
+        emitState({
+          status: WebSocketStatus.Disconnected,
+          synced: false,
+          error: reason,
+        });
+        return;
+      }
       emitState({ synced: false });
     },
     onDestroy: () => {

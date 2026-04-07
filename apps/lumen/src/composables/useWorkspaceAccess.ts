@@ -16,6 +16,7 @@ type UseWorkspaceAccessOptions = {
   locale: ComputedRef<string>;
   workspaceAccessEnabled: ComputedRef<boolean>;
   realtimeCollaborationEnabled: ComputedRef<boolean>;
+  collaborationAuthError: ComputedRef<string | null>;
   routeDocumentId: ComputedRef<string>;
   routeShareToken: ComputedRef<string>;
   flushPendingSnapshotSave?: (() => Promise<unknown> | void) | null;
@@ -32,6 +33,7 @@ export const useWorkspaceAccess = ({
   locale,
   workspaceAccessEnabled,
   realtimeCollaborationEnabled,
+  collaborationAuthError,
   routeDocumentId,
   routeShareToken,
   flushPendingSnapshotSave: flushPendingSnapshotSaveOption,
@@ -113,6 +115,7 @@ export const useWorkspaceAccess = ({
     routeDocumentId,
     routeShareToken,
     realtimeCollaborationEnabled,
+    collaborationAuthError,
     loadWorkspace,
     flushPendingSnapshotSave,
   });
