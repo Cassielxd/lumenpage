@@ -1,3 +1,7 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import path from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 
 import {
@@ -11,24 +15,134 @@ const backendPort = process.env.PW_COLLAB_PORT || "15345";
 const backendHost = process.env.PW_COLLAB_HOST || "localhost";
 const backendBaseUrl = process.env.PW_BACKEND_BASE_URL || `http://${backendHost}:${backendPort}`;
 const backendStorageKey = "lumenpage-lumen-backend-url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const backendServerCwd = path.resolve(__dirname, "../../backend-server");
+const backendServerEntry = path.resolve(backendServerCwd, "dist/server.js");
+
+type BackendTarget = {
+  baseUrl: string;
+  host: string;
+  storageKey: string;
+};
+
+type StartedBackend = BackendTarget & {
+  stop: () => Promise<void>;
+  logs: () => string;
+};
+
+const defaultBackendTarget: BackendTarget = {
+  baseUrl: backendBaseUrl,
+  host: backendHost,
+  storageKey: backendStorageKey,
+};
 
 const createSeed = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const applyBackendBootstrap = async (page: Page) => {
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitForBackendHealth = async (baseUrl: string, timeoutMs = 20_000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(`${baseUrl}/health`);
+      if (response.ok) {
+        return;
+      }
+    } catch (_error) {
+      // Retry until the temporary backend starts listening.
+    }
+    await delay(250);
+  }
+  throw new Error(`Timed out waiting for backend health at ${baseUrl}`);
+};
+
+const waitForProcessExit = async (child: ChildProcess, timeoutMs = 5_000) => {
+  if (child.exitCode != null) {
+    return;
+  }
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      child.once("exit", () => resolve());
+    }),
+    delay(timeoutMs),
+  ]);
+};
+
+const startEphemeralBackend = async (seed: string): Promise<StartedBackend> => {
+  const port = String(16_000 + Math.floor(Math.random() * 2_000));
+  const host = "localhost";
+  const baseUrl = `http://${host}:${port}`;
+  const storageDir = path.resolve(backendServerCwd, `data-playwright-ticket-expiry-${seed}`);
+  const logs: string[] = [];
+  const child = spawn(process.execPath, [backendServerEntry], {
+    cwd: backendServerCwd,
+    env: {
+      ...process.env,
+      PORT: port,
+      BACKEND_QUIET: "true",
+      BACKEND_STORAGE_DIR: storageDir,
+      BACKEND_COLLAB_TICKET_TTL_SECONDS: "3",
+      BACKEND_COLLAB_ACCESS_CHECK_INTERVAL_MS: "500",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  child.stdout?.on("data", (chunk) => {
+    logs.push(String(chunk));
+  });
+  child.stderr?.on("data", (chunk) => {
+    logs.push(String(chunk));
+  });
+
+  const stop = async () => {
+    if (child.exitCode != null) {
+      return;
+    }
+    child.kill("SIGTERM");
+    await waitForProcessExit(child);
+    if (child.exitCode == null) {
+      child.kill("SIGKILL");
+      await waitForProcessExit(child, 1_000);
+    }
+  };
+
+  try {
+    await waitForBackendHealth(baseUrl);
+  } catch (error) {
+    await stop();
+    const logOutput = logs.join("").trim();
+    const suffix = logOutput ? `\n${logOutput}` : "";
+    throw new Error(
+      `${
+        error instanceof Error ? error.message : String(error)
+      }${suffix}`,
+    );
+  }
+
+  return {
+    baseUrl,
+    host,
+    storageKey: backendStorageKey,
+    stop,
+    logs: () => logs.join(""),
+  };
+};
+
+const applyBackendBootstrap = async (page: Page, backendTarget: BackendTarget = defaultBackendTarget) => {
   await page.addInitScript(
     ([storageKey, backendUrl]) => {
       window.localStorage.setItem(storageKey, backendUrl);
     },
-    [backendStorageKey, backendBaseUrl] as const,
+    [backendTarget.storageKey, backendTarget.baseUrl] as const,
   );
 };
 
-const bootstrapOwnedDocument = async (page: Page) => {
+const bootstrapOwnedDocument = async (page: Page, backendTarget: BackendTarget = defaultBackendTarget) => {
   const api = page.context().request;
   const seed = createSeed();
   const email = `manual-collab-${seed}@example.com`;
 
-  const registerResponse = await api.post(`${backendBaseUrl}/api/auth/register`, {
+  const registerResponse = await api.post(`${backendTarget.baseUrl}/api/auth/register`, {
     data: {
       email,
       password: "password123",
@@ -36,16 +150,16 @@ const bootstrapOwnedDocument = async (page: Page) => {
     },
   });
   expect(registerResponse.ok()).toBeTruthy();
-  const backendCookies = await page.context().cookies(backendBaseUrl);
+  const backendCookies = await page.context().cookies(backendTarget.baseUrl);
   await page.context().addCookies(
     backendCookies.map((cookie) => ({
       ...cookie,
-      domain: backendHost,
+      domain: backendTarget.host,
       url: undefined,
     })),
   );
 
-  const createResponse = await api.post(`${backendBaseUrl}/api/documents`, {
+  const createResponse = await api.post(`${backendTarget.baseUrl}/api/documents`, {
     data: {
       title: `Manual Collab ${seed}`,
     },
@@ -59,7 +173,7 @@ const bootstrapOwnedDocument = async (page: Page) => {
   const documentId = String(createPayload.document?.id || "");
   expect(documentId).not.toBe("");
 
-  await applyBackendBootstrap(page);
+  await applyBackendBootstrap(page, backendTarget);
 
   return {
     api,
@@ -156,9 +270,13 @@ const waitForSyncedStatus = async (page: Page) => {
     .toBeTruthy();
 };
 
-const readBackendSnapshot = async (page: Page, documentId: string) => {
+const readBackendSnapshot = async (
+  page: Page,
+  documentId: string,
+  backendTarget: BackendTarget = defaultBackendTarget,
+) => {
   const response = await page.context().request.get(
-    `${backendBaseUrl}/api/documents/${documentId}/collab-snapshot`,
+    `${backendTarget.baseUrl}/api/documents/${documentId}/collab-snapshot`,
   );
   if (!response.ok()) {
     return "";
@@ -167,9 +285,14 @@ const readBackendSnapshot = async (page: Page, documentId: string) => {
   return String(payload.snapshot || "");
 };
 
-const waitForBackendSnapshotChange = async (page: Page, documentId: string, previous: string) => {
+const waitForBackendSnapshotChange = async (
+  page: Page,
+  documentId: string,
+  previous: string,
+  backendTarget: BackendTarget = defaultBackendTarget,
+) => {
   await expect
-    .poll(async () => readBackendSnapshot(page, documentId))
+    .poll(async () => readBackendSnapshot(page, documentId, backendTarget))
     .not.toBe(previous);
 };
 
@@ -344,4 +467,67 @@ test("disconnected collaboration reconnects in place after retrying from the pan
   await expect
     .poll(async () => (await getDocumentSnapshot(page)).textContent)
     .toContain(seededParagraph);
+});
+
+test("expired collaboration tickets refresh in place without reloading the workspace", async ({
+  page,
+}) => {
+  const guards = attachConsoleGuards(page);
+  const backend = await startEphemeralBackend(createSeed());
+  let collabTicketRequests = 0;
+
+  try {
+    const { seed, documentId } = await bootstrapOwnedDocument(page, backend);
+    const seededParagraph = `Manual collab ticket refresh ${seed}`;
+    const reloadMarker = `ticket-refresh-${seed}`;
+
+    await page.route(`**/api/documents/${documentId}/collab-ticket`, async (route) => {
+      collabTicketRequests += 1;
+      await route.continue();
+    });
+
+    await page.goto(`/docs/${documentId}?locale=en-US&collab=1`, {
+      waitUntil: "networkidle",
+    });
+
+    await waitForSyncedStatus(page);
+    await setParagraphDocument(page, [seededParagraph]);
+    await waitForLayoutIdle(page);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(page)).textContent)
+      .toContain(seededParagraph);
+    await expect.poll(() => collabTicketRequests).toBe(1);
+
+    await page.evaluate((marker) => {
+      (window as typeof window & { __pwManualTicketRefreshMarker?: string })
+        .__pwManualTicketRefreshMarker = marker;
+    }, reloadMarker);
+
+    await expect
+      .poll(() => collabTicketRequests, {
+        timeout: 20_000,
+        message: "expected the expired collaboration ticket to be refreshed",
+      })
+      .toBeGreaterThan(1);
+    await waitForSyncedStatus(page);
+    await expect(page.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(
+        async () =>
+          page.evaluate(
+            () =>
+              (window as typeof window & { __pwManualTicketRefreshMarker?: string })
+                .__pwManualTicketRefreshMarker || null,
+          ),
+        { message: "ticket refresh should not reload the page" },
+      )
+      .toBe(reloadMarker);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(page)).textContent)
+      .toContain(seededParagraph);
+
+    guards.assertClean();
+  } finally {
+    await backend.stop();
+  }
 });

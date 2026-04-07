@@ -117,9 +117,20 @@ export const createRuntimeConfig = (): RuntimeConfig => {
   const debounce = parseInteger(process.env.HOCUSPOCUS_DEBOUNCE, 2000);
   const maxDebounce = parseInteger(process.env.HOCUSPOCUS_MAX_DEBOUNCE, 10000);
   const sessionTtlDays = Math.max(1, parseInteger(process.env.BACKEND_SESSION_TTL_DAYS, 30));
-  const collabTicketTtlMinutes = Math.max(
-    5,
-    parseInteger(process.env.BACKEND_COLLAB_TICKET_TTL_MINUTES, 60),
+  const collabTicketTtlSeconds = Math.max(
+    0,
+    parseInteger(process.env.BACKEND_COLLAB_TICKET_TTL_SECONDS, 0),
+  );
+  const collabTicketTtlMs =
+    collabTicketTtlSeconds > 0
+      ? collabTicketTtlSeconds * 1000
+      : Math.max(5, parseInteger(process.env.BACKEND_COLLAB_TICKET_TTL_MINUTES, 60)) * 60 * 1000;
+  const collabAccessCheckIntervalMs = Math.max(
+    250,
+    parseInteger(
+      process.env.BACKEND_COLLAB_ACCESS_CHECK_INTERVAL_MS,
+      Math.min(15_000, Math.max(1_000, Math.floor(collabTicketTtlMs / 2))),
+    ),
   );
   const sessionSecret =
     trimText(process.env.BACKEND_SESSION_SECRET) || "lumenpage-backend-dev-session-secret";
@@ -152,7 +163,8 @@ export const createRuntimeConfig = (): RuntimeConfig => {
     metadataDatabaseUrl,
     sessionCookieName,
     sessionTtlMs: sessionTtlDays * 24 * 60 * 60 * 1000,
-    collabTicketTtlMs: collabTicketTtlMinutes * 60 * 1000,
+    collabTicketTtlMs,
+    collabAccessCheckIntervalMs,
     sessionSecret,
     collabTicketSecret,
     enforceCollabTickets,

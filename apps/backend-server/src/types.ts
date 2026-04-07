@@ -20,6 +20,7 @@ export interface RuntimeConfig {
   sessionCookieName: string;
   sessionTtlMs: number;
   collabTicketTtlMs: number;
+  collabAccessCheckIntervalMs: number;
   sessionSecret: string;
   collabTicketSecret: string;
   enforceCollabTickets: boolean;

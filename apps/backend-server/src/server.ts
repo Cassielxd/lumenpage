@@ -629,6 +629,7 @@ fastify.server.on("upgrade", (request, socket, head) => {
 
 const shutdown = async (signal: string) => {
   log("shutdown", `received ${signal}`);
+  collaborationService.destroy();
   collaborationService.hocuspocus.closeConnections();
   await fastify.close();
   process.exit(0);

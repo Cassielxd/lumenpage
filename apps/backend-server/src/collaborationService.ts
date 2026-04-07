@@ -8,11 +8,13 @@ import type { CollabTicketPayload, RuntimeConfig, UserRole } from "./types.js";
 
 const trimText = (value: unknown) => String(value ?? "").trim();
 const accessChangedCloseReason = "Access changed";
+const authFailedCloseReason = "Authentication failed";
 
 const encodeDocumentName = (documentName: string) => Buffer.from(documentName, "utf8").toString("base64url");
 
 export interface CollaborationService {
   hocuspocus: Hocuspocus;
+  destroy: () => void;
   ensureStorageDir: () => Promise<void>;
   readDocumentSnapshot: (documentName: string) => Promise<Uint8Array>;
   writeDocumentSnapshot: (documentName: string, snapshot: Uint8Array) => Promise<void>;
@@ -152,6 +154,18 @@ export const createCollaborationService = ({
     return payload;
   };
 
+  const closeConnection = (
+    connection: {
+      close: (event?: { code?: number; reason?: string }) => void;
+    },
+    reason: string,
+  ) => {
+    connection.close({
+      code: 1008,
+      reason,
+    });
+  };
+
   const disconnectDocumentClients = ({
     documentName,
     userId,
@@ -189,15 +203,88 @@ export const createCollaborationService = ({
         return;
       }
 
-      connection.close({
-        code: 1008,
-        reason: accessChangedCloseReason,
-      });
+      closeConnection(connection, accessChangedCloseReason);
       closedCount += 1;
     });
 
     return closedCount;
   };
+
+  let accessCheckInFlight = false;
+  const revalidateLiveConnections = async () => {
+    if (accessCheckInFlight) {
+      return;
+    }
+    accessCheckInFlight = true;
+    try {
+      const liveConnectionEntries = Array.from(hocuspocus.documents.entries());
+      for (const [documentName, document] of liveConnectionEntries) {
+        const connections = document.getConnections();
+        for (const connection of connections) {
+          const context = (connection.context || {}) as {
+            documentId?: string | null;
+            userId?: string | null;
+            shareToken?: string | null;
+            accessSource?: "owner" | "member" | "share-link";
+            role?: UserRole | null;
+            permissionMode?: ReturnType<typeof roleToPermissionMode> | null;
+            ticketExpiresAt?: string | null;
+          };
+          const documentId = trimText(context.documentId);
+          if (!documentId) {
+            continue;
+          }
+
+          const ticketExpiresAt = Date.parse(String(context.ticketExpiresAt || ""));
+          if (Number.isFinite(ticketExpiresAt) && ticketExpiresAt <= Date.now()) {
+            log("auth", `expired live ticket for "${documentName}"`, {
+              userId: context.userId || null,
+              shareToken: context.shareToken || null,
+            });
+            closeConnection(connection, authFailedCloseReason);
+            continue;
+          }
+
+          const currentAccess = await dataService.resolveDocumentAccess({
+            documentId,
+            userId: context.userId || null,
+            shareToken: context.shareToken || "",
+          });
+          if (!currentAccess || currentAccess.document.name !== documentName) {
+            log("auth", `revalidated access lost for "${documentName}"`, {
+              userId: context.userId || null,
+              shareToken: context.shareToken || null,
+            });
+            closeConnection(connection, accessChangedCloseReason);
+            continue;
+          }
+
+          const currentPermissionMode = roleToPermissionMode(currentAccess.role);
+          if (
+            currentAccess.source !== context.accessSource ||
+            currentAccess.role !== context.role ||
+            currentPermissionMode !== context.permissionMode
+          ) {
+            log("auth", `revalidated access changed for "${documentName}"`, {
+              userId: context.userId || null,
+              previousRole: context.role || null,
+              nextRole: currentAccess.role,
+              previousSource: context.accessSource || null,
+              nextSource: currentAccess.source,
+            });
+            closeConnection(connection, accessChangedCloseReason);
+          }
+        }
+      }
+    } finally {
+      accessCheckInFlight = false;
+    }
+  };
+
+  const accessCheckTimer = setInterval(() => {
+    void revalidateLiveConnections();
+  }, config.collabAccessCheckIntervalMs);
+  accessCheckTimer.unref?.();
 
   const hocuspocus = new Hocuspocus({
     name: config.backendName,
@@ -227,6 +314,7 @@ export const createCollaborationService = ({
           accessSource: currentAccess.source,
           role: currentAccess.role,
           permissionMode: roleToPermissionMode(currentAccess.role),
+          ticketExpiresAt: validTicket.expiresAt,
         };
       }
 
@@ -272,6 +360,9 @@ export const createCollaborationService = ({
 
   return {
     hocuspocus,
+    destroy: () => {
+      clearInterval(accessCheckTimer);
+    },
     ensureStorageDir,
     readDocumentSnapshot,
     writeDocumentSnapshot,
