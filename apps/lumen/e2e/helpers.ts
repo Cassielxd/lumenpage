@@ -7,18 +7,33 @@ type LumenTestApi = {
   setSelection?: (from: number, to: number) => boolean;
 };
 
-export const attachConsoleGuards = (page: Page) => {
+type ConsoleGuardOptions = {
+  ignoreConsoleErrors?: Array<RegExp | string>;
+  ignorePageErrors?: Array<RegExp | string>;
+};
+
+const matchesIgnoredPattern = (value: string, patterns: Array<RegExp | string> = []) =>
+  patterns.some((pattern) =>
+    pattern instanceof RegExp ? pattern.test(value) : String(pattern || "") === value
+  );
+
+export const attachConsoleGuards = (page: Page, options: ConsoleGuardOptions = {}) => {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
 
   page.on("console", (message) => {
     if (message.type() === "error") {
-      consoleErrors.push(message.text());
+      const text = message.text();
+      if (!matchesIgnoredPattern(text, options.ignoreConsoleErrors)) {
+        consoleErrors.push(text);
+      }
     }
   });
 
   page.on("pageerror", (error) => {
-    pageErrors.push(error.message);
+    if (!matchesIgnoredPattern(error.message, options.ignorePageErrors)) {
+      pageErrors.push(error.message);
+    }
   });
 
   return {

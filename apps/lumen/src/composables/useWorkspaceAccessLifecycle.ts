@@ -1,10 +1,11 @@
-import { computed, onMounted, watch, type ComputedRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, watch, type ComputedRef } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 import type { SyncWorkspaceAccessOptions } from "./useWorkspaceAccessLoader";
 
 type UseWorkspaceAccessLifecycleOptions = {
   routeDocumentId: ComputedRef<string>;
   routeShareToken: ComputedRef<string>;
+  realtimeCollaborationEnabled: ComputedRef<boolean>;
   loadWorkspace: (options?: SyncWorkspaceAccessOptions) => Promise<unknown>;
   flushPendingSnapshotSave: () => Promise<unknown> | void;
 };
@@ -12,6 +13,7 @@ type UseWorkspaceAccessLifecycleOptions = {
 export const useWorkspaceAccessLifecycle = ({
   routeDocumentId,
   routeShareToken,
+  realtimeCollaborationEnabled,
   loadWorkspace,
   flushPendingSnapshotSave,
 }: UseWorkspaceAccessLifecycleOptions) => {
@@ -24,8 +26,47 @@ export const useWorkspaceAccessLifecycle = ({
     return shareToken ? `${documentId}::${shareToken}` : documentId;
   });
 
+  let refreshPromise: Promise<unknown> | null = null;
+
+  const refreshWorkspaceAccess = ({ flushSnapshot = false }: { flushSnapshot?: boolean } = {}) => {
+    if (refreshPromise) {
+      return refreshPromise;
+    }
+    refreshPromise = (async () => {
+      if (flushSnapshot) {
+        await flushPendingSnapshotSave();
+      }
+      await loadWorkspace({ withCollabTicket: true });
+    })().finally(() => {
+      refreshPromise = null;
+    });
+    return refreshPromise;
+  };
+
+  const handleForegroundRefresh = () => {
+    if (!routeDocumentId.value || !realtimeCollaborationEnabled.value) {
+      return;
+    }
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+    void refreshWorkspaceAccess();
+  };
+
+  const handleVisibilityChange = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      handleForegroundRefresh();
+    }
+  };
+
   onMounted(async () => {
-    await loadWorkspace({ withCollabTicket: true });
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleForegroundRefresh, { passive: true });
+    }
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange, { passive: true });
+    }
+    await refreshWorkspaceAccess();
   });
 
   watch(
@@ -34,12 +75,18 @@ export const useWorkspaceAccessLifecycle = ({
       if (!nextRouteKey || nextRouteKey === previousRouteKey) {
         return;
       }
-      void (async () => {
-        await flushPendingSnapshotSave();
-        await loadWorkspace({ withCollabTicket: true });
-      })();
+      void refreshWorkspaceAccess({ flushSnapshot: true });
     },
   );
+
+  onBeforeUnmount(() => {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("focus", handleForegroundRefresh);
+    }
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }
+  });
 
   onBeforeRouteLeave(async () => {
     await flushPendingSnapshotSave();

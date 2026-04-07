@@ -85,6 +85,7 @@ export const useWorkspaceAccessLoader = ({
 }: UseWorkspaceAccessLoaderOptions) => {
   const resolveErrorMessage = (error: unknown, fallback: string) =>
     error instanceof Error ? error.message || String(error) : fallback;
+  const documentAccessDeniedMessage = "Document not found or access denied.";
   const disableCollaborationFallback = (runtimeFlags: PlaygroundDebugFlags, message: string) => {
     backendAccessError.value = message;
     runtimeFlags.collaborationEnabled = false;
@@ -166,6 +167,18 @@ export const useWorkspaceAccessLoader = ({
             shareToken: currentRouteShareToken,
           });
         } catch (error) {
+          const errorMessage = resolveErrorMessage(error, messages.shareDialogEnsureFailed.value);
+          if (
+            currentRouteShareToken &&
+            errorMessage === documentAccessDeniedMessage &&
+            (await redirectToShareAccess(currentRouteShareToken))
+          ) {
+            backendDocument.value = null;
+            backendDocumentAccess.value = null;
+            backendAccessBound.value = false;
+            redirectedToShareAccess = true;
+            return { runtimeFlags, snapshotBase64, redirectedToShareAccess };
+          }
           if (await redirectToRestrictedShareLandingIfNeeded(currentRouteShareToken)) {
             backendDocument.value = null;
             backendDocumentAccess.value = null;

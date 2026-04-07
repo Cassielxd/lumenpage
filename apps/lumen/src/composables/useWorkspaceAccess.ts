@@ -112,6 +112,7 @@ export const useWorkspaceAccess = ({
   useWorkspaceAccessLifecycle({
     routeDocumentId,
     routeShareToken,
+    realtimeCollaborationEnabled,
     loadWorkspace,
     flushPendingSnapshotSave,
   });

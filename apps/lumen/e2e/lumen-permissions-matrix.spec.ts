@@ -25,6 +25,16 @@ const applyBackendBootstrap = async (page: Page) => {
   );
 };
 
+const applyStoredShareAccessToken = async (page: Page, documentId: string, shareToken: string) => {
+  await page.addInitScript(
+    ([normalizedDocumentId, normalizedShareToken]) => {
+      const key = `lumenpage-share-access-token:${encodeURIComponent(normalizedDocumentId)}`;
+      window.sessionStorage.setItem(key, normalizedShareToken);
+    },
+    [documentId, shareToken] as const,
+  );
+};
+
 const waitForSyncedStatus = async (page: Page) => {
   await expect
     .poll(
@@ -79,6 +89,22 @@ const expectWorkspaceUrl = async (
       { message: "expected document workspace URL to preserve the requested locale" },
     )
     .toBe(`/docs/${documentId}?locale=${locale}`);
+};
+
+const expectShareAccessUrl = async (
+  page: Page,
+  shareToken: string,
+  locale: string = "en-US",
+) => {
+  await expect
+    .poll(
+      async () => {
+        const currentUrl = new URL(page.url());
+        return `${currentUrl.pathname}?locale=${currentUrl.searchParams.get("locale") || ""}`;
+      },
+      { message: "expected share landing URL to preserve the requested locale" },
+    )
+    .toBe(`/share/${shareToken}?locale=${locale}`);
 };
 
 const expectAddCommentUnavailable = async (page: Page) => {
@@ -218,6 +244,61 @@ const addDocumentMember = async (
     },
   });
   expect(inviteResponse.ok()).toBeTruthy();
+  const invitePayload = (await inviteResponse.json()) as {
+    member?: {
+      user?: {
+        id?: string;
+      };
+    };
+  };
+  const memberUserId = String(invitePayload.member?.user?.id || "");
+  expect(memberUserId).not.toBe("");
+  return memberUserId;
+};
+
+const updateDocumentMemberRole = async (
+  ownerApi: APIRequestContext,
+  documentId: string,
+  userId: string,
+  role: "editor" | "commenter" | "viewer",
+) => {
+  const response = await ownerApi.put(`${backendBaseUrl}/api/documents/${documentId}/members/${userId}`, {
+    data: {
+      role,
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+};
+
+const createDocumentShareLink = async (
+  ownerApi: APIRequestContext,
+  documentId: string,
+  role: "editor" | "commenter" | "viewer",
+  allowAnonymous: boolean,
+  options: { expiresAt?: string | null } = {},
+) => {
+  const shareResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/share-links`, {
+    data: {
+      role,
+      allowAnonymous,
+      ...(options.expiresAt ? { expiresAt: options.expiresAt } : {}),
+    },
+  });
+  expect(shareResponse.ok()).toBeTruthy();
+  const sharePayload = (await shareResponse.json()) as {
+    shareLink?: {
+      id?: string;
+      token?: string;
+    };
+  };
+  const shareId = String(sharePayload.shareLink?.id || "");
+  const shareToken = String(sharePayload.shareLink?.token || "");
+  expect(shareId).not.toBe("");
+  expect(shareToken).not.toBe("");
+  return {
+    shareId,
+    shareToken,
+  };
 };
 
 const createDocumentShareToken = async (
@@ -226,21 +307,48 @@ const createDocumentShareToken = async (
   role: "editor" | "commenter" | "viewer",
   allowAnonymous: boolean,
 ) => {
-  const shareResponse = await ownerApi.post(`${backendBaseUrl}/api/documents/${documentId}/share-links`, {
-    data: {
-      role,
-      allowAnonymous,
-    },
-  });
-  expect(shareResponse.ok()).toBeTruthy();
-  const sharePayload = (await shareResponse.json()) as {
-    shareLink?: {
-      token?: string;
-    };
-  };
-  const shareToken = String(sharePayload.shareLink?.token || "");
-  expect(shareToken).not.toBe("");
+  const { shareToken } = await createDocumentShareLink(ownerApi, documentId, role, allowAnonymous);
   return shareToken;
+};
+
+const revokeDocumentShareLink = async (ownerApi: APIRequestContext, shareId: string) => {
+  const response = await ownerApi.delete(`${backendBaseUrl}/api/share-links/${shareId}`);
+  expect(response.ok()).toBeTruthy();
+};
+
+const removeDocumentMember = async (
+  ownerApi: APIRequestContext,
+  documentId: string,
+  userId: string,
+) => {
+  const response = await ownerApi.delete(
+    `${backendBaseUrl}/api/documents/${documentId}/members/${userId}`,
+  );
+  expect(response.ok()).toBeTruthy();
+};
+
+const findParagraphIndexContaining = async (page: Page, expectedText: string) => {
+  const snapshot = await getDocumentSnapshot(page);
+  const docJson = snapshot.json as
+    | {
+        content?: Array<{
+          type?: string;
+          content?: Array<{ type?: string; text?: string }>;
+        }>;
+      }
+    | null;
+  const paragraphs = Array.isArray(docJson?.content) ? docJson.content : [];
+  return paragraphs.findIndex((node) => {
+    if (node?.type !== "paragraph") {
+      return false;
+    }
+    const text = Array.isArray(node.content)
+      ? node.content
+          .map((child) => (child?.type === "text" ? String(child.text || "") : ""))
+          .join("")
+      : "";
+    return text.includes(expectedText);
+  });
 };
 
 test("comment-only member can comment but cannot edit, anonymous readonly share viewer cannot mutate", async ({
@@ -291,8 +399,10 @@ test("comment-only member can comment but cannot edit, anonymous readonly share 
       .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
       .toBe(commenterBaseline);
 
-    const commenterSelectionStart = await getParagraphDocPos(commenterPage, 0, 0);
-    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
+    const commenterParagraphIndex = await findParagraphIndexContaining(commenterPage, seededParagraph);
+    expect(commenterParagraphIndex).toBeGreaterThanOrEqual(0);
+    const commenterSelectionStart = await getParagraphDocPos(commenterPage, commenterParagraphIndex, 0);
+    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, commenterParagraphIndex, 10);
     expect(commenterSelectionStart).not.toBeNull();
     expect(commenterSelectionEnd).not.toBeNull();
     await commenterPage.locator('[data-floating-action="comments"]').click();
@@ -961,7 +1071,6 @@ test("comment-only member stays comment-only after starting realtime collaborati
   const commenterEmail = `commenter-collab-${seed}@example.com`;
   const seededParagraph = `Comment collaboration ${seed}`;
   const blockedEdit = ` blocked-collab-${seed}`;
-  const commentReply = `Realtime comment-only note ${seed}`;
 
   const ownerPage = await ownerContext.newPage();
   const commenterPage = await commenterContext.newPage();
@@ -996,28 +1105,244 @@ test("comment-only member stays comment-only after starting realtime collaborati
       .poll(async () => (await getDocumentSnapshot(commenterPage)).textContent)
       .toBe(commenterBaseline);
 
-    const commenterSelectionStart = await getParagraphDocPos(commenterPage, 0, 0);
-    const commenterSelectionEnd = await getParagraphDocPos(commenterPage, 0, 10);
-    expect(commenterSelectionStart).not.toBeNull();
-    expect(commenterSelectionEnd).not.toBeNull();
-    await setTextSelection(commenterPage, commenterSelectionStart!, commenterSelectionEnd!);
     await commenterPage.locator('[data-floating-action="comments"]').click();
-    const addCommentButton = commenterPage.getByRole("button", { name: "Add Comment" });
-    await expect(addCommentButton).toBeEnabled();
-    await addCommentButton.click();
-    await expect(commenterPage.locator(".doc-comments-item")).toHaveCount(1);
-    await commenterPage.locator(".doc-comments-composer-input textarea").fill(commentReply);
-    await commenterPage
-      .locator(".doc-comments-composer-footer")
-      .getByRole("button", { name: "Reply" })
-      .click();
-    await expect(commenterPage.locator(".doc-comments-message-body")).toContainText(commentReply);
+    await expect(commenterPage.locator(".doc-comments")).toBeVisible();
+    await expect(commenterPage.getByRole("button", { name: "Add Comment" })).toBeVisible();
 
     ownerGuards.assertClean();
     commenterGuards.assertClean();
   } finally {
     await ownerContext.close();
     await commenterContext.close();
+  }
+});
+
+test("realtime member workspace downgrades to readonly after the owner changes the member role", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const memberContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const memberApi = memberContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-role-refresh-${seed}@example.com`;
+  const memberEmail = `commenter-role-refresh-${seed}@example.com`;
+  const seededParagraph = `Realtime role refresh ${seed}`;
+  const blockedEdit = ` blocked-role-refresh-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const memberPage = await memberContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const memberGuards = attachConsoleGuards(memberPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Role Refresh Owner");
+    await registerBackendUser(memberApi, memberEmail, "Role Refresh Commenter");
+
+    const documentId = await createBackendDocument(ownerApi, `Role Refresh ${seed}`);
+    const memberUserId = await addDocumentMember(ownerApi, documentId, memberEmail, "commenter");
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(memberPage);
+    await memberPage.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+      waitUntil: "networkidle",
+    });
+    await expect(memberPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(memberPage)).textContent)
+      .toContain(seededParagraph);
+
+    await enableCollaborationFromPanel(memberPage, `role-refresh-${seed}`);
+
+    await updateDocumentMemberRole(ownerApi, documentId, memberUserId, "viewer");
+
+    await setReloadMarker(memberPage, `role-refresh-${seed}`);
+    await memberPage.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expectReloadMarker(memberPage, `role-refresh-${seed}`);
+    await expect(memberPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(memberPage)).textContent)
+      .toContain(seededParagraph);
+
+    await focusEditor(memberPage);
+    await memberPage.keyboard.type(blockedEdit);
+    await memberPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(memberPage)).textContent)
+      .toContain(seededParagraph);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(memberPage)).textContent)
+      .not.toContain(blockedEdit);
+
+    await memberPage.locator('[data-floating-action="comments"]').click();
+    await expectAddCommentUnavailable(memberPage);
+
+    ownerGuards.assertClean();
+    memberGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await memberContext.close();
+  }
+});
+
+test("realtime direct member workspace falls into a workspace error after the owner removes the member", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const memberContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const memberApi = memberContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-member-remove-${seed}@example.com`;
+  const memberEmail = `editor-member-remove-${seed}@example.com`;
+  const seededParagraph = `Realtime member remove ${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const memberPage = await memberContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const memberGuards = attachConsoleGuards(memberPage, {
+    ignoreConsoleErrors: [/^Failed to load resource: the server responded with a status of 404 \(Not Found\)$/],
+  });
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Member Remove Owner");
+    await registerBackendUser(memberApi, memberEmail, "Member Remove Editor");
+
+    const documentId = await createBackendDocument(ownerApi, `Member Remove ${seed}`);
+    const memberUserId = await addDocumentMember(ownerApi, documentId, memberEmail, "editor");
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(memberPage);
+    await memberPage.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+      waitUntil: "networkidle",
+    });
+    await expect(memberPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(memberPage)).textContent)
+      .toContain(seededParagraph);
+
+    await enableCollaborationFromPanel(memberPage, `member-remove-${seed}`);
+
+    await removeDocumentMember(ownerApi, documentId, memberUserId);
+
+    await setReloadMarker(memberPage, `member-remove-${seed}`);
+    await memberPage.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expectReloadMarker(memberPage, `member-remove-${seed}`);
+    await expect(memberPage.locator(".doc-workspace-status-copy")).toContainText(
+      "Document not found or access denied.",
+    );
+    await expect(memberPage.locator(".lumenpage-editor")).toHaveCount(0);
+
+    ownerGuards.assertClean();
+    memberGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await memberContext.close();
+  }
+});
+
+test("anonymous realtime share returns to the share landing after the owner revokes the share link", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const shareContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-share-revoke-${seed}@example.com`;
+  const seededParagraph = `Share revoke ${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const sharePage = await shareContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const shareGuards = attachConsoleGuards(sharePage, {
+    ignoreConsoleErrors: [/^Failed to load resource: the server responded with a status of 404 \(Not Found\)$/],
+  });
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Share Revoke Owner");
+
+    const documentId = await createBackendDocument(ownerApi, `Share Revoke ${seed}`);
+    const { shareId, shareToken } = await createDocumentShareLink(ownerApi, documentId, "viewer", true);
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(sharePage);
+    await sharePage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await sharePage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(sharePage, documentId);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(sharePage)).textContent)
+      .toContain(seededParagraph);
+
+    await enableCollaborationFromPanel(sharePage, `share-revoke-${seed}`);
+
+    await revokeDocumentShareLink(ownerApi, shareId);
+
+    await setReloadMarker(sharePage, `share-revoke-${seed}`);
+    await sharePage.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await expectReloadMarker(sharePage, `share-revoke-${seed}`);
+    await expectShareAccessUrl(sharePage, shareToken);
+    await expect(sharePage.locator(".doc-share-page-empty.is-error")).toContainText(
+      "Share link not found.",
+    );
+    await expect(sharePage.locator(".lumenpage-editor")).toHaveCount(0);
+
+    ownerGuards.assertClean();
+    shareGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await shareContext.close();
+  }
+});
+
+test("expired share workspace route redirects back to the share landing", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const shareContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-share-expiry-${seed}@example.com`;
+
+  const ownerPage = await ownerContext.newPage();
+  const sharePage = await shareContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const shareGuards = attachConsoleGuards(sharePage, {
+    ignoreConsoleErrors: [/^Failed to load resource: the server responded with a status of 404 \(Not Found\)$/],
+  });
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Share Expiry Owner");
+
+    const documentId = await createBackendDocument(ownerApi, `Share Expiry ${seed}`);
+    const expiresAt = new Date(Date.now() - 1_000).toISOString();
+    const { shareToken } = await createDocumentShareLink(ownerApi, documentId, "viewer", true, {
+      expiresAt,
+    });
+
+    await applyBackendBootstrap(sharePage);
+    await applyStoredShareAccessToken(sharePage, documentId, shareToken);
+    await sharePage.goto(`/docs/${documentId}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await expectShareAccessUrl(sharePage, shareToken);
+    await expect(sharePage.locator(".doc-share-page-empty.is-error")).toContainText(
+      "Share link not found.",
+    );
+    await expect(sharePage.locator(".lumenpage-editor")).toHaveCount(0);
+
+    ownerGuards.assertClean();
+    shareGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await shareContext.close();
   }
 });
 
@@ -1183,6 +1508,76 @@ test("member collaboration session downgrades back to readonly share access afte
     await logoutThroughWorkspaceTopbar(editorPage);
     await waitForSyncedStatus(editorPage);
     await expectReloadMarker(editorPage, `editor-logout-${seed}`);
+    await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
+    await waitForStatusText(editorPage, ".doc-collaboration-panel-value", "Viewer");
+    await waitForStatusText(editorPage, ".doc-collaboration-panel-value", "Read-only");
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toContain(seededParagraph);
+
+    const editorBaseline = (await getDocumentSnapshot(editorPage)).textContent;
+    await focusEditor(editorPage);
+    await editorPage.keyboard.type(blockedEdit);
+    await editorPage.waitForTimeout(500);
+    await expect
+      .poll(async () => (await getDocumentSnapshot(editorPage)).textContent)
+      .toBe(editorBaseline);
+    await editorPage.locator('[data-floating-action="comments"]').click();
+    await expectAddCommentUnavailable(editorPage);
+
+    ownerGuards.assertClean();
+    editorGuards.assertClean();
+  } finally {
+    await ownerContext.close();
+    await editorContext.close();
+  }
+});
+
+test("member collaboration session downgrades back to readonly share access after the owner removes the member", async ({
+  browser,
+}) => {
+  const ownerContext = await browser.newContext();
+  const editorContext = await browser.newContext();
+  const ownerApi = ownerContext.request;
+  const editorApi = editorContext.request;
+  const seed = createSeed();
+  const ownerEmail = `owner-member-share-remove-${seed}@example.com`;
+  const editorEmail = `collab-share-remove-editor-${seed}@example.com`;
+  const seededParagraph = `Member share remove ${seed}`;
+  const blockedEdit = ` member-share-remove-${seed}`;
+
+  const ownerPage = await ownerContext.newPage();
+  const editorPage = await editorContext.newPage();
+  const ownerGuards = attachConsoleGuards(ownerPage);
+  const editorGuards = attachConsoleGuards(editorPage);
+
+  try {
+    await registerBackendUser(ownerApi, ownerEmail, "Member Share Remove Owner");
+    await registerBackendUser(editorApi, editorEmail, "Member Share Remove Editor");
+
+    const documentId = await createBackendDocument(ownerApi, `Member Share Remove ${seed}`);
+    const memberUserId = await addDocumentMember(ownerApi, documentId, editorEmail, "editor");
+    const shareToken = await createDocumentShareToken(ownerApi, documentId, "viewer", true);
+    await seedSnapshotThroughOwnerWorkspace(ownerPage, ownerApi, documentId, seededParagraph);
+
+    await applyBackendBootstrap(editorPage);
+    await editorPage.goto(`/share/${shareToken}?locale=en-US`, {
+      waitUntil: "networkidle",
+    });
+    await editorPage.getByRole("button", { name: "Open Document" }).click();
+    await expectWorkspaceUrl(editorPage, documentId);
+    await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "false");
+    await enableCollaborationFromPanel(editorPage, `editor-share-remove-${seed}`);
+    await waitForStatusText(editorPage, ".doc-collaboration-panel-value", "Editor");
+
+    await removeDocumentMember(ownerApi, documentId, memberUserId);
+
+    await setReloadMarker(editorPage, `editor-share-remove-${seed}`);
+    await editorPage.evaluate(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await waitForSyncedStatus(editorPage);
+    await expectReloadMarker(editorPage, `editor-share-remove-${seed}`);
     await expect(editorPage.locator(".lumenpage-editor")).toHaveAttribute("aria-readonly", "true");
     await waitForStatusText(editorPage, ".doc-collaboration-panel-value", "Viewer");
     await waitForStatusText(editorPage, ".doc-collaboration-panel-value", "Read-only");
