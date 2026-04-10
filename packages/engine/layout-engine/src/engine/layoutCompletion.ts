@@ -1,6 +1,13 @@
 import { finalizeLayoutPages } from "./layoutFinalization";
 import { finalizeLayoutPerf } from "./perfSummary";
 import { materializeLayoutGeometry } from "../pageGeometry";
+import {
+  setLayoutGhostTrace,
+  setLayoutPaginationDiagnostics,
+  setLayoutPerfSummary,
+  setProgressiveLayoutState,
+} from "../runtimeMetadata";
+import { getLayoutSettingsPerfSummary, setLayoutSettingsPerfSummary } from "../settingsRuntimeState";
 
 export const completeLayoutRun = ({
   session,
@@ -96,9 +103,7 @@ export const completeLayoutRun = ({
       reusedPrefixPages,
       reusedPrefixLines,
     });
-    if (baseSettingsRaw?.__perf) {
-      baseSettingsRaw.__perf.layout = summary;
-    }
+    setLayoutSettingsPerfSummary(baseSettingsRaw, summary);
     logLayout(`[layout-engine] perf:`, summary);
   }
 
@@ -106,7 +111,7 @@ export const completeLayoutRun = ({
     `[layout-engine] DONE pages:${session.pages.length}, progressiveApplied:${session.progressiveApplied}, prevPages:${previousLayout?.pages?.length ?? 0}`
   );
 
-  return {
+  const layout: any = {
     pages: session.pages,
     pageHeight,
     pageWidth,
@@ -115,18 +120,25 @@ export const completeLayoutRun = ({
     lineHeight,
     font,
     totalHeight,
-    __progressiveApplied: session.progressiveApplied,
-    __progressiveTruncated: session.progressiveTruncated,
-    __paginationDiagnostics: {
-      sync: session.syncDiagnostics ?? null,
-      resumeAnchor: {
-        applied: session.resumeFromAnchor,
-        pageIndex: resumeAnchorPageIndex,
-        lineIndex: resumeAnchorLineIndex,
-        matchKey: resumeAnchorMatchKey,
-        skippedReason: resumeAnchorSkippedReason,
-      },
-    },
-    __ghostTrace: ghostTrace,
   };
+  setProgressiveLayoutState(layout, {
+    applied: session.progressiveApplied,
+    truncated: session.progressiveTruncated,
+  });
+  setLayoutPaginationDiagnostics(layout, {
+    sync: session.syncDiagnostics ?? null,
+    resumeAnchor: {
+      applied: session.resumeFromAnchor,
+      pageIndex: resumeAnchorPageIndex,
+      lineIndex: resumeAnchorLineIndex,
+      matchKey: resumeAnchorMatchKey,
+      skippedReason: resumeAnchorSkippedReason,
+    },
+  });
+  setLayoutGhostTrace(layout, ghostTrace);
+  const layoutPerfSummary = getLayoutSettingsPerfSummary(baseSettingsRaw);
+  if (perf && layoutPerfSummary) {
+    setLayoutPerfSummary(layout, layoutPerfSummary);
+  }
+  return layout;
 };

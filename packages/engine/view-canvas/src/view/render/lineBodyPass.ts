@@ -1,4 +1,7 @@
-import { renderListMarker } from "lumenpage-render-engine";
+import {
+  renderListMarker,
+  resolveNodeRendererCompatCapabilities,
+} from "lumenpage-render-engine";
 import type { LineRenderPlan } from "./lineRenderPlan";
 
 type RenderLineBodyPassArgs = {
@@ -31,14 +34,16 @@ export const renderLineBodyPass = ({
   pageTop = 0,
   pageX = 0,
 }: RenderLineBodyPassArgs) => {
+  const compat = resolveNodeRendererCompatCapabilities(renderer);
   if (renderPlan.shouldRunContainerPass && Array.isArray(line?.containers) && registry) {
     for (const container of line.containers) {
       const containerRenderer = registry.get(container.type);
-      if (containerRenderer?.containerRenderMode === "fragment") {
+      const containerCompat = resolveNodeRendererCompatCapabilities(containerRenderer);
+      if (containerCompat.containerRenderMode === "fragment") {
         continue;
       }
-      if (containerRenderer?.renderContainer) {
-        containerRenderer.renderContainer({
+      if (containerCompat.renderContainer) {
+        containerCompat.renderContainer({
           ctx,
           line,
           pageTop,
@@ -77,8 +82,8 @@ export const renderLineBodyPass = ({
     return;
   }
 
-  if (renderPlan.shouldRunRendererLinePass && renderer?.renderLine) {
-    renderer.renderLine({
+  if (renderPlan.shouldRunRendererLinePass && compat.renderLine) {
+    compat.renderLine({
       ctx,
       line,
       pageTop,

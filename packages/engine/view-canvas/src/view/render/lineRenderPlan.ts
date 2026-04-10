@@ -1,3 +1,8 @@
+import {
+  resolveNodeRendererCompatCapabilities,
+  resolveNodeRendererRenderCapabilities,
+} from "lumenpage-render-engine";
+
 const lineHasTextPayload = (line: any) => {
   if (typeof line?.text === "string" && line.text.length > 0) {
     return true;
@@ -23,7 +28,7 @@ const lineHasAuxiliaryVisualPass = (line: any, hasNodeViewRender = false) => {
 };
 
 const rendererHandlesListMarkerInFragment = (renderer: any) =>
-  renderer?.listMarkerRenderMode === "fragment";
+  resolveNodeRendererCompatCapabilities(renderer).listMarkerRenderMode === "fragment";
 
 export type LineRenderPlan = {
   hasTextPayload: boolean;
@@ -47,13 +52,15 @@ export const resolveLineRenderPlan = (
   renderer: any,
   options: { hasNodeViewRender?: boolean; hasLeafTextFragment?: boolean } = {}
 ): LineRenderPlan => {
+  const render = resolveNodeRendererRenderCapabilities(renderer);
+  const compat = resolveNodeRendererCompatCapabilities(renderer);
   const hasTextPayload = lineHasTextPayload(line);
   const hasAuxiliaryPass = lineHasAuxiliaryVisualPass(line, options.hasNodeViewRender === true);
-  const hasFragmentRenderer = typeof renderer?.renderFragment === "function";
+  const hasFragmentRenderer = typeof render.renderFragment === "function";
   const hasFragmentOwner =
     Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0;
   const hasLeafTextFragment = options.hasLeafTextFragment === true;
-  const usesDefaultTextLineRenderer = renderer?.lineBodyMode === "default-text";
+  const usesDefaultTextLineRenderer = compat.lineBodyMode === "default-text";
   const fragmentHandlesListMarker = rendererHandlesListMarkerInFragment(renderer);
   const shouldRunContainerPass =
     Array.isArray(line?.containers) && line.containers.length > 0;
@@ -74,7 +81,7 @@ export const resolveLineRenderPlan = (
   const shouldRunRendererLinePass =
     !shouldRunNodeViewPass &&
     !shouldSkipBodyPassAfterFragment &&
-    typeof renderer?.renderLine === "function" &&
+    typeof compat.renderLine === "function" &&
     !(usesDefaultTextLineRenderer && !hasTextPayload) &&
     !(hasLeafTextFragment && usesDefaultTextLineRenderer);
   const shouldRunLeafTextPass =

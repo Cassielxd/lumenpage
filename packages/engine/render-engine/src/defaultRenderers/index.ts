@@ -4,6 +4,7 @@ import { headingRenderer } from "./heading";
 import { horizontalRuleRenderer } from "./horizontalRule";
 import { imageRenderer } from "./image";
 import { paragraphRenderer } from "./paragraph";
+import { pageBreakRenderer } from "./pageBreak";
 import { splitTableBlock, tableRenderer } from "./table";
 import { videoRenderer } from "./video";
 import {
@@ -26,6 +27,7 @@ export { headingRenderer };
 export { horizontalRuleRenderer };
 export { imageRenderer };
 export { paragraphRenderer };
+export { pageBreakRenderer };
 export { tableRenderer };
 export { splitTableBlock };
 export { videoRenderer };
@@ -49,6 +51,7 @@ export { headingRenderer as defaultHeadingRenderer };
 export { horizontalRuleRenderer as defaultHorizontalRuleRenderer };
 export { imageRenderer as defaultImageRenderer };
 export { paragraphRenderer as defaultParagraphRenderer };
+export { pageBreakRenderer as defaultPageBreakRenderer };
 export { tableRenderer as defaultTableRenderer };
 export { splitTableBlock as defaultTableSplitBlock };
 export { videoRenderer as defaultVideoRenderer };
@@ -69,6 +72,7 @@ const defaultNodeRenderers: Record<string, any> = {
   bulletList: bulletListRenderer,
   orderedList: orderedListRenderer,
   taskList: taskListRenderer,
+  pageBreak: pageBreakRenderer,
   image: imageRenderer,
   video: videoRenderer,
   table: tableRenderer,

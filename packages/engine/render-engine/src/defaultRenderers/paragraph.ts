@@ -150,7 +150,9 @@ export const paragraphNodeSpec: any = {
 
 export const paragraphRenderer = {
   allowSplit: true,
-  lineBodyMode: "default-text",
+  compat: {
+    lineBodyMode: "default-text",
+  },
   toRuns(node: any, settings: any, registry: any) {
     return buildParagraphRuns(node, settings, registry);
   },

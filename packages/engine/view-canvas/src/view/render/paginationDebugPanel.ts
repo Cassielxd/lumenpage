@@ -1,5 +1,4 @@
-const getPageOffsetDelta = (page: any) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+import { getPageOffsetDelta } from "../layoutRuntimeMetadata";
 
 const buildTablePaginationDebug = (layout: any, visibleRange: any) => {
   if (!layout?.pages?.length) {

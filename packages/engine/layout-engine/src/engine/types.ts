@@ -1,5 +1,59 @@
 export type LayoutCapabilityFlags = Record<string, boolean>;
 
+export type LayoutPageRuntimeMeta = {
+  reused?: boolean;
+  sourcePageIndex?: number | null;
+  pageOffsetDelta?: number | null;
+  signature?: number | null;
+  signatureVersion?: number | null;
+  layoutVersionToken?: number | null;
+};
+
+export type LayoutResultRuntimeMeta = {
+  layoutVersion?: number | null;
+  progressiveApplied?: boolean;
+  progressiveTruncated?: boolean;
+  paginationDiagnostics?: unknown;
+  ghostTrace?: unknown[] | null;
+  changeSummary?: unknown;
+  forceRedraw?: boolean;
+  layoutPerfSummary?: LayoutPerfSummary | null;
+  workerDebug?: LayoutWorkerDebugInfo | null;
+  transportPerf?: LayoutTransportPerf | null;
+};
+
+export type LayoutPerfSummary = Record<string, unknown> & {
+  reusedPages?: number | null;
+  reuseReason?: string | null;
+  disablePageReuse?: boolean | null;
+  maybeSyncReason?: string | null;
+  syncAfterIndex?: number | null;
+  syncFromIndex?: number | null;
+  reusedPrefixPages?: number | null;
+  reusedPrefixLines?: number | null;
+};
+
+export type LayoutWorkerDebugInfo = Record<string, unknown> & {
+  clientHadSeedLayout?: boolean | null;
+  clientSentSeedLayout?: boolean | null;
+  clientSettingsChanged?: boolean | null;
+  clientPrevPages?: number | null;
+  workerHadPreviousLayoutState?: boolean | null;
+  workerPrevPagesBeforeSeed?: number | null;
+  workerPrevPagesAfterSeed?: number | null;
+  workerNextPages?: number | null;
+};
+
+export type LayoutTransportPerf = Record<string, number>;
+
+export type LayoutSettingsPerfState = Record<string, unknown> & {
+  layout?: LayoutPerfSummary | null;
+};
+
+export type LayoutSettingsRuntimeState = {
+  perf?: LayoutSettingsPerfState | null;
+};
+
 export type LayoutLineFragmentOwner = {
   meta?: {
     layoutCapabilities?: LayoutCapabilityFlags | null;
@@ -32,6 +86,7 @@ export type LayoutPage = {
   fragments?: any[];
   rootIndexMin?: number | null;
   rootIndexMax?: number | null;
+  runtimeMeta?: LayoutPageRuntimeMeta | null;
   __pageOffsetDelta?: number | null;
 };
 
@@ -85,6 +140,7 @@ export type LayoutSettingsLike = {
   textLocale?: string | null;
   segmentText?: boolean | null;
   disablePageReuse?: boolean | null;
+  runtimeState?: LayoutSettingsRuntimeState | null;
 };
 
 export type TopLevelIndexableDoc = {
@@ -104,10 +160,11 @@ export type LayoutResult = {
   lineHeight: number;
   font: string;
   totalHeight: number;
+  runtimeMeta?: LayoutResultRuntimeMeta | null;
 };
 
 /**
- * 描述从 ProseMirror 文档重新布局时可选的上下文参数。
+ * 描述从编辑文档重新布局时可选的上下文参数。
  */
 export type LayoutFromDocOptions = {
   previousLayout?: LayoutResult | null;

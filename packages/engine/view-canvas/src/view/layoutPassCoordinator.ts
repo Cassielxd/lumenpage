@@ -1,11 +1,7 @@
-import { executeLayoutPass, resolveLayoutExecutionStrategy } from "./layoutPassExecution";
-import {
-  getLayoutSettingsSignature,
-  resolveCascadePaginationPlan,
-  resolveLayoutSettingsForPass,
-} from "./layoutPassPlanning";
+import { executeLayoutPass } from "./layoutPassExecution";
+import { resolveLayoutPassPlan } from "./layoutPassPlan";
 import { applyResolvedLayoutAndReport } from "./layoutPassReporting";
-import { PaginationWorkerClient } from "./paginationWorkerClient";
+import { resolvePaginationAsyncRequester } from "./paginationRequester";
 import { createProgressiveLayoutController } from "./progressiveLayoutController";
 import { now } from "./debugTrace";
 
@@ -55,17 +51,7 @@ export const createLayoutPassCoordinator = ({
   let scheduleLayout = () => {};
 
   const workerConfig = layoutPipeline?.settings?.paginationWorker ?? null;
-  const useWorkerByDefault = workerConfig?.enabled !== false;
-  const paginationWorkerProvider =
-    workerConfig?.enabled === true && typeof workerConfig?.provider?.requestLayout === "function"
-      ? workerConfig.provider
-      : null;
-  const paginationWorker =
-    useWorkerByDefault &&
-    (workerConfig?.mode === "experimental-runs" || workerConfig?.mode === undefined) &&
-    !paginationWorkerProvider
-      ? new PaginationWorkerClient()
-      : null;
+  const paginationRequester = resolvePaginationAsyncRequester(workerConfig);
 
   const hasPendingLayoutWork = () => layoutRafId !== 0 || asyncLayoutInFlight || asyncLayoutQueued;
 
@@ -79,25 +65,11 @@ export const createLayoutPassCoordinator = ({
     const passStartedAt = now();
     const changeSummary = getPendingChangeSummary?.() ?? null;
     const runForceFullPass = progressiveLayoutController.consumeForceFullPass();
-    const nextPageWidth = resolvePageWidth?.();
-    const layoutSettingsForPass = resolveLayoutSettingsForPass(layoutPipeline?.settings, nextPageWidth);
-    const layoutSettingsSignature = getLayoutSettingsSignature(layoutSettingsForPass);
-    const settingsChanged = layoutSettingsSignature !== lastLayoutSettingsSignature;
     const prevLayout = getLayout?.() ?? null;
+    const prevLayoutIndex = getLayoutIndex?.() ?? null;
+    const editorState = getEditorState();
+    const nextPageWidth = resolvePageWidth?.();
 
-    if (prevLayout && !settingsChanged && changeSummary?.docChanged !== true && !runForceFullPass) {
-      clearPendingChangeSummary?.();
-      clearPendingSteps?.();
-      onSkipLayoutPass();
-      return;
-    }
-
-    if (settingsChanged) {
-      layoutPipeline.clearCache?.();
-    }
-
-    const doc = getEditorState().doc;
-    const docChanged = changeSummary?.docChanged === true;
     let forceSyncLayoutOnce = false;
     try {
       forceSyncLayoutOnce = (globalThis as any).__lumenForceSyncLayoutOnce === true;
@@ -108,41 +80,48 @@ export const createLayoutPassCoordinator = ({
       forceSyncLayoutOnce = false;
     }
 
-    const workerConfigIncremental = layoutPipeline?.settings?.paginationWorker?.incremental;
-    const incrementalEnabled = workerConfigIncremental !== false;
-    const settleDelayMs = Number.isFinite(workerConfigIncremental?.settleDelayMs)
-      ? Math.max(120, Number(workerConfigIncremental?.settleDelayMs))
-      : 120;
+    const plan = resolveLayoutPassPlan({
+      editorState,
+      prevLayout,
+      prevLayoutIndex,
+      changeSummary,
+      runForceFullPass,
+      forceSyncLayoutOnce,
+      resolvedPageWidth: nextPageWidth,
+      lastLayoutSettingsSignature,
+      layoutPipeline,
+      workerConfig,
+      paginationRequester,
+      docPosToTextOffset,
+      clampOffset,
+    });
+
+    if (plan.kind === "skip") {
+      clearPendingChangeSummary?.();
+      clearPendingSteps?.();
+      onSkipLayoutPass();
+      return;
+    }
+
+    const layoutSettingsForPass = plan.layoutSettingsForPass;
+    const layoutSettingsSignature = plan.layoutSettingsSignature;
+    const settingsChanged = plan.settingsChanged;
+    const doc = plan.doc;
+    const docChanged = plan.docChanged;
+    const incrementalEnabled = plan.incrementalEnabled;
+    const settleDelayMs = plan.settleDelayMs;
+    const cascadeFromPageIndex = plan.cascadeFromPageIndex;
+    const useCascadePagination = plan.useCascadePagination;
+    const isLayoutProgressive = plan.isLayoutProgressive;
+    const executionStrategy = plan.executionStrategy;
+
+    if (settingsChanged) {
+      layoutPipeline.clearCache?.();
+    }
 
     if (docChanged) {
       progressiveLayoutController.onDocChanged(passStartedAt);
     }
-
-    const { cascadeFromPageIndex, useCascadePagination } = resolveCascadePaginationPlan({
-      prevLayout,
-      changeSummary,
-      docChanged,
-      incrementalEnabled,
-      runForceFullPass,
-      editorState: getEditorState(),
-      doc,
-      clampOffset,
-      docPosToTextOffset,
-      getLayoutIndex,
-    });
-
-    const executionStrategy = resolveLayoutExecutionStrategy({
-      doc,
-      prevLayout,
-      changeSummary,
-      layoutPipeline,
-      workerConfig,
-      paginationWorkerProvider,
-      paginationWorker,
-      forceSyncLayoutOnce,
-      useCascadePagination,
-      runForceFullPass,
-    });
     const { workerIneligibleReason, canUseWorkerProvider, canUseWorker, preferSyncIncrementalPass } =
       executionStrategy;
 
@@ -154,7 +133,6 @@ export const createLayoutPassCoordinator = ({
     const version = (layoutVersion += 1);
     clearPendingChangeSummary?.();
     clearPendingSteps?.();
-    const isLayoutProgressive = useCascadePagination && prevLayout && prevLayout.pages.length > 1;
 
     const applyAndLogLayout = (layout: any, source = "sync", computeMs: number | null = null) =>
       applyResolvedLayoutAndReport({
@@ -192,15 +170,14 @@ export const createLayoutPassCoordinator = ({
       executeLayoutPass({
         strategy: executionStrategy,
         doc,
-        prevLayout: getLayout?.() ?? null,
+        prevLayout,
         changeSummary,
         layoutSettingsForPass,
         layoutPipeline,
         docPosToTextOffset,
         useCascadePagination,
         cascadeFromPageIndex,
-        paginationWorkerProvider,
-        paginationWorker,
+        paginationRequester,
         workerTimeoutMs: Number(workerConfig?.timeoutMs) || 5000,
         onResolvedLayout: applyAndLogLayout,
         onAsyncSettled: () => {
@@ -240,8 +217,7 @@ export const createLayoutPassCoordinator = ({
     getVersion: () => layoutVersion,
     destroy: () => {
       progressiveLayoutController.destroy();
-      paginationWorker?.destroy?.();
-      paginationWorkerProvider?.destroy?.();
+      paginationRequester?.destroy?.();
     },
   };
 };

@@ -11,9 +11,18 @@ export {
   type NodeLayoutContinuation,
   type NodeLayoutResult,
   type NodeLayoutSplitFragment,
+  mergeNodeRenderers,
   type NodeRenderer,
+  type NodeRendererCompatCapabilities,
+  type NodeRendererLayoutCapabilities,
+  type NodeRendererRenderCapabilities,
+  type NodeRendererViewCapabilities,
   type PaginateBlockResult,
   type PaginatedSlice,
+  resolveNodeRendererCompatCapabilities,
+  resolveNodeRendererLayoutCapabilities,
+  resolveNodeRendererRenderCapabilities,
+  resolveNodeRendererViewCapabilities,
 } from "./node";
 export {
   addMarkDrawInstruction,

@@ -1,11 +1,14 @@
 import type { NodeLayoutResult, NodeLayoutSplitFragment, NodeRenderer } from "./node";
+import { resolveNodeRendererLayoutCapabilities } from "./node";
 
 export type RendererFragmentModel = "none" | "continuation";
 
 export const resolveRendererFragmentModel = (
   renderer: Pick<NodeRenderer, "pagination" | "splitBlock"> | null | undefined
-): RendererFragmentModel =>
-  renderer?.pagination?.fragmentModel || (renderer?.splitBlock ? "continuation" : "none");
+) => {
+  const layout = resolveNodeRendererLayoutCapabilities(renderer);
+  return layout.pagination?.fragmentModel || (layout.splitBlock ? "continuation" : "none");
+};
 
 const toSplitFragment = (
   fragment: Partial<NodeLayoutSplitFragment> | null | undefined,

@@ -1,5 +1,6 @@
 import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags";
 import { arePagesEquivalent } from "./pageReuseEquivalence";
+import { getPageOffsetDelta } from "../runtimeMetadata";
 import {
   createPaginationSyncDiagnostics,
   type PaginationSyncDiagnostics,
@@ -91,9 +92,7 @@ function buildPageExitToken(page: LayoutPage | null | undefined, offsetDelta = 0
     return "empty";
   }
 
-  const totalOffsetDelta =
-    (Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0) +
-    Number(offsetDelta || 0);
+  const totalOffsetDelta = getPageOffsetDelta(page) + Number(offsetDelta || 0);
   const continuation = readLineFragmentContinuationState(line);
   let hash = 17;
   hash = hashString(hash, "page-exit");

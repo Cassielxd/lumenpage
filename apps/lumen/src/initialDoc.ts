@@ -18,7 +18,7 @@ export const initialDocJson = {
       "content": [
         {
           "type": "text",
-          "text": "LumenPage is a ProseMirror-based editor runtime that keeps ProseMirror's document model, transactions, state management, and plugin system, while replacing the standard DOM-based view layer with a custom Canvas rendering pipeline."
+          "text": "LumenPage is an editor runtime that keeps a structured document model, transactions, state management, and plugin system, while replacing the standard DOM-based view layer with a custom Canvas rendering pipeline."
         }
       ]
     },
@@ -27,7 +27,7 @@ export const initialDocJson = {
       "content": [
         {
           "type": "text",
-          "text": "The project is designed for page-oriented editing with tighter control over layout, pagination, selection geometry, hit testing, and rendering behavior. It does not replace ProseMirror's core model. Instead, it builds a custom Canvas view and layout runtime on top of ProseMirror's state and extensibility."
+          "text": "The project is designed for page-oriented editing with tighter control over layout, pagination, selection geometry, hit testing, and rendering behavior. It does not depend on a browser DOM view. Instead, it builds a custom Canvas view and layout runtime on top of its own state and extensibility."
         }
       ]
     },
@@ -50,7 +50,7 @@ export const initialDocJson = {
       "content": [
         {
           "type": "text",
-          "text": "Reference: project introduction prepared for sharing on the ProseMirror Discuss community."
+          "text": "Reference: project introduction prepared for sharing with the editor architecture community."
         }
       ]
     },
@@ -177,7 +177,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "架构思想灵感来源于 ProseMirror：命令与插件模型清晰，同时结合 Canvas 分页渲染能力，覆盖长文档场景需求。"
+                  "text": "架构思想灵感来源于结构化事务编辑器：命令与插件模型清晰，同时结合 Canvas 分页渲染能力，覆盖长文档场景需求。"
                 }
               ]
             }
@@ -438,7 +438,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "编辑模型：架构思想灵感来源于 ProseMirror（`schema/state/transform/commands` 思想）。"
+                  "text": "编辑模型：架构思想灵感来源于结构化事务编辑器（`schema/state/transform/commands` 思想）。"
                 }
               ]
             }
@@ -938,7 +938,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "编辑模型：借鉴 ProseMirror 的状态流转与命令体系"
+                  "text": "编辑模型：借鉴结构化事务编辑器的状态流转与命令体系"
                 }
               ]
             }
@@ -1585,7 +1585,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "架构设计灵感来源于 ProseMirror："
+                  "text": "架构设计灵感来源于结构化事务编辑器："
                 }
               ]
             }
@@ -1857,7 +1857,7 @@ export const initialDocJson = {
               "content": [
                 {
                   "type": "text",
-                  "text": "`docs/prosemirror-gap.md`：历史差异分析与演进记录"
+                  "text": "`docs/editor-core-gap.md`：历史差异分析与演进记录"
                 }
               ]
             }

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildPartialLayoutIndex,
   buildLayoutIndex,
   getBoxesInRange,
   getLineAtOffset,
@@ -10,6 +11,8 @@ import {
   getTextBoxesInRange,
   getTextLineItemAtOffset,
   getTextLineItemsInRange,
+  mergeLayoutIndex,
+  resolveStablePageEntryPrefixCount,
 } from "../dist/layoutIndex.js";
 
 const createLine = ({ start, end, text, blockId, rootIndex, lineIndex }) => ({
@@ -221,6 +224,72 @@ test("incremental layout index matches a full rebuild", () => {
     );
     assert.deepEqual(
       getTextLineItemsInRange(incrementalIndex, from, to).map(serializeLineItem),
+      getTextLineItemsInRange(fullIndex, from, to).map(serializeLineItem)
+    );
+  }
+});
+
+test("partial incremental layout index merge matches a full rebuild", () => {
+  const previousLayout = createPreviousLayout();
+  const previousIndex = buildLayoutIndex(previousLayout);
+  assert.ok(previousIndex);
+
+  const nextLayout = createIncrementalLayout(previousLayout);
+  const stablePrefixPages = resolveStablePageEntryPrefixCount(
+    nextLayout,
+    previousLayout,
+    previousIndex
+  );
+  assert.equal(stablePrefixPages, 1);
+
+  const partialIndex = buildPartialLayoutIndex(
+    nextLayout,
+    stablePrefixPages,
+    previousLayout,
+    previousIndex
+  );
+  const mergedIndex = mergeLayoutIndex(previousIndex, partialIndex, stablePrefixPages);
+  const fullIndex = buildLayoutIndex(nextLayout, null, null);
+
+  assert.ok(partialIndex);
+  assert.ok(mergedIndex);
+  assert.ok(fullIndex);
+  assert.deepEqual(serializeIndex(mergedIndex), serializeIndex(fullIndex));
+
+  for (let offset = 0; offset <= fullIndex.maxOffset + 2; offset += 1) {
+    assert.deepEqual(
+      serializeLineItem(getLineAtOffset(mergedIndex, offset)),
+      serializeLineItem(getLineAtOffset(fullIndex, offset))
+    );
+    assert.deepEqual(
+      serializeLineItem(getTextLineItemAtOffset(mergedIndex, offset)),
+      serializeLineItem(getTextLineItemAtOffset(fullIndex, offset))
+    );
+    assert.equal(getPageIndexForOffset(mergedIndex, offset), getPageIndexForOffset(fullIndex, offset));
+  }
+
+  const ranges = [
+    [0, 8],
+    [9, 18],
+    [18, 28],
+    [28, 43],
+  ];
+
+  for (const [from, to] of ranges) {
+    assert.deepEqual(
+      getLinesInRange(mergedIndex, from, to).map(serializeLineItem),
+      getLinesInRange(fullIndex, from, to).map(serializeLineItem)
+    );
+    assert.deepEqual(
+      getBoxesInRange(mergedIndex, from, to).map(serializeBoxItem),
+      getBoxesInRange(fullIndex, from, to).map(serializeBoxItem)
+    );
+    assert.deepEqual(
+      getTextBoxesInRange(mergedIndex, from, to).map(serializeBoxItem),
+      getTextBoxesInRange(fullIndex, from, to).map(serializeBoxItem)
+    );
+    assert.deepEqual(
+      getTextLineItemsInRange(mergedIndex, from, to).map(serializeLineItem),
       getTextLineItemsInRange(fullIndex, from, to).map(serializeLineItem)
     );
   }

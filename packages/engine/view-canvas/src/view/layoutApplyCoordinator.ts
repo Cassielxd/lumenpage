@@ -1,4 +1,11 @@
 import { now } from "./debugTrace";
+import {
+  isProgressiveLayoutApplied,
+  setLayoutChangeSummary,
+  setLayoutForceRedraw,
+  setLayoutVersion,
+} from "./layoutRuntimeMetadata";
+import { resolveLayoutIndexApplyPlan } from "./layoutApplyPlan";
 
 type CreateLayoutApplyCoordinatorArgs = {
   getEditorState: () => any;
@@ -39,7 +46,12 @@ export const createLayoutApplyCoordinator = ({
   emitPerfLog,
   onLayoutApplied,
 }: CreateLayoutApplyCoordinatorArgs) => {
-  const applyLayout = (nextLayout: any, version: number, changeSummary: any, skipIndexBuild = false) => {
+  const applyLayout = (
+    nextLayout: any,
+    version: number,
+    changeSummary: any,
+    progressiveHint = false
+  ) => {
     if (!nextLayout) {
       return;
     }
@@ -48,19 +60,26 @@ export const createLayoutApplyCoordinator = ({
     }
     const applyStartedAt = now();
     const prevLayout = getLayout?.() ?? null;
-    nextLayout.__version = version;
-    nextLayout.__changeSummary = changeSummary ?? null;
+    setLayoutVersion(nextLayout, version);
+    setLayoutChangeSummary(nextLayout, changeSummary ?? null);
     // Let page-level signatures drive redraws for doc edits; full cache invalidation is only
     // needed for the first layout when no previous page surfaces exist yet.
-    nextLayout.__forceRedraw = !prevLayout;
+    setLayoutForceRedraw(nextLayout, !prevLayout);
     const prevLayoutIndex = getLayoutIndex?.() ?? null;
     setLayout(nextLayout);
     const isProgressiveLayout =
-      skipIndexBuild ||
+      progressiveHint ||
       (changeSummary?.docChanged === true && prevLayout && prevLayout.pages.length > 0);
     const indexBuildStart = now();
+    const { nextLayoutIndex, partialIndexApplied, stablePrefixPages } =
+      resolveLayoutIndexApplyPlan({
+        nextLayout,
+        prevLayout,
+        prevLayoutIndex,
+        buildLayoutIndex,
+      });
     if (typeof buildLayoutIndex === "function") {
-      setLayoutIndex(buildLayoutIndex(nextLayout, prevLayoutIndex, prevLayout));
+      setLayoutIndex(nextLayoutIndex);
     }
     const indexBuildMs = now() - indexBuildStart;
     onLayoutApplied?.(nextLayout);
@@ -80,9 +99,11 @@ export const createLayoutApplyCoordinator = ({
       layoutVersion: version,
       docChanged: changeSummary?.docChanged === true,
       progressiveHint: isProgressiveLayout,
-      progressiveApplied: nextLayout?.__progressiveApplied === true,
+      progressiveApplied: isProgressiveLayoutApplied(nextLayout),
       prevPages: prevLayout?.pages?.length ?? 0,
       nextPages: nextLayout?.pages?.length ?? 0,
+      partialIndexApplied,
+      stablePrefixPages,
       indexBuildMs: Math.round(indexBuildMs),
       caretMs: Math.round(caretMs),
       totalApplyMs: Math.round(now() - applyStartedAt),

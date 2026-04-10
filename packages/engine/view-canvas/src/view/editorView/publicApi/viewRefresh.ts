@@ -1,4 +1,6 @@
 import type { CanvasEditorViewProps } from "../types";
+import { getEditorInternalsSections } from "../internals";
+import { setLayoutForceRedraw } from "../../layoutRuntimeMetadata";
 import {
   applySettingsPatch,
   isPlainObject,
@@ -14,22 +16,23 @@ export const forceViewRender = (
   } = {}
 ) => {
   const internals = view?._internals;
+  const { core, stateAccessors, viewSync } = getEditorInternalsSections(view);
   if (!internals) {
     return false;
   }
   if (options.markLayoutForceRedraw !== false) {
-    const layout = internals?.getLayout?.();
+    const layout = stateAccessors?.getLayout?.();
     if (layout && typeof layout === "object") {
-      layout.__forceRedraw = true;
+      setLayoutForceRedraw(layout, true);
     }
   }
   if (options.clearPageCache !== false) {
-    internals?.renderer?.pageCache?.clear?.();
+    core?.renderer?.pageCache?.clear?.();
   }
   if (options.syncNodeViews === true) {
-    internals?.syncNodeViews?.();
+    viewSync?.syncNodeViews?.();
   }
-  internals?.scheduleRender?.();
+  viewSync?.scheduleRender?.();
   return true;
 };
 
@@ -42,36 +45,38 @@ export const forceViewLayout = (
   } = {}
 ) => {
   const internals = view?._internals;
+  const { core, stateAccessors, viewSync } = getEditorInternalsSections(view);
   if (!internals) {
     return false;
   }
   if (options.clearLayoutCache !== false) {
-    internals?.layoutPipeline?.clearCache?.();
+    core?.layoutPipeline?.clearCache?.();
   }
   if (options.clearPageCache !== false) {
-    internals?.renderer?.pageCache?.clear?.();
+    core?.renderer?.pageCache?.clear?.();
   }
-  const layout = internals?.getLayout?.();
+  const layout = stateAccessors?.getLayout?.();
   if (layout && typeof layout === "object") {
-    layout.__forceRedraw = true;
+    setLayoutForceRedraw(layout, true);
   }
   if (options.immediate === false) {
-    internals?.scheduleLayout?.();
+    viewSync?.scheduleLayout?.();
   } else {
     try {
       (globalThis as any).__lumenForceSyncLayoutOnce = true;
     } catch (_error) {
       // Ignore environments where global flags are unavailable.
     }
-    internals?.updateLayout?.();
+    viewSync?.updateLayout?.();
   }
   return true;
 };
 
 export const setViewProps = (view: any, props: Partial<CanvasEditorViewProps> = {}) => {
-  const prevProps = view?._internals?.getEditorProps?.() ?? {};
+  const { core, stateAccessors, viewSync } = getEditorInternalsSections(view);
+  const prevProps = stateAccessors?.getEditorProps?.() ?? {};
   const nextProps = { ...prevProps, ...(props || {}) };
-  view?._internals?.setEditorProps?.(nextProps);
+  stateAccessors?.setEditorProps?.(nextProps);
   let visualRefreshHandled = false;
 
   if (Object.prototype.hasOwnProperty.call(props, "state") && props.state) {
@@ -79,8 +84,8 @@ export const setViewProps = (view: any, props: Partial<CanvasEditorViewProps> = 
   }
 
   const settingsPatch = props?.canvasViewConfig?.settings;
-  if (isPlainObject(settingsPatch) && view?._internals?.settings) {
-    const changedKeys = applySettingsPatch(view._internals.settings, settingsPatch);
+  if (isPlainObject(settingsPatch) && core?.settings) {
+    const changedKeys = applySettingsPatch(core.settings, settingsPatch);
     if (changedKeys.length > 0) {
       visualRefreshHandled = true;
       if (shouldUseLayoutRefreshForSettings(changedKeys)) {
@@ -91,11 +96,11 @@ export const setViewProps = (view: any, props: Partial<CanvasEditorViewProps> = 
     }
   }
 
-  view?._internals?.refreshDomEventHandlers?.(view.state);
-  view?._internals?.applyViewAttributes?.(view.state);
-  view?._internals?.syncNodeViews?.();
+  viewSync?.refreshDomEventHandlers?.(view.state);
+  viewSync?.applyViewAttributes?.(view.state);
+  viewSync?.syncNodeViews?.();
   if (!visualRefreshHandled) {
-    view?._internals?.scheduleRender?.();
+    viewSync?.scheduleRender?.();
   }
-  view?._internals?.updateA11yStatus?.();
+  viewSync?.updateA11yStatus?.();
 };

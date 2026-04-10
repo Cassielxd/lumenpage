@@ -1,5 +1,8 @@
+import { getEditorInternalsSections } from "../internals";
+
 export const readSomeProp = (view: any, propName: string, f?: (value: any) => any) => {
-  const propsList = view?._internals?.getEditorPropsList?.(view.state) ?? [];
+  const { viewSync } = getEditorInternalsSections(view);
+  const propsList = viewSync?.getEditorPropsList?.(view.state) ?? [];
   for (const props of propsList) {
     const value = props?.[propName];
     if (value == null) {
@@ -21,9 +24,10 @@ export const dispatchViewTransaction = (view: any, tr: any) => {
   if (!tr) {
     return;
   }
+  const { interactionRuntime } = getEditorInternalsSections(view);
   const dispatchTransaction =
     (typeof view?.dispatchTransaction === "function" ? view.dispatchTransaction : null) ||
-    view?._internals?.dispatchTransaction;
+    interactionRuntime?.dispatchTransaction;
   if (dispatchTransaction) {
     dispatchTransaction(tr);
   }

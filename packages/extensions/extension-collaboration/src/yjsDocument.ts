@@ -523,7 +523,7 @@ export const updateYFragment = (
   }, origin);
 };
 
-export const prosemirrorToYXmlFragment = (
+export const lumenRootNodeToYXmlFragment = (
   doc: any,
   fragment?: Y.XmlFragment | null,
   origin?: any

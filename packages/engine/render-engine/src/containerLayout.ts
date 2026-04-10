@@ -1,4 +1,5 @@
 import type { ContainerStyle, NodeRenderer } from "./node";
+import { resolveNodeRendererCompatCapabilities, resolveNodeRendererRenderCapabilities } from "./node";
 
 type BaseContainerContext = {
   indent: number;
@@ -41,12 +42,14 @@ export const resolveContainerLayoutContext = <T extends BaseContainerContext>({
   context: T;
   baseX: number;
 }): ResolvedContainerLayoutContext<T> => {
+  const render = resolveNodeRendererRenderCapabilities(renderer);
+  const compat = resolveNodeRendererCompatCapabilities(renderer);
   const style =
-    typeof renderer?.getContainerStyle === "function"
-      ? renderer.getContainerStyle({ node, settings, registry })
+    typeof render.getContainerStyle === "function"
+      ? render.getContainerStyle({ node, settings, registry })
       : null;
   const indent = Number.isFinite(style?.indent) ? Number(style.indent) : 0;
-  const shouldPush = indent > 0 || !!renderer?.renderContainer || !!style;
+  const shouldPush = indent > 0 || !!compat.renderContainer || !!style;
 
   if (!shouldPush) {
     return {

@@ -1,7 +1,9 @@
 import { docPosToTextOffset } from "../../../core";
 import { emitGhostTrace } from "../../debugTrace";
 import { getLineAtOffset } from "../../layoutIndex";
+import { getLayoutVersion } from "../../layoutRuntimeMetadata";
 import { collectAllLayoutBoxesForRange, resolveLayoutBoxRect } from "../../render/geometry";
+import { getEditorInternalsSections } from "../internals";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
 
@@ -28,8 +30,7 @@ const VISUAL_BLOCK_NODE_TYPES = new Set([
 const requiresBoxAnchoredOverlay = (entry: any) =>
   VISUAL_BLOCK_NODE_TYPES.has(String(entry?.node?.type?.name || ""));
 
-const resolveLayoutVersionToken = (layout: any) =>
-  Number.isFinite(layout?.__version) ? Number(layout.__version) : null;
+const resolveLayoutVersionToken = (layout: any) => getLayoutVersion(layout);
 
 const canReuseCachedOverlayState = ({
   cached,
@@ -562,8 +563,9 @@ export const createNodeViewOverlaySync = ({
     if (!state?.doc) {
       return null;
     }
-    const layout = view?._internals?.getLayout?.() ?? null;
-    const scrollArea = view?._internals?.dom?.scrollArea ?? null;
+    const { core, stateAccessors } = getEditorInternalsSections(view);
+    const layout = stateAccessors?.getLayout?.() ?? null;
+    const scrollArea = core?.dom?.scrollArea ?? null;
     if (layout && scrollArea) {
       let bestBoxEntry = null;
       let bestBoxArea = Number.POSITIVE_INFINITY;
@@ -651,7 +653,8 @@ export const createNodeViewOverlaySync = ({
     const viewportHeight = scrollArea.clientHeight;
     const pageSpan = layout.pageHeight + layout.pageGap;
     const pageX = Math.max(0, (viewportWidth - layout.pageWidth) / 2);
-    const settings = view?._internals?.settings ?? null;
+    const { core } = getEditorInternalsSections(view);
+    const settings = core?.settings ?? null;
     const hasPendingDocLayout = getPendingChangeSummary?.()?.docChanged === true;
     const currentLayoutVersion = resolveLayoutVersionToken(layout);
     const syncOverlayEntry = (entry: any, item: any = null, boxRect: any = null) => {

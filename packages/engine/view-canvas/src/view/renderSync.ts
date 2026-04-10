@@ -1,6 +1,8 @@
 import { createLayoutPassCoordinator } from "./layoutPassCoordinator";
 import { createLayoutApplyCoordinator } from "./layoutApplyCoordinator";
 import { createRenderFrameCoordinator } from "./renderFrameCoordinator";
+import { createRenderSyncPerfLog } from "./renderSyncPerfLog";
+import { createRenderSyncScheduling } from "./renderSyncScheduling";
 import { createStateSyncCoordinator } from "./stateSyncCoordinator";
 
 export const createRenderSync = ({
@@ -58,73 +60,19 @@ export const createRenderSync = ({
   let renderFrameCoordinator: ReturnType<typeof createRenderFrameCoordinator> | null = null;
   let stateSyncCoordinator: ReturnType<typeof createStateSyncCoordinator> | null = null;
 
-  const emitPerfLog = (type: string, summary: Record<string, unknown>) => {
-    if (layoutPipeline?.settings?.debugPerf !== true) {
-      return;
-    }
-    const totalPassMs =
-      type === "layout-pass" && Number.isFinite(summary?.totalPassMs)
-        ? Number(summary.totalPassMs)
-        : 0;
-    const totalApplyMs =
-      type === "layout-apply" && Number.isFinite(summary?.totalApplyMs)
-        ? Number(summary.totalApplyMs)
-        : 0;
-    const shouldConsoleLog =
-      (type === "layout-pass" && totalPassMs >= 50) ||
-      (type === "layout-apply" && totalApplyMs >= 8);
-    if (shouldConsoleLog) {
-      console.info(`[perf][${type}]`, summary);
-    }
-    if (typeof window !== "undefined") {
-      const globalWindow = window as typeof window & {
-        __lumenPerfLogs?: Array<Record<string, unknown>>;
-        __copyLumenPerfLogs?: () => string;
-      };
-      const logs = Array.isArray(globalWindow.__lumenPerfLogs) ? globalWindow.__lumenPerfLogs : [];
-      logs.push({
-        type,
-        timestamp: new Date().toISOString(),
-        ...summary,
-      });
-      if (logs.length > 400) {
-        logs.splice(0, logs.length - 400);
-      }
-      globalWindow.__lumenPerfLogs = logs;
-      globalWindow.__copyLumenPerfLogs = () => JSON.stringify(logs, null, 2);
-    }
-  };
+  const { emitPerfLog } = createRenderSyncPerfLog({
+    layoutPipeline,
+  });
 
-  const hasPendingLayoutWork = () => layoutPassCoordinator?.isPending() === true;
-  const hasPendingDocLayout = () => getPendingChangeSummary?.()?.docChanged === true;
-  const hasUnrenderedLayoutVersion = () => {
-    const layoutVersion = Number(getLayout?.()?.__version ?? 0);
-    const renderedLayoutVersion = Number(renderer?.lastLayoutVersion ?? 0);
-    return Number.isFinite(layoutVersion) && layoutVersion > renderedLayoutVersion;
-  };
-
-  const cancelScheduledRender = () => {
-    const renderRafId = getRafId();
-    if (!renderRafId) {
-      return;
-    }
-    cancelAnimationFrame(renderRafId);
-    setRafId(0);
-  };
-
-  const scheduleRender = () => {
-    // Async pagination can apply a newer layout before the worker settles.
-    // That newer layout still needs a render frame even while layout work is pending.
-    if ((hasPendingLayoutWork() || hasPendingDocLayout()) && !hasUnrenderedLayoutVersion()) {
-      return;
-    }
-    renderFrameCoordinator?.scheduleRender();
-  };
-
-  const scheduleLayout = () => {
-    cancelScheduledRender();
-    layoutPassCoordinator?.scheduleLayout();
-  };
+  const scheduling = createRenderSyncScheduling({
+    renderer,
+    getLayout: () => getLayout?.() ?? null,
+    getPendingChangeSummary,
+    getRafId,
+    setRafId,
+    getLayoutPassCoordinator: () => layoutPassCoordinator,
+    getRenderFrameCoordinator: () => renderFrameCoordinator,
+  });
 
   const updateStatus = () => {
     stateSyncCoordinator?.updateStatus();
@@ -185,11 +133,11 @@ export const createRenderSync = ({
     setCaretOffsetValue,
     getPendingPreferredUpdate,
     setPendingPreferredUpdate,
-    hasPendingLayoutWork,
+    hasPendingLayoutWork: scheduling.hasPendingLayoutWork,
     updateCaret,
     logSelection,
-    scheduleRender,
-    scheduleLayout,
+    scheduleRender: scheduling.scheduleRender,
+    scheduleLayout: scheduling.scheduleLayout,
   });
 
   layoutApplyCoordinator = createLayoutApplyCoordinator({
@@ -207,7 +155,7 @@ export const createRenderSync = ({
     updateCaret,
     updateStatus,
     flushPendingScrollIntoView,
-    scheduleRender,
+    scheduleRender: scheduling.scheduleRender,
     emitPerfLog,
     onLayoutApplied: (layout) => {
       renderFrameCoordinator?.onLayoutApplied(layout);
@@ -229,18 +177,13 @@ export const createRenderSync = ({
     onSkipLayoutPass: () => {
       updateStatus();
       flushPendingScrollIntoViewIfReady();
-      scheduleRender();
+      scheduling.scheduleRender();
     },
     onApplyLayout: ({ layout, version, changeSummary, isLayoutProgressive }) => {
       layoutApplyCoordinator?.applyLayout(layout, version, changeSummary, isLayoutProgressive);
     },
     onAfterLayoutPass: flushPendingScrollIntoViewIfReady,
   });
-
-  const updateLayout = () => {
-    cancelScheduledRender();
-    layoutPassCoordinator?.updateLayout();
-  };
 
   const syncAfterStateChange = () => {
     stateSyncCoordinator?.syncAfterStateChange();
@@ -252,14 +195,14 @@ export const createRenderSync = ({
 
   return {
     updateStatus,
-    scheduleRender,
-    scheduleLayout,
+    scheduleRender: scheduling.scheduleRender,
+    scheduleLayout: scheduling.scheduleLayout,
     updateCaret,
-    updateLayout,
+    updateLayout: scheduling.updateLayout,
     syncAfterStateChange,
     dispatchTransaction,
     requestScrollIntoView,
-    isLayoutPending: hasPendingLayoutWork,
+    isLayoutPending: scheduling.hasPendingLayoutWork,
     destroy: () => {
       renderFrameCoordinator?.destroy();
       layoutPassCoordinator?.destroy();

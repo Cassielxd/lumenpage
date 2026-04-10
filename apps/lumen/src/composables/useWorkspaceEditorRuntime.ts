@@ -305,10 +305,10 @@ export const useWorkspaceEditorRuntime = ({
   ) => {
     editor.value = mounted.editor;
     view.value = mounted.view;
-    setSnapshotDocument(mounted.collaborationDocument);
-    if (runtimeFlags.collaborationEnabled) {
+    setSnapshotDocument(mounted.snapshotDocument);
+    if (mounted.snapshotDocument) {
       annotationStore.useCollaborationStore(
-        mounted.collaborationDocument,
+        mounted.snapshotDocument,
         runtimeFlags.collaborationField,
       );
     } else {

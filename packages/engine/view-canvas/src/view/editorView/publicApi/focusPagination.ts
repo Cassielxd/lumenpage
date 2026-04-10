@@ -1,8 +1,10 @@
 import { isTableLayoutLine } from "../../layoutSemantics";
+import { getEditorInternalsSections } from "../internals";
 
 export const viewHasFocus = (view: any) => {
-  const root = view?._internals?.dom?.root;
-  const input = view?._internals?.dom?.input;
+  const { core } = getEditorInternalsSections(view);
+  const root = core?.dom?.root;
+  const input = core?.dom?.input;
   const ownerDocument = root?.ownerDocument || (typeof document !== "undefined" ? document : null);
   const active = ownerDocument?.activeElement ?? null;
   if (!active) {
@@ -12,15 +14,20 @@ export const viewHasFocus = (view: any) => {
 };
 
 export const focusView = (view: any) => {
-  view?._internals?.dom?.input?.focus?.();
+  const { core } = getEditorInternalsSections(view);
+  core?.dom?.input?.focus?.();
 };
 
-export const isViewEditable = (view: any) => view?._internals?.dom?.input?.readOnly !== true;
+export const isViewEditable = (view: any) => {
+  const { core } = getEditorInternalsSections(view);
+  return core?.dom?.input?.readOnly !== true;
+};
 
 export const getViewPaginationInfo = (view: any) => {
-  const layout = view?._internals?.getLayout?.() ?? null;
-  const settings = view?._internals?.settings ?? null;
-  const scrollArea = view?._internals?.dom?.scrollArea ?? null;
+  const { core, stateAccessors } = getEditorInternalsSections(view);
+  const layout = stateAccessors?.getLayout?.() ?? null;
+  const settings = core?.settings ?? null;
+  const scrollArea = core?.dom?.scrollArea ?? null;
   if (!layout || !settings || !scrollArea) {
     return null;
   }

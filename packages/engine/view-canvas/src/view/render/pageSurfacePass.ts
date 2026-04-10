@@ -13,6 +13,7 @@ import {
   pageIsReusedFromDifferentSource,
   runPageRedrawPass,
 } from "./pageRedrawPass";
+import { getLayoutChangeSummary, isPageReused } from "../layoutRuntimeMetadata";
 
 export const renderPageSurfacePass = ({
   layout,
@@ -67,7 +68,7 @@ export const renderPageSurfacePass = ({
   const pageSpan = layout.pageHeight + layout.pageGap;
   const pageTrace =
     settings?.debugGhostTrace === true || settings?.debugPerf === true ? [] : null;
-  const docChanged = layout?.__changeSummary?.docChanged === true;
+  const docChanged = getLayoutChangeSummary(layout)?.docChanged === true;
   const forceRedrawForVisualPagination =
     layoutVersionChanged &&
     docChanged &&
@@ -160,7 +161,7 @@ export const renderPageSurfacePass = ({
           ? Number(redrawState.page.rootIndexMax)
           : null,
         lineCount: Array.isArray(redrawState.page?.lines) ? redrawState.page.lines.length : 0,
-        reused: redrawState.page?.__reused === true,
+        reused: isPageReused(redrawState.page),
         hasVisualBlock: redrawState.hasVisualBlock,
         reusedFromDifferentSource: redrawState.reusedFromDifferentSource,
         forceDisplayListForVisualReuse: redrawState.forceDisplayListForVisualReuse,

@@ -1,5 +1,12 @@
 import { type RendererViewportState } from "./rendererViewportState";
 
+import {
+  getLayoutChangeSummary,
+  getLayoutVersion,
+  setLayoutForceRedraw,
+  shouldForceLayoutRedraw,
+} from "../layoutRuntimeMetadata";
+
 const alignToDevicePixel = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 const toDevicePixels = (value: number, dpr: number) => Math.max(1, Math.round(value * dpr));
 
@@ -38,18 +45,19 @@ export const prepareRendererViewportSetup = ({
   state: RendererViewportState;
 }) => {
   const cacheClearReasons: string[] = [];
-  const layoutVersion = typeof layout.__version === "number" ? layout.__version : null;
+  const layoutVersion = getLayoutVersion(layout);
   const prevLayoutVersion = state.lastLayoutVersion;
   const layoutVersionChanged = layoutVersion !== prevLayoutVersion;
   const skippedLayoutVersions =
     Number.isFinite(layoutVersion) &&
     Number.isFinite(prevLayoutVersion) &&
     Number(layoutVersion) > Number(prevLayoutVersion) + 1;
-  let forceRedraw = !!layout.__forceRedraw || skippedLayoutVersions;
+  const layoutForceRedraw = shouldForceLayoutRedraw(layout);
+  let forceRedraw = layoutForceRedraw || skippedLayoutVersions;
   if (forceRedraw) {
-    cacheClearReasons.push(layout.__forceRedraw ? "layout-force-redraw" : "layout-version-skip");
+    cacheClearReasons.push(layoutForceRedraw ? "layout-force-redraw" : "layout-version-skip");
     pageCache.clear();
-    layout.__forceRedraw = false;
+    setLayoutForceRedraw(layout, false);
   }
 
   const { clientWidth, clientHeight, scrollTop } = viewport;
@@ -113,6 +121,6 @@ export const prepareRendererViewportSetup = ({
     scrollTop,
     pageX,
     dpr,
-    changedRange: resolveChangedRootIndexRange(layout.__changeSummary),
+    changedRange: resolveChangedRootIndexRange(getLayoutChangeSummary(layout)),
   };
 };

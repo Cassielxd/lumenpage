@@ -1,3 +1,4 @@
+import { resolveNodeRendererCompatCapabilities } from "lumenpage-render-engine";
 import { resolveLineRenderPlan } from "./lineRenderPlan";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
@@ -12,12 +13,25 @@ export type PageLineEntry = {
   textLineKey: string | null;
 };
 
+export type PageFragmentPassPlan = {
+  pageFragments: any[];
+  leafTextLineEntries: Map<string, PageLineEntry>;
+  fragmentOwnedTextLineEntries: PageLineEntry[];
+  renderedLeafTextKeys: Set<string>;
+};
+
+export type PageCompatLineEntry = PageLineEntry & {
+  fragmentOwnsLeafText: boolean;
+};
+
+export type PageCompatPassPlan = {
+  lineEntries: PageCompatLineEntry[];
+};
+
 export type PageRenderPlan = {
   lineEntries: PageLineEntry[];
-  compatLineEntries: PageLineEntry[];
-  leafTextLineEntries: Map<string, PageLineEntry>;
-  renderedLeafTextKeys: Set<string>;
-  pageFragments: any[];
+  fragmentPass: PageFragmentPassPlan;
+  compatPass: PageCompatPassPlan;
 };
 
 export const getTextLineFragmentKey = (target: any) => {
@@ -102,9 +116,10 @@ const hasCompatContainerWork = (line: any, registry: any) => {
   }
   return containers.some((container) => {
     const containerRenderer = registry.get(container?.type);
+    const compat = resolveNodeRendererCompatCapabilities(containerRenderer);
     return (
-      typeof containerRenderer?.renderContainer === "function" &&
-      containerRenderer?.containerRenderMode !== "fragment"
+      typeof compat.renderContainer === "function" &&
+      compat.containerRenderMode !== "fragment"
     );
   });
 };
@@ -118,21 +133,51 @@ export const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
   !entry.renderPlan.shouldRunNodeViewPass &&
   entry.renderPlan.usesDefaultTextLineRenderer;
 
-const buildCompatLineEntries = (lineEntries: PageLineEntry[], registry: any) =>
-  lineEntries.filter((entry) => {
-    const fragmentHandlesLeafText = isLeafTextExpectedFromFragment(entry);
-    const hasRendererCompatWork =
-      entry.renderPlan.shouldRunRendererLinePass && !fragmentHandlesLeafText;
-    const hasLeafTextCompatWork =
-      entry.renderPlan.shouldRunLeafTextPass && !fragmentHandlesLeafText;
+const buildFragmentPassPlan = (lineEntries: PageLineEntry[], page: any): PageFragmentPassPlan => ({
+  pageFragments: getRendererPageFragments(page),
+  leafTextLineEntries: buildLeafTextLineEntryMap(lineEntries),
+  fragmentOwnedTextLineEntries: lineEntries.filter((entry) => isLeafTextExpectedFromFragment(entry)),
+  renderedLeafTextKeys: new Set<string>(),
+});
 
-    return (
-      hasCompatContainerWork(entry.line, registry) ||
-      entry.renderPlan.shouldRunListMarkerPass ||
-      entry.renderPlan.shouldRunNodeViewPass ||
-      hasRendererCompatWork ||
-      hasLeafTextCompatWork
-    );
+const buildCompatPassPlan = (
+  lineEntries: PageLineEntry[],
+  registry: any
+): PageCompatPassPlan => ({
+  lineEntries: lineEntries
+    .map((entry): PageCompatLineEntry => {
+      const fragmentOwnsLeafText = isLeafTextExpectedFromFragment(entry);
+      return {
+        ...entry,
+        fragmentOwnsLeafText,
+      };
+    })
+    .filter((entry) => {
+      const hasRendererCompatWork =
+        entry.renderPlan.shouldRunRendererLinePass && !entry.fragmentOwnsLeafText;
+      const hasLeafTextCompatWork =
+        entry.renderPlan.shouldRunLeafTextPass && !entry.fragmentOwnsLeafText;
+
+      return (
+        hasCompatContainerWork(entry.line, registry) ||
+        entry.renderPlan.shouldRunListMarkerPass ||
+        entry.renderPlan.shouldRunNodeViewPass ||
+        hasRendererCompatWork ||
+        hasLeafTextCompatWork
+      );
+    }),
+});
+
+export const resolveCompatLineEntryRenderPlan = (
+  entry: PageCompatLineEntry,
+  fragmentPass: PageFragmentPassPlan
+) =>
+  resolveLineRenderPlan(entry.line, entry.renderer, {
+    hasNodeViewRender: !!entry.nodeView?.render,
+    hasLeafTextFragment:
+      entry.fragmentOwnsLeafText &&
+      typeof entry.textLineKey === "string" &&
+      fragmentPass.renderedLeafTextKeys.has(entry.textLineKey),
   });
 
 export const createPageRenderPlan = ({
@@ -152,9 +197,7 @@ export const createPageRenderPlan = ({
 
   return {
     lineEntries,
-    compatLineEntries: buildCompatLineEntries(lineEntries, registry),
-    leafTextLineEntries: buildLeafTextLineEntryMap(lineEntries),
-    renderedLeafTextKeys: new Set<string>(),
-    pageFragments: getRendererPageFragments(page),
+    fragmentPass: buildFragmentPassPlan(lineEntries, page),
+    compatPass: buildCompatPassPlan(lineEntries, registry),
   };
 };

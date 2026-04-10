@@ -1,6 +1,13 @@
 import { emitGhostTrace, now } from "../debugTrace";
 import { getRendererPageCacheEntry, type RendererPageCacheEntry } from "./pageCanvasCache";
 import { type RendererPageDisplayList } from "./pageDisplayList";
+import {
+  getPageRenderSignature,
+  getPageRenderSignatureVersion,
+  getPageSourcePageIndex,
+  isPageReused,
+  setPageLayoutVersionToken,
+} from "../layoutRuntimeMetadata";
 
 export type PageCacheDisposition = "hit" | "miss" | "recreated";
 
@@ -57,9 +64,7 @@ export const pageHasVisualBlock = (page: any) => {
 };
 
 export const pageIsReusedFromDifferentSource = (page: any, pageIndex: number) => {
-  const sourcePageIndex = Number.isFinite(page?.__sourcePageIndex)
-    ? Number(page.__sourcePageIndex)
-    : null;
+  const sourcePageIndex = getPageSourcePageIndex(page);
   return sourcePageIndex != null && sourcePageIndex !== pageIndex;
 };
 
@@ -110,21 +115,19 @@ export const runPageRedrawPass = ({
   const prevEntrySignature = entry.signature;
   let signature = entry.signature;
   if (page && Number.isFinite(layoutVersion)) {
-    page.__layoutVersionToken = Number(layoutVersion);
+    setPageLayoutVersionToken(page, Number(layoutVersion));
   }
 
   const currentVersion = Number.isFinite(layoutVersion) ? Number(layoutVersion) : null;
   const entryVersion = Number.isFinite(entry?.signatureVersion)
     ? Number(entry.signatureVersion)
     : null;
-  const pageVersion = Number.isFinite(page?.__signatureVersion)
-    ? Number(page.__signatureVersion)
-    : null;
+  const pageVersion = getPageRenderSignatureVersion(page);
   const hasEntrySignature =
     typeof signature === "number" && (currentVersion == null || entryVersion === currentVersion);
   const hasPageSignature =
     page &&
-    typeof page.__signature === "number" &&
+    typeof getPageRenderSignature(page) === "number" &&
     (currentVersion == null || pageVersion === currentVersion);
   const hasCachedSignature = hasEntrySignature || hasPageSignature;
   const reusedFromDifferentSource = pageIsReusedFromDifferentSource(page, pageIndex);
@@ -136,7 +139,7 @@ export const runPageRedrawPass = ({
     hasCachedSignature &&
     !forceDisplayListForVisualReuse &&
     (!layoutVersionChanged ||
-      page?.__reused === true ||
+      isPageReused(page) ||
       (changedRange &&
         page &&
         Number.isFinite(page.rootIndexMax) &&
@@ -156,7 +159,7 @@ export const runPageRedrawPass = ({
       displayListBuildMs += now() - sigStart;
     }
   } else if (signature == null && hasPageSignature) {
-    signature = page.__signature;
+    signature = getPageRenderSignature(page);
   }
 
   if (!nextDisplayList) {

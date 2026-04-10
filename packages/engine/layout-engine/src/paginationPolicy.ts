@@ -6,15 +6,23 @@ import {
 } from "./fragments/normalize";
 import type { NodeRenderer } from "./nodeRegistry";
 import { resolveLineHeight } from "./engine/lineLayout";
-import { resolveRendererFragmentModel, splitTableBlock as splitTableSlice } from "lumenpage-render-engine";
+import {
+  resolveNodeRendererLayoutCapabilities,
+  resolveRendererFragmentModel,
+  splitTableBlock as splitTableSlice,
+} from "lumenpage-render-engine";
 
 export type RendererReusePolicy = "none" | "actual-slice-only" | "always-sensitive";
 
 export const resolveRendererReusePolicy = (
   renderer: Pick<NodeRenderer, "pagination" | "splitBlock"> | null | undefined
-): RendererReusePolicy =>
-  renderer?.pagination?.reusePolicy ||
-  (resolveRendererFragmentModel(renderer) === "continuation" ? "actual-slice-only" : "none");
+): RendererReusePolicy => {
+  const layout = resolveNodeRendererLayoutCapabilities(renderer);
+  return (
+    layout.pagination?.reusePolicy ||
+    (resolveRendererFragmentModel(renderer) === "continuation" ? "actual-slice-only" : "none")
+  );
+};
 
 export const resolveRendererPagination = (
   renderer: NodeRenderer | null | undefined
@@ -23,12 +31,15 @@ export const resolveRendererPagination = (
   fragmentModel: "none" | "continuation";
   splitBlock: NodeRenderer["splitBlock"] | null;
   reusePolicy: RendererReusePolicy;
-} => ({
-  canSplit: renderer?.allowSplit ?? !renderer?.layoutBlock,
-  fragmentModel: resolveRendererFragmentModel(renderer),
-  splitBlock: typeof renderer?.splitBlock === "function" ? renderer.splitBlock : null,
-  reusePolicy: resolveRendererReusePolicy(renderer),
-});
+} => {
+  const layout = resolveNodeRendererLayoutCapabilities(renderer);
+  return {
+    canSplit: layout.allowSplit ?? !layout.layoutBlock,
+    fragmentModel: resolveRendererFragmentModel(renderer),
+    splitBlock: typeof layout.splitBlock === "function" ? layout.splitBlock : null,
+    reusePolicy: resolveRendererReusePolicy(renderer),
+  };
+};
 
 type ResolveNormalizedSplitFragmentsOptions = {
   renderer: NodeRenderer | null | undefined;

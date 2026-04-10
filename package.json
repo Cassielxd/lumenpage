@@ -15,6 +15,7 @@
     "build:app": "pnpm -C apps/playground build",
     "build:lumen": "pnpm -C apps/lumen build",
     "test:lumen:e2e": "pnpm -C apps/lumen test:e2e",
+    "test:engine": "pnpm -C packages/engine/view-runtime test && pnpm -C packages/engine/render-engine test",
     "affected:list": "node scripts/affected-packages.mjs list",
     "typecheck:affected": "node scripts/affected-packages.mjs run typecheck",
     "build:affected": "node scripts/affected-packages.mjs run build",

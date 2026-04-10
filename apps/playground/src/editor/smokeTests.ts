@@ -136,6 +136,25 @@ const verifyOffsetRoundtrip = (doc: any, pos: number) => {
 
 const getCommandRuntime = (editorView: any) => editorView?._internals ?? null;
 
+const getEditorPerfState = (editorView: any) => {
+  const settings = editorView?._internals?.settings ?? null;
+  const runtimePerf = settings?.runtimeState?.perf;
+  if (runtimePerf && typeof runtimePerf === "object") {
+    return runtimePerf;
+  }
+  const legacyPerf = settings?.__perf;
+  return legacyPerf && typeof legacyPerf === "object" ? legacyPerf : null;
+};
+
+const getEditorLayoutVersion = (editorView: any) => {
+  const layout = editorView?._internals?.getLayout?.() ?? null;
+  const runtimeVersion = layout?.runtimeMeta?.layoutVersion;
+  if (Number.isFinite(runtimeVersion)) {
+    return Number(runtimeVersion);
+  }
+  return Number.isFinite(layout?.__version) ? Number(layout.__version) : null;
+};
+
 const getBasicCommand = (editorView: any, name: string) =>
   getCommandRuntime(editorView)?.basicCommands?.[name] ?? null;
 
@@ -639,9 +658,7 @@ const waitForLayoutIdle = async (editorView: any, stableFrames = 2, maxFrames = 
   let stableCount = 0;
   for (let frame = 0; frame < maxFrames; frame += 1) {
     await waitRaf();
-    const layoutVersion = Number.isFinite(editorView?._internals?.getLayout?.()?.__version)
-      ? Number(editorView._internals.getLayout().__version)
-      : null;
+    const layoutVersion = getEditorLayoutVersion(editorView);
     const pending = renderSync?.isLayoutPending?.() === true;
     if (!pending && layoutVersion === previousVersion) {
       stableCount += 1;
@@ -660,9 +677,7 @@ const waitForLayoutIdle = async (editorView: any, stableFrames = 2, maxFrames = 
   return {
     timedOut: true,
     frames: maxFrames,
-    layoutVersion: Number.isFinite(editorView?._internals?.getLayout?.()?.__version)
-      ? Number(editorView._internals.getLayout().__version)
-      : null,
+    layoutVersion: getEditorLayoutVersion(editorView),
   };
 };
 
@@ -3928,8 +3943,9 @@ export const runPerfBudgetSmoke = async (editorView: any, debugPanelEl: HTMLElem
     const layout = editorView?._internals?.getLayout?.();
     pageCount = Number(layout?.pages?.length ?? 0);
     textLength = Number(editorView?._internals?.getText?.()?.length ?? 0);
-    layoutPerf = editorView?._internals?.settings?.__perf?.layout ?? null;
-    renderPerf = editorView?._internals?.settings?.__perf?.render ?? null;
+    const perfState = getEditorPerfState(editorView);
+    layoutPerf = layout?.runtimeMeta?.layoutPerfSummary ?? perfState?.layout ?? null;
+    renderPerf = perfState?.render ?? null;
   } finally {
     if (!keepLargeDoc && original) {
       setJSON(original);

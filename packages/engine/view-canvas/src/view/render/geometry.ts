@@ -1,5 +1,6 @@
 import { getNearestContentOwner } from "../layoutSemantics";
 import { getTextLineItemsInRange } from "../layoutIndex";
+import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
 
@@ -27,8 +28,7 @@ const getBoxArea = (box: any) => {
   return width * height;
 };
 
-const getPageOffsetDelta = (page: any) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+const getPageOffsetDelta = (page: any) => readPageOffsetDelta(page);
 
 const compareBoxHits = (a: any, b: any) => {
   const diffDelta = (a?.rangeDiff ?? 0) - (b?.rangeDiff ?? 0);

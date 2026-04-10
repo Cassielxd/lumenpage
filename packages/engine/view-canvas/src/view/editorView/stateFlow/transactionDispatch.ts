@@ -1,4 +1,5 @@
 import { warnLegacyCanvasConfigUsage } from "../legacyConfigWarnings";
+import { getEditorInternalsSections } from "../internals";
 
 export const createTransactionDispatcher = ({
   view,
@@ -85,7 +86,8 @@ export const createTransactionDispatcher = ({
       const targetPos = Number.isFinite(nextState?.selection?.head)
         ? Number(nextState.selection.head)
         : undefined;
-      const requestScrollIntoView = view?._internals?.renderSync?.requestScrollIntoView;
+      const { core } = getEditorInternalsSections(view);
+      const requestScrollIntoView = core?.renderSync?.requestScrollIntoView;
       if (changeEvent?.docChanged === true && typeof requestScrollIntoView === "function") {
         requestScrollIntoView(targetPos);
       } else {
@@ -100,7 +102,8 @@ export const createTransactionDispatcher = ({
     } catch (error) {
       console.error("[state-flow] dispatchTransaction fatal", error);
       try {
-        view?._internals?.scheduleRender?.();
+        const { viewSync } = getEditorInternalsSections(view);
+        viewSync?.scheduleRender?.();
       } catch (_innerError) {
         // ignore
       }

@@ -1,7 +1,7 @@
+import { resolveNodeRendererRenderCapabilities } from "lumenpage-render-engine";
 import {
   type PageLineEntry,
   type PageRenderPlan,
-  isLeafTextExpectedFromFragment,
 } from "./pageRenderPlan";
 
 const hashNumber = (hash: number, value: unknown) => {
@@ -94,7 +94,8 @@ const getFragmentPaintSignature = (
   }
 
   const fragmentRenderer = node?.type ? registry?.get(node.type) : null;
-  const hasVisualSelf = typeof fragmentRenderer?.renderFragment === "function";
+  const render = resolveNodeRendererRenderCapabilities(fragmentRenderer);
+  const hasVisualSelf = typeof render.renderFragment === "function";
   if (!hasVisualSelf && childSignatures.length === 0) {
     return null;
   }
@@ -237,10 +238,17 @@ export const getRendererFragmentPassSignature = ({
 }) => {
   const objectSignatureCache = new WeakMap<object, number>();
   let hash = 0;
-  hash = hashLayoutTreeForPaint(hash, plan.pageFragments || null, objectSignatureCache, registry);
-  const leafTextLineEntries = plan.lineEntries.filter((entry) => isLeafTextExpectedFromFragment(entry));
-  if (leafTextLineEntries.length > 0) {
-    hash = hashNumber(hash, getRendererLinePaintEntriesSignature(leafTextLineEntries));
+  hash = hashLayoutTreeForPaint(
+    hash,
+    plan.fragmentPass.pageFragments || null,
+    objectSignatureCache,
+    registry
+  );
+  if (plan.fragmentPass.fragmentOwnedTextLineEntries.length > 0) {
+    hash = hashNumber(
+      hash,
+      getRendererLinePaintEntriesSignature(plan.fragmentPass.fragmentOwnedTextLineEntries)
+    );
   }
   return hash >>> 0;
 };
@@ -250,8 +258,8 @@ export const getRendererLineCompatPassSignature = ({
 }: {
   plan: PageRenderPlan;
 }) => {
-  if (!Array.isArray(plan.compatLineEntries) || plan.compatLineEntries.length === 0) {
+  if (!Array.isArray(plan.compatPass.lineEntries) || plan.compatPass.lineEntries.length === 0) {
     return 0;
   }
-  return getRendererLinePaintEntriesSignature(plan.compatLineEntries);
+  return getRendererLinePaintEntriesSignature(plan.compatPass.lineEntries);
 };

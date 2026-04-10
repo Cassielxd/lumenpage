@@ -307,7 +307,35 @@ export class CommandManager {
       return;
     }
 
+    if (!this.isTransactionDispatchable(context.tr)) {
+      return;
+    }
+
     context.finalDispatch(context.tr);
+  }
+
+  private isTransactionDispatchable(tr: Transaction) {
+    const currentState = this.getState();
+    const currentDoc = currentState?.doc ?? null;
+    const beforeDoc = (tr as any)?.before ?? null;
+
+    if (!currentDoc || !beforeDoc) {
+      return true;
+    }
+
+    if (beforeDoc === currentDoc) {
+      return true;
+    }
+
+    if (typeof beforeDoc?.eq === "function") {
+      try {
+        return beforeDoc.eq(currentDoc) === true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   private getState(): EditorState | null {

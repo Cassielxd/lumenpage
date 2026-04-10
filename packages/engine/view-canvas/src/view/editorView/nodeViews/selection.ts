@@ -1,5 +1,6 @@
 import { NodeSelection } from "lumenpage-state";
 
+import { getPageOffsetDelta } from "../../layoutRuntimeMetadata";
 import { resolveNodeSelectionDecision } from "../selectionPolicy";
 
 export const createNodeViewSelectionHandlers = ({
@@ -98,8 +99,8 @@ export const createNodeViewSelectionHandlers = ({
     const hitOffset = Number.isFinite(hit.offset) ? hit.offset : null;
     const blockStart = Number.isFinite(hit?.start)
       ? Number(hit.start)
-      : Number.isFinite(hit?.page?.__pageOffsetDelta) && Number.isFinite(line.blockStart)
-        ? Number(line.blockStart) + Number(hit.page.__pageOffsetDelta)
+      : Number.isFinite(getPageOffsetDelta(hit?.page)) && Number.isFinite(line.blockStart)
+        ? Number(line.blockStart) + getPageOffsetDelta(hit.page)
         : Number.isFinite(line.blockStart)
           ? Number(line.blockStart)
           : null;

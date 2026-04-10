@@ -1,3 +1,5 @@
+import { resolveNodeRendererViewCapabilities } from "lumenpage-render-engine";
+
 export const createNodeViewDocumentSync = ({
   view,
   managerState,
@@ -63,7 +65,10 @@ export const createNodeViewDocumentSync = ({
 
   const resolveNodeViewFactory = (activeNodeViewFactories: any, node: any) => {
     const renderer = nodeRegistry?.get?.(node?.type?.name);
-    return activeNodeViewFactories?.[node?.type?.name] ?? renderer?.createNodeView;
+    return (
+      activeNodeViewFactories?.[node?.type?.name] ??
+      resolveNodeRendererViewCapabilities(renderer).createNodeView
+    );
   };
 
   const fullSync = (state: any, decorations: any, activeNodeViewFactories: any) => {

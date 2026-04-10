@@ -1,5 +1,8 @@
 import { docToRuns } from "../layout-pagination";
-import { resolveRendererFragmentModel } from "lumenpage-render-engine";
+import {
+  resolveNodeRendererLayoutCapabilities,
+  resolveRendererFragmentModel,
+} from "lumenpage-render-engine";
 import {
   DEFAULT_PAGE_GAP,
   DEFAULT_PAGE_HEIGHT,
@@ -39,7 +42,7 @@ const toSerializableSettings = (settings: any) => ({
 
 const hasComplexPaginationModel = (renderer: any) => {
   const fragmentModel = resolveRendererFragmentModel(renderer);
-  return renderer?.layoutBlock || fragmentModel === "continuation";
+  return resolveNodeRendererLayoutCapabilities(renderer).layoutBlock || fragmentModel === "continuation";
 };
 
 export const isWorkerPaginationEligibleDoc = (doc: any, registry: any) => {

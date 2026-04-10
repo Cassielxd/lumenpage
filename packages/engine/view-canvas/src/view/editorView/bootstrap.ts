@@ -1,5 +1,6 @@
 ﻿import { getCanvasConfig, type CanvasViewConfig } from "../canvasConfig";
 import type { CanvasEditorViewProps } from "./types";
+import { initializeViewPerfState } from "../settingsRuntimeState";
 import {
   DEFAULT_SETTINGS,
   applyDefaultA11y,
@@ -73,7 +74,7 @@ export const initEditorViewEnvironment = ({
   }
   settings.debugLayout = debugConfig?.layout === true;
   if (settings.debugPerf) {
-    settings.__perf = { layout: null, render: null };
+    initializeViewPerfState(settings);
   }
   const basePageWidth = settings.pageWidth;
 

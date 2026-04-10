@@ -1,6 +1,9 @@
 import { renderLineBodyPass } from "./lineBodyPass";
-import { resolveLineRenderPlan } from "./lineRenderPlan";
-import { type DefaultRender, type PageRenderPlan } from "./pageRenderPlan";
+import {
+  resolveCompatLineEntryRenderPlan,
+  type DefaultRender,
+  type PageRenderPlan,
+} from "./pageRenderPlan";
 
 export const renderPageLineCompatPass = ({
   ctx,
@@ -15,13 +18,8 @@ export const renderPageLineCompatPass = ({
   defaultRender: DefaultRender;
   plan: PageRenderPlan;
 }) => {
-  for (const entryState of plan.compatLineEntries) {
-    const renderPlan = resolveLineRenderPlan(entryState.line, entryState.renderer, {
-      hasNodeViewRender: !!entryState.nodeView?.render,
-      hasLeafTextFragment:
-        typeof entryState.textLineKey === "string" &&
-        plan.renderedLeafTextKeys.has(entryState.textLineKey),
-    });
+  for (const entryState of plan.compatPass.lineEntries) {
+    const renderPlan = resolveCompatLineEntryRenderPlan(entryState, plan.fragmentPass);
     if (!renderPlan.shouldRunCompatPass) {
       continue;
     }

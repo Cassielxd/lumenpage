@@ -36,9 +36,16 @@ const createState = (transaction, { onApply } = {}) => ({
   selection: {
     id: `base-selection-${transaction.id}`,
   },
-  doc: {
-    id: `base-doc-${transaction.id}`,
-  },
+  doc: (() => {
+    const doc = {
+      id: `base-doc-${transaction.id}`,
+      eq(other) {
+        return other === doc || other?.id === doc.id;
+      },
+    };
+    transaction.before = doc;
+    return doc;
+  })(),
   storedMarks: [`base-mark-${transaction.id}`],
   plugins: [],
   schema: {
@@ -335,4 +342,33 @@ test("CommandManager runtime overrides and commands.run keep current factory and
   assert.equal(transaction.getMeta("editor-run"), true);
   assert.equal(transaction.getMeta("legacy-run"), true);
   assert.equal(transaction.getMeta("suppressed"), true);
+});
+
+test("CommandManager skips final dispatch when a legacy command already changed the editor state", () => {
+  const dispatches = [];
+  const transaction = createTransaction("external-change");
+  const state = createState(transaction);
+  const nextState = createState(createTransaction("external-change-next"));
+  const view = {
+    state,
+    dispatch: (tr) => {
+      dispatches.push(tr);
+    },
+  };
+  const editor = {
+    view,
+    state,
+  };
+  const manager = new CommandManager(editor, {
+    externalChange(stateArg, _dispatchArg) {
+      stateArg.tr.setMeta("legacy-external-change", true);
+      view.state = nextState;
+      editor.state = nextState;
+      return true;
+    },
+  });
+
+  assert.equal(manager.commands.externalChange(), true);
+  assert.equal(transaction.getMeta("legacy-external-change"), true);
+  assert.deepEqual(dispatches, []);
 });

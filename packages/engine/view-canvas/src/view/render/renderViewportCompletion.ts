@@ -1,4 +1,5 @@
 import { emitGhostTrace, now } from "../debugTrace";
+import { getLayoutChangeSummary } from "../layoutRuntimeMetadata";
 import { type RendererPerfSummary, reportRendererPerf } from "./renderPerfReporter";
 import { type RendererViewportState } from "./rendererViewportState";
 
@@ -63,7 +64,7 @@ export const completeRendererViewportPass = ({
       prevLayoutVersion,
       layoutVersionChanged,
       skippedLayoutVersions: skippedLayoutVersions === true,
-      layoutDocChanged: layout?.__changeSummary?.docChanged === true,
+      layoutDocChanged: getLayoutChangeSummary(layout)?.docChanged === true,
       forceRedraw,
       cacheClearReasons,
       activePages: surfacePass.activePages.size,
@@ -99,7 +100,7 @@ export const completeRendererViewportPass = ({
     prevLayoutVersion,
     layoutVersionChanged,
     skippedLayoutVersions: skippedLayoutVersions === true,
-    docChanged: layout?.__changeSummary?.docChanged === true,
+    docChanged: getLayoutChangeSummary(layout)?.docChanged === true,
     forceRedraw,
     cacheClearReasons,
     activePages: surfacePass.activePages.size,
@@ -126,7 +127,7 @@ export const completeRendererViewportPass = ({
     overlayMs: Math.round(overlayMs),
     overlayDisplayListItemCount,
     pageTrace:
-      layout?.__changeSummary?.docChanged === true || forceRedraw
+      getLayoutChangeSummary(layout)?.docChanged === true || forceRedraw
         ? surfacePass.pageTrace || []
         : undefined,
   };

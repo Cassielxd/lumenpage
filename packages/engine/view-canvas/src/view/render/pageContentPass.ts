@@ -12,6 +12,11 @@ import {
   getRendererPageShellSignature,
 } from "./pageSignature";
 import { createPageRenderPlan, type DefaultRender } from "./pageRenderPlan";
+import {
+  getPageLayoutVersionToken,
+  setPageRenderSignature,
+  setPageRenderSignatureVersion,
+} from "../layoutRuntimeMetadata";
 
 export { getRendererPageFragments } from "./pageRenderPlan";
 
@@ -185,7 +190,7 @@ export const buildRendererPageDisplayList = ({
         }),
     },
   ];
-  if (plan.compatLineEntries.length > 0) {
+  if (plan.compatPass.lineEntries.length > 0) {
     items.push({
       kind: "line-compat-pass",
       signature: getRendererLineCompatPassSignature({
@@ -202,13 +207,12 @@ export const buildRendererPageDisplayList = ({
     });
   }
   const signature = getRendererPageDisplayListSignature(items);
-  const layoutVersion =
-    page && Number.isFinite(page.__layoutVersionToken) ? Number(page.__layoutVersionToken) : null;
+  const layoutVersion = getPageLayoutVersionToken(page);
 
   if (page) {
-    page.__signature = signature;
+    setPageRenderSignature(page, signature);
     if (layoutVersion != null) {
-      page.__signatureVersion = layoutVersion;
+      setPageRenderSignatureVersion(page, layoutVersion);
     }
   }
 

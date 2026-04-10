@@ -1,4 +1,5 @@
 import { now } from "./debugTrace";
+import { isProgressiveLayoutApplied, isProgressiveLayoutTruncated } from "./layoutRuntimeMetadata";
 
 const CONTINUOUS_EDIT_THRESHOLD = 3;
 
@@ -124,7 +125,7 @@ export const createProgressiveLayoutController = ({
       settleDelayMs,
     }: ProgressiveLayoutAppliedArgs) {
       backgroundFullLayoutDelayMs = Math.max(settleDelayMs * 4, 1500);
-      const isProgressive = layout?.__progressiveApplied === true && incrementalEnabled;
+      const isProgressive = isProgressiveLayoutApplied(layout) && incrementalEnabled;
 
       if (!isProgressive) {
         continuousEditCount = 0;
@@ -136,7 +137,7 @@ export const createProgressiveLayoutController = ({
       continuousEditCount += 1;
       const appliedLayout = getLayout();
       const isLargeDocument = !!(appliedLayout && appliedLayout.pages.length > 50);
-      const progressiveTruncated = layout?.__progressiveTruncated === true;
+      const progressiveTruncated = isProgressiveLayoutTruncated(layout);
       const prevPageCount = prevLayout?.pages?.length ?? 0;
       const appliedPageCount = appliedLayout?.pages?.length ?? 0;
       const pageCountIncreased = appliedPageCount > prevPageCount;

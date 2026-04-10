@@ -1,7 +1,9 @@
 import {
   getDefaultNodeRenderer,
+  mergeNodeRenderers,
   NodeRendererRegistry,
   type NodeRenderer,
+  resolveNodeRendererViewCapabilities,
 } from "lumenpage-render-engine";
 
 type ResolvedExtensionRuntime = {
@@ -46,15 +48,26 @@ export const createNodeRegistry = (resolved: ResolvedExtensionRuntime) => {
     const explicitRenderer = (layoutHooks?.renderer || null) as NodeRenderer & {
       pagination?: unknown;
     } | null;
+    const mergedRenderer = mergeNodeRenderers(defaultRenderer, explicitRenderer);
+    const resolvedView = resolveNodeRendererViewCapabilities(mergedRenderer);
     const createNodeView =
-      nodeViews[nodeName] || explicitRenderer?.createNodeView || defaultRenderer?.createNodeView;
-    const mergedRenderer = {
-      ...(defaultRenderer || {}),
-      ...(explicitRenderer || {}),
-      pagination:
-        layoutHooks?.pagination || explicitRenderer?.pagination || defaultRenderer?.pagination,
-      createNodeView,
+      nodeViews[nodeName] || resolvedView.createNodeView || defaultRenderer?.createNodeView;
+    mergedRenderer.view = {
+      ...(mergedRenderer.view || {}),
+      ...(createNodeView ? { createNodeView } : null),
     };
+    if (createNodeView) {
+      mergedRenderer.createNodeView = createNodeView;
+    }
+    const pagination =
+      layoutHooks?.pagination || mergedRenderer.layout?.pagination || mergedRenderer.pagination;
+    if (pagination) {
+      mergedRenderer.layout = {
+        ...(mergedRenderer.layout || {}),
+        pagination,
+      };
+      mergedRenderer.pagination = pagination;
+    }
 
     if (!Object.values(mergedRenderer).some((value) => value != null)) {
       continue;

@@ -1,4 +1,5 @@
 import { emitGhostTrace } from "../debugTrace";
+import { getLayoutVersion } from "../layoutRuntimeMetadata";
 
 type CreateNodeOverlaySyncCoordinatorArgs = {
   scrollArea: any;
@@ -33,8 +34,8 @@ export const createNodeOverlaySyncCoordinator = ({
         "node-overlay-sync",
         {
           phase: "raf",
-          layoutToken: Number.isFinite(context?.layout?.__version)
-            ? Number(context.layout.__version)
+          layoutToken: Number.isFinite(getLayoutVersion(context?.layout))
+            ? Number(getLayoutVersion(context?.layout))
             : Number.isFinite(lastOverlayLayoutToken)
               ? Number(lastOverlayLayoutToken)
               : null,

@@ -1,5 +1,6 @@
 import { measureTextWidth } from "./measure";
 import { isLineVisualBlock } from "./layoutSemantics";
+import { getPageOffsetDelta as readPageOffsetDelta } from "./pageRuntimeMeta";
 
 export const getLineHeight = (line: any, layout: any) =>
   Number.isFinite(line?.lineHeight) ? Number(line.lineHeight) : Number(layout?.lineHeight) || 0;
@@ -7,8 +8,7 @@ export const getLineHeight = (line: any, layout: any) =>
 export const getLineOffsetDelta = (line: any) =>
   Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
 
-export const getPageOffsetDelta = (page: any) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+export const getPageOffsetDelta = (page: any) => readPageOffsetDelta(page);
 
 export const getRunOffsetDelta = (line: any, page: any = null) =>
   getLineOffsetDelta(line) + getPageOffsetDelta(page);

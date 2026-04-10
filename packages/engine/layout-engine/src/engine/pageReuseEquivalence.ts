@@ -10,6 +10,13 @@ import {
   readLineFragmentContinuationState,
 } from "./fragmentContinuation";
 import { getObjectSignature, hashNumber, hashString } from "./signature";
+import {
+  clearPageRenderSignature,
+  getPageOffsetDelta,
+  getPageSourcePageIndex,
+  setPageOffsetDelta,
+  setPageSourcePageIndex,
+} from "../runtimeMetadata";
 
 /**
  * 生成页面结束状态的 token，用于校验复用页与新布局页是否一致。
@@ -25,9 +32,7 @@ export function getPageExitToken(page: any, offsetDelta = 0) {
   if (!line) {
     return "empty";
   }
-  const totalOffsetDelta =
-    (Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0) +
-    Number(offsetDelta || 0);
+  const totalOffsetDelta = getPageOffsetDelta(page) + Number(offsetDelta || 0);
   const continuation = readLineFragmentContinuationState(line);
   let hash = 17;
   hash = hashString(hash, "page-exit");
@@ -232,20 +237,18 @@ export function cloneAndShiftPages(pages: any[], offsetDelta: number) {
   }
   const delta = Number.isFinite(offsetDelta) ? Number(offsetDelta) : 0;
   return pages.map((page) => {
-    const next = {
+    const next: any = {
       ...page,
-      __sourcePageIndex: Number.isFinite(page?.__sourcePageIndex)
-        ? Number(page.__sourcePageIndex)
-        : Number.isFinite(page?.index)
-          ? Number(page.index)
-          : null,
-      __pageOffsetDelta:
-        (Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0) + delta,
-      __signature: undefined,
-      __signatureVersion: undefined,
       __materializedShiftedLines: undefined,
       __materializedShiftedLinesDelta: undefined,
     };
+    setPageSourcePageIndex(
+      next,
+      getPageSourcePageIndex(page) ??
+        (Number.isFinite(page?.index) ? Number(page.index) : null)
+    );
+    setPageOffsetDelta(next, getPageOffsetDelta(page) + delta);
+    clearPageRenderSignature(next);
     materializePageGeometry(next);
     return next;
   });

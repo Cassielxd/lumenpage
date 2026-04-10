@@ -1,4 +1,5 @@
 import { getFontSize, measureTextWidth } from "../measure";
+import { getLayoutVersion, getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
 import { selectionToRects } from "./selection";
 import {
   collectAllLayoutBoxesForRange,
@@ -117,8 +118,7 @@ const getLineHeight = (line, layout) =>
 const getLineOffsetDelta = (line) =>
   Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
 
-const getPageOffsetDelta = (page) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+const getPageOffsetDelta = (page) => readPageOffsetDelta(page);
 
 const getRunOffsetDelta = (line, page = null) => getLineOffsetDelta(line) + getPageOffsetDelta(page);
 
@@ -433,7 +433,7 @@ export const buildDecorationDrawData = (
 
   // Use caching to avoid recomputing on every frame
   // Cache key includes layout token, scroll position, viewport, and decoration info
-  const token = Number.isFinite(layoutToken) ? layoutToken : layout.__version ?? 0;
+  const token = Number.isFinite(layoutToken) ? layoutToken : Number(getLayoutVersion(layout) ?? 0);
   const cacheKey = getDecorationCacheKey(decorations, scrollTop, viewportWidth, token);
 
   if (!skipCache) {

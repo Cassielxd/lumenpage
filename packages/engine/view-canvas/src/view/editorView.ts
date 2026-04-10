@@ -19,6 +19,7 @@ import {
   viewHasFocus,
   viewPosAtCoords,
 } from "./editorView/publicApi";
+import { getEditorInternalsSections } from "./editorView/internals";
 import { setupCanvasEditorView } from "./editorView/setup";
 import type { CanvasEditorViewProps } from "./editorView/types";
 
@@ -47,8 +48,9 @@ export class CanvasEditorView {
   updateState(state: any) {
     const prev = this.state;
     this.state = state;
+    const { viewSync } = getEditorInternalsSections(this);
 
-    this._internals.updatePluginViews?.(prev, state);
+    viewSync?.updatePluginViews?.(prev, state);
 
     const docChanged = prev?.doc !== state?.doc;
     if (docChanged) {
@@ -60,15 +62,15 @@ export class CanvasEditorView {
         immediateLayoutHint = false;
       }
       if (immediateLayoutHint) {
-        this._internals.updateLayout?.();
+        viewSync?.updateLayout?.();
       } else {
-        this._internals.scheduleLayout?.();
+        viewSync?.scheduleLayout?.();
       }
     }
-    this._internals.syncNodeViews?.();
-    this._internals.syncAfterStateChange();
-    this._internals.updateA11yStatus?.();
-    this._internals.applyViewAttributes?.(state);
+    viewSync?.syncNodeViews?.();
+    viewSync?.syncAfterStateChange?.();
+    viewSync?.updateA11yStatus?.();
+    viewSync?.applyViewAttributes?.(state);
   }
 
   setProps(props: Partial<CanvasEditorViewProps> = {}) {
@@ -162,7 +164,8 @@ export class CanvasEditorView {
   }
 
   getTextContent() {
-    return this?._internals?.getText?.() ?? "";
+    const { stateAccessors } = getEditorInternalsSections(this);
+    return stateAccessors?.getText?.() ?? "";
   }
 
   destroy() {

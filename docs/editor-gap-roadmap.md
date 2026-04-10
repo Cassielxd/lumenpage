@@ -30,7 +30,7 @@
 
 ### 1. 分层与模块边界
 
-- `packages/model` / `packages/state` / `packages/transform` / `packages/commands`：ProseMirror 思想的 headless 核心能力。
+- `packages/model` / `packages/state` / `packages/transform` / `packages/commands`：结构化事务编辑器风格的 headless 核心能力。
 - `packages/engine/view-canvas`：Canvas 视图实现，负责输入、布局、渲染、命中、坐标映射。
 - `packages/core/starter-kit` + `packages/extensions/extension-*`：默认 schema、命令、节点/mark/交互扩展注册。
 - `packages/extensions/extension-*`：节点级与交互级扩展（paragraph、heading、list、table、image、video 等）。
@@ -57,7 +57,7 @@
 ### 4. 已识别风险（持续跟踪）
 
 - 文档编码问题已收敛：`docs/pagination-layout.md` 已重写为 UTF-8 正常版本。
-- 文档索引漂移已修复：`docs/prosemirror-gap.md` 已补齐，README 链接恢复有效。
+- 文档索引漂移已修复：`docs/editor-core-gap.md` 已补齐，README 链接恢复有效。
 - 临时文件风险已清理：`packages/model/src/tmpclaude-*` 已移除。
 - 严格模式迁移已开始，但仍有 legacy 通道依赖风险，需要持续收口。
 
@@ -77,7 +77,7 @@
 
 问题定义：
 
-- 当前 schema/model 与 ProseMirror 规则基本对齐：`listItem` 是 `block+`，`table` 属于 `block`，因此 `list item -> table` 在文档模型上是合法结构。
+- 当前 schema/model 与底层文档规则基本对齐：`listItem` 是 `block+`，`table` 属于 `block`，因此 `list item -> table` 在文档模型上是合法结构。
 - 当前 Canvas 渲染链路没有把这条能力补齐。`list` renderer 会先递归布局 item 子树，但在回写布局结果时把子块 line 统一改写为 list 自己的渲染身份，导致 nested `table`、`codeBlock` 等依赖自身 `renderLine` / `splitBlock` 的块无法完整工作。
 - 当前可见表现预计为：文本内容可能仍能出现，但表格边框、背景、跨页续接、选择几何与命中行为都不可靠；当单个 item 自身过高时，还会与 list 自己的分页切分逻辑冲突。
 
@@ -89,7 +89,7 @@
 
 实施原则：
 
-- 不调整 ProseMirror 层 schema 合法性；问题只在 `layout/render` 层补齐。
+- 不调整底层 schema 合法性；问题只在 `layout/render` 层补齐。
 - 先修复“child renderer identity 丢失”，再补“父子块分页委托”。
 - 尽量沉淀成可复用协议，不把 `view-canvas` 核心写死成只为 `list -> table` 服务的临时分支。
 

@@ -134,12 +134,23 @@ const getCollabRenderDiagnostics = async (page: import("@playwright/test").Page)
               __changeSummary?: Record<string, unknown> | null;
               __layoutPerfSummary?: Record<string, unknown> | null;
               __paginationDiagnostics?: Record<string, unknown> | null;
+              runtimeMeta?: {
+                layoutVersion?: number | null;
+                changeSummary?: Record<string, unknown> | null;
+                layoutPerfSummary?: Record<string, unknown> | null;
+                paginationDiagnostics?: Record<string, unknown> | null;
+              } | null;
               pages?: Array<{
                 rootIndexMin?: number;
                 rootIndexMax?: number;
                 __reused?: boolean;
                 __signature?: number | null;
                 __signatureVersion?: number | null;
+                runtimeMeta?: {
+                  reused?: boolean;
+                  signature?: number | null;
+                  signatureVersion?: number | null;
+                } | null;
               }>;
             };
             renderSync?: {
@@ -155,13 +166,16 @@ const getCollabRenderDiagnostics = async (page: import("@playwright/test").Page)
     const traces = Array.isArray((globalThis as any).__lumenGhostTrace)
       ? (globalThis as any).__lumenGhostTrace.slice(-12)
       : [];
+    const layoutRuntime = layout?.runtimeMeta ?? null;
     return {
       selectionHead: Number(globalView?.state?.selection?.head ?? -1),
-      layoutVersion: Number(layout?.__version ?? -1),
-      layoutDocChanged: layout?.__changeSummary?.docChanged === true,
-      changeSummary: layout?.__changeSummary ?? null,
-      layoutPerf: layout?.__layoutPerfSummary ?? null,
-      paginationDiagnostics: layout?.__paginationDiagnostics ?? null,
+      layoutVersion: Number(layoutRuntime?.layoutVersion ?? layout?.__version ?? -1),
+      layoutDocChanged:
+        (layoutRuntime?.changeSummary ?? layout?.__changeSummary ?? null)?.docChanged === true,
+      changeSummary: layoutRuntime?.changeSummary ?? layout?.__changeSummary ?? null,
+      layoutPerf: layoutRuntime?.layoutPerfSummary ?? layout?.__layoutPerfSummary ?? null,
+      paginationDiagnostics:
+        layoutRuntime?.paginationDiagnostics ?? layout?.__paginationDiagnostics ?? null,
       layoutPending: globalView?._internals?.renderSync?.isLayoutPending?.() === true,
       rendererLastLayoutVersion: Number(globalView?._internals?.renderer?.lastLayoutVersion ?? -1),
       pages: Array.isArray(layout?.pages)
@@ -169,9 +183,11 @@ const getCollabRenderDiagnostics = async (page: import("@playwright/test").Page)
             pageIndex,
             rootIndexMin: Number(page?.rootIndexMin ?? -1),
             rootIndexMax: Number(page?.rootIndexMax ?? -1),
-            reused: page?.__reused === true,
-            signature: Number(page?.__signature ?? -1),
-            signatureVersion: Number(page?.__signatureVersion ?? -1),
+            reused: page?.runtimeMeta?.reused === true || page?.__reused === true,
+            signature: Number(page?.runtimeMeta?.signature ?? page?.__signature ?? -1),
+            signatureVersion: Number(
+              page?.runtimeMeta?.signatureVersion ?? page?.__signatureVersion ?? -1,
+            ),
           }))
         : [],
       traces,

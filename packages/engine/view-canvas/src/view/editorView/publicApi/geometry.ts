@@ -1,3 +1,4 @@
+import { getEditorInternalsSections } from "../internals";
 import { callBooleanPropHandlers, toInsets } from "./shared";
 
 export const viewCoordsAtPos = (
@@ -9,18 +10,23 @@ export const viewCoordsAtPos = (
   if (!view?.state?.doc) {
     return null;
   }
-  const layout = view?._internals?.getLayout?.() ?? null;
+  const { core, stateAccessors } = getEditorInternalsSections(view);
+  const layout = stateAccessors?.getLayout?.() ?? null;
   if (!layout) {
     return null;
   }
-  const textLength = view?._internals?.getTextLength?.() ?? 0;
-  const layoutIndex = view?._internals?.getLayoutIndex?.() ?? null;
+  const scrollArea = core?.dom?.scrollArea;
+  if (!scrollArea) {
+    return null;
+  }
+  const textLength = stateAccessors?.getTextLength?.() ?? 0;
+  const layoutIndex = stateAccessors?.getLayoutIndex?.() ?? null;
   const offset = docPosToTextOffset(view.state.doc, pos);
   const rect = coordsAtPosImpl(
     layout,
     offset,
-    view._internals.dom.scrollArea.scrollTop,
-    view._internals.dom.scrollArea.clientWidth,
+    scrollArea.scrollTop,
+    scrollArea.clientWidth,
     textLength,
     { layoutIndex }
   );
@@ -45,14 +51,22 @@ export const viewPosAtCoords = (
   if (!coords || !view?.state?.doc) {
     return null;
   }
-  const layout = view?._internals?.getLayout?.() ?? null;
+  const { core, stateAccessors } = getEditorInternalsSections(view);
+  const layout = stateAccessors?.getLayout?.() ?? null;
   if (!layout) {
+    return null;
+  }
+  const scrollArea = core?.dom?.scrollArea;
+  if (!scrollArea) {
     return null;
   }
   let x = null;
   let y = null;
   if (Number.isFinite(coords?.clientX) && Number.isFinite(coords?.clientY)) {
-    const rect = view._internals.dom.scrollArea.getBoundingClientRect();
+    const rect = scrollArea.getBoundingClientRect?.();
+    if (!rect) {
+      return null;
+    }
     x = coords.clientX - rect.left;
     y = coords.clientY - rect.top;
   } else {
@@ -62,14 +76,14 @@ export const viewPosAtCoords = (
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     return null;
   }
-  const textLength = view?._internals?.getTextLength?.() ?? 0;
-  const layoutIndex = view?._internals?.getLayoutIndex?.() ?? null;
+  const textLength = stateAccessors?.getTextLength?.() ?? 0;
+  const layoutIndex = stateAccessors?.getLayoutIndex?.() ?? null;
   const offset = posAtCoordsImpl(
     layout,
     x,
     y,
-    view._internals.dom.scrollArea.scrollTop,
-    view._internals.dom.scrollArea.clientWidth,
+    scrollArea.scrollTop,
+    scrollArea.clientWidth,
     textLength,
     { layoutIndex }
   );
@@ -104,7 +118,8 @@ export const scrollViewIntoView = (
   docPosToTextOffset: any,
   coordsAtPosImpl: any
 ) => {
-  const renderSync = view?._internals?.renderSync ?? null;
+  const { core, stateAccessors, viewSync } = getEditorInternalsSections(view);
+  const renderSync = core?.renderSync ?? null;
   if (typeof renderSync?.isLayoutPending === "function" && renderSync.isLayoutPending()) {
     if (typeof renderSync?.requestScrollIntoView === "function") {
       const targetPos = Number.isFinite(pos) ? Number(pos) : view?.state?.selection?.head ?? null;
@@ -118,14 +133,17 @@ export const scrollViewIntoView = (
   if (!view?.state?.doc) {
     return;
   }
-  const layout = view?._internals?.getLayout?.() ?? null;
+  const layout = stateAccessors?.getLayout?.() ?? null;
   if (!layout) {
     return;
   }
-  const scrollArea = view._internals.dom.scrollArea;
+  const scrollArea = core?.dom?.scrollArea;
+  if (!scrollArea) {
+    return;
+  }
   const targetPos = Number.isFinite(pos) ? pos : view.state?.selection?.head ?? 0;
-  const textLength = view?._internals?.getTextLength?.() ?? 0;
-  const layoutIndex = view?._internals?.getLayoutIndex?.() ?? null;
+  const textLength = stateAccessors?.getTextLength?.() ?? 0;
+  const layoutIndex = stateAccessors?.getLayoutIndex?.() ?? null;
   const offset = docPosToTextOffset(view.state.doc, targetPos);
   const rect = coordsAtPosImpl(
     layout,
@@ -138,17 +156,17 @@ export const scrollViewIntoView = (
   if (!rect) {
     return;
   }
-  const settings = view?._internals?.settings || {};
+  const settings = core?.settings || {};
   const defaultMargin = Number.isFinite(settings.scrollMargin)
     ? settings.scrollMargin
     : Number.isFinite(settings.lineHeight)
       ? settings.lineHeight
       : 0;
   const margin = toInsets(
-    view?._internals?.queryEditorProp?.("scrollMargin"),
+    viewSync?.queryEditorProp?.("scrollMargin"),
     Math.max(0, Number(defaultMargin) || 0)
   );
-  const threshold = toInsets(view?._internals?.queryEditorProp?.("scrollThreshold"), 0);
+  const threshold = toInsets(viewSync?.queryEditorProp?.("scrollThreshold"), 0);
   const viewportHeight = scrollArea.clientHeight;
   const currentScrollTop = scrollArea.scrollTop;
   let nextScrollTop = currentScrollTop;

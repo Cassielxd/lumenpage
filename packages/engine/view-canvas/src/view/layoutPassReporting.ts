@@ -1,4 +1,13 @@
 import { emitGhostTrace, now } from "./debugTrace";
+import {
+  getLayoutGhostTrace,
+  getLayoutPerfSummary,
+  getLayoutTransportPerf,
+  getLayoutWorkerDebug,
+  isProgressiveLayoutApplied,
+  isProgressiveLayoutTruncated,
+} from "./layoutRuntimeMetadata";
+import { getViewLayoutPerfSummary } from "./settingsRuntimeState";
 
 export const applyResolvedLayoutAndReport = ({
   layout,
@@ -83,8 +92,9 @@ export const applyResolvedLayoutAndReport = ({
     changeSummary,
     isLayoutProgressive,
   });
-  const layoutPerf = layout?.__layoutPerfSummary ?? layoutPipeline?.settings?.__perf?.layout ?? null;
-  const workerDebug = layout?.__workerDebug ?? null;
+  const layoutPerf = getLayoutPerfSummary(layout) ?? getViewLayoutPerfSummary(layoutPipeline?.settings) ?? null;
+  const transportPerf = getLayoutTransportPerf(layout) ?? null;
+  const workerDebug = getLayoutWorkerDebug(layout) ?? null;
 
   emitPerfLog("layout-pass", {
     layoutVersion: version,
@@ -103,8 +113,8 @@ export const applyResolvedLayoutAndReport = ({
     totalPassMs: Math.round(now() - passStartedAt),
     prevPages: prevLayout?.pages?.length ?? 0,
     nextPages: layout?.pages?.length ?? 0,
-    progressiveApplied: layout?.__progressiveApplied === true,
-    progressiveTruncated: layout?.__progressiveTruncated === true,
+    progressiveApplied: isProgressiveLayoutApplied(layout),
+    progressiveTruncated: isProgressiveLayoutTruncated(layout),
     reusedPages: layoutPerf?.reusedPages ?? null,
     reuseReason: layoutPerf?.reuseReason ?? null,
     disablePageReuse: layoutPerf?.disablePageReuse ?? null,
@@ -129,6 +139,7 @@ export const applyResolvedLayoutAndReport = ({
     workerHadPreviousLayoutState: workerDebug?.workerHadPreviousLayoutState ?? null,
     workerPrevPagesBeforeSeed: workerDebug?.workerPrevPagesBeforeSeed ?? null,
     workerPrevPagesAfterSeed: workerDebug?.workerPrevPagesAfterSeed ?? null,
+    workerTransportPerf: transportPerf,
   });
 
   emitGhostTrace(
@@ -142,8 +153,8 @@ export const applyResolvedLayoutAndReport = ({
       cascadeFromPageIndex,
       prevPages: prevLayout?.pages?.length ?? 0,
       nextPages: layout?.pages?.length ?? 0,
-      progressiveApplied: layout?.__progressiveApplied === true,
-      progressiveTruncated: layout?.__progressiveTruncated === true,
+      progressiveApplied: isProgressiveLayoutApplied(layout),
+      progressiveTruncated: isProgressiveLayoutTruncated(layout),
       reusedPages: layoutPerf?.reusedPages ?? null,
       reuseReason: layoutPerf?.reuseReason ?? null,
       disablePageReuse: layoutPerf?.disablePageReuse ?? null,
@@ -157,7 +168,7 @@ export const applyResolvedLayoutAndReport = ({
       resumeAnchorSkippedReason: layoutPerf?.resumeAnchorSkippedReason ?? null,
       reusedPrefixPages: layoutPerf?.reusedPrefixPages ?? null,
       reusedPrefixLines: layoutPerf?.reusedPrefixLines ?? null,
-      ghostTrace: Array.isArray(layout?.__ghostTrace) ? layout.__ghostTrace : [],
+      ghostTrace: getLayoutGhostTrace(layout) ?? [],
     },
     layoutPipeline?.settings
   );

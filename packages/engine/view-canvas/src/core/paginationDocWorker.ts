@@ -1,6 +1,12 @@
 import { LayoutPipeline } from "lumenpage-layout-engine";
 import { createLinebreakSegmentText, measureTextWidth } from "lumenpage-view-runtime";
 import {
+  setLayoutPerfSummary,
+  setLayoutTransportPerf,
+  setLayoutWorkerDebug,
+} from "../view/layoutRuntimeMetadata";
+import { getViewLayoutPerfSummary, initializeViewPerfState } from "../view/settingsRuntimeState";
+import {
   DEFAULT_PAGE_GAP,
   DEFAULT_PAGE_HEIGHT,
   DEFAULT_PAGE_MARGIN,
@@ -54,33 +60,38 @@ type AttachPaginationDocWorkerArgs = {
   docPosToTextOffset: (doc: any, pos: number) => number;
 };
 
-const normalizeSettings = (settings: any) => ({
-  textLocale: settings?.textLocale || "zh-CN",
-  pageWidth: toNumberOrFallback(settings?.pageWidth, DEFAULT_PAGE_WIDTH),
-  pageHeight: toNumberOrFallback(settings?.pageHeight, DEFAULT_PAGE_HEIGHT),
-  pageGap: toNumberOrFallback(settings?.pageGap, DEFAULT_PAGE_GAP),
-  margin: {
-    left: toNumberOrFallback(settings?.margin?.left, DEFAULT_PAGE_MARGIN.left),
-    right: toNumberOrFallback(settings?.margin?.right, DEFAULT_PAGE_MARGIN.right),
-    top: toNumberOrFallback(settings?.margin?.top, DEFAULT_PAGE_MARGIN.top),
-    bottom: toNumberOrFallback(settings?.margin?.bottom, DEFAULT_PAGE_MARGIN.bottom),
-  },
-  lineHeight: toNumberOrFallback(settings?.lineHeight, 26),
-  blockSpacing: toNumberOrFallback(settings?.blockSpacing, 0),
-  paragraphSpacingBefore: toNumberOrFallback(settings?.paragraphSpacingBefore, 0),
-  paragraphSpacingAfter: toNumberOrFallback(settings?.paragraphSpacingAfter, 0),
-  font: settings?.font || "16px Arial",
-  segmentText: createLinebreakSegmentText({
-    locale: settings?.textLocale || "zh-CN",
-  }),
-  wrapTolerance: toNumberOrFallback(settings?.wrapTolerance, 0),
-  minLineWidth: toNumberOrFallback(settings?.minLineWidth, 0),
-  disablePageReuse: settings?.disablePageReuse === true,
-  debugPerf: settings?.debugPerf === true,
-  debugGhostTrace: settings?.debugGhostTrace === true,
-  __perf: settings?.debugPerf === true ? { layout: null } : undefined,
-  measureTextWidth,
-});
+const normalizeSettings = (settings: any) => {
+  const normalized = {
+    textLocale: settings?.textLocale || "zh-CN",
+    pageWidth: toNumberOrFallback(settings?.pageWidth, DEFAULT_PAGE_WIDTH),
+    pageHeight: toNumberOrFallback(settings?.pageHeight, DEFAULT_PAGE_HEIGHT),
+    pageGap: toNumberOrFallback(settings?.pageGap, DEFAULT_PAGE_GAP),
+    margin: {
+      left: toNumberOrFallback(settings?.margin?.left, DEFAULT_PAGE_MARGIN.left),
+      right: toNumberOrFallback(settings?.margin?.right, DEFAULT_PAGE_MARGIN.right),
+      top: toNumberOrFallback(settings?.margin?.top, DEFAULT_PAGE_MARGIN.top),
+      bottom: toNumberOrFallback(settings?.margin?.bottom, DEFAULT_PAGE_MARGIN.bottom),
+    },
+    lineHeight: toNumberOrFallback(settings?.lineHeight, 26),
+    blockSpacing: toNumberOrFallback(settings?.blockSpacing, 0),
+    paragraphSpacingBefore: toNumberOrFallback(settings?.paragraphSpacingBefore, 0),
+    paragraphSpacingAfter: toNumberOrFallback(settings?.paragraphSpacingAfter, 0),
+    font: settings?.font || "16px Arial",
+    segmentText: createLinebreakSegmentText({
+      locale: settings?.textLocale || "zh-CN",
+    }),
+    wrapTolerance: toNumberOrFallback(settings?.wrapTolerance, 0),
+    minLineWidth: toNumberOrFallback(settings?.minLineWidth, 0),
+    disablePageReuse: settings?.disablePageReuse === true,
+    debugPerf: settings?.debugPerf === true,
+    debugGhostTrace: settings?.debugGhostTrace === true,
+    measureTextWidth,
+  };
+  if (normalized.debugPerf) {
+    initializeViewPerfState(normalized);
+  }
+  return normalized;
+};
 
 export const attachPaginationDocWorker = ({
   workerScope,
@@ -146,25 +157,25 @@ export const attachPaginationDocWorker = ({
       );
       mark("layoutFromDoc");
       previousLayoutState = layout;
+      const responseLayout = {
+        ...layout,
+      };
+      setLayoutTransportPerf(responseLayout, perf);
+      setLayoutPerfSummary(responseLayout, getViewLayoutPerfSummary(layoutPipeline?.settings));
+      setLayoutWorkerDebug(responseLayout, {
+        clientHadSeedLayout: request.workerDebug?.hadSeedLayout ?? null,
+        clientSentSeedLayout: request.workerDebug?.sentSeedLayout ?? null,
+        clientSettingsChanged: request.workerDebug?.settingsChanged ?? null,
+        clientPrevPages: request.workerDebug?.prevPages ?? null,
+        workerHadPreviousLayoutState: hadPreviousLayoutState,
+        workerPrevPagesBeforeSeed: previousLayoutPagesBeforeSeed,
+        workerPrevPagesAfterSeed: previousLayoutPagesAfterSeed,
+        workerNextPages: layout?.pages?.length ?? 0,
+      });
       const response: PaginationDocWorkerResponse = {
         id: request.id,
         ok: true,
-        layout: {
-          ...layout,
-          __perf: perf,
-          __layoutPerfSummary: layoutPipeline?.settings?.__perf?.layout ?? null,
-          __ghostTrace: Array.isArray(layout?.__ghostTrace) ? layout.__ghostTrace : null,
-          __workerDebug: {
-            clientHadSeedLayout: request.workerDebug?.hadSeedLayout ?? null,
-            clientSentSeedLayout: request.workerDebug?.sentSeedLayout ?? null,
-            clientSettingsChanged: request.workerDebug?.settingsChanged ?? null,
-            clientPrevPages: request.workerDebug?.prevPages ?? null,
-            workerHadPreviousLayoutState: hadPreviousLayoutState,
-            workerPrevPagesBeforeSeed: previousLayoutPagesBeforeSeed,
-            workerPrevPagesAfterSeed: previousLayoutPagesAfterSeed,
-            workerNextPages: layout?.pages?.length ?? 0,
-          },
-        },
+        layout: responseLayout,
       };
       mark("postMessage");
       workerScope.postMessage(response);

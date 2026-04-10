@@ -1,3 +1,5 @@
+import { getEditorInternalsSections } from "../internals";
+
 export const toInsets = (value: any, fallback = 0) => {
   if (Number.isFinite(value)) {
     const nextValue = Math.max(0, Number(value));
@@ -14,7 +16,8 @@ export const toInsets = (value: any, fallback = 0) => {
 };
 
 export const callBooleanPropHandlers = (view: any, propName: string, ...args: any[]) => {
-  const propsList = view?._internals?.getEditorPropsList?.(view.state) ?? [];
+  const { viewSync } = getEditorInternalsSections(view);
+  const propsList = viewSync?.getEditorPropsList?.(view.state) ?? [];
   for (const props of propsList) {
     const handler = props?.[propName];
     if (typeof handler === "function") {

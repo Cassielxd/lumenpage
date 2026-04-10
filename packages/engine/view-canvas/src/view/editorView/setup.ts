@@ -1,34 +1,15 @@
-import {
-  applyTransaction,
-  createChangeEvent,
-  docPosToTextOffset,
-  docToOffsetText,
-  getDocTextLength,
-  getSelectionOffsets,
-  LayoutPipeline,
-  textOffsetToDocPos,
-} from "../../core";
-import { buildLayoutIndex } from "../layoutIndex";
-import { coordsAtPos, posAtCoords } from "../posIndex";
-import { selectionToRects } from "../render/selection";
-import { createRenderSync } from "../renderSync";
+import { applyTransaction, createChangeEvent, docPosToTextOffset, LayoutPipeline, textOffsetToDocPos } from "../../core";
 import { Renderer } from "../renderer";
-import { createA11yStatusUpdater } from "./a11y";
 import { initEditorViewEnvironment } from "./bootstrap";
-import { createCoordinateHelpers } from "./coords";
-import { createDecorationResolver } from "./decorations";
-import { applyDefaultA11y } from "./dom";
 import { bindViewDomEvents } from "./events";
 import { createEditorInternals } from "./internals";
 import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
 import { createNodeViewManager } from "./nodeViews";
 import { createEditorPropHandlers } from "./plugins";
-import { createViewAttributeApplier } from "./propsState";
-import { scrollViewIntoView } from "./publicApi";
 import { createEditorViewRuntimeState } from "./runtimeState";
 import { createEditorViewInteractionRuntime } from "./setupInteractionRuntime";
+import { createEditorViewSyncRuntime } from "./setupViewSyncRuntime";
 import { createStateFlow } from "./stateFlow";
-import { createDebugLoggers, createRuntimeHelpers } from "./runtimeHelpers";
 import type { CanvasEditorViewProps } from "./types";
 
 export type CanvasEditorViewSetupResult = {
@@ -116,47 +97,6 @@ export const setupCanvasEditorView = ({
     getDefaultNodeSelectionTypes,
     logNodeSelection: null,
   });
-  renderer.setNodeViewProvider?.(nodeViewManager.getNodeViewForLine);
-  const syncNodeViewOverlays = () => {
-    nodeViewManager.syncNodeViewOverlays({
-      layout: runtimeState.getLayout(),
-      layoutIndex: runtimeState.getLayoutIndex(),
-      scrollArea: dom.scrollArea,
-    });
-  };
-
-  const {
-    resolvePageWidth,
-    getText,
-    getTextLength,
-    setInputPosition,
-  } = createRuntimeHelpers({
-    dom,
-    basePageWidth,
-    settings,
-    resolveCanvasConfig,
-    queryEditorProp: runtimeState.queryEditorProp,
-    getState: () => view.state,
-    docToOffsetText,
-    getDocTextLength,
-  });
-
-  const { getEventCoords, clampOffset, getDocPosFromCoords } = createCoordinateHelpers({
-    dom,
-    getLayout: runtimeState.getLayout,
-    getLayoutIndex: runtimeState.getLayoutIndex,
-    getTextLength,
-    getState: () => view.state,
-    textOffsetToDocPos,
-    posAtCoords,
-  });
-
-  const { logSelection, debugLog } = createDebugLoggers({
-    debugConfig,
-    getText,
-    docPosToTextOffset,
-    clampOffset,
-  });
 
   const editorPropHandlers = createEditorPropHandlers({
     view,
@@ -177,75 +117,33 @@ export const setupCanvasEditorView = ({
   } = editorPropHandlers;
   runtimeState.setQueryEditorProp(queryEditorProp);
 
-  const { applyViewAttributes } = createViewAttributeApplier({
-    dom,
-    getEditorPropsList,
-    applyDefaultA11y,
-  });
-
-  const decorationResolver = createDecorationResolver({
-    viewProps,
-    getEditorPropsList,
-    getDropDecoration: () => runtimeState.getDragHandlers()?.getDropDecoration?.() ?? null,
-    getState: () => view.state,
-  });
-  runtimeState.setGetDecorations(decorationResolver.getDecorations);
-
-  const updateA11yStatus = createA11yStatusUpdater({
-    a11yStatus,
-    getState: () => view.state,
-    getLayoutIndex: runtimeState.getLayoutIndex,
-    docPosToTextOffset,
-  });
-
-  const renderSync = createRenderSync({
-    getEditorState: () => view.state,
-    setEditorState: (nextState) => {
-      view.state = nextState;
-    },
-    applyTransaction,
-    layoutPipeline,
-    renderer,
-    spacer: dom.spacer,
-    scrollArea: dom.scrollArea,
-    status,
-    inputEl: dom.input,
+  const {
     getText,
     getTextLength,
-    clampOffset,
-    docPosToTextOffset,
-    getSelectionOffsets,
-    getDecorations: runtimeState.getDecorations,
-    selectionToRects,
-    buildLayoutIndex,
-    coordsAtPos,
-    logSelection,
-    getCaretOffset: runtimeState.getCaretOffset,
-    setCaretOffsetValue: runtimeState.setCaretOffset,
-    getCaretRect: runtimeState.getCaretRect,
-    setCaretRect: runtimeState.setCaretRect,
-    setPreferredX: runtimeState.setPreferredX,
-    getPendingPreferredUpdate: runtimeState.getPendingPreferredUpdate,
-    setPendingPreferredUpdate: runtimeState.setPendingPreferredUpdate,
-    getLayout: runtimeState.getLayout,
-    setLayout: runtimeState.setLayout,
-    getLayoutIndex: runtimeState.getLayoutIndex,
-    setLayoutIndex: runtimeState.setLayoutIndex,
-    getRafId: runtimeState.getRafId,
-    setRafId: runtimeState.setRafId,
     setInputPosition,
+    getEventCoords,
+    clampOffset,
+    getDocPosFromCoords,
+    debugLog,
     syncNodeViewOverlays,
-    resolvePageWidth,
-    queryEditorProp: runtimeState.queryEditorProp,
-    scrollIntoViewAtPos: (pos?: number) => {
-      scrollViewIntoView(view, pos, docPosToTextOffset, coordsAtPos);
-    },
-    getPendingChangeSummary: runtimeState.getPendingChangeSummary,
-    clearPendingChangeSummary: runtimeState.clearPendingChangeSummary,
-    getPendingSteps: runtimeState.getPendingSteps,
-    clearPendingSteps: runtimeState.clearPendingSteps,
-    paginationTiming: false,
-    renderTiming: false,
+    applyViewAttributes,
+    updateA11yStatus,
+    renderSync,
+  } = createEditorViewSyncRuntime({
+    view,
+    viewProps,
+    dom,
+    basePageWidth,
+    settings,
+    debugConfig,
+    a11yStatus,
+    resolveCanvasConfig,
+    runtimeState,
+    status,
+    layoutPipeline,
+    renderer,
+    nodeViewManager,
+    getEditorPropsList,
   });
   const {
     updateStatus,

@@ -1,5 +1,7 @@
+import { resolveNodeRendererRenderCapabilities } from "lumenpage-render-engine";
 import {
   type DefaultRender,
+  type PageFragmentPassPlan,
   type PageRenderPlan,
   getTextLineFragmentKey,
   isTextLineFragment,
@@ -11,14 +13,14 @@ const renderFragmentTree = ({
   layout,
   registry,
   defaultRender,
-  plan,
+  fragmentPass,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   fragment: any;
   layout: any;
   registry: any;
   defaultRender: DefaultRender;
-  plan: PageRenderPlan;
+  fragmentPass: PageFragmentPassPlan;
 }) => {
   if (!fragment) {
     return;
@@ -27,7 +29,7 @@ const renderFragmentTree = ({
   if (isTextLineFragment(fragment)) {
     const textLineKey = getTextLineFragmentKey(fragment);
     const lineEntry =
-      typeof textLineKey === "string" ? plan.leafTextLineEntries.get(textLineKey) : null;
+      typeof textLineKey === "string" ? fragmentPass.leafTextLineEntries.get(textLineKey) : null;
     if (
       lineEntry &&
       !lineEntry.renderPlan.shouldRunNodeViewPass &&
@@ -35,14 +37,15 @@ const renderFragmentTree = ({
         lineEntry.renderPlan.usesDefaultTextLineRenderer)
     ) {
       defaultRender(lineEntry.line, 0, 0, layout);
-      plan.renderedLeafTextKeys.add(textLineKey);
+      fragmentPass.renderedLeafTextKeys.add(textLineKey);
     }
     return;
   }
 
   const fragmentRenderer = fragment?.type ? registry?.get(fragment.type) : null;
-  if (fragmentRenderer?.renderFragment) {
-    fragmentRenderer.renderFragment({
+  const render = resolveNodeRendererRenderCapabilities(fragmentRenderer);
+  if (render.renderFragment) {
+    render.renderFragment({
       ctx,
       fragment,
       pageTop: 0,
@@ -60,7 +63,7 @@ const renderFragmentTree = ({
         layout,
         registry,
         defaultRender,
-        plan,
+        fragmentPass,
       });
     }
   }
@@ -79,14 +82,14 @@ export const renderPageFragmentPass = ({
   defaultRender: DefaultRender;
   plan: PageRenderPlan;
 }) => {
-  for (const fragment of plan.pageFragments) {
+  for (const fragment of plan.fragmentPass.pageFragments) {
     renderFragmentTree({
       ctx,
       fragment,
       layout,
       registry,
       defaultRender,
-      plan,
+      fragmentPass: plan.fragmentPass,
     });
   }
 };

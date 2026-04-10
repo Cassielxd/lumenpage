@@ -1,4 +1,5 @@
 import { findLineForOffset, offsetAtX } from "../caret";
+import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
 import {
   buildLayoutIndex as runtimeBuildLayoutIndex,
   findLineForOffsetIndexed as runtimeFindLineForOffsetIndexed,
@@ -32,8 +33,7 @@ const getLineHeight = (line, layout) =>
 const getLineOffsetDelta = (line) =>
   Number.isFinite(line?.__offsetDelta) ? Number(line.__offsetDelta) : 0;
 
-const getPageOffsetDelta = (page) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
+const getPageOffsetDelta = (page) => readPageOffsetDelta(page);
 
 const getRunOffsetDelta = (line, page = null) => getLineOffsetDelta(line) + getPageOffsetDelta(page);
 

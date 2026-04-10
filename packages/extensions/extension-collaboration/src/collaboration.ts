@@ -93,6 +93,7 @@ const runUndoManagerCommand = (state: any, dispatch: ((tr: any) => void) | undef
     return true;
   }
 
+  state?.tr?.setMeta?.("preventDispatch", true);
   undoManager[action]();
 
   return true;

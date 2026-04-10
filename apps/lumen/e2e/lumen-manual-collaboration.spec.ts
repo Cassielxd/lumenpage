@@ -3,9 +3,11 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
+import * as Y from "yjs";
 
 import {
   attachConsoleGuards,
+  focusEditor,
   getDocumentSnapshot,
   setParagraphDocument,
   waitForLayoutIdle,
@@ -285,6 +287,28 @@ const readBackendSnapshot = async (
   return String(payload.snapshot || "");
 };
 
+const readBackendSnapshotPayload = async (
+  page: Page,
+  documentId: string,
+  backendTarget: BackendTarget = defaultBackendTarget,
+) => {
+  const response = await page.context().request.get(
+    `${backendTarget.baseUrl}/api/documents/${documentId}/collab-snapshot`,
+  );
+  expect(response.ok()).toBeTruthy();
+  return (await response.json()) as { snapshot?: string; field?: string };
+};
+
+const decodeBackendSnapshotText = (snapshotBase64: string, field = "default") => {
+  const normalizedSnapshot = String(snapshotBase64 || "").trim();
+  const normalizedField = String(field || "").trim() || "default";
+  const document = new Y.Doc();
+  if (normalizedSnapshot) {
+    Y.applyUpdate(document, Buffer.from(normalizedSnapshot, "base64"));
+  }
+  return document.getXmlFragment(normalizedField).toString();
+};
+
 const waitForBackendSnapshotChange = async (
   page: Page,
   documentId: string,
@@ -389,6 +413,67 @@ test("document workspace falls back to the local snapshot when collaboration tic
   await expect(page.locator(".doc-collaboration-panel-empty-title")).toContainText(
     "Collaboration is currently off",
   );
+});
+
+test("snapshot-only workspace undo and redo stay local without mismatched transactions", async ({
+  page,
+}) => {
+  const guards = attachConsoleGuards(page);
+  const { seed, documentId } = await bootstrapOwnedDocument(page);
+  const seededParagraph = `Snapshot undo seed ${seed}`;
+  const typedSuffix = " local-history-check";
+  const undoShortcut = process.platform === "darwin" ? "Meta+z" : "Control+z";
+  const redoShortcut = process.platform === "darwin" ? "Shift+Meta+z" : "Control+y";
+
+  await page.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+    waitUntil: "networkidle",
+  });
+
+  const baselineSnapshot = await readBackendSnapshot(page, documentId);
+  await setParagraphDocument(page, [seededParagraph]);
+  await waitForLayoutIdle(page);
+  await expect
+    .poll(async () => (await getDocumentSnapshot(page)).textContent)
+    .toContain(seededParagraph);
+  await waitForBackendSnapshotChange(page, documentId, baselineSnapshot);
+  await expect
+    .poll(async () => {
+      const payload = await readBackendSnapshotPayload(page, documentId);
+      return decodeBackendSnapshotText(payload.snapshot || "", payload.field || "default");
+    })
+    .toContain(seededParagraph);
+
+  await page.goto(`/docs/${documentId}?locale=en-US&collab=0`, {
+    waitUntil: "networkidle",
+  });
+
+  await expect(page.locator(".collab-status-label")).toHaveCount(0);
+  await expect
+    .poll(async () => (await getDocumentSnapshot(page)).textContent)
+    .toContain(seededParagraph);
+
+  await focusEditor(page);
+  await page.keyboard.type(typedSuffix, { delay: 25 });
+  await waitForLayoutIdle(page);
+  await expect
+    .poll(async () => (await getDocumentSnapshot(page)).textContent)
+    .toContain(typedSuffix.trim());
+
+  await focusEditor(page);
+  await page.keyboard.press(undoShortcut);
+  await waitForLayoutIdle(page);
+  await expect
+    .poll(async () => (await getDocumentSnapshot(page)).textContent)
+    .toBe(seededParagraph);
+
+  await focusEditor(page);
+  await page.keyboard.press(redoShortcut);
+  await waitForLayoutIdle(page);
+  await expect
+    .poll(async () => (await getDocumentSnapshot(page)).textContent)
+    .toContain(typedSuffix.trim());
+
+  guards.assertClean();
 });
 
 test("document workspace surfaces disconnected collaboration state when the ticket points to an unavailable server", async ({

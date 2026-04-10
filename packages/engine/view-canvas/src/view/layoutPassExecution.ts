@@ -1,14 +1,8 @@
 import { now } from "./debugTrace";
 import {
-  PaginationWorkerClient,
-  createWorkerPaginationRunsPayload,
-  getWorkerPaginationIneligibleReason,
-  isWorkerPaginationEligibleDoc,
-} from "./paginationWorkerClient";
-
-type PaginationWorkerProviderLike = {
-  requestLayout: (payload: any) => Promise<any> | any;
-};
+  type PaginationAsyncRequester,
+  type PaginationAsyncRequesterKind,
+} from "./paginationRequester";
 
 type ResolveLayoutExecutionStrategyArgs = {
   doc: any;
@@ -16,8 +10,7 @@ type ResolveLayoutExecutionStrategyArgs = {
   changeSummary: any;
   layoutPipeline: any;
   workerConfig: any;
-  paginationWorkerProvider: PaginationWorkerProviderLike | null;
-  paginationWorker: PaginationWorkerClient | null;
+  paginationRequester: PaginationAsyncRequester | null;
   forceSyncLayoutOnce: boolean;
   useCascadePagination: boolean;
   runForceFullPass: boolean;
@@ -25,6 +18,7 @@ type ResolveLayoutExecutionStrategyArgs = {
 
 export type ResolvedLayoutExecutionStrategy = {
   workerIneligibleReason: string | null;
+  asyncRequesterKind: PaginationAsyncRequesterKind | null;
   canUseWorkerProvider: boolean;
   canUseWorker: boolean;
   preferSyncIncrementalPass: boolean;
@@ -40,8 +34,7 @@ type ExecuteLayoutPassArgs = {
   docPosToTextOffset: (doc: any, pos: number) => number;
   useCascadePagination: boolean;
   cascadeFromPageIndex: number | null;
-  paginationWorkerProvider: PaginationWorkerProviderLike | null;
-  paginationWorker: PaginationWorkerClient | null;
+  paginationRequester: PaginationAsyncRequester | null;
   workerTimeoutMs: number;
   onResolvedLayout: (layout: any, source: string, computeMs: number) => void;
   onAsyncSettled: () => void;
@@ -82,8 +75,7 @@ export const resolveLayoutExecutionStrategy = ({
   changeSummary,
   layoutPipeline,
   workerConfig,
-  paginationWorkerProvider,
-  paginationWorker,
+  paginationRequester,
   forceSyncLayoutOnce,
   useCascadePagination,
   runForceFullPass,
@@ -91,8 +83,10 @@ export const resolveLayoutExecutionStrategy = ({
   const docChanged = changeSummary?.docChanged === true;
   const allowWorkerForDocChanged = workerConfig?.useForDocChanged === true;
   const allowWorkerForInitial = workerConfig?.useForInitial === true;
-  const workerIneligibleReason = getWorkerPaginationIneligibleReason(doc, layoutPipeline?.registry);
-  const isEligible = isWorkerPaginationEligibleDoc(doc, layoutPipeline?.registry);
+  const requesterEligibility = paginationRequester?.getEligibility(doc, layoutPipeline?.registry) ?? {
+    eligible: false,
+    reason: null,
+  };
   const isInitialLayoutPass = !prevLayout;
   const workerAllowedForPass = docChanged
     ? allowWorkerForDocChanged
@@ -104,18 +98,26 @@ export const resolveLayoutExecutionStrategy = ({
     runForceFullPass !== true;
 
   return {
-    workerIneligibleReason,
+    workerIneligibleReason: requesterEligibility.reason,
+    asyncRequesterKind:
+      !preferSyncIncrementalPass &&
+      !forceSyncLayoutOnce &&
+      !!paginationRequester &&
+      requesterEligibility.eligible &&
+      workerAllowedForPass
+        ? paginationRequester.kind
+        : null,
     preferSyncIncrementalPass,
     canUseWorkerProvider:
       !preferSyncIncrementalPass &&
       !forceSyncLayoutOnce &&
-      !!paginationWorkerProvider &&
+      paginationRequester?.kind === "provider" &&
       workerAllowedForPass,
     canUseWorker:
       !preferSyncIncrementalPass &&
       !forceSyncLayoutOnce &&
-      !!paginationWorker &&
-      isEligible &&
+      paginationRequester?.kind === "runs-worker" &&
+      requesterEligibility.eligible &&
       workerAllowedForPass,
   };
 };
@@ -130,15 +132,14 @@ export const executeLayoutPass = ({
   docPosToTextOffset,
   useCascadePagination,
   cascadeFromPageIndex,
-  paginationWorkerProvider,
-  paginationWorker,
+  paginationRequester,
   workerTimeoutMs,
   onResolvedLayout,
   onAsyncSettled,
 }: ExecuteLayoutPassArgs) => {
-  if (strategy.canUseWorkerProvider && paginationWorkerProvider) {
+  if (strategy.asyncRequesterKind && paginationRequester) {
     const workerStartedAt = now();
-    const providerPayload = {
+    const requesterPayload = {
       doc,
       previousLayout: prevLayout ?? null,
       changeSummary,
@@ -147,12 +148,15 @@ export const executeLayoutPass = ({
       cascadePagination: useCascadePagination,
       cascadeFromPageIndex,
     };
-    Promise.resolve(paginationWorkerProvider.requestLayout(providerPayload))
+    const source = strategy.asyncRequesterKind === "provider" ? "worker-provider" : "worker";
+    const fallbackSource =
+      strategy.asyncRequesterKind === "provider" ? "worker-provider-fallback" : "worker-fallback";
+    Promise.resolve(paginationRequester.requestLayout(requesterPayload, workerTimeoutMs))
       .then((layout) => {
         if (!layout) {
-          throw new Error("provider-empty-layout");
+          throw new Error("async-requester-empty-layout");
         }
-        onResolvedLayout(layout, "worker-provider", now() - workerStartedAt);
+        onResolvedLayout(layout, source, now() - workerStartedAt);
       })
       .catch(() => {
         const fallbackStartedAt = now();
@@ -166,41 +170,7 @@ export const executeLayoutPass = ({
           useCascadePagination,
           cascadeFromPageIndex,
         });
-        onResolvedLayout(
-          fallbackLayout,
-          "worker-provider-fallback",
-          now() - fallbackStartedAt
-        );
-      })
-      .finally(onAsyncSettled);
-    return "async";
-  }
-
-  if (strategy.canUseWorker && paginationWorker) {
-    const workerStartedAt = now();
-    const payload = createWorkerPaginationRunsPayload(
-      doc,
-      layoutSettingsForPass,
-      layoutPipeline?.registry
-    );
-    paginationWorker
-      .requestLayout(payload, workerTimeoutMs)
-      .then((layout) => {
-        onResolvedLayout(layout, "worker", now() - workerStartedAt);
-      })
-      .catch(() => {
-        const fallbackStartedAt = now();
-        const fallbackLayout = buildLayoutFromDoc({
-          doc,
-          prevLayout,
-          changeSummary,
-          layoutSettingsForPass,
-          layoutPipeline,
-          docPosToTextOffset,
-          useCascadePagination,
-          cascadeFromPageIndex,
-        });
-        onResolvedLayout(fallbackLayout, "worker-fallback", now() - fallbackStartedAt);
+        onResolvedLayout(fallbackLayout, fallbackSource, now() - fallbackStartedAt);
       })
       .finally(onAsyncSettled);
     return "async";

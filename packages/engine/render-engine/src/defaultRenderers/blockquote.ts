@@ -90,7 +90,22 @@ export const blockquoteNodeSpec: any = {
 };
 
 export const blockquoteRenderer = {
-  containerRenderMode: "fragment",
+  compat: {
+    containerRenderMode: "fragment",
+    renderContainer({ ctx, line, pageX, pageTop, layout, container }: any) {
+      const borderColor = container?.borderColor ?? "#9ca3af";
+      const borderWidth = container?.borderWidth ?? 3;
+      const borderInset = container?.borderInset ?? 4;
+      const baseX = Number.isFinite(container?.baseX)
+        ? container.baseX
+        : layout.margin.left + (container?.offset ?? 0);
+      const barX = pageX + baseX + borderInset;
+      const barY = pageTop + line.y;
+      const barHeight = line.lineHeight ?? layout.lineHeight;
+      ctx.fillStyle = borderColor;
+      ctx.fillRect(barX, barY, borderWidth, barHeight);
+    },
+  },
   getContainerStyle({ node, settings }: { node: any; settings: any }) {
     return {
       type: node.type.name,
@@ -118,19 +133,6 @@ export const blockquoteRenderer = {
       width,
       height
     );
-  },
-  renderContainer({ ctx, line, pageX, pageTop, layout, container }: any) {
-    const borderColor = container?.borderColor ?? "#9ca3af";
-    const borderWidth = container?.borderWidth ?? 3;
-    const borderInset = container?.borderInset ?? 4;
-    const baseX = Number.isFinite(container?.baseX)
-      ? container.baseX
-      : layout.margin.left + (container?.offset ?? 0);
-    const barX = pageX + baseX + borderInset;
-    const barY = pageTop + line.y;
-    const barHeight = line.lineHeight ?? layout.lineHeight;
-    ctx.fillStyle = borderColor;
-    ctx.fillRect(barX, barY, borderWidth, barHeight);
   },
 };
 

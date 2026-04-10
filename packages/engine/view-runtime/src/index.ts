@@ -29,6 +29,7 @@ export {
 export { coordsAtPos, posAtCoords } from "./posIndex";
 export {
   buildLayoutIndex,
+  buildPartialLayoutIndex,
   findLineForOffsetIndexed,
   getCaretFromPointIndexed,
   getCaretRectIndexed,
@@ -43,6 +44,8 @@ export {
   getPageIndexForOffset,
   offsetAtXIndexed,
   posAtCoordsIndexed,
+  mergeLayoutIndex,
+  resolveStablePageEntryPrefixCount,
 } from "./layoutIndex";
 export type { LayoutIndex } from "./layoutIndex";
 export { createSelectionMovement } from "./selectionMovement";

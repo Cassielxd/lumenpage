@@ -6,6 +6,7 @@ import type {
 } from "lumenpage-layout-engine";
 import type { LayoutIndex } from "lumenpage-view-runtime";
 import { DEFAULT_PAGE_WIDTH } from "../pageDefaults";
+import { getPageOffsetDelta } from "./layoutRuntimeMetadata";
 import { getPageIndexForOffset } from "./layoutIndex";
 
 const toFiniteNumber = (value: unknown, fallback = 0) =>
@@ -75,9 +76,7 @@ export const findPageIndexForOffset = (
   let lineEndFallback: number | null = null;
   for (let pageIndex = 0; pageIndex < layout.pages.length; pageIndex += 1) {
     const page = layout.pages[pageIndex];
-    const pageOffsetDelta = Number.isFinite(page?.__pageOffsetDelta)
-      ? Number(page.__pageOffsetDelta)
-      : 0;
+    const pageOffsetDelta = getPageOffsetDelta(page);
     const lines = Array.isArray(page?.lines) ? page.lines : [];
     for (const line of lines) {
       const start = Number.isFinite(line?.start) ? Number(line.start) + pageOffsetDelta : null;

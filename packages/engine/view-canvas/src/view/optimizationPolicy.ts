@@ -1,3 +1,5 @@
+import { patchViewOptimizationPerf } from "./settingsRuntimeState";
+
 export type OptimizationPolicy = {
   enableExperimentalOptimizations: boolean;
   fastSelectionShortCircuit: boolean;
@@ -134,11 +136,5 @@ export const recordOptimizationPerf = (
   if (!settings || typeof settings !== "object" || !patch || typeof patch !== "object") {
     return null;
   }
-  if (!settings.__perf || typeof settings.__perf !== "object") {
-    settings.__perf = {};
-  }
-  const current = settings.__perf.optimization;
-  settings.__perf.optimization =
-    current && typeof current === "object" ? { ...current, ...patch } : { ...patch };
-  return settings.__perf.optimization;
+  return patchViewOptimizationPerf(settings, patch);
 };

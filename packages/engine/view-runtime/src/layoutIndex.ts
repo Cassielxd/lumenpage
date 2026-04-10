@@ -1,6 +1,7 @@
 import { findLineForOffset, getCaretFromPoint, offsetAtX } from "./caret";
 import { getFontForOffset, getBaselineOffset, getLineHeight, getLineXForOffset, isVisualBlockLine } from "./textLineGeometry";
 import { getFontSize } from "./measure";
+import { getPageOffsetDelta, getPageSourcePageIndex, isPageReused } from "./pageRuntimeMeta";
 import { getTextLineBoxHitAtPoint, getTextLineOffsetHit } from "./textLineHit";
 
 type LayoutLineItem = {
@@ -59,9 +60,6 @@ export type LayoutIndex = {
 const SEGMENT_SIZE = 256;
 
 const getRawPageLines = (page: any) => (Array.isArray(page?.lines) ? page.lines : []);
-
-const getPageOffsetDelta = (page: any) =>
-  Number.isFinite(page?.__pageOffsetDelta) ? Number(page.__pageOffsetDelta) : 0;
 
 const shiftLineForPage = (line: any, offsetDelta: number) => {
   if (!line || !Number.isFinite(offsetDelta) || offsetDelta === 0) {
@@ -232,13 +230,12 @@ const tryReusePageEntry = (
   previousLayout: any,
   previousIndex: LayoutIndex | null
 ): LayoutPageEntry | null => {
-  if (!page?.__reused || !previousLayout?.pages || !previousIndex?.pageEntries) {
+  if (!isPageReused(page) || !previousLayout?.pages || !previousIndex?.pageEntries) {
     return null;
   }
 
   const sourcePageIndex = Number.isFinite(page?.index) ? Number(page.index) : null;
-  const effectiveSourcePageIndex =
-    Number.isFinite(page?.__sourcePageIndex) ? Number(page.__sourcePageIndex) : sourcePageIndex;
+  const effectiveSourcePageIndex = getPageSourcePageIndex(page) ?? sourcePageIndex;
   if (effectiveSourcePageIndex == null || effectiveSourcePageIndex < 0) {
     return null;
   }
@@ -322,7 +319,7 @@ const canReusePrefixPageEntry = (
   return getRawPageLines(page).length === previousEntry.lineCount;
 };
 
-const resolveReusablePrefixCount = (
+export const resolveStablePageEntryPrefixCount = (
   layout: any,
   previousLayout: any,
   previousIndex: LayoutIndex | null
@@ -382,6 +379,35 @@ const buildPageEntry = (
   };
 };
 
+const buildPageEntriesRange = (
+  layout: any,
+  startPageIndex: number,
+  endPageIndex: number,
+  previousLayout: any = null,
+  previousIndex: LayoutIndex | null = null
+): LayoutPageEntry[] => {
+  const pages = Array.isArray(layout?.pages) ? layout.pages : [];
+  if (pages.length === 0) {
+    return [];
+  }
+
+  const safeStart = Math.max(
+    0,
+    Math.min(Number.isFinite(startPageIndex) ? Number(startPageIndex) : 0, pages.length)
+  );
+  const safeEnd = Math.max(
+    safeStart,
+    Math.min(Number.isFinite(endPageIndex) ? Number(endPageIndex) : pages.length, pages.length)
+  );
+  const pageEntries: LayoutPageEntry[] = [];
+
+  for (let pageIndex = safeStart; pageIndex < safeEnd; pageIndex += 1) {
+    pageEntries.push(buildPageEntry(pages[pageIndex], pageIndex, previousLayout, previousIndex));
+  }
+
+  return pageEntries;
+};
+
 const buildPageEntries = (
   layout: any,
   previousLayout: any = null,
@@ -393,7 +419,11 @@ const buildPageEntries = (
 
   const pages = layout.pages;
   const pageEntries: LayoutPageEntry[] = new Array(pages.length);
-  const reusablePrefixCount = resolveReusablePrefixCount(layout, previousLayout, previousIndex);
+  const reusablePrefixCount = resolveStablePageEntryPrefixCount(
+    layout,
+    previousLayout,
+    previousIndex
+  );
   const reusableSuffixStart = resolveReusableSuffixStart(
     layout,
     previousLayout,
@@ -714,22 +744,37 @@ export const buildPartialLayoutIndex = (
   if (!layout?.pages?.length) {
     return null;
   }
-  const partialLayout = {
-    ...layout,
-    pages: layout.pages.slice(Math.max(0, startPageIndex)),
-  };
-  return buildLayoutIndex(partialLayout, previousIndex, previousLayout);
+  const pageEntries = buildPageEntriesRange(
+    layout,
+    Math.max(0, startPageIndex),
+    layout.pages.length,
+    previousLayout,
+    previousIndex
+  );
+  return pageEntries.length > 0 ? createLayoutIndex(pageEntries) : null;
 };
 
 export const mergeLayoutIndex = (
   existingIndex: LayoutIndex | null,
-  newIndex: LayoutIndex,
-  _pageOffset: number = 0
-): LayoutIndex => {
+  newIndex: LayoutIndex | null,
+  preservedPageCount: number = 0
+): LayoutIndex | null => {
   if (!existingIndex) {
     return newIndex;
   }
-  return newIndex;
+  const safePreservedPageCount = Math.max(
+    0,
+    Math.min(
+      Number.isFinite(preservedPageCount) ? Number(preservedPageCount) : 0,
+      existingIndex.pageEntries.length
+    )
+  );
+  const preservedEntries = existingIndex.pageEntries
+    .filter((entry) => entry.pageIndex < safePreservedPageCount)
+    .map((entry) => clonePageEntryForCurrentPage(entry.page, entry.pageIndex, entry));
+  const nextEntries = Array.isArray(newIndex?.pageEntries) ? newIndex.pageEntries : [];
+  const mergedEntries = preservedEntries.concat(nextEntries);
+  return mergedEntries.length > 0 ? createLayoutIndex(mergedEntries) : null;
 };
 
 export const buildLayoutIndex = (

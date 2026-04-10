@@ -1,4 +1,5 @@
 import { now } from "../debugTrace";
+import { getLayoutVersion as resolveLayoutVersion } from "../layoutRuntimeMetadata";
 
 export const executeRenderFramePass = ({
   renderer,
@@ -45,9 +46,7 @@ export const executeRenderFramePass = ({
   const textLength = getTextLength();
   const scrollTop = Math.round(scrollArea.scrollTop * 10) / 10;
   const viewportWidth = scrollArea.clientWidth;
-  const layoutToken = Number.isFinite(layout?.__version)
-    ? Number(layout.__version)
-    : getLayoutVersion();
+  const layoutToken = resolveLayoutVersion(layout) ?? getLayoutVersion();
   const prevPageCount = getLastLayoutPageCount() ?? 0;
   const currentPageCount = layout?.pages?.length ?? 0;
   const isProgressive = currentPageCount > prevPageCount;

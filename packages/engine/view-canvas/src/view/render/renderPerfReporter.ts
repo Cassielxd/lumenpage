@@ -1,4 +1,5 @@
 import { emitGhostTrace, now } from "../debugTrace";
+import { getViewLayoutPerfSummary, setViewRenderPerfSummary } from "../settingsRuntimeState";
 
 export type RendererPerfSummary = {
   ms: number;
@@ -50,9 +51,7 @@ export const reportRendererPerf = ({
     return lastPerfLog;
   }
 
-  if (settings?.__perf) {
-    settings.__perf.render = summary;
-  }
+  setViewRenderPerfSummary(settings, summary);
 
   if (typeof window !== "undefined") {
     const globalWindow = window as typeof window & {
@@ -81,7 +80,7 @@ export const reportRendererPerf = ({
 
   const panel = settings?.perfPanelEl;
   if (panel) {
-    const layoutPerf = settings.__perf?.layout;
+    const layoutPerf = getViewLayoutPerfSummary(settings);
     panel.textContent = [
       "layout",
       `  ms: ${layoutPerf?.ms ?? "-"}`,

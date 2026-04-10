@@ -65,6 +65,8 @@ const buildStyle = (baseFont, marks, settings = null, registry = null) =>
     (name) => registry?.getMarkAnnotationResolver?.(name)
   );
 
+import { resolveNodeRendererLayoutCapabilities } from "./node";
+
 export function textblockToRuns(
   block,
   settings,
@@ -175,6 +177,7 @@ export function docToRuns(doc, settings, registry = null) {
     let local = null;
 
     const renderer = registry?.get(block.type.name);
+    const layout = resolveNodeRendererLayoutCapabilities(renderer);
     const blockStart = offset;
     const blockMeta = {
       blockType: block.type.name,
@@ -183,8 +186,8 @@ export function docToRuns(doc, settings, registry = null) {
       blockStart,
     };
 
-    if (renderer?.toRuns) {
-      local = renderer.toRuns(block, settings, registry);
+    if (layout.toRuns) {
+      local = layout.toRuns(block, settings, registry);
     } else if (block.isTextblock) {
       local = textblockToRuns(
         block,

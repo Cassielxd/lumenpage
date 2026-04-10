@@ -5,6 +5,7 @@ import {
   resolveLinkHrefAtSelection,
 } from "lumenpage-link";
 import { NodeSelection, TextSelection } from "lumenpage-state";
+import { Selection } from "lumenpage-state";
 import { getPageIndexForOffset } from "lumenpage-view-runtime";
 import {
   CanvasEditorView,
@@ -14,6 +15,11 @@ import {
 } from "lumenpage-view-canvas";
 import { ActiveBlockSelectionExtension } from "lumenpage-extension-active-block";
 import BubbleMenu from "lumenpage-extension-bubble-menu";
+import {
+  isYXmlFragmentEmpty,
+  lumenRootNodeToYXmlFragment,
+  yXmlFragmentToLumenRootNode,
+} from "lumenpage-extension-collaboration";
 import {
   CommentsPluginKey,
   findCommentAnchorRange,
@@ -74,6 +80,7 @@ type MountedPlaygroundEditor = {
   editor: Editor;
   view: CanvasEditorView;
   collaborationDocument: unknown | null;
+  snapshotDocument: unknown | null;
   setTocOutlineEnabled: (enabled: boolean) => void;
   isTocOutlineEnabled: () => boolean;
   getActiveCommentThreadId: () => string | null;
@@ -112,6 +119,50 @@ type EditorStatsSnapshot = {
 const toFiniteNumber = (value: unknown) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+};
+
+const getSnapshotFieldName = (field: string | null | undefined) => {
+  const normalized = String(field || "").trim();
+  return normalized || "default";
+};
+
+const createSnapshotDocument = (snapshot: Uint8Array | null | undefined) => {
+  if (!snapshot) {
+    return null;
+  }
+  const document = new Y.Doc();
+  if (snapshot.byteLength > 0) {
+    Y.applyUpdate(document, snapshot);
+  }
+  return document;
+};
+
+const readSnapshotRootNode = (
+  document: Y.Doc | null | undefined,
+  field: string | null | undefined,
+  schema: any
+) => {
+  if (!(document instanceof Y.Doc) || !schema) {
+    return null;
+  }
+  const fragment = document.getXmlFragment(getSnapshotFieldName(field));
+  if (isYXmlFragmentEmpty(fragment)) {
+    return null;
+  }
+  return yXmlFragmentToLumenRootNode(fragment, schema);
+};
+
+const syncSnapshotDocumentFromView = (
+  document: Y.Doc | null | undefined,
+  field: string | null | undefined,
+  viewDoc: any
+) => {
+  if (!(document instanceof Y.Doc) || !viewDoc) {
+    return false;
+  }
+  const fragment = document.getXmlFragment(getSnapshotFieldName(field));
+  lumenRootNodeToYXmlFragment(viewDoc, fragment, "lumen-local-snapshot");
+  return true;
 };
 
 const areTrackChangeRecordsEqual = (
@@ -434,19 +485,14 @@ export const mountPlaygroundEditor = ({
     flags,
     onStateChange: onCollaborationStateChange || null,
   });
+  const collaborationDocument = collaborationRuntime.provider?.document || null;
   const localSnapshotDocument =
-    !collaborationRuntime.provider && initialCollaborationSnapshot
-      ? (() => {
-          const document = new Y.Doc();
-          if (initialCollaborationSnapshot.byteLength > 0) {
-            Y.applyUpdate(document, initialCollaborationSnapshot);
-          }
-          return document;
-        })()
+    collaborationDocument == null
+      ? createSnapshotDocument(initialCollaborationSnapshot)
       : null;
-  const collaborationDocument = collaborationRuntime.provider?.document || localSnapshotDocument || null;
+  const snapshotDocument = collaborationDocument || localSnapshotDocument || null;
   lumenCommentsStore.useCollaborationStore(
-    collaborationDocument,
+    snapshotDocument,
     flags.collaborationField
   );
   const getPermissionMode = () => resolvePermissionMode?.() ?? flags.permissionMode;
@@ -632,7 +678,7 @@ export const mountPlaygroundEditor = ({
   const editor = new Editor({
     element: host,
     extensions: [...extensions, ...runtimeExtensions],
-    content: collaborationDocument ? "" : initialDocJson,
+    content: collaborationDocument ? "" : localSnapshotDocument ? "" : initialDocJson,
     enableInputRules: flags.enableInputRules,
     editorProps: {
       ...viewProps,
@@ -645,6 +691,24 @@ export const mountPlaygroundEditor = ({
     },
   });
   const view = editor.view!;
+  if (!collaborationDocument && localSnapshotDocument) {
+    try {
+      const snapshotDoc = readSnapshotRootNode(
+        localSnapshotDocument,
+        flags.collaborationField,
+        view.state?.schema
+      );
+      if (snapshotDoc && view.state?.doc?.eq?.(snapshotDoc) !== true && view.state?.tr) {
+        const tr = view.state.tr
+          .replaceWith(0, view.state.doc.content.size, snapshotDoc.content)
+          .setMeta("addToHistory", false);
+        tr.setSelection(Selection.atEnd(tr.doc));
+        view.dispatch(tr);
+      }
+    } catch (error) {
+      console.error("[lumen] local snapshot hydrate failed", error);
+    }
+  }
   const emitCommentState = () => {
     onCommentStateChange?.({
       activeThreadId: getCommentsPluginState(view?.state).activeThreadId || null,
@@ -714,7 +778,9 @@ export const mountPlaygroundEditor = ({
     scheduleTrackChangeStateEmit();
   };
   handleViewChange = (_nextView: CanvasEditorView, event: any) => {
+    const nextStateDoc = event?.state?.doc ?? null;
     if (event?.docChanged === true) {
+      syncSnapshotDocumentFromView(localSnapshotDocument, flags.collaborationField, nextStateDoc);
       pendingDocChanged = true;
     }
     if (pendingPostChangeSync) {
@@ -1012,6 +1078,7 @@ export const mountPlaygroundEditor = ({
     editor,
     view,
     collaborationDocument,
+    snapshotDocument,
     setTocOutlineEnabled: (enabled: boolean) => {
       tocOutlineController.setEnabled(enabled);
     },

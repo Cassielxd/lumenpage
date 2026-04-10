@@ -26,6 +26,8 @@ export const useWorkspaceSnapshotPersistence = ({
   onSaveError,
 }: UseWorkspaceSnapshotPersistenceOptions) => {
   const localSnapshotDocument = shallowRef<Y.Doc | null>(null);
+  let observedSnapshotDocument: Y.Doc | null = null;
+  let detachSnapshotObserver: (() => void) | null = null;
   let snapshotSaveTimeoutId: ReturnType<typeof setTimeout> | null = null;
   let snapshotSavePromise: Promise<void> | null = null;
   let pendingSnapshotSave = false;
@@ -116,13 +118,36 @@ export const useWorkspaceSnapshotPersistence = ({
     }, SNAPSHOT_SAVE_DEBOUNCE_MS);
   };
 
+  const resetSnapshotObserver = () => {
+    detachSnapshotObserver?.();
+    detachSnapshotObserver = null;
+    observedSnapshotDocument = null;
+  };
+
+  const observeSnapshotDocument = (document: Y.Doc | null) => {
+    resetSnapshotObserver();
+    if (!(document instanceof Y.Doc)) {
+      return;
+    }
+    const handleUpdate = () => {
+      scheduleWorkspaceSnapshotSave();
+    };
+    document.on("update", handleUpdate);
+    observedSnapshotDocument = document;
+    detachSnapshotObserver = () => {
+      observedSnapshotDocument?.off("update", handleUpdate);
+    };
+  };
+
   const setSnapshotDocument = (document: unknown) => {
     localSnapshotDocument.value = document instanceof Y.Doc ? document : null;
+    observeSnapshotDocument(localSnapshotDocument.value);
   };
 
   const resetWorkspaceSnapshotPersistence = () => {
     clearSnapshotSaveTimer();
     pendingSnapshotSave = false;
+    resetSnapshotObserver();
     localSnapshotDocument.value = null;
   };
 
