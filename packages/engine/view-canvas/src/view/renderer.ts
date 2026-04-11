@@ -1,7 +1,7 @@
 /* Offscreen page renderer orchestration. */
 
 import { buildRendererPageDisplayList } from "./render/pageDisplayListBuilder.js";
-import { syncRendererPageDisplayListMetadata } from "./render/pageDisplayListMetadata";
+import { syncRendererPageDisplayListMetadata } from "./render/pageDisplayListMetadata.js";
 import {
   getRendererPageCacheEntry,
   type RendererPageCacheEntry,
@@ -9,15 +9,15 @@ import {
 } from "./render/pageCanvasCache";
 import {
   type RendererPageDisplayList,
-} from "./render/pageDisplayList";
+} from "./render/pageDisplayList.js";
 import { executeRendererPageDisplayList } from "./render/pageDisplayListExecutor.js";
-import { renderTextLine } from "./render/textLinePainter";
-import { runRendererViewportPass } from "./render/renderViewportPass";
+import { renderTextLine } from "./render/textLinePainter.js";
+import { runRendererViewportPass } from "./render/renderViewportPass.js";
 import {
   getPageLayoutVersionToken,
   setPageRenderSignature,
   setPageRenderSignatureVersion,
-} from "./layoutRuntimeMetadata";
+} from "./layoutRuntimeMetadata.js";
 
 export class Renderer {
   pageLayer: HTMLElement;

@@ -1,9 +1,10 @@
 import { createPageFragmentPassRuntime } from "./pageFragmentPassRuntime.js";
 import {
-  getRendererPageDisplayListSignature,
+  type RendererPageDisplayListContext,
   type RendererPageDisplayList,
   type RendererPageDisplayListItem,
 } from "./pageDisplayList.js";
+import { getRendererPageDisplayListSignature } from "./pageDisplayListSignature.js";
 import { createPageRenderPlan, type DefaultRender } from "./pageRenderPlan.js";
 import {
   buildPageFragmentPassDisplayListItem,
@@ -42,28 +43,27 @@ export const buildRendererPageDisplayList = ({
     nodeViewProvider,
   });
   const fragmentPassRuntime = createPageFragmentPassRuntime();
-  const items: RendererPageDisplayListItem[] = [
-    buildPageShellDisplayListItem({
-      width,
-      height,
-      pageIndex,
-      layout,
-      settings,
-    }),
-    buildPageFragmentPassDisplayListItem({
-      layout,
-      registry,
-      createDefaultRender,
-      plan,
-      runtime: fragmentPassRuntime,
-    }),
-  ];
-  const compatItem = buildPageLineCompatDisplayListItem({
+  const context: RendererPageDisplayListContext = {
     layout,
+    settings,
     registry,
     createDefaultRender,
     plan,
     runtime: fragmentPassRuntime,
+    width,
+    height,
+    pageIndex,
+  };
+  const items: RendererPageDisplayListItem[] = [
+    buildPageShellDisplayListItem({
+      context,
+    }),
+    buildPageFragmentPassDisplayListItem({
+      context,
+    }),
+  ];
+  const compatItem = buildPageLineCompatDisplayListItem({
+    context,
   });
   if (compatItem) {
     items.push(compatItem);
@@ -72,6 +72,7 @@ export const buildRendererPageDisplayList = ({
 
   return {
     signature: Number.isFinite(signature) ? Number(signature) : null,
+    context,
     items,
   };
 };

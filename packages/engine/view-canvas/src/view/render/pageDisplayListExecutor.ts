@@ -1,4 +1,5 @@
 import {
+  type RendererPageDisplayListContext,
   type RendererPageDisplayList,
   type RendererPageDisplayListItem,
 } from "./pageDisplayList.js";
@@ -9,39 +10,41 @@ import { renderPageShell } from "./pageDisplayListItems.js";
 export const executeRendererPageDisplayListItem = ({
   ctx,
   item,
+  context,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   item: RendererPageDisplayListItem;
+  context: RendererPageDisplayListContext;
 }) => {
   switch (item.kind) {
     case "page-shell":
       renderPageShell({
         ctx,
-        width: item.width,
-        height: item.height,
-        pageIndex: item.pageIndex,
-        layout: item.layout,
-        settings: item.settings,
+        width: context.width,
+        height: context.height,
+        pageIndex: context.pageIndex,
+        layout: context.layout,
+        settings: context.settings,
       });
       return;
     case "fragment-pass":
       renderPageFragmentPass({
         ctx,
-        layout: item.layout,
-        registry: item.registry,
-        defaultRender: item.createDefaultRender(ctx),
-        plan: item.plan,
-        runtime: item.runtime,
+        layout: context.layout,
+        registry: context.registry,
+        defaultRender: context.createDefaultRender(ctx),
+        plan: context.plan,
+        runtime: context.runtime,
       });
       return;
     case "line-compat-pass":
       renderPageLineCompatPass({
         ctx,
-        layout: item.layout,
-        registry: item.registry,
-        defaultRender: item.createDefaultRender(ctx),
-        plan: item.plan,
-        runtime: item.runtime,
+        layout: context.layout,
+        registry: context.registry,
+        defaultRender: context.createDefaultRender(ctx),
+        plan: context.plan,
+        runtime: context.runtime,
       });
       return;
   }
@@ -58,6 +61,7 @@ export const executeRendererPageDisplayList = ({
     executeRendererPageDisplayListItem({
       ctx,
       item,
+      context: displayList.context,
     });
   }
 };
