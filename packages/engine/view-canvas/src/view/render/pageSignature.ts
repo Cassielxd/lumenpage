@@ -1,8 +1,5 @@
 import { resolveNodeRendererRenderCapabilities } from "lumenpage-render-engine";
-import {
-  type PageLineEntry,
-  type PageRenderPlan,
-} from "./pageRenderPlan";
+import { type PageLineEntry, type PageRenderPlan } from "./pageRenderPlan.js";
 
 const hashNumber = (hash: number, value: unknown) => {
   const num = Number.isFinite(value) ? Math.round(Number(value)) : 0;
@@ -253,11 +250,7 @@ export const getRendererFragmentPassSignature = ({
   return hash >>> 0;
 };
 
-export const getRendererLineCompatPassSignature = ({
-  plan,
-}: {
-  plan: PageRenderPlan;
-}) => {
+export const getRendererLineCompatPassSignature = ({ plan }: { plan: PageRenderPlan }) => {
   if (!Array.isArray(plan.compatPass.lineEntries) || plan.compatPass.lineEntries.length === 0) {
     return 0;
   }

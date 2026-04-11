@@ -5,7 +5,11 @@ import {
   type PageRenderPlan,
   getTextLineFragmentKey,
   isTextLineFragment,
-} from "./pageRenderPlan";
+} from "./pageRenderPlan.js";
+import {
+  resetPageFragmentPassRuntime,
+  type PageFragmentPassRuntime,
+} from "./pageFragmentPassRuntime.js";
 
 const renderFragmentTree = ({
   ctx,
@@ -14,6 +18,7 @@ const renderFragmentTree = ({
   registry,
   defaultRender,
   fragmentPass,
+  runtime,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   fragment: any;
@@ -21,6 +26,7 @@ const renderFragmentTree = ({
   registry: any;
   defaultRender: DefaultRender;
   fragmentPass: PageFragmentPassPlan;
+  runtime: PageFragmentPassRuntime;
 }) => {
   if (!fragment) {
     return;
@@ -37,7 +43,7 @@ const renderFragmentTree = ({
         lineEntry.renderPlan.usesDefaultTextLineRenderer)
     ) {
       defaultRender(lineEntry.line, 0, 0, layout);
-      fragmentPass.renderedLeafTextKeys.add(textLineKey);
+      runtime.renderedLeafTextKeys.add(textLineKey);
     }
     return;
   }
@@ -64,6 +70,7 @@ const renderFragmentTree = ({
         registry,
         defaultRender,
         fragmentPass,
+        runtime,
       });
     }
   }
@@ -75,13 +82,16 @@ export const renderPageFragmentPass = ({
   registry,
   defaultRender,
   plan,
+  runtime,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   layout: any;
   registry: any;
   defaultRender: DefaultRender;
   plan: PageRenderPlan;
+  runtime: PageFragmentPassRuntime;
 }) => {
+  resetPageFragmentPassRuntime(runtime);
   for (const fragment of plan.fragmentPass.pageFragments) {
     renderFragmentTree({
       ctx,
@@ -90,6 +100,7 @@ export const renderPageFragmentPass = ({
       registry,
       defaultRender,
       fragmentPass: plan.fragmentPass,
+      runtime,
     });
   }
 };

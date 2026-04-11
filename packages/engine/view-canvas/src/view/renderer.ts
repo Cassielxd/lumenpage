@@ -1,19 +1,23 @@
 /* Offscreen page renderer orchestration. */
 
-import {
-  buildRendererPageDisplayList,
-} from "./render/pageContentPass";
+import { buildRendererPageDisplayList } from "./render/pageDisplayListBuilder.js";
+import { syncRendererPageDisplayListMetadata } from "./render/pageDisplayListMetadata";
 import {
   getRendererPageCacheEntry,
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
 } from "./render/pageCanvasCache";
 import {
-  executeRendererPageDisplayList,
   type RendererPageDisplayList,
 } from "./render/pageDisplayList";
+import { executeRendererPageDisplayList } from "./render/pageDisplayListExecutor.js";
 import { renderTextLine } from "./render/textLinePainter";
 import { runRendererViewportPass } from "./render/renderViewportPass";
+import {
+  getPageLayoutVersionToken,
+  setPageRenderSignature,
+  setPageRenderSignatureVersion,
+} from "./layoutRuntimeMetadata";
 
 export class Renderer {
   pageLayer: HTMLElement;
@@ -31,7 +35,12 @@ export class Renderer {
   lastViewportWidth: number;
   lastViewportHeight: number;
 
-  constructor(pageLayer: HTMLElement, overlayCanvas: HTMLCanvasElement, settings: any, registry = null) {
+  constructor(
+    pageLayer: HTMLElement,
+    overlayCanvas: HTMLCanvasElement,
+    settings: any,
+    registry = null
+  ) {
     this.pageLayer = pageLayer;
     this.overlayCanvas = overlayCanvas;
 
@@ -70,7 +79,7 @@ export class Renderer {
 
   buildPageDisplayList(pageIndex: number, layout: any): RendererPageDisplayList {
     const page = layout.pages[pageIndex];
-    return buildRendererPageDisplayList({
+    const displayList = buildRendererPageDisplayList({
       width: layout.pageWidth,
       height: layout.pageHeight,
       pageIndex,
@@ -88,6 +97,14 @@ export class Renderer {
           layout: layoutRef,
         }),
     });
+    syncRendererPageDisplayListMetadata({
+      page,
+      displayList,
+      getPageLayoutVersionToken,
+      setPageRenderSignature,
+      setPageRenderSignatureVersion,
+    });
+    return displayList;
   }
 
   renderPage(pageIndex: number, layout: any, entry: RendererPageCacheEntry) {

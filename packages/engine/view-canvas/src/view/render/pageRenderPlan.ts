@@ -1,5 +1,5 @@
 import { resolveNodeRendererCompatCapabilities } from "lumenpage-render-engine";
-import { resolveLineRenderPlan } from "./lineRenderPlan";
+import { resolveLineRenderPlan } from "./lineRenderPlan.js";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
 
@@ -17,7 +17,6 @@ export type PageFragmentPassPlan = {
   pageFragments: any[];
   leafTextLineEntries: Map<string, PageLineEntry>;
   fragmentOwnedTextLineEntries: PageLineEntry[];
-  renderedLeafTextKeys: Set<string>;
 };
 
 export type PageCompatLineEntry = PageLineEntry & {
@@ -38,10 +37,7 @@ export const getTextLineFragmentKey = (target: any) => {
   if (!target || typeof target !== "object") {
     return null;
   }
-  if (
-    typeof target.__textLineFragmentKey === "string" &&
-    target.__textLineFragmentKey.length > 0
-  ) {
+  if (typeof target.__textLineFragmentKey === "string" && target.__textLineFragmentKey.length > 0) {
     return target.__textLineFragmentKey;
   }
   if (target.meta && typeof target.meta === "object") {
@@ -118,8 +114,7 @@ const hasCompatContainerWork = (line: any, registry: any) => {
     const containerRenderer = registry.get(container?.type);
     const compat = resolveNodeRendererCompatCapabilities(containerRenderer);
     return (
-      typeof compat.renderContainer === "function" &&
-      compat.containerRenderMode !== "fragment"
+      typeof compat.renderContainer === "function" && compat.containerRenderMode !== "fragment"
     );
   });
 };
@@ -136,14 +131,12 @@ export const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
 const buildFragmentPassPlan = (lineEntries: PageLineEntry[], page: any): PageFragmentPassPlan => ({
   pageFragments: getRendererPageFragments(page),
   leafTextLineEntries: buildLeafTextLineEntryMap(lineEntries),
-  fragmentOwnedTextLineEntries: lineEntries.filter((entry) => isLeafTextExpectedFromFragment(entry)),
-  renderedLeafTextKeys: new Set<string>(),
+  fragmentOwnedTextLineEntries: lineEntries.filter((entry) =>
+    isLeafTextExpectedFromFragment(entry)
+  ),
 });
 
-const buildCompatPassPlan = (
-  lineEntries: PageLineEntry[],
-  registry: any
-): PageCompatPassPlan => ({
+const buildCompatPassPlan = (lineEntries: PageLineEntry[], registry: any): PageCompatPassPlan => ({
   lineEntries: lineEntries
     .map((entry): PageCompatLineEntry => {
       const fragmentOwnsLeafText = isLeafTextExpectedFromFragment(entry);
@@ -170,14 +163,14 @@ const buildCompatPassPlan = (
 
 export const resolveCompatLineEntryRenderPlan = (
   entry: PageCompatLineEntry,
-  fragmentPass: PageFragmentPassPlan
+  renderedLeafTextKeys: Set<string>
 ) =>
   resolveLineRenderPlan(entry.line, entry.renderer, {
     hasNodeViewRender: !!entry.nodeView?.render,
     hasLeafTextFragment:
       entry.fragmentOwnsLeafText &&
       typeof entry.textLineKey === "string" &&
-      fragmentPass.renderedLeafTextKeys.has(entry.textLineKey),
+      renderedLeafTextKeys.has(entry.textLineKey),
   });
 
 export const createPageRenderPlan = ({

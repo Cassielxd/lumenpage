@@ -1,10 +1,31 @@
-export type RendererPageDisplayListItem = {
-  kind: "page-shell" | "fragment-pass" | "line-compat-pass";
+import type { DefaultRender, PageRenderPlan } from "./pageRenderPlan.js";
+import type { PageFragmentPassRuntime } from "./pageFragmentPassRuntime.js";
+
+export type RendererPageShellDisplayListItem = {
+  kind: "page-shell";
   signature: number | null;
-  paint: (
-    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
-  ) => void;
+  width: number;
+  height: number;
+  pageIndex: number;
+  layout: any;
+  settings: any;
 };
+
+export type RendererPageRenderPassDisplayListItem = {
+  kind: "fragment-pass" | "line-compat-pass";
+  signature: number | null;
+  layout: any;
+  registry: any;
+  createDefaultRender: (
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+  ) => DefaultRender;
+  plan: PageRenderPlan;
+  runtime: PageFragmentPassRuntime;
+};
+
+export type RendererPageDisplayListItem =
+  | RendererPageShellDisplayListItem
+  | RendererPageRenderPassDisplayListItem;
 
 export type RendererPageDisplayList = {
   signature: number | null;
@@ -43,16 +64,4 @@ export const getRendererPageDisplayListSignature = (
   }
 
   return hash >>> 0;
-};
-
-export const executeRendererPageDisplayList = ({
-  ctx,
-  displayList,
-}: {
-  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-  displayList: RendererPageDisplayList;
-}) => {
-  for (const item of displayList.items) {
-    item.paint(ctx);
-  }
 };
