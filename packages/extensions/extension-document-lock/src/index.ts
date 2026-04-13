@@ -16,6 +16,10 @@ import {
 import { DocumentLock, DocumentLockRuntime } from "./documentLockRuntime.js";
 
 export {
+  applyUnlockDocumentLockRanges,
+  setDocumentLockNodeFlag,
+} from "./documentLockTransactions.js";
+export {
   DOCUMENT_LOCK_META,
   DOCUMENT_LOCK_NODE_ATTR,
   DOCUMENT_LOCK_NODE_TYPES,

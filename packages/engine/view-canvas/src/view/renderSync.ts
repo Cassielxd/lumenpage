@@ -6,6 +6,7 @@ import { createRenderSyncScheduling } from "./renderSyncScheduling.js";
 import { createStateSyncCoordinator } from "./stateSyncCoordinator.js";
 
 export const createRenderSync = ({
+  view,
   getEditorState,
   setEditorState,
   applyTransaction,
@@ -91,6 +92,7 @@ export const createRenderSync = ({
   };
 
   renderFrameCoordinator = createRenderFrameCoordinator({
+    view,
     renderer,
     scrollArea,
     getRafId,
@@ -199,6 +201,8 @@ export const createRenderSync = ({
     scheduleLayout: scheduling.scheduleLayout,
     updateCaret,
     updateLayout: scheduling.updateLayout,
+    handleDecorationClick: (event: any, coords: any) =>
+      renderFrameCoordinator?.handleDecorationClick(event, coords) === true,
     syncAfterStateChange,
     dispatchTransaction,
     requestScrollIntoView,

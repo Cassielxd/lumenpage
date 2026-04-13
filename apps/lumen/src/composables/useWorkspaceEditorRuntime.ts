@@ -29,6 +29,18 @@ type DocumentLockStateSnapshot = {
   enabled: boolean;
   showMarkers: boolean;
   lockedRangeCount: number;
+  selectionLockedCount: number;
+  ranges: DocumentLockRangeSnapshot[];
+};
+
+type DocumentLockRangeSnapshot = {
+  key: string;
+  from: number;
+  to: number;
+  kind: "mark" | "node";
+  nodeType: string | null;
+  summary: string;
+  active: boolean;
 };
 
 type EditorStatsSnapshot = {
@@ -213,6 +225,8 @@ export const useWorkspaceEditorRuntime = ({
     enabled: true,
     showMarkers: true,
     lockedRangeCount: 0,
+    selectionLockedCount: 0,
+    ranges: [],
   });
 
   let detachEditor: null | (() => void) = null;
@@ -225,6 +239,12 @@ export const useWorkspaceEditorRuntime = ({
   let removeCommentThreadHandle: null | ((threadId: string) => boolean) = null;
   let lockSelectionHandle: null | (() => boolean) = null;
   let unlockSelectionHandle: null | (() => boolean) = null;
+  let unlockDocumentLockRangeHandle: null | ((range: { from: number; to: number }) => boolean) = null;
+  let focusDocumentLockHandle: null | ((range: {
+    from: number;
+    to: number;
+    kind?: "mark" | "node";
+  }) => boolean) = null;
   let clearAllDocumentLocksHandle: null | (() => boolean) = null;
   let setDocumentLockingEnabledHandle: null | ((enabled: boolean) => boolean) = null;
   let setDocumentLockMarkersVisibleHandle: null | ((visible: boolean) => boolean) = null;
@@ -305,6 +325,8 @@ export const useWorkspaceEditorRuntime = ({
     removeCommentThreadHandle = null;
     lockSelectionHandle = null;
     unlockSelectionHandle = null;
+    unlockDocumentLockRangeHandle = null;
+    focusDocumentLockHandle = null;
     clearAllDocumentLocksHandle = null;
     setDocumentLockingEnabledHandle = null;
     setDocumentLockMarkersVisibleHandle = null;
@@ -320,6 +342,8 @@ export const useWorkspaceEditorRuntime = ({
       enabled: true,
       showMarkers: true,
       lockedRangeCount: 0,
+      selectionLockedCount: 0,
+      ranges: [],
     };
     editor.value = null;
     view.value = null;
@@ -350,6 +374,8 @@ export const useWorkspaceEditorRuntime = ({
     removeCommentThreadHandle = mounted.removeCommentThread;
     lockSelectionHandle = mounted.lockSelection;
     unlockSelectionHandle = mounted.unlockSelection;
+    unlockDocumentLockRangeHandle = mounted.unlockDocumentLockRange;
+    focusDocumentLockHandle = mounted.focusDocumentLock;
     clearAllDocumentLocksHandle = mounted.clearAllDocumentLocks;
     setDocumentLockingEnabledHandle = mounted.setDocumentLockingEnabled;
     setDocumentLockMarkersVisibleHandle = mounted.setDocumentLockMarkersVisible;
@@ -467,6 +493,10 @@ export const useWorkspaceEditorRuntime = ({
       removeCommentThreadHandle?.(threadId) === true,
     lockSelection: () => lockSelectionHandle?.() === true,
     unlockSelection: () => unlockSelectionHandle?.() === true,
+    unlockDocumentLockRange: (range: { from: number; to: number }) =>
+      unlockDocumentLockRangeHandle?.(range) === true,
+    focusDocumentLock: (range: { from: number; to: number; kind?: "mark" | "node" }) =>
+      focusDocumentLockHandle?.(range) === true,
     clearAllDocumentLocks: () => clearAllDocumentLocksHandle?.() === true,
     documentLockState,
     setDocumentLockingEnabled: (enabled: boolean) =>

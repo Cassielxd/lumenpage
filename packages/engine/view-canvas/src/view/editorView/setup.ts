@@ -151,6 +151,7 @@ export const setupCanvasEditorView = ({
     scheduleLayout,
     updateCaret,
     updateLayout,
+    handleDecorationClick,
     syncAfterStateChange,
   } = renderSync;
 
@@ -211,6 +212,7 @@ export const setupCanvasEditorView = ({
     updateStatus,
     updateCaret,
     scheduleRender,
+    handleDecorationClick,
     debugLog,
   });
   const { handlePointerDown, handlePointerMove, handlePointerUp } = pointerHandlers;

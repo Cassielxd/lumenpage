@@ -92,6 +92,8 @@
           :document-locking-enabled="documentLockState.enabled"
           :document-lock-markers-visible="documentLockState.showMarkers"
           :document-lock-range-count="documentLockState.lockedRangeCount"
+          :document-lock-selection-locked-count="documentLockState.selectionLockedCount"
+          :document-lock-ranges="documentLockState.ranges"
           :can-manage-document-locks="canManageDocumentLocks"
           :track-changes-enabled="trackChangesEnabled"
           :track-changes-action-label="trackChangesActionLabel"
@@ -113,6 +115,8 @@
           :on-close-document-locks-panel="closeDocumentLocksPanel"
           :on-document-lock-selection="lockSelection"
           :on-document-unlock-selection="unlockSelection"
+          :on-document-lock-focus="focusDocumentLock"
+          :on-document-lock-range-unlock="unlockDocumentLockRange"
           :on-document-locks-clear-all="clearAllDocumentLocks"
           :on-document-locking-enabled-change="setDocumentLockingEnabled"
           :on-document-lock-markers-visible-change="setDocumentLockMarkersVisible"
@@ -456,6 +460,8 @@ const {
   removeCommentThread,
   lockSelection,
   unlockSelection,
+  unlockDocumentLockRange,
+  focusDocumentLock,
   clearAllDocumentLocks,
   documentLockState,
   setDocumentLockingEnabled,

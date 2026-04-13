@@ -13,6 +13,7 @@ import {
   type DocumentLockOptions,
   type DocumentLockPluginState,
 } from "./types.js";
+import { applyUnlockDocumentLockRanges } from "./documentLockTransactions.js";
 
 const createDefaultPluginState = (
   options: Pick<DocumentLockOptions, "enabled" | "showMarkers">
@@ -101,6 +102,18 @@ const createDocumentLockDecorations = (
           widgetAlignment: "page-right",
           widgetWidth: Math.max(10, Number(options.markerSize) || 14),
           widgetRightInset: 8,
+          onClick: ({ view, event }) => {
+            const handled = applyUnlockDocumentLockRanges(
+              view?.state,
+              (tr) => view?.dispatch?.(tr),
+              [range]
+            );
+            if (handled) {
+              event?.preventDefault?.();
+              event?.stopPropagation?.();
+            }
+            return handled;
+          },
         }
       ),
     ];

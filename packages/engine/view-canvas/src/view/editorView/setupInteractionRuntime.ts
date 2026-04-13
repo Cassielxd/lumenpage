@@ -32,6 +32,7 @@ export const createEditorViewInteractionRuntime = ({
   updateStatus,
   updateCaret,
   scheduleRender,
+  handleDecorationClick,
   debugLog,
 }: {
   view: any;
@@ -55,6 +56,7 @@ export const createEditorViewInteractionRuntime = ({
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
   scheduleRender: () => void;
+  handleDecorationClick: (event: any, coords: any) => boolean;
   debugLog: (...args: any[]) => void;
 }) => {
   const { setSelectionFromHit, setNodeSelectionAtPos } = createSelectionInteractions({
@@ -231,6 +233,7 @@ export const createEditorViewInteractionRuntime = ({
         dom.input.focus();
       }
     },
+    handleDecorationClick,
     debugLog,
     updateStatus,
     updateCaret,

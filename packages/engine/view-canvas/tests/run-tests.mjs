@@ -15,6 +15,7 @@ const testFiles = [
   "overlayEntryTarget.test.mjs",
   "overlayVisibilityCommit.test.mjs",
   "decorationWidgetAlignment.test.mjs",
+  "decorationWidgetHitTesting.test.mjs",
   "selection.test.mjs",
   "pageFragmentPass.test.mjs",
   "pageRenderFragments.test.mjs",

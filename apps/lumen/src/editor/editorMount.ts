@@ -29,6 +29,7 @@ import {
 import {
   findDocumentLockRanges,
   getDocumentLockPluginState,
+  type DocumentLockRange,
 } from "lumenpage-extension-document-lock";
 import {
   getTrackChangePluginState,
@@ -95,6 +96,12 @@ type MountedPlaygroundEditor = {
   removeCommentThread: (threadId: string) => boolean;
   lockSelection: () => boolean;
   unlockSelection: () => boolean;
+  unlockDocumentLockRange: (range: { from: number; to: number }) => boolean;
+  focusDocumentLock: (range: {
+    from: number;
+    to: number;
+    kind?: DocumentLockRange["kind"];
+  }) => boolean;
   clearAllDocumentLocks: () => boolean;
   isDocumentLockingEnabled: () => boolean;
   setDocumentLockingEnabled: (enabled: boolean) => boolean;
@@ -122,6 +129,18 @@ type DocumentLockStateSnapshot = {
   enabled: boolean;
   showMarkers: boolean;
   lockedRangeCount: number;
+  selectionLockedCount: number;
+  ranges: DocumentLockRangeSnapshot[];
+};
+
+type DocumentLockRangeSnapshot = {
+  key: string;
+  from: number;
+  to: number;
+  kind: DocumentLockRange["kind"];
+  nodeType: string | null;
+  summary: string;
+  active: boolean;
 };
 
 type EditorStatsSnapshot = {
@@ -241,7 +260,101 @@ const areDocumentLockSnapshotsEqual = (
   !!left &&
   left.enabled === right.enabled &&
   left.showMarkers === right.showMarkers &&
-  left.lockedRangeCount === right.lockedRangeCount;
+  left.lockedRangeCount === right.lockedRangeCount &&
+  left.selectionLockedCount === right.selectionLockedCount &&
+  left.ranges.length === right.ranges.length &&
+  left.ranges.every((range, index) => {
+    const other = right.ranges[index];
+    return (
+      range?.key === other?.key &&
+      range?.from === other?.from &&
+      range?.to === other?.to &&
+      range?.kind === other?.kind &&
+      range?.nodeType === other?.nodeType &&
+      range?.summary === other?.summary &&
+      range?.active === other?.active
+    );
+  });
+
+const toTrimmedText = (value: unknown) => String(value || "").trim();
+
+const summarizeDocumentLockRange = (state: any, range: DocumentLockRange) => {
+  if (!state?.doc || !range) {
+    return "";
+  }
+
+  if (range.kind === "node") {
+    const node = state.doc.nodeAt(range.from);
+    const nodeType = String(range.nodeType || node?.type?.name || "block");
+    const label =
+      toTrimmedText(node?.attrs?.title) ||
+      toTrimmedText(node?.attrs?.name) ||
+      toTrimmedText(node?.attrs?.label) ||
+      toTrimmedText(node?.attrs?.href) ||
+      toTrimmedText(node?.attrs?.src);
+    return label ? `${nodeType}: ${label}` : nodeType;
+  }
+
+  if (typeof state.doc.textBetween !== "function") {
+    return "";
+  }
+  const text = toTrimmedText(state.doc.textBetween(range.from, range.to, " ", " "));
+  if (!text) {
+    return `text ${range.from}-${range.to}`;
+  }
+  return text.length > 48 ? `${text.slice(0, 48)}...` : text;
+};
+
+const isSelectionLockedRangeActive = (state: any, range: DocumentLockRange) => {
+  const selection = state?.selection;
+  if (!selection || !range) {
+    return false;
+  }
+
+  const selectionFrom = Number(selection.from);
+  const selectionTo = Number(selection.to);
+  if (!Number.isFinite(selectionFrom) || !Number.isFinite(selectionTo)) {
+    return false;
+  }
+
+  if (selection.empty === true) {
+    return selectionFrom > range.from && selectionFrom < range.to;
+  }
+
+  return range.from < selectionTo && range.to > selectionFrom;
+};
+
+const createDocumentLockRangeSnapshot = (
+  state: any,
+  range: DocumentLockRange
+): DocumentLockRangeSnapshot => ({
+  key: `${range.kind}:${range.from}:${range.to}:${String(range.nodeType || "")}`,
+  from: range.from,
+  to: range.to,
+  kind: range.kind,
+  nodeType: range.nodeType || null,
+  summary: summarizeDocumentLockRange(state, range),
+  active: isSelectionLockedRangeActive(state, range),
+});
+
+const countSelectionLockedRanges = (state: any, ranges: DocumentLockRange[]) => {
+  const selection = state?.selection;
+  if (!selection) {
+    return 0;
+  }
+
+  const selectionFrom = Number(selection.from);
+  const selectionTo = Number(selection.to);
+  if (!Number.isFinite(selectionFrom) || !Number.isFinite(selectionTo)) {
+    return 0;
+  }
+
+  if (selection.empty === true) {
+    return ranges.filter((range) => selectionFrom > range.from && selectionFrom < range.to).length;
+  }
+
+  return ranges.filter((range) => range.from < selectionTo && range.to > selectionFrom).length;
+};
 
 const areEditorStatsEqual = (left: EditorStatsSnapshot | null, right: EditorStatsSnapshot) =>
   !!left &&
@@ -748,15 +861,21 @@ export const mountPlaygroundEditor = ({
       return;
     }
     const pluginState = getDocumentLockPluginState(view?.state);
+    const ranges = findDocumentLockRanges(view?.state);
     const nextSnapshot: DocumentLockStateSnapshot = {
       enabled: pluginState.enabled === true,
       showMarkers: pluginState.showMarkers === true,
-      lockedRangeCount: findDocumentLockRanges(view?.state).length,
+      lockedRangeCount: ranges.length,
+      selectionLockedCount: countSelectionLockedRanges(view?.state, ranges),
+      ranges: ranges.map((range) => createDocumentLockRangeSnapshot(view?.state, range)),
     };
     if (areDocumentLockSnapshotsEqual(lastDocumentLockSnapshot, nextSnapshot)) {
       return;
     }
-    lastDocumentLockSnapshot = { ...nextSnapshot };
+    lastDocumentLockSnapshot = {
+      ...nextSnapshot,
+      ranges: nextSnapshot.ranges.map((range) => ({ ...range })),
+    };
     onDocumentLockStateChange(nextSnapshot);
   };
   let trackChangeFrameId = 0;
@@ -866,6 +985,33 @@ export const mountPlaygroundEditor = ({
     editor.commands.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
   const lockSelection = () => editor.commands.lockSelection?.() === true;
   const unlockSelection = () => editor.commands.unlockSelection?.() === true;
+  const unlockDocumentLockRange = (range: { from: number; to: number }) =>
+    editor.commands.unlockDocumentLockRange?.(range.from, range.to) === true;
+  const focusDocumentLock = (range: {
+    from: number;
+    to: number;
+    kind?: DocumentLockRange["kind"];
+  }) => {
+    if (!view?.state?.doc || !view?.state?.tr) {
+      return false;
+    }
+    const from = Number(range?.from);
+    const to = Number(range?.to);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+      return false;
+    }
+    try {
+      const tr =
+        range?.kind === "node"
+          ? view.state.tr.setSelection(NodeSelection.create(view.state.doc, from))
+          : view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to));
+      view.dispatch(tr.scrollIntoView());
+      view.focus();
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  };
   const clearAllDocumentLocks = () => editor.commands.clearAllDocumentLocks?.() === true;
   const isDocumentLockingEnabled = () => getDocumentLockPluginState(view?.state).enabled === true;
   const setDocumentLockingEnabled = (enabled: boolean) =>
@@ -1147,6 +1293,8 @@ export const mountPlaygroundEditor = ({
     removeCommentThread,
     lockSelection,
     unlockSelection,
+    unlockDocumentLockRange,
+    focusDocumentLock,
     clearAllDocumentLocks,
     isDocumentLockingEnabled,
     setDocumentLockingEnabled,

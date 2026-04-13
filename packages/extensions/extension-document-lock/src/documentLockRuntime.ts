@@ -20,10 +20,15 @@ import {
   markDocumentLockTransaction,
   type DocumentLockOptions,
 } from "./types.js";
+import {
+  applyUnlockDocumentLockRanges,
+  setDocumentLockNodeFlag,
+} from "./documentLockTransactions.js";
 
 type DocumentLockRuntimeCommandMethods<ReturnType> = {
   lockSelection: () => ReturnType;
   unlockSelection: () => ReturnType;
+  unlockDocumentLockRange: (from: number, to: number) => ReturnType;
   clearAllDocumentLocks: () => ReturnType;
   setDocumentLocking: (enabled: boolean) => ReturnType;
   toggleDocumentLocking: () => ReturnType;
@@ -73,26 +78,16 @@ const collectDocumentLockNodeEntries = (state: any, from: number, to: number) =>
   return entries;
 };
 
-const setDocumentLockNodeFlag = (tr: any, entries: Array<{ pos: number; node: any }>, locked: boolean) => {
-  let nextTr = tr;
-  for (const entry of [...entries].sort((left, right) => right.pos - left.pos)) {
-    if (!entry?.node || !Number.isFinite(entry?.pos)) {
-      continue;
-    }
-    if ((entry.node.attrs?.[DOCUMENT_LOCK_NODE_ATTR] === true) === locked) {
-      continue;
-    }
-    nextTr = nextTr.setNodeMarkup(
-      entry.pos,
-      undefined,
-      {
-        ...entry.node.attrs,
-        [DOCUMENT_LOCK_NODE_ATTR]: locked,
-      },
-      entry.node.marks
-    );
+const resolveSelectionDocumentLockRanges = (state: any) => {
+  const selection = state?.selection;
+  if (!selection) {
+    return [];
   }
-  return nextTr;
+  return selection.empty === true
+    ? findDocumentLockRangesAtPos(state, Number(selection.from))
+    : findDocumentLockRanges(state).filter(
+        (range) => range.from < Number(selection.to) && range.to > Number(selection.from)
+      );
 };
 
 const createLockSelectionCommand =
@@ -129,72 +124,27 @@ const createLockSelectionCommand =
 const createUnlockSelectionCommand =
   () =>
   (state: any, dispatch?: (tr: any) => void) => {
-    const type = getDocumentLockMarkType(state);
-    if (!type || !state?.tr) {
+    return applyUnlockDocumentLockRanges(state, dispatch, resolveSelectionDocumentLockRanges(state));
+  };
+
+const createUnlockDocumentLockRangeCommand =
+  (from: number, to: number) =>
+  (state: any, dispatch?: (tr: any) => void) => {
+    const targetFrom = Math.max(0, Math.floor(Number(from) || 0));
+    const targetTo = Math.max(targetFrom, Math.floor(Number(to) || 0));
+    if (targetTo <= targetFrom) {
       return false;
     }
-
-    const selection = state.selection;
-    const ranges =
-      selection?.empty === true
-        ? findDocumentLockRangesAtPos(state, Number(selection.from))
-        : findDocumentLockRanges(state).filter(
-            (range) => range.from < Number(selection.to) && range.to > Number(selection.from)
-          );
-
-    if (ranges.length === 0) {
-      return false;
-    }
-    if (!dispatch) {
-      return true;
-    }
-
-    let tr = state.tr;
-    for (const range of [...ranges].sort((left, right) => right.from - left.from)) {
-      if (range.kind === "mark") {
-        tr = tr.removeMark(range.from, range.to, type.create());
-        continue;
-      }
-      const node = tr.doc.nodeAt(range.from);
-      if (!node || !isDocumentLockNode(node)) {
-        continue;
-      }
-      tr = setDocumentLockNodeFlag(tr, [{ pos: range.from, node }], false);
-    }
-    dispatch(markDocumentLockTransaction(tr, { refresh: true }).scrollIntoView());
-    return true;
+    const ranges = findDocumentLockRanges(state).filter(
+      (range) => range.from === targetFrom && range.to === targetTo
+    );
+    return applyUnlockDocumentLockRanges(state, dispatch, ranges);
   };
 
 const createClearAllDocumentLocksCommand =
   () =>
   (state: any, dispatch?: (tr: any) => void) => {
-    const type = getDocumentLockMarkType(state);
-    if (!type || !state?.tr) {
-      return false;
-    }
-
-    const ranges = findDocumentLockRanges(state);
-    if (ranges.length === 0) {
-      return false;
-    }
-    if (!dispatch) {
-      return true;
-    }
-
-    let tr = state.tr;
-    for (const range of [...ranges].sort((left, right) => right.from - left.from)) {
-      if (range.kind === "mark") {
-        tr = tr.removeMark(range.from, range.to, type.create());
-        continue;
-      }
-      const node = tr.doc.nodeAt(range.from);
-      if (!node || !isDocumentLockNode(node)) {
-        continue;
-      }
-      tr = setDocumentLockNodeFlag(tr, [{ pos: range.from, node }], false);
-    }
-    dispatch(markDocumentLockTransaction(tr, { refresh: true }).scrollIntoView());
-    return true;
+    return applyUnlockDocumentLockRanges(state, dispatch, findDocumentLockRanges(state));
   };
 
 const createSetDocumentLockingCommand =
@@ -251,6 +201,8 @@ export const DocumentLockRuntime = Extension.create<DocumentLockOptions>({
     return {
       lockSelection: () => createLockSelectionCommand(),
       unlockSelection: () => createUnlockSelectionCommand(),
+      unlockDocumentLockRange: (from: number, to: number) =>
+        createUnlockDocumentLockRangeCommand(from, to),
       clearAllDocumentLocks: () => createClearAllDocumentLocksCommand(),
       setDocumentLocking: (enabled: boolean) => createSetDocumentLockingCommand(enabled),
       toggleDocumentLocking: () => createToggleDocumentLockingCommand(),

@@ -42,6 +42,7 @@ export const createNodeEventRouting = ({
   handleNodeViewClick,
   consumeSkipNextClickSelection,
   focusInput,
+  handleDecorationClick,
   debugLog,
   eventTiming = false,
 }: {
@@ -52,6 +53,7 @@ export const createNodeEventRouting = ({
   handleNodeViewClick: (event: any, handlerName: any) => boolean;
   consumeSkipNextClickSelection: () => boolean;
   focusInput: () => void;
+  handleDecorationClick: (event: any, coords: any) => boolean;
   debugLog: (...args: any[]) => void;
   eventTiming?: boolean;
 }) => {
@@ -65,6 +67,13 @@ export const createNodeEventRouting = ({
         return;
       }
       const coords = getEventCoords(event);
+      if (handleDecorationClick(event, coords)) {
+        event.preventDefault();
+        event.stopPropagation?.();
+        focusInput();
+        logEventTiming(eventTiming, "click:decoration-widget", startedAt);
+        return;
+      }
       const pos = getDocPosFromCoords(coords);
       debugLog("click", { pos, coords });
       if (consumeSkipNextClickSelection()) {

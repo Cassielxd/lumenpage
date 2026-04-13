@@ -114,6 +114,7 @@ export const createEditorViewSyncRuntime = ({
   });
 
   const renderSync = createRenderSync({
+    view,
     getEditorState: () => view.state,
     setEditorState: (nextState) => {
       view.state = nextState;

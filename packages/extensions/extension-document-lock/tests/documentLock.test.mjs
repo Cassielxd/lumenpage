@@ -149,3 +149,66 @@ test("document lock locks block atoms like webPage and blocks deleting them", ()
   assert.equal(blockedDelete.transactions.length, 0);
   assert.equal(blockedDelete.state.doc.childCount, lockedResult.state.doc.childCount);
 });
+
+test("document lock can unlock a single locked range by explicit range coordinates", () => {
+  const { state, commands, webPagePos } = createLockedWebPageState();
+  const lockedResult = applyStateCommand(state, commands.lockSelection());
+  const lockedNode = lockedResult.state.doc.nodeAt(webPagePos);
+  const lockedRange = {
+    from: webPagePos,
+    to: webPagePos + lockedNode.nodeSize,
+  };
+
+  const unlockedResult = applyStateCommand(
+    lockedResult.state,
+    commands.unlockDocumentLockRange(lockedRange.from, lockedRange.to)
+  );
+  assert.equal(unlockedResult.handled, true);
+  assert.equal(
+    findDocumentLockRanges(unlockedResult.state).filter((range) => range.kind === "node").length,
+    0
+  );
+
+  const allowedDelete = unlockedResult.state.applyTransaction(
+    unlockedResult.state.tr.delete(lockedRange.from, lockedRange.to)
+  );
+  assert.equal(allowedDelete.transactions.length, 1);
+  assert.equal(allowedDelete.state.doc.childCount, unlockedResult.state.doc.childCount - 1);
+});
+
+test("document lock marker widget can unlock a locked block atom on click", () => {
+  const { state, commands } = createLockedWebPageState();
+  const lockedResult = applyStateCommand(state, commands.lockSelection());
+  const plugin = DocumentLockPluginKey.get(lockedResult.state);
+  const decorations = plugin?.props?.decorations?.(lockedResult.state)?.decorations || [];
+  const widget = decorations.find((decoration) => decoration.type === "widget");
+
+  let clickedState = lockedResult.state;
+  const fakeView = {
+    state: clickedState,
+    dispatch(tr) {
+      const result = this.state.applyTransaction(tr);
+      this.state = result.state;
+      clickedState = result.state;
+    },
+  };
+
+  const handled = widget?.spec?.onClick?.({
+    view: fakeView,
+    event: {
+      preventDefault() {},
+      stopPropagation() {},
+    },
+    decoration: widget,
+    x: 0,
+    y: 0,
+    width: Number(widget?.spec?.widgetWidth) || 0,
+    height: Number(widget?.spec?.widgetWidth) || 0,
+  });
+
+  assert.equal(handled, true);
+  assert.equal(
+    findDocumentLockRanges(clickedState).filter((range) => range.kind === "node").length,
+    0
+  );
+});

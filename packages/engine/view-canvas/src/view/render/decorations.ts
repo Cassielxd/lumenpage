@@ -62,6 +62,7 @@ const getDecorationCacheKey = (
         spec.widgetAlignment || "",
         spec.widgetWidth ?? "",
         spec.widgetRightInset ?? "",
+        typeof spec.onClick === "function" ? "1" : "0",
         underline.color || "",
         underline.style || "",
         typeof spec.render === "function" ? "1" : "0",
@@ -95,6 +96,7 @@ export type DecorationTextSegment = {
 export type DecorationWidget = {
   x: number;
   y: number;
+  width: number;
   height?: number;
   decoration: CanvasDecoration;
 };
@@ -547,6 +549,7 @@ export const buildDecorationDrawData = (
           anchorX: rect.x,
         }),
         y: rect.y,
+        width: Math.max(0, Number(decoration?.spec?.widgetWidth) || 0),
         height: rect.height,
         decoration,
       });

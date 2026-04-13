@@ -2,7 +2,7 @@
   <aside class="doc-document-lock">
     <div class="doc-document-lock-header">
       <div class="doc-document-lock-heading">
-        <span class="doc-document-lock-icon" aria-hidden="true">🔒</span>
+        <span class="doc-document-lock-icon" aria-hidden="true">&#128274;</span>
         <span class="doc-document-lock-title">{{ texts.title }}</span>
         <span class="doc-document-lock-summary">{{ lockedRangeCount }}</span>
       </div>
@@ -41,7 +41,7 @@
       <t-button
         size="small"
         variant="outline"
-        :disabled="!canManage"
+        :disabled="!canManage || selectionLockedCount === 0"
         @mousedown.prevent
         @click="$emit('unlock-selection')"
       >
@@ -85,6 +85,56 @@
         </span>
       </button>
     </div>
+
+    <div class="doc-document-lock-list">
+      <div class="doc-document-lock-list-header">
+        <span class="doc-document-lock-list-title">{{ texts.lockedItems }}</span>
+        <span class="doc-document-lock-list-summary">{{ lockedRangeCount }}</span>
+      </div>
+      <div v-if="ranges.length === 0" class="doc-document-lock-list-empty">
+        {{ texts.emptyRanges }}
+      </div>
+      <div v-else class="doc-document-lock-list-body">
+        <article
+          v-for="range in ranges"
+          :key="range.key"
+          class="doc-document-lock-range"
+          :class="{ 'is-active': range.active }"
+        >
+          <div class="doc-document-lock-range-main">
+            <div class="doc-document-lock-range-meta">
+              <span class="doc-document-lock-range-kind">
+                {{ range.kind === "node" ? texts.blockRange : texts.textRange }}
+              </span>
+              <span class="doc-document-lock-range-pos">{{ range.from }}-{{ range.to }}</span>
+            </div>
+            <div class="doc-document-lock-range-summary">
+              {{ range.summary || texts.emptySummary }}
+            </div>
+          </div>
+          <div class="doc-document-lock-range-actions">
+            <t-button
+              size="small"
+              variant="outline"
+              @mousedown.prevent
+              @click="$emit('focus-lock', range)"
+            >
+              {{ texts.jump }}
+            </t-button>
+            <t-button
+              size="small"
+              theme="danger"
+              variant="outline"
+              :disabled="!canManage"
+              @mousedown.prevent
+              @click="$emit('unlock-lock', range)"
+            >
+              {{ texts.unlockOne }}
+            </t-button>
+          </div>
+        </article>
+      </div>
+    </div>
   </aside>
 </template>
 
@@ -99,6 +149,16 @@ const props = defineProps<{
   enabled: boolean;
   showMarkers: boolean;
   lockedRangeCount: number;
+  selectionLockedCount: number;
+  ranges: Array<{
+    key: string;
+    from: number;
+    to: number;
+    kind: "mark" | "node";
+    nodeType: string | null;
+    summary: string;
+    active: boolean;
+  }>;
   canManage: boolean;
 }>();
 
@@ -106,6 +166,15 @@ defineEmits<{
   (event: "close"): void;
   (event: "lock-selection"): void;
   (event: "unlock-selection"): void;
+  (event: "focus-lock", value: {
+    from: number;
+    to: number;
+    kind: "mark" | "node";
+  }): void;
+  (event: "unlock-lock", value: {
+    from: number;
+    to: number;
+  }): void;
   (event: "clear-all"): void;
   (event: "set-enabled", value: boolean): void;
   (event: "set-markers-visible", value: boolean): void;
@@ -258,27 +327,160 @@ const rangeSummary = computed(() =>
   color: #475569;
 }
 
+.doc-document-lock-list {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+.doc-document-lock-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.doc-document-lock-list-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.doc-document-lock-list-summary {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  color: #334155;
+  font-size: 12px;
+  line-height: 22px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.doc-document-lock-list-empty {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.doc-document-lock-list-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+
+.doc-document-lock-range {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.doc-document-lock-range.is-active {
+  border-color: rgba(180, 83, 9, 0.38);
+  background: rgba(255, 247, 237, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(180, 83, 9, 0.08);
+}
+
+.doc-document-lock-range-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-document-lock-range-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.doc-document-lock-range-kind {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.doc-document-lock-range-pos {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.doc-document-lock-range-summary {
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.doc-document-lock-range-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 :global(.doc-shell.is-high-contrast) .doc-document-lock {
   color: #fff;
 }
 
 :global(.doc-shell.is-high-contrast) .doc-document-lock-icon,
-:global(.doc-shell.is-high-contrast) .doc-document-lock-summary {
+:global(.doc-shell.is-high-contrast) .doc-document-lock-summary,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-list-summary,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-range-kind {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
 
 :global(.doc-shell.is-high-contrast) .doc-document-lock-close,
 :global(.doc-shell.is-high-contrast) .doc-document-lock-note,
-:global(.doc-shell.is-high-contrast) .doc-document-lock-toggle-value {
+:global(.doc-shell.is-high-contrast) .doc-document-lock-toggle-value,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-list-title,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-range-pos {
   color: rgba(255, 255, 255, 0.8);
 }
 
 :global(.doc-shell.is-high-contrast) .doc-document-lock-summary-card,
-:global(.doc-shell.is-high-contrast) .doc-document-lock-toggle {
+:global(.doc-shell.is-high-contrast) .doc-document-lock-toggle,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-range,
+:global(.doc-shell.is-high-contrast) .doc-document-lock-list-empty {
   border-color: rgba(255, 255, 255, 0.24);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
+}
+
+:global(.doc-shell.is-high-contrast) .doc-document-lock-range.is-active {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.32);
 }
 
 :global(.doc-shell.is-high-contrast) .doc-document-lock-toggle.is-active {

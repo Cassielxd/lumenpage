@@ -89,10 +89,14 @@
             :enabled="documentLockingEnabled"
             :show-markers="documentLockMarkersVisible"
             :locked-range-count="documentLockRangeCount"
+            :selection-locked-count="documentLockSelectionLockedCount"
+            :ranges="documentLockRanges"
             :can-manage="canManageDocumentLocks"
             @close="onCloseDocumentLocksPanel"
             @lock-selection="onDocumentLockSelection"
             @unlock-selection="onDocumentUnlockSelection"
+            @focus-lock="onDocumentLockFocus"
+            @unlock-lock="onDocumentLockRangeUnlock"
             @clear-all="onDocumentLocksClearAll"
             @set-enabled="onDocumentLockingEnabledChange"
             @set-markers-visible="onDocumentLockMarkersVisibleChange"
@@ -179,6 +183,16 @@ import DocumentLockPanel from "../DocumentLockPanel.vue";
 import TrackChangesPanel from "../TrackChangesPanel.vue";
 import WorkspaceSidePanel from "./WorkspaceSidePanel.vue";
 
+type DocumentLockRangeItem = {
+  key: string;
+  from: number;
+  to: number;
+  kind: "mark" | "node";
+  nodeType: string | null;
+  summary: string;
+  active: boolean;
+};
+
 defineProps<{
   activeTab: SideTabKey | null;
   width: number;
@@ -210,6 +224,8 @@ defineProps<{
   documentLockingEnabled: boolean;
   documentLockMarkersVisible: boolean;
   documentLockRangeCount: number;
+  documentLockSelectionLockedCount: number;
+  documentLockRanges: DocumentLockRangeItem[];
   canManageDocumentLocks: boolean;
   trackChangesEnabled: boolean;
   trackChangesActionLabel: string;
@@ -239,6 +255,8 @@ defineProps<{
   onCloseDocumentLocksPanel: () => void;
   onDocumentLockSelection: () => void;
   onDocumentUnlockSelection: () => void;
+  onDocumentLockFocus: (range: { from: number; to: number; kind?: "mark" | "node" }) => void;
+  onDocumentLockRangeUnlock: (range: { from: number; to: number }) => void;
   onDocumentLocksClearAll: () => void;
   onDocumentLockingEnabledChange: (enabled: boolean) => void;
   onDocumentLockMarkersVisibleChange: (visible: boolean) => void;

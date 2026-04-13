@@ -501,6 +501,13 @@ export type PlaygroundI18n = {
     disable: string;
     showMarkers: string;
     hideMarkers: string;
+    lockedItems: string;
+    emptyRanges: string;
+    emptySummary: string;
+    textRange: string;
+    blockRange: string;
+    jump: string;
+    unlockOne: string;
   };
   layoutActions: {
     lineHeightTitle: string;
@@ -2019,6 +2026,13 @@ PLAYGROUND_I18N["zh-CN"].documentLockPanel = {
   disable: "\u5173\u95ed",
   showMarkers: "\u663e\u793a",
   hideMarkers: "\u9690\u85cf",
+  lockedItems: "\u9501\u5b9a\u5217\u8868",
+  emptyRanges: "\u8fd8\u6ca1\u6709\u9501\u5b9a\u5185\u5bb9",
+  emptySummary: "\u7a7a\u5185\u5bb9",
+  textRange: "\u6587\u672c",
+  blockRange: "\u5757",
+  jump: "\u5b9a\u4f4d",
+  unlockOne: "\u89e3\u9501",
 };
 
 PLAYGROUND_I18N["en-US"].documentLockPanel = {
@@ -2040,6 +2054,13 @@ PLAYGROUND_I18N["en-US"].documentLockPanel = {
   disable: "Disable",
   showMarkers: "Show",
   hideMarkers: "Hide",
+  lockedItems: "Locked Items",
+  emptyRanges: "No locked content yet",
+  emptySummary: "Empty content",
+  textRange: "Text",
+  blockRange: "Block",
+  jump: "Jump",
+  unlockOne: "Unlock",
 };
 
 PLAYGROUND_I18N["zh-CN"].collaborationPanel = {

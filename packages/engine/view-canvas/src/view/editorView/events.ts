@@ -11,6 +11,7 @@ export const createViewEventHandlers = ({
   handleNodeViewClick,
   consumeSkipNextClickSelection,
   focusInput,
+  handleDecorationClick,
   debugLog,
   updateStatus,
   updateCaret,
@@ -27,6 +28,7 @@ export const createViewEventHandlers = ({
   handleNodeViewClick: (event: any, handlerName: any) => boolean;
   consumeSkipNextClickSelection: () => boolean;
   focusInput: () => void;
+  handleDecorationClick: (event: any, coords: any) => boolean;
   debugLog: (...args: any[]) => void;
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
@@ -43,6 +45,7 @@ export const createViewEventHandlers = ({
     handleNodeViewClick,
     consumeSkipNextClickSelection,
     focusInput,
+    handleDecorationClick,
     debugLog,
     eventTiming,
   });

@@ -6,6 +6,7 @@ import { executeRenderFramePass } from "./render/renderFramePass.js";
 import { createRenderFrameSelection } from "./render/renderFrameSelection.js";
 
 type CreateRenderFrameCoordinatorArgs = {
+  view: any;
   renderer: any;
   scrollArea: any;
   getRafId: () => number;
@@ -46,6 +47,7 @@ type CreateRenderFrameCoordinatorArgs = {
 };
 
 export const createRenderFrameCoordinator = ({
+  view,
   renderer,
   scrollArea,
   getRafId,
@@ -142,6 +144,12 @@ export const createRenderFrameCoordinator = ({
   return {
     scheduleRender,
     updateCaret,
+    handleDecorationClick: (event: any, coords: any) =>
+      decorationFrame.handleDecorationClick({
+        view,
+        event,
+        coords,
+      }),
     onLayoutApplied: (layout: any) => {
       lastLayoutPageCount = layout?.pages?.length ?? 0;
     },

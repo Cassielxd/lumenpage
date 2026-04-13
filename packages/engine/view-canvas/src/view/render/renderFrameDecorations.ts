@@ -1,4 +1,5 @@
 import { buildDecorationDrawData } from "./decorations.js";
+import { handleDecorationWidgetClick } from "./decorationWidgetHitTesting.js";
 import { now } from "../debugTrace.js";
 
 type CreateRenderFrameDecorationsArgs = {
@@ -117,5 +118,12 @@ export const createRenderFrameDecorations = ({
 
   return {
     resolveDecorationData,
+    handleDecorationClick: ({ view, event, coords }: { view: any; event: any; coords: any }) =>
+      handleDecorationWidgetClick({
+        view,
+        event,
+        coords,
+        widgets: lastDecorationData?.widgets ?? null,
+      }),
   };
 };
