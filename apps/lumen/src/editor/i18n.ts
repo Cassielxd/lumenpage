@@ -130,6 +130,7 @@ export type PlaygroundI18n = {
     simplifiedChinese: string;
     english: string;
     outline: string;
+    documentLocks: string;
     outlineShow: string;
     outlineHide: string;
     outlineEmpty: string;
@@ -481,6 +482,25 @@ export type PlaygroundI18n = {
     undo: string;
     clearPage: string;
     clearAll: string;
+  };
+  documentLockPanel: {
+    title: string;
+    enabled: string;
+    disabled: string;
+    markers: string;
+    markersVisible: string;
+    markersHidden: string;
+    protection: string;
+    rangeCount: string;
+    hint: string;
+    readonlyHint: string;
+    lockSelection: string;
+    unlockSelection: string;
+    clearAll: string;
+    enable: string;
+    disable: string;
+    showMarkers: string;
+    hideMarkers: string;
   };
   layoutActions: {
     lineHeightTitle: string;
@@ -1975,6 +1995,51 @@ PLAYGROUND_I18N["en-US"].annotationPanel = {
   undo: "Undo",
   clearPage: "Clear Page",
   clearAll: "Clear All",
+};
+
+PLAYGROUND_I18N["zh-CN"].shell.documentLocks = "\u9501\u5b9a";
+PLAYGROUND_I18N["en-US"].shell.documentLocks = "Locks";
+
+PLAYGROUND_I18N["zh-CN"].documentLockPanel = {
+  title: "\u6587\u6863\u9501\u5b9a",
+  enabled: "\u5df2\u5f00\u542f",
+  disabled: "\u5df2\u5173\u95ed",
+  markers: "\u9501\u5b9a\u6807\u8bb0",
+  markersVisible: "\u6807\u8bb0\u53ef\u89c1",
+  markersHidden: "\u6807\u8bb0\u9690\u85cf",
+  protection: "\u7f16\u8f91\u62e6\u622a",
+  rangeCount: "\u5df2\u9501\u5b9a {count} \u6bb5",
+  hint:
+    "\u88ab\u9501\u5b9a\u7684\u5185\u5bb9\u4f1a\u663e\u793a\u7070\u5e95\uff0c\u5149\u6807\u53ef\u4ee5\u505c\u5728\u9501\u5b9a\u533a\u57df\u5185\uff0c\u4f46\u65e0\u6cd5\u8f93\u5165\u6216\u5220\u9664\u5185\u5bb9\u3002",
+  readonlyHint: "\u5f53\u524d\u6743\u9650\u4e0d\u5141\u8bb8\u7ba1\u7406\u6587\u6863\u9501\u5b9a\u3002",
+  lockSelection: "\ud83d\udd12 \u9501\u5b9a\u9009\u533a",
+  unlockSelection: "\u89e3\u9501\u5f53\u524d",
+  clearAll: "\u6e05\u9664\u5168\u90e8\u9501\u5b9a",
+  enable: "\u5f00\u542f",
+  disable: "\u5173\u95ed",
+  showMarkers: "\u663e\u793a",
+  hideMarkers: "\u9690\u85cf",
+};
+
+PLAYGROUND_I18N["en-US"].documentLockPanel = {
+  title: "Document Locks",
+  enabled: "Enabled",
+  disabled: "Disabled",
+  markers: "Lock Markers",
+  markersVisible: "Markers Visible",
+  markersHidden: "Markers Hidden",
+  protection: "Edit Blocking",
+  rangeCount: "{count} locked ranges",
+  hint:
+    "Locked content uses a gray background. The caret can stay inside the locked region, but typing and deleting there are blocked until the region is unlocked.",
+  readonlyHint: "Your current permission does not allow managing document locks.",
+  lockSelection: "🔒 Lock Selection",
+  unlockSelection: "Unlock Current",
+  clearAll: "Clear All Locks",
+  enable: "Enable",
+  disable: "Disable",
+  showMarkers: "Show",
+  hideMarkers: "Hide",
 };
 
 PLAYGROUND_I18N["zh-CN"].collaborationPanel = {

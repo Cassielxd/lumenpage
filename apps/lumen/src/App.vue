@@ -54,6 +54,7 @@
           :outline-label="outlineTabLabel"
           :comments-label="commentButtonLabel"
           :collaboration-label="collaborationButtonLabel"
+          :locks-label="documentLockButtonLabel"
           :assistant-label="assistantButtonLabel"
           :changes-label="trackChangesButtonLabel"
           :annotation-label="annotationActionLabel"
@@ -88,6 +89,10 @@
           :collaboration-token="debugFlags.collaborationToken"
           :collaboration-switching="collaborationSwitching"
           :can-manage-assistant="canManageAssistant"
+          :document-locking-enabled="documentLockState.enabled"
+          :document-lock-markers-visible="documentLockState.showMarkers"
+          :document-lock-range-count="documentLockState.lockedRangeCount"
+          :can-manage-document-locks="canManageDocumentLocks"
           :track-changes-enabled="trackChangesEnabled"
           :track-changes-action-label="trackChangesActionLabel"
           :track-changes-status-label="trackChangesStatusLabel"
@@ -105,6 +110,12 @@
           :on-comment-message-delete="handleCommentMessageDelete"
           :on-comment-thread-delete="handleCommentThreadDelete"
           :on-collaboration-apply="handleCollaborationApply"
+          :on-close-document-locks-panel="closeDocumentLocksPanel"
+          :on-document-lock-selection="lockSelection"
+          :on-document-unlock-selection="unlockSelection"
+          :on-document-locks-clear-all="clearAllDocumentLocks"
+          :on-document-locking-enabled-change="setDocumentLockingEnabled"
+          :on-document-lock-markers-visible-change="setDocumentLockMarkersVisible"
           :on-close-assistant-panel="closeAssistantPanel"
           :on-track-changes-toggle="handleTrackChangesToggle"
           :on-close-track-changes-panel="closeTrackChangesPanel"
@@ -289,6 +300,9 @@ const {
   },
 });
 const commentButtonDisabled = computed(() => !canMutateComments.value);
+const canManageDocumentLocks = computed(
+  () => effectiveCapabilities.value.canEdit && sessionMode.value !== "viewer",
+);
 const commentActionTexts = computed(() => i18n.value.commentActions);
 const trackChangeActionTexts = computed(() => i18n.value.trackChangeActions);
 
@@ -368,6 +382,7 @@ const {
   trackChangesStatusLabel,
   outlineTabLabel,
   collaborationButtonLabel,
+  documentLockButtonLabel,
   annotationActionLabel,
   documentStatusLoadingLabel,
   documentStatusLoadingCopy,
@@ -402,6 +417,7 @@ const {
   toggleTocPanel,
   closeCommentsPanel,
   closeAssistantPanel,
+  closeDocumentLocksPanel,
   closeTrackChangesPanel,
   openTrackChangesPanel,
   openCommentsPanel,
@@ -438,6 +454,12 @@ const {
   focusCommentThread,
   restoreLastTextSelection,
   removeCommentThread,
+  lockSelection,
+  unlockSelection,
+  clearAllDocumentLocks,
+  documentLockState,
+  setDocumentLockingEnabled,
+  setDocumentLockMarkersVisible,
   setTrackChangesEnabled,
   activateTrackChange,
   focusTrackChange,

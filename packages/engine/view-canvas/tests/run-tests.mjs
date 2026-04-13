@@ -14,6 +14,8 @@ const testFiles = [
   "overlayEntrySync.test.mjs",
   "overlayEntryTarget.test.mjs",
   "overlayVisibilityCommit.test.mjs",
+  "decorationWidgetAlignment.test.mjs",
+  "selection.test.mjs",
   "pageFragmentPass.test.mjs",
   "pageRenderFragments.test.mjs",
   "pageFragmentSignature.test.mjs",

@@ -112,6 +112,7 @@ export const useWorkspaceShellUi = ({
   );
   const outlineTabLabel = computed(() => i18n.value.shell.outline);
   const collaborationButtonLabel = computed(() => i18n.value.collaborationPanel.title);
+  const documentLockButtonLabel = computed(() => i18n.value.shell.documentLocks);
   const annotationActionLabel = computed(() => i18n.value.annotationPanel.title);
   const documentStatusLoadingLabel = computed(() => i18n.value.documentCenter.loading);
   const documentStatusLoadingCopy = computed(() => i18n.value.documentCenter.description);
@@ -203,6 +204,7 @@ export const useWorkspaceShellUi = ({
     trackChangesStatusLabel,
     outlineTabLabel,
     collaborationButtonLabel,
+    documentLockButtonLabel,
     annotationActionLabel,
     documentStatusLoadingLabel,
     documentStatusLoadingCopy,

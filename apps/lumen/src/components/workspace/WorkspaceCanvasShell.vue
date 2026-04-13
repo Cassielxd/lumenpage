@@ -28,6 +28,7 @@
       :outline-label="outlineLabel"
       :comments-label="commentsLabel"
       :collaboration-label="collaborationLabel"
+      :locks-label="locksLabel"
       :assistant-label="assistantLabel"
       :changes-label="changesLabel"
       :annotation-label="annotationLabel"
@@ -60,6 +61,7 @@ const props = defineProps<{
   outlineLabel: string;
   commentsLabel: string;
   collaborationLabel: string;
+  locksLabel: string;
   assistantLabel: string;
   changesLabel: string;
   annotationLabel: string;

@@ -116,6 +116,9 @@ importers:
       lumenpage-extension-comment:
         specifier: workspace:*
         version: link:../../packages/extensions/extension-comment
+      lumenpage-extension-document-lock:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-document-lock
       lumenpage-extension-drag-handle:
         specifier: workspace:*
         version: link:../../packages/extensions/extension-drag-handle
@@ -291,6 +294,9 @@ importers:
       lumenpage-extension-collaboration-caret:
         specifier: workspace:*
         version: link:../../packages/extensions/extension-collaboration-caret
+      lumenpage-extension-document-lock:
+        specifier: workspace:*
+        version: link:../../packages/extensions/extension-document-lock
       lumenpage-extension-drag-handle:
         specifier: workspace:*
         version: link:../../packages/extensions/extension-drag-handle
@@ -896,6 +902,25 @@ importers:
       lumenpage-core:
         specifier: workspace:*
         version: link:../../core/core
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
+  packages/extensions/extension-document-lock:
+    dependencies:
+      lumenpage-core:
+        specifier: workspace:*
+        version: link:../../core/core
+      lumenpage-extension-changeset:
+        specifier: workspace:*
+        version: link:../extension-changeset
+      lumenpage-state:
+        specifier: workspace:*
+        version: link:../../lp/state
+      lumenpage-view-canvas:
+        specifier: workspace:*
+        version: link:../../engine/view-canvas
     devDependencies:
       typescript:
         specifier: ^5.5.4

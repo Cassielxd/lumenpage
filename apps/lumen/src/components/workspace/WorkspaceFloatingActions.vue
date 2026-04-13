@@ -24,13 +24,17 @@ const props = defineProps<{
   outlineLabel: string;
   commentsLabel: string;
   collaborationLabel: string;
+  locksLabel: string;
   assistantLabel: string;
   changesLabel: string;
   annotationLabel: string;
 }>();
 
 const emit = defineEmits<{
-  (event: "select", value: "outline" | "comments" | "collaboration" | "assistant" | "changes" | "annotation"): void;
+  (
+    event: "select",
+    value: "outline" | "comments" | "collaboration" | "locks" | "assistant" | "changes" | "annotation"
+  ): void;
 }>();
 
 const actions = computed(() => [
@@ -48,6 +52,11 @@ const actions = computed(() => [
     key: "collaboration" as const,
     label: props.collaborationLabel,
     active: props.activeSideTab === "collaboration",
+  },
+  {
+    key: "locks" as const,
+    label: props.locksLabel,
+    active: props.activeSideTab === "locks",
   },
   {
     key: "assistant" as const,

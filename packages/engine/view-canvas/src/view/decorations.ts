@@ -20,6 +20,9 @@ export type DecorationSpec = {
   // 为 node decoration 启用“按装饰整体包围盒”绘制边框，而不是逐行边框。
   blockOutline?: boolean;
   render?: (ctx: CanvasRenderingContext2D, x: number, y: number, height?: number) => void;
+  widgetAlignment?: "anchor" | "page-right";
+  widgetWidth?: number;
+  widgetRightInset?: number;
   side?: -1 | 1;
 };
 

@@ -26,6 +26,7 @@
     "lumenpage-inputrules": "workspace:*",
     "lumenpage-extension-active-block": "workspace:*",
     "lumenpage-extension-block-id": "workspace:*",
+    "lumenpage-extension-document-lock": "workspace:*",
     "lumenpage-extension-drag-handle": "workspace:*",
     "lumenpage-extension-image": "workspace:*",
     "lumenpage-extension-link": "workspace:*",

@@ -201,6 +201,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-document-lock": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-drag-handle": {
       "layer": "extensions",
       "visibility": "public",

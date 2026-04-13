@@ -30,6 +30,7 @@
     "lumenpage-extension-collaboration-caret": "workspace:*",
     "lumenpage-extension-columns": "workspace:*",
     "lumenpage-extension-comment": "workspace:*",
+    "lumenpage-extension-document-lock": "workspace:*",
     "lumenpage-extension-drag-handle": "workspace:*",
     "lumenpage-extension-embed-panel": "workspace:*",
     "lumenpage-extension-file": "workspace:*",

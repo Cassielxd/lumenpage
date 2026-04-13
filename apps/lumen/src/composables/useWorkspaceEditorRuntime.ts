@@ -25,6 +25,12 @@ type TrackChangeStateSnapshot = {
   changes: TrackChangeRecord[];
 };
 
+type DocumentLockStateSnapshot = {
+  enabled: boolean;
+  showMarkers: boolean;
+  lockedRangeCount: number;
+};
+
 type EditorStatsSnapshot = {
   pageCount: number;
   currentPage: number;
@@ -81,6 +87,7 @@ type UseWorkspaceEditorRuntimeOptions = {
   onCollaborationStateChange?: ((state: LumenCollaborationState) => void) | null;
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   onCommentStateChange?: ((snapshot: CommentStateSnapshot) => void) | null;
+  onDocumentLockStateChange?: ((snapshot: DocumentLockStateSnapshot) => void) | null;
   onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
   onDocumentChange?: ((snapshot: { docChanged: boolean }) => void) | null;
   onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
@@ -194,6 +201,7 @@ export const useWorkspaceEditorRuntime = ({
   onCollaborationStateChange,
   onTocOutlineChange,
   onCommentStateChange,
+  onDocumentLockStateChange,
   onTrackChangeStateChange,
   onDocumentChange,
   onStatsChange,
@@ -201,6 +209,11 @@ export const useWorkspaceEditorRuntime = ({
   const editor = shallowRef<LumenEditor | null>(null);
   const view = shallowRef<CanvasEditorView | null>(null);
   const pendingRuntime = shallowRef<PendingRuntimeContext | null>(null);
+  const documentLockState = shallowRef<DocumentLockStateSnapshot>({
+    enabled: true,
+    showMarkers: true,
+    lockedRangeCount: 0,
+  });
 
   let detachEditor: null | (() => void) = null;
   let detachCommentStore: null | (() => void) = null;
@@ -210,6 +223,11 @@ export const useWorkspaceEditorRuntime = ({
   let activateCommentThreadHandle: null | ((threadId: string | null) => boolean) = null;
   let focusCommentThreadHandle: null | ((threadId: string) => boolean) = null;
   let removeCommentThreadHandle: null | ((threadId: string) => boolean) = null;
+  let lockSelectionHandle: null | (() => boolean) = null;
+  let unlockSelectionHandle: null | (() => boolean) = null;
+  let clearAllDocumentLocksHandle: null | (() => boolean) = null;
+  let setDocumentLockingEnabledHandle: null | ((enabled: boolean) => boolean) = null;
+  let setDocumentLockMarkersVisibleHandle: null | ((visible: boolean) => boolean) = null;
   let setTrackChangesEnabledHandle: null | ((enabled: boolean) => boolean) = null;
   let activateTrackChangeHandle: null | ((changeId: string | null) => boolean) = null;
   let focusTrackChangeHandle: null | ((changeId: string) => boolean) = null;
@@ -285,6 +303,11 @@ export const useWorkspaceEditorRuntime = ({
     activateCommentThreadHandle = null;
     focusCommentThreadHandle = null;
     removeCommentThreadHandle = null;
+    lockSelectionHandle = null;
+    unlockSelectionHandle = null;
+    clearAllDocumentLocksHandle = null;
+    setDocumentLockingEnabledHandle = null;
+    setDocumentLockMarkersVisibleHandle = null;
     setTrackChangesEnabledHandle = null;
     activateTrackChangeHandle = null;
     focusTrackChangeHandle = null;
@@ -293,6 +316,11 @@ export const useWorkspaceEditorRuntime = ({
     acceptAllTrackChangesHandle = null;
     rejectAllTrackChangesHandle = null;
     lastTextSelectionSnapshot = null;
+    documentLockState.value = {
+      enabled: true,
+      showMarkers: true,
+      lockedRangeCount: 0,
+    };
     editor.value = null;
     view.value = null;
     syncDebugHandles();
@@ -320,6 +348,11 @@ export const useWorkspaceEditorRuntime = ({
     activateCommentThreadHandle = mounted.activateCommentThread;
     focusCommentThreadHandle = mounted.focusCommentThread;
     removeCommentThreadHandle = mounted.removeCommentThread;
+    lockSelectionHandle = mounted.lockSelection;
+    unlockSelectionHandle = mounted.unlockSelection;
+    clearAllDocumentLocksHandle = mounted.clearAllDocumentLocks;
+    setDocumentLockingEnabledHandle = mounted.setDocumentLockingEnabled;
+    setDocumentLockMarkersVisibleHandle = mounted.setDocumentLockMarkersVisible;
     setTrackChangesEnabledHandle = mounted.setTrackChangesEnabled;
     activateTrackChangeHandle = mounted.activateTrackChange;
     focusTrackChangeHandle = mounted.focusTrackChange;
@@ -369,6 +402,10 @@ export const useWorkspaceEditorRuntime = ({
       onTocOutlineChange: onTocOutlineChange || undefined,
       tocOutlineEnabled: isTocOutlineEnabled(),
       onCommentStateChange: onCommentStateChange || undefined,
+      onDocumentLockStateChange: (snapshot) => {
+        documentLockState.value = { ...snapshot };
+        onDocumentLockStateChange?.(snapshot);
+      },
       onTrackChangeStateChange: onTrackChangeStateChange || undefined,
       onDocumentChange: onDocumentChange || undefined,
       onStatsChange: onStatsChange || undefined,
@@ -428,6 +465,14 @@ export const useWorkspaceEditorRuntime = ({
     restoreLastTextSelection,
     removeCommentThread: (threadId: string) =>
       removeCommentThreadHandle?.(threadId) === true,
+    lockSelection: () => lockSelectionHandle?.() === true,
+    unlockSelection: () => unlockSelectionHandle?.() === true,
+    clearAllDocumentLocks: () => clearAllDocumentLocksHandle?.() === true,
+    documentLockState,
+    setDocumentLockingEnabled: (enabled: boolean) =>
+      setDocumentLockingEnabledHandle?.(enabled) === true,
+    setDocumentLockMarkersVisible: (visible: boolean) =>
+      setDocumentLockMarkersVisibleHandle?.(visible) === true,
     setTrackChangesEnabled: (enabled: boolean) =>
       setTrackChangesEnabledHandle?.(enabled) === true,
     activateTrackChange: (changeId: string | null) =>

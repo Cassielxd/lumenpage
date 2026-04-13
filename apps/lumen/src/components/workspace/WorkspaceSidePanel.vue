@@ -18,6 +18,7 @@
       <slot v-if="activeTab === 'outline'" name="outline" />
       <slot v-else-if="activeTab === 'comments'" name="comments" />
       <slot v-else-if="activeTab === 'collaboration'" name="collaboration" />
+      <slot v-else-if="activeTab === 'locks'" name="locks" />
       <slot v-else-if="activeTab === 'assistant'" name="assistant" />
       <slot v-else-if="activeTab === 'changes'" name="changes" />
       <slot v-else-if="activeTab === 'annotation'" name="annotation" />
@@ -27,7 +28,15 @@
 
 <script setup lang="ts">
 defineProps<{
-  activeTab: "outline" | "comments" | "collaboration" | "assistant" | "changes" | "annotation" | null;
+  activeTab:
+    | "outline"
+    | "comments"
+    | "collaboration"
+    | "locks"
+    | "assistant"
+    | "changes"
+    | "annotation"
+    | null;
   width: number;
   resizing?: boolean;
   highContrast?: boolean;

@@ -39,9 +39,36 @@ const getDecorationCacheKey = (
     const stableLayoutToken = Math.floor(layoutToken / 4);
     return `empty_${stableLayoutToken}_${scrollBucket}_${viewportWidth}`;
   }
-  const first = decorations[0];
-  const last = decorations[decorations.length - 1];
-  const hash = `${layoutToken}_${decorations.length}_${first?.from ?? 0}_${first?.to ?? 0}_${last?.from ?? 0}_${last?.to ?? 0}_${scrollBucket}_${viewportWidth}`;
+  const specSignature = decorations
+    .map((decoration) => {
+      const spec = decoration?.spec || {};
+      const underline = spec.underline || {};
+      return [
+        decoration?.type || "",
+        decoration?.from ?? 0,
+        decoration?.to ?? 0,
+        spec.backgroundColor || "",
+        spec.textColor || "",
+        spec.borderColor || "",
+        spec.borderWidth ?? "",
+        spec.borderTopWidth ?? "",
+        spec.borderRightWidth ?? "",
+        spec.borderBottomWidth ?? "",
+        spec.borderLeftWidth ?? "",
+        spec.blockId || "",
+        spec.nodeType || "",
+        spec.blockOutline === true ? "1" : "0",
+        spec.side ?? "",
+        spec.widgetAlignment || "",
+        spec.widgetWidth ?? "",
+        spec.widgetRightInset ?? "",
+        underline.color || "",
+        underline.style || "",
+        typeof spec.render === "function" ? "1" : "0",
+      ].join(":");
+    })
+    .join("|");
+  const hash = `${layoutToken}_${decorations.length}_${specSignature}_${scrollBucket}_${viewportWidth}`;
   return hash;
 };
 
@@ -197,6 +224,30 @@ const getLineItemsInRange = (layout, layoutIndex, minOffset, maxOffset) => {
     items.push(item);
   });
   return items;
+};
+
+const resolveWidgetDrawX = ({
+  layout,
+  viewportWidth,
+  decoration,
+  anchorX,
+}: {
+  layout: any;
+  viewportWidth: number;
+  decoration: CanvasDecoration;
+  anchorX: number;
+}) => {
+  if (decoration?.spec?.widgetAlignment !== "page-right") {
+    return anchorX;
+  }
+  const pageWidth = Number(layout?.pageWidth);
+  if (!Number.isFinite(pageWidth) || pageWidth <= 0) {
+    return anchorX;
+  }
+  const pageX = Math.max(0, (viewportWidth - pageWidth) / 2);
+  const widgetWidth = Math.max(0, Number(decoration?.spec?.widgetWidth) || 0);
+  const widgetRightInset = Math.max(0, Number(decoration?.spec?.widgetRightInset) || 0);
+  return pageX + pageWidth - widgetWidth - widgetRightInset;
 };
 
 const hasVisualBlockCapability = (box: any) => {
@@ -488,7 +539,17 @@ export const buildDecorationDrawData = (
       if (!rect) {
         continue;
       }
-      widgets.push({ x: rect.x, y: rect.y, height: rect.height, decoration });
+      widgets.push({
+        x: resolveWidgetDrawX({
+          layout,
+          viewportWidth,
+          decoration,
+          anchorX: rect.x,
+        }),
+        y: rect.y,
+        height: rect.height,
+        decoration,
+      });
       continue;
     }
 

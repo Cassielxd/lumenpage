@@ -7,6 +7,7 @@ export type SideTabKey =
   | "outline"
   | "comments"
   | "collaboration"
+  | "locks"
   | "assistant"
   | "changes"
   | "annotation";
@@ -107,6 +108,12 @@ export const useWorkspaceSidePanel = ({
     }
   };
 
+  const closeDocumentLocksPanel = () => {
+    if (activeSideTab.value === "locks") {
+      setActiveSideTab(null);
+    }
+  };
+
   const closeAnnotationPanel = () => {
     annotationStore.setActive(false);
     if (activeSideTab.value === "annotation") {
@@ -191,6 +198,16 @@ export const useWorkspaceSidePanel = ({
       openAssistantPanel();
       return;
     }
+    if (tab === "locks") {
+      if (activeSideTab.value === "locks") {
+        closeDocumentLocksPanel();
+        return;
+      }
+      clearActiveCommentThread();
+      clearActiveTrackChange();
+      setActiveSideTab("locks");
+      return;
+    }
     if (tab === "collaboration") {
       if (activeSideTab.value === "collaboration") {
         setActiveSideTab(null);
@@ -264,6 +281,7 @@ export const useWorkspaceSidePanel = ({
     toggleTocPanel,
     closeCommentsPanel,
     closeAssistantPanel,
+    closeDocumentLocksPanel,
     closeAnnotationPanel,
     closeTrackChangesPanel,
     openTrackChangesPanel,

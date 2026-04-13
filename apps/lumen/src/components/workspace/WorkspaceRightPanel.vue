@@ -82,6 +82,24 @@
         </div>
       </template>
 
+      <template #locks>
+        <div class="doc-side-tab-panel">
+          <DocumentLockPanel
+            :locale="locale"
+            :enabled="documentLockingEnabled"
+            :show-markers="documentLockMarkersVisible"
+            :locked-range-count="documentLockRangeCount"
+            :can-manage="canManageDocumentLocks"
+            @close="onCloseDocumentLocksPanel"
+            @lock-selection="onDocumentLockSelection"
+            @unlock-selection="onDocumentUnlockSelection"
+            @clear-all="onDocumentLocksClearAll"
+            @set-enabled="onDocumentLockingEnabledChange"
+            @set-markers-visible="onDocumentLockMarkersVisibleChange"
+          />
+        </div>
+      </template>
+
       <template #assistant>
         <div class="doc-side-tab-panel">
           <AiAssistantPanel
@@ -157,6 +175,7 @@ import AiAssistantPanel from "../AiAssistantPanel.vue";
 import AnnotationToolbar from "../AnnotationToolbar.vue";
 import CommentsPanel from "../CommentsPanel.vue";
 import CollaborationPanel from "../CollaborationPanel.vue";
+import DocumentLockPanel from "../DocumentLockPanel.vue";
 import TrackChangesPanel from "../TrackChangesPanel.vue";
 import WorkspaceSidePanel from "./WorkspaceSidePanel.vue";
 
@@ -188,6 +207,10 @@ defineProps<{
   collaborationToken: string;
   collaborationSwitching: boolean;
   canManageAssistant: boolean;
+  documentLockingEnabled: boolean;
+  documentLockMarkersVisible: boolean;
+  documentLockRangeCount: number;
+  canManageDocumentLocks: boolean;
   trackChangesEnabled: boolean;
   trackChangesActionLabel: string;
   trackChangesStatusLabel: string;
@@ -213,6 +236,12 @@ defineProps<{
     collaborationUserName: string;
     collaborationUserColor: string;
   }) => void;
+  onCloseDocumentLocksPanel: () => void;
+  onDocumentLockSelection: () => void;
+  onDocumentUnlockSelection: () => void;
+  onDocumentLocksClearAll: () => void;
+  onDocumentLockingEnabledChange: (enabled: boolean) => void;
+  onDocumentLockMarkersVisibleChange: (visible: boolean) => void;
   onCloseAssistantPanel: () => void;
   onTrackChangesToggle: () => void;
   onCloseTrackChangesPanel: () => void;
@@ -334,6 +363,7 @@ defineProps<{
 .doc-side-tab-panel :deep(.doc-comments),
 .doc-side-tab-panel :deep(.doc-annotation-toolbar),
 .doc-side-tab-panel :deep(.doc-collaboration-panel),
+.doc-side-tab-panel :deep(.doc-document-lock),
 .doc-side-tab-panel :deep(.doc-ai-assistant),
 .doc-side-tab-panel :deep(.doc-track-changes) {
   flex: 1;

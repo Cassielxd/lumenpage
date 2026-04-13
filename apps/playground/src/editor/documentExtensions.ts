@@ -4,6 +4,7 @@ import {
   CollaborationCaret,
   type CollaborationCaretUser,
 } from "lumenpage-extension-collaboration-caret";
+import { DocumentLock } from "lumenpage-extension-document-lock";
 import { Image } from "lumenpage-extension-image";
 import { Link } from "lumenpage-extension-link";
 import { Table, TableCell, TableHeader, TableRow } from "lumenpage-extension-table";
@@ -21,6 +22,7 @@ export type PlaygroundCollaborationExtensionsOptions = {
 
 const baseDocumentExtensions = [
   BlockIdExtension,
+  DocumentLock,
   Underline,
   Link,
   Image,

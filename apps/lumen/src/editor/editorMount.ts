@@ -27,6 +27,10 @@ import {
   normalizeCommentId,
 } from "lumenpage-extension-comment";
 import {
+  findDocumentLockRanges,
+  getDocumentLockPluginState,
+} from "lumenpage-extension-document-lock";
+import {
   getTrackChangePluginState,
   listTrackChanges,
   normalizeTrackChangeId,
@@ -71,6 +75,7 @@ type MountPlaygroundEditorParams = {
   onTocOutlineChange?: ((snapshot: TocOutlineSnapshot) => void) | null;
   tocOutlineEnabled?: boolean;
   onCommentStateChange?: ((snapshot: { activeThreadId: string | null }) => void) | null;
+  onDocumentLockStateChange?: ((snapshot: DocumentLockStateSnapshot) => void) | null;
   onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
   onDocumentChange?: ((snapshot: { docChanged: boolean }) => void) | null;
   onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
@@ -88,6 +93,13 @@ type MountedPlaygroundEditor = {
   activateCommentThread: (threadId: string | null) => boolean;
   focusCommentThread: (threadId: string) => boolean;
   removeCommentThread: (threadId: string) => boolean;
+  lockSelection: () => boolean;
+  unlockSelection: () => boolean;
+  clearAllDocumentLocks: () => boolean;
+  isDocumentLockingEnabled: () => boolean;
+  setDocumentLockingEnabled: (enabled: boolean) => boolean;
+  areDocumentLockMarkersVisible: () => boolean;
+  setDocumentLockMarkersVisible: (visible: boolean) => boolean;
   isTrackChangesEnabled: () => boolean;
   setTrackChangesEnabled: (enabled: boolean) => boolean;
   getActiveTrackChangeId: () => string | null;
@@ -104,6 +116,12 @@ type TrackChangeStateSnapshot = {
   enabled: boolean;
   activeChangeId: string | null;
   changes: TrackChangeRecord[];
+};
+
+type DocumentLockStateSnapshot = {
+  enabled: boolean;
+  showMarkers: boolean;
+  lockedRangeCount: number;
 };
 
 type EditorStatsSnapshot = {
@@ -215,6 +233,15 @@ const areTrackChangeSnapshotsEqual = (
   left.enabled === right.enabled &&
   left.activeChangeId === right.activeChangeId &&
   areTrackChangeRecordsEqual(left.changes, right.changes);
+
+const areDocumentLockSnapshotsEqual = (
+  left: DocumentLockStateSnapshot | null,
+  right: DocumentLockStateSnapshot
+) =>
+  !!left &&
+  left.enabled === right.enabled &&
+  left.showMarkers === right.showMarkers &&
+  left.lockedRangeCount === right.lockedRangeCount;
 
 const areEditorStatsEqual = (left: EditorStatsSnapshot | null, right: EditorStatsSnapshot) =>
   !!left &&
@@ -414,6 +441,7 @@ export const mountPlaygroundEditor = ({
   onTocOutlineChange,
   tocOutlineEnabled,
   onCommentStateChange,
+  onDocumentLockStateChange,
   onTrackChangeStateChange,
   onDocumentChange,
   onStatsChange,
@@ -714,6 +742,23 @@ export const mountPlaygroundEditor = ({
       activeThreadId: getCommentsPluginState(view?.state).activeThreadId || null,
     });
   };
+  let lastDocumentLockSnapshot: DocumentLockStateSnapshot | null = null;
+  const emitDocumentLockState = () => {
+    if (!onDocumentLockStateChange) {
+      return;
+    }
+    const pluginState = getDocumentLockPluginState(view?.state);
+    const nextSnapshot: DocumentLockStateSnapshot = {
+      enabled: pluginState.enabled === true,
+      showMarkers: pluginState.showMarkers === true,
+      lockedRangeCount: findDocumentLockRanges(view?.state).length,
+    };
+    if (areDocumentLockSnapshotsEqual(lastDocumentLockSnapshot, nextSnapshot)) {
+      return;
+    }
+    lastDocumentLockSnapshot = { ...nextSnapshot };
+    onDocumentLockStateChange(nextSnapshot);
+  };
   let trackChangeFrameId = 0;
   let pendingPostChangeSync = false;
   let pendingDocChanged = false;
@@ -775,6 +820,7 @@ export const mountPlaygroundEditor = ({
       onDocumentChange?.({ docChanged: true });
     }
     emitCommentState();
+    emitDocumentLockState();
     scheduleTrackChangeStateEmit();
   };
   handleViewChange = (_nextView: CanvasEditorView, event: any) => {
@@ -818,6 +864,16 @@ export const mountPlaygroundEditor = ({
   };
   const removeCommentThread = (threadId: string) =>
     editor.commands.unsetCommentAnchor?.(normalizeCommentId(threadId)) === true;
+  const lockSelection = () => editor.commands.lockSelection?.() === true;
+  const unlockSelection = () => editor.commands.unlockSelection?.() === true;
+  const clearAllDocumentLocks = () => editor.commands.clearAllDocumentLocks?.() === true;
+  const isDocumentLockingEnabled = () => getDocumentLockPluginState(view?.state).enabled === true;
+  const setDocumentLockingEnabled = (enabled: boolean) =>
+    editor.commands.setDocumentLocking?.(enabled) === true;
+  const areDocumentLockMarkersVisible = () =>
+    getDocumentLockPluginState(view?.state).showMarkers === true;
+  const setDocumentLockMarkersVisible = (visible: boolean) =>
+    editor.commands.setDocumentLockMarkersVisible?.(visible) === true;
   const setTrackChangesEnabled = (enabled: boolean) =>
     editor.commands.setTrackChanges?.(enabled) === true;
   const activateTrackChange = (changeId: string | null) =>
@@ -1060,6 +1116,7 @@ export const mountPlaygroundEditor = ({
   scrollArea?.addEventListener?.("scroll", handleScroll, { passive: true });
   scheduleStatsEmit();
   emitCommentState();
+  emitDocumentLockState();
   emitTrackChangeState();
 
   try {
@@ -1088,6 +1145,13 @@ export const mountPlaygroundEditor = ({
     activateCommentThread,
     focusCommentThread,
     removeCommentThread,
+    lockSelection,
+    unlockSelection,
+    clearAllDocumentLocks,
+    isDocumentLockingEnabled,
+    setDocumentLockingEnabled,
+    areDocumentLockMarkersVisible,
+    setDocumentLockMarkersVisible,
     isTrackChangesEnabled: () => getTrackChangePluginState(view?.state).enabled === true,
     setTrackChangesEnabled,
     getActiveTrackChangeId: () => getTrackChangePluginState(view?.state).activeChangeId || null,

@@ -310,7 +310,7 @@ const resolveSelectionRectForItem = ({
   const lineEnd = Number.isFinite(item?.end) ? Number(item.end) : getLineEnd(line, page);
   const isEmptyLine = lineStart === lineEnd;
   if (isEmptyLine) {
-    if (minOffset > lineStart || maxOffset < lineEnd) {
+    if (minOffset > lineStart || maxOffset <= lineEnd) {
       return null;
     }
   } else if (maxOffset <= lineStart || minOffset >= lineEnd) {
@@ -431,7 +431,7 @@ export function selectionToRects(
 
       const isEmptyLine = lineStart === lineEnd;
       if (isEmptyLine) {
-        if (minOffset > lineStart || maxOffset < lineEnd) {
+        if (minOffset > lineStart || maxOffset <= lineEnd) {
           continue;
         }
       } else if (maxOffset <= lineStart || minOffset >= lineEnd) {

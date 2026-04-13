@@ -5,6 +5,7 @@ import { Callout } from "lumenpage-extension-callout";
 import { Comments } from "lumenpage-extension-comment";
 import { Columns } from "lumenpage-extension-columns";
 import { Audio } from "lumenpage-extension-audio";
+import { DocumentLock } from "lumenpage-extension-document-lock";
 import { EmbedPanel } from "lumenpage-extension-embed-panel";
 import { File } from "lumenpage-extension-file";
 import { Math } from "lumenpage-extension-math";
@@ -93,6 +94,7 @@ export const createLumenDocumentExtensions = (
       store: lumenCommentsStore,
       showResolved: true,
     }),
+    DocumentLock,
     resolveTrackChangesExtension(trackChangesUser),
     Math,
     OptionBox,
