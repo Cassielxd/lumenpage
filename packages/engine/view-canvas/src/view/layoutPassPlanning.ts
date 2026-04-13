@@ -5,9 +5,9 @@ import type {
   TopLevelIndexableDoc,
 } from "lumenpage-layout-engine";
 import type { LayoutIndex } from "lumenpage-view-runtime";
-import { DEFAULT_PAGE_WIDTH } from "../pageDefaults";
-import { getPageOffsetDelta } from "./layoutRuntimeMetadata";
-import { getPageIndexForOffset } from "./layoutIndex";
+import { DEFAULT_PAGE_WIDTH } from "../pageDefaults.js";
+import { getPageOffsetDelta } from "./layoutRuntimeMetadata.js";
+import { getPageIndexForOffset } from "./layoutIndex.js";
 
 const toFiniteNumber = (value: unknown, fallback = 0) =>
   Number.isFinite(value) ? Number(value) : fallback;

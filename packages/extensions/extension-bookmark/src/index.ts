@@ -1,11 +1,11 @@
 import { Node } from "lumenpage-core";
 import { sanitizeLinkHref } from "lumenpage-link";
-import { createDefaultBookmarkNodeView } from "./nodeView";
-import { bookmarkRenderer } from "./renderer";
-import { bookmarkNodeSpec } from "./bookmark";
+import { createDefaultBookmarkNodeView } from "./nodeView.js";
+import { bookmarkRenderer } from "./renderer.js";
+import { bookmarkNodeSpec } from "./bookmark.js";
 
-export { bookmarkNodeSpec, serializeBookmarkToText } from "./bookmark";
-export { bookmarkRenderer } from "./renderer";
+export { bookmarkNodeSpec, serializeBookmarkToText } from "./bookmark.js";
+export { bookmarkRenderer } from "./renderer.js";
 
 type InsertBookmarkOptions = {
   href: string;

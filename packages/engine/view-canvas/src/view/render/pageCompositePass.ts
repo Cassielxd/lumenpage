@@ -1,5 +1,5 @@
-import { now } from "../debugTrace";
-import { type RendererPageCacheEntry, type RendererPageCanvasSlot } from "./pageCanvasCache";
+import { now } from "../debugTrace.js";
+import { type RendererPageCacheEntry, type RendererPageCanvasSlot } from "./pageCanvasCache.js";
 
 const alignToDevicePixel = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 const toDevicePixels = (value: number, dpr: number) => Math.max(1, Math.round(value * dpr));

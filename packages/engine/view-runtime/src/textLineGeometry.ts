@@ -1,6 +1,6 @@
-import { measureTextWidth } from "./measure";
-import { isLineVisualBlock } from "./layoutSemantics";
-import { getPageOffsetDelta as readPageOffsetDelta } from "./pageRuntimeMeta";
+import { measureTextWidth } from "./measure.js";
+import { isLineVisualBlock } from "./layoutSemantics.js";
+import { getPageOffsetDelta as readPageOffsetDelta } from "./pageRuntimeMeta.js";
 
 export const getLineHeight = (line: any, layout: any) =>
   Number.isFinite(line?.lineHeight) ? Number(line.lineHeight) : Number(layout?.lineHeight) || 0;

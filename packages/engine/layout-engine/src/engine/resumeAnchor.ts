@@ -1,10 +1,10 @@
-import { findBlockAnchor, findBlockFirstOccurrence, getAnchorMatch, getDocChildStartPos } from "./anchors";
+import { findBlockAnchor, findBlockFirstOccurrence, getAnchorMatch, getDocChildStartPos } from "./anchors.js";
 import {
   hasPassedChangedTextBoundary,
   resolveSyncAfterOldTextOffset,
   resolveSyncAfterTextOffset,
-} from "./changeBoundary";
-import { findFirstFragmentAnchorAfterBoundary } from "./fragmentContinuation";
+} from "./changeBoundary.js";
+import { findFirstFragmentAnchorAfterBoundary } from "./fragmentContinuation.js";
 
 type ResolveResumeAnchorPlanOptions = {
   enabled: boolean;

@@ -1,6 +1,6 @@
 import { Fragment, Mark, Node, NodeType } from "lumenpage-model";
 
-import { Change } from "./change";
+import { Change } from "./change.js";
 
 /// A token encoder can be passed when creating a `ChangeSet` in order
 /// to influence the way the library runs its diffing algorithm. The

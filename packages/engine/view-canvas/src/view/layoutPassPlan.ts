@@ -1,13 +1,13 @@
-import { type PaginationAsyncRequester } from "./paginationRequester";
+import { type PaginationAsyncRequester } from "./paginationRequester.js";
 import {
   getLayoutSettingsSignature,
   resolveCascadePaginationPlan,
   resolveLayoutSettingsForPass,
-} from "./layoutPassPlanning";
+} from "./layoutPassPlanning.js";
 import {
   resolveLayoutExecutionStrategy,
   type ResolvedLayoutExecutionStrategy,
-} from "./layoutPassExecution";
+} from "./layoutPassExecution.js";
 
 export type LayoutPassSkipPlan = {
   kind: "skip";

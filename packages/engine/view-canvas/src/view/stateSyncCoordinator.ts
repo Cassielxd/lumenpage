@@ -1,6 +1,6 @@
-import { createStateSyncChangeCoordinator } from "./stateSyncChangeCoordinator";
-import { createStateSyncScrollCoordinator } from "./stateSyncScrollCoordinator";
-import { createStateSyncStatus } from "./stateSyncStatus";
+import { createStateSyncChangeCoordinator } from "./stateSyncChangeCoordinator.js";
+import { createStateSyncScrollCoordinator } from "./stateSyncScrollCoordinator.js";
+import { createStateSyncStatus } from "./stateSyncStatus.js";
 
 type CreateStateSyncCoordinatorArgs = {
   getEditorState: () => any;

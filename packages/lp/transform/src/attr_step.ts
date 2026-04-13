@@ -1,6 +1,6 @@
 import {Fragment, Slice, Node, Schema} from "lumenpage-model"
-import {Step, StepResult} from "./step"
-import {StepMap, Mappable} from "./map"
+import {Step, StepResult} from "./step.js"
+import {StepMap, Mappable} from "./map.js"
 
 /// Update an attribute in a specific node.
 export class AttrStep extends Step {

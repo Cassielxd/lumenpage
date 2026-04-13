@@ -1,6 +1,6 @@
 import React, { MouseEventHandler, useContext } from "react";
 import "@compiled/react";
-import theme from "../theme";
+import theme from "../theme.js";
 
 const TabsContextProvider = React.createContext({
   selectedIndex: "state",

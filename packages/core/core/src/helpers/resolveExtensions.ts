@@ -1,7 +1,7 @@
-import { flattenExtensions } from "./flattenExtensions";
-import { getExtensionField } from "./getExtensionField";
-import { sortExtensions } from "./sortExtensions";
-import type { AnyExtension, AnyExtensionInput, ExtensionContext } from "../types";
+import { flattenExtensions } from "./flattenExtensions.js";
+import { getExtensionField } from "./getExtensionField.js";
+import { sortExtensions } from "./sortExtensions.js";
+import type { AnyExtension, AnyExtensionInput, ExtensionContext } from "../types.js";
 
 export const resolveExtensions = ({
   input,

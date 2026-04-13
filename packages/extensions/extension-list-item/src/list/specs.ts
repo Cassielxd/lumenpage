@@ -1,5 +1,5 @@
 import { type NodeSpec } from "lumenpage-model";
-import { containerOffsetMapping } from "./offsetMapping";
+import { containerOffsetMapping } from "./offsetMapping.js";
 
 const readIdAttr = (dom) => dom?.getAttribute?.("data-node-id") || null;
 

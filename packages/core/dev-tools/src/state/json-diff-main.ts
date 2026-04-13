@@ -1,5 +1,5 @@
 import { DiffPatcher } from "jsondiffpatch";
-import { IdleScheduler } from "./idle-scheduler";
+import { IdleScheduler } from "./idle-scheduler.js";
 
 export class JsonDiffMain {
   diffPatcher = new DiffPatcher({

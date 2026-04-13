@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { mathRenderer } from "./renderer";
-import { mathNodeSpec } from "./math";
+import { mathRenderer } from "./renderer.js";
+import { mathNodeSpec } from "./math.js";
 
-export { mathNodeSpec, serializeMathToText } from "./math";
-export { mathRenderer } from "./renderer";
+export { mathNodeSpec, serializeMathToText } from "./math.js";
+export { mathRenderer } from "./renderer.js";
 
 type InsertMathOptions = {
   source: string;

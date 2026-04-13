@@ -1,11 +1,11 @@
 import OrderedMap from "orderedmap"
 
-import {Node, TextNode} from "./node"
-import {Fragment} from "./fragment"
-import {Mark} from "./mark"
-import {ContentMatch} from "./content"
-import {DOMOutputSpec} from "./to_dom"
-import {ParseRule, TagParseRule} from "./from_dom"
+import {Node, TextNode} from "./node.js"
+import {Fragment} from "./fragment.js"
+import {Mark} from "./mark.js"
+import {ContentMatch} from "./content.js"
+import {DOMOutputSpec} from "./to_dom.js"
+import {ParseRule, TagParseRule} from "./from_dom.js"
 
 /// An object holding the attributes of a node.
 export type Attrs = {readonly [attr: string]: any}

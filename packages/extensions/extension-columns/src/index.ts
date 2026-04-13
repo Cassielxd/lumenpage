@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { columnsRenderer } from "./renderer";
-import { columnsNodeSpec } from "./columns";
+import { columnsRenderer } from "./renderer.js";
+import { columnsNodeSpec } from "./columns.js";
 
-export { columnsNodeSpec, serializeColumnsToText } from "./columns";
-export { columnsRenderer } from "./renderer";
+export { columnsNodeSpec, serializeColumnsToText } from "./columns.js";
+export { columnsRenderer } from "./renderer.js";
 
 type InsertColumnsOptions = {
   count?: number;

@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { embedPanelRenderer } from "./renderer";
-import { embedPanelNodeSpec, resolveEmbedPanelDefaultSize } from "./embedPanel";
+import { embedPanelRenderer } from "./renderer.js";
+import { embedPanelNodeSpec, resolveEmbedPanelDefaultSize } from "./embedPanel.js";
 
-export { embedPanelNodeSpec, resolveEmbedPanelDefaultSize, serializeEmbedPanelToText } from "./embedPanel";
-export { embedPanelRenderer } from "./renderer";
+export { embedPanelNodeSpec, resolveEmbedPanelDefaultSize, serializeEmbedPanelToText } from "./embedPanel.js";
+export { embedPanelRenderer } from "./renderer.js";
 
 type InsertEmbedPanelOptions = {
   source: string;

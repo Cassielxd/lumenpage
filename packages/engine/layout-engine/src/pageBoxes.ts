@@ -1,4 +1,4 @@
-import type { LayoutBox, LayoutFragmentOwner } from "./nodeRegistry";
+import type { LayoutBox, LayoutFragmentOwner } from "./nodeRegistry.js";
 
 const TEXT_LINE_FRAGMENT_TYPE = "text-line";
 

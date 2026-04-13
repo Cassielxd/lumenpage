@@ -1,8 +1,8 @@
 import type { MarkType } from "lumenpage-model";
 import type { EditorState, Transaction } from "lumenpage-state";
 
-import { getMarkType } from "../helpers/getMarkType";
-import type { RawCommands } from "../types";
+import { getMarkType } from "../helpers/getMarkType.js";
+import type { RawCommands } from "../types.js";
 
 declare module "lumenpage-core" {
   interface Commands<ReturnType> {

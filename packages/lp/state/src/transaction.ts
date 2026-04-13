@@ -1,9 +1,9 @@
 ﻿import {Transform, Step} from "lumenpage-transform"
 import {Mark, MarkType, Node, Slice} from "lumenpage-model"
 import type { EditorView } from "lumenpage-view-types"
-import {Selection} from "./selection"
-import {Plugin, PluginKey} from "./plugin"
-import {EditorState} from "./state"
+import {Selection} from "./selection.js"
+import {Plugin, PluginKey} from "./plugin.js"
+import {EditorState} from "./state.js"
 
 /// Commands are functions that take a state and a an optional
 /// transaction dispatch function and...

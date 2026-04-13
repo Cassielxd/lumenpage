@@ -1,5 +1,9 @@
-import type { ContainerStyle, NodeRenderer } from "./node";
-import { resolveNodeRendererCompatCapabilities, resolveNodeRendererRenderCapabilities } from "./node";
+import {
+  resolveNodeRendererCompatCapabilities,
+  resolveNodeRendererRenderCapabilities,
+  type ContainerStyle,
+  type NodeRenderer,
+} from "./node.js";
 
 type BaseContainerContext = {
   indent: number;

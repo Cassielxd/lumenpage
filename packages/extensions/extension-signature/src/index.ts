@@ -1,10 +1,10 @@
 import { Node } from "lumenpage-core";
-import { signatureRenderer } from "./renderer";
-import { serializeSignatureToText, signatureNodeSpec } from "./signature";
-import { createDefaultSignatureNodeView } from "./nodeView";
+import { signatureRenderer } from "./renderer.js";
+import { serializeSignatureToText, signatureNodeSpec } from "./signature.js";
+import { createDefaultSignatureNodeView } from "./nodeView.js";
 
-export { signatureNodeSpec, serializeSignatureToText } from "./signature";
-export { signatureRenderer } from "./renderer";
+export { signatureNodeSpec, serializeSignatureToText } from "./signature.js";
+export { signatureRenderer } from "./renderer.js";
 export { createDefaultSignatureNodeView };
 
 type InsertSignatureOptions = {

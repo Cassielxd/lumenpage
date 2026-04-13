@@ -7,7 +7,7 @@ import {
   resolveNodeRendererLayoutCapabilities,
   resolveNodeRendererRenderCapabilities,
   resolveNodeRendererViewCapabilities,
-} from "./dist/node.js";
+} from "../dist/node.js";
 
 test("resolves nested renderer capabilities", () => {
   const measureBlock = () => ({ kind: "measure" });

@@ -1,7 +1,7 @@
 import React from "react";
 import { css } from "@compiled/react";
 
-import theme from "../theme";
+import theme from "../theme.js";
 
 const customPreStyles = css({
   padding: "9px 0 18px 0 !important",

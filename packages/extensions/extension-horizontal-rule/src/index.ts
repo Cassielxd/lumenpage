@@ -1,5 +1,5 @@
 import { Node } from "lumenpage-core";
-import { horizontalRuleNodeSpec } from "./horizontalRule";
+import { horizontalRuleNodeSpec } from "./horizontalRule.js";
 
 type HorizontalRuleCommands<ReturnType> = {
   setHorizontalRule: () => ReturnType;

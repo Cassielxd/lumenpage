@@ -1,8 +1,8 @@
-import { docPosToTextOffset } from "../../../core";
-import { getLineAtOffset } from "../../layoutIndex";
-import { Decoration } from "../../decorations";
-import { isLineVisualBlock } from "../../layoutSemantics";
-import { resolveLineVisualBox } from "../../render/geometry";
+import { docPosToTextOffset } from "../../../core/index.js";
+import { getLineAtOffset } from "../../layoutIndex.js";
+import { Decoration } from "../../decorations.js";
+import { isLineVisualBlock } from "../../layoutSemantics.js";
+import { resolveLineVisualBox } from "../../render/geometry.js";
 
 export const createDropCursorController = ({
   state,

@@ -1,16 +1,16 @@
 import type { Mark as PMMark, MarkSpec, Node as PMNode, NodeSpec } from "lumenpage-model";
 
-import { getAttributeSpecs } from "./getAttributeSpecs";
-import { getRenderedAttributes } from "./getRenderedAttributes";
-import { injectExtensionAttributesToParseRules } from "./injectExtensionAttributesToParseRule";
-import { injectRenderedAttributesToDOMOutput } from "./injectRenderedAttributesToDOMOutput";
-import { mergeDeep } from "../utilities/mergeDeep";
+import { getAttributeSpecs } from "./getAttributeSpecs.js";
+import { getRenderedAttributes } from "./getRenderedAttributes.js";
+import { injectExtensionAttributesToParseRules } from "./injectExtensionAttributesToParseRule.js";
+import { injectRenderedAttributesToDOMOutput } from "./injectRenderedAttributesToDOMOutput.js";
+import { mergeDeep } from "../utilities/mergeDeep.js";
 import type {
   AttributeConfigs,
   GlobalAttributes,
   HTMLAttributes,
   ResolvedStructure,
-} from "../types";
+} from "../types.js";
 
 const applyAttributeConfigsToNodeSpec = (
   spec: NodeSpec,

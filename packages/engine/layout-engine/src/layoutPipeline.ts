@@ -6,22 +6,22 @@
 import {
   applyIncrementalBootstrap,
   resolveIncrementalBootstrapState,
-} from "./engine/incrementalBootstrap";
-import { completeLayoutRun } from "./engine/layoutCompletion";
-import { createLayoutInstrumentation } from "./engine/layoutInstrumentation";
-import { resolveLayoutRunConfig } from "./engine/layoutRunConfig";
-import { createLayoutPipelineSession } from "./engine/layoutSession";
-import { createLayoutTraversalController } from "./engine/layoutTraversal";
-import { createLayoutPageLifecycle } from "./engine/pageLifecycle";
-import { resolveDisablePageReuse } from "./engine/reuseDecision";
-import type { LayoutFromDocOptions } from "./engine/types";
+} from "./engine/incrementalBootstrap.js";
+import { completeLayoutRun } from "./engine/layoutCompletion.js";
+import { createLayoutInstrumentation } from "./engine/layoutInstrumentation.js";
+import { resolveLayoutRunConfig } from "./engine/layoutRunConfig.js";
+import { createLayoutPipelineSession } from "./engine/layoutSession.js";
+import { createLayoutTraversalController } from "./engine/layoutTraversal.js";
+import { createLayoutPageLifecycle } from "./engine/pageLifecycle.js";
+import { resolveDisablePageReuse } from "./engine/reuseDecision.js";
+import type { LayoutFromDocOptions } from "./engine/types.js";
 import {
   ENABLE_CROSS_PAGE_CANDIDATE_REUSE,
   ENABLE_RESUME_FROM_ANCHOR_REUSE,
-} from "./engine/pageReuseFlags";
-import { appendGhostTrace, isGhostTraceEnabled } from "./engine/pageReuseTrace";
-import { populatePageDerivedState } from "./engine/pageState";
-import { layoutFromRunsWithSettings, layoutFromTextWithSettings } from "./engine/textLayout";
+} from "./engine/pageReuseFlags.js";
+import { appendGhostTrace, isGhostTraceEnabled } from "./engine/pageReuseTrace.js";
+import { populatePageDerivedState } from "./engine/pageState.js";
+import { layoutFromRunsWithSettings, layoutFromTextWithSettings } from "./engine/textLayout.js";
 
 const now = () =>
   typeof performance !== "undefined" && typeof performance.now === "function"

@@ -1,5 +1,4 @@
-import type { MarkRenderAdapter } from "./mark";
-import type { MarkAnnotationResolver } from "./mark";
+import type { MarkAnnotationResolver, MarkRenderAdapter } from "./mark.js";
 
 type CanvasNodeViewLike = any;
 
@@ -393,7 +392,6 @@ export class NodeRendererRegistry {
   }
 
   has(typeName) {
-
     return this.renderers.has(typeName);
   }
 }

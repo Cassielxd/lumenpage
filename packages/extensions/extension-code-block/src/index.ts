@@ -12,7 +12,7 @@ declare module "lumenpage-core" {
   }
 }
 
-export { codeBlockNodeSpec } from "./codeBlock";
+export { codeBlockNodeSpec } from "./codeBlock.js";
 export { defaultCodeBlockRenderer as codeBlockRenderer } from "lumenpage-render-engine";
 
 export const CodeBlock = Node.create({

@@ -1,8 +1,8 @@
-import { resolveExtensionOptions } from "./resolveExtensionOptions";
-import { resolveExtensionStorage } from "./resolveExtensionStorage";
-import { sortExtensions } from "./sortExtensions";
-import type { AnyExtension, ExtensionInstance } from "../types";
-import type { ExtensionContextRuntime } from "./createExtensionContext";
+import { resolveExtensionOptions } from "./resolveExtensionOptions.js";
+import { resolveExtensionStorage } from "./resolveExtensionStorage.js";
+import { sortExtensions } from "./sortExtensions.js";
+import type { AnyExtension, ExtensionInstance } from "../types.js";
+import type { ExtensionContextRuntime } from "./createExtensionContext.js";
 
 export const createExtensionInstances = ({
   extensions,

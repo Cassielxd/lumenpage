@@ -1,4 +1,4 @@
-import type { AnyExtension, EnableRules } from "../types";
+import type { AnyExtension, EnableRules } from "../types.js";
 
 export const isExtensionRulesEnabled = (
   extension: AnyExtension,

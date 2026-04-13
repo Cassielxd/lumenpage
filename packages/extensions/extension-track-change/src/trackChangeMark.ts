@@ -7,7 +7,7 @@ import {
   type TrackChangeAttrs,
   type TrackChangeRange,
   type TrackChangeRecord,
-} from "./types";
+} from "./types.js";
 
 const getTrackChangeMarkType = (state: any) => state?.schema?.marks?.trackChange || null;
 

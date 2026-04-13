@@ -1,9 +1,9 @@
 import {Mark, MarkType, Slice, Fragment, NodeType} from "lumenpage-model"
 
-import {Step} from "./step"
-import {Transform} from "./transform"
-import {AddMarkStep, RemoveMarkStep} from "./mark_step"
-import {ReplaceStep} from "./replace_step"
+import {Step} from "./step.js"
+import {Transform} from "./transform.js"
+import {AddMarkStep, RemoveMarkStep} from "./mark_step.js"
+import {ReplaceStep} from "./replace_step.js"
 
 export function addMark(tr: Transform, from: number, to: number, mark: Mark) {
   let removed: Step[] = [], added: Step[] = []

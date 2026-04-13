@@ -1,12 +1,12 @@
-import { resolveRendererReusePolicy } from "../paginationPolicy";
-import { shouldDisableReuseForSensitiveChange } from "./sensitiveReuse";
+import { resolveRendererReusePolicy } from "../paginationPolicy.js";
+import { shouldDisableReuseForSensitiveChange } from "./sensitiveReuse.js";
 import type {
   LayoutChangeSummary,
   LayoutLine,
   LayoutResult,
   LayoutSettingsLike,
   TopLevelIndexableDoc,
-} from "./types";
+} from "./types.js";
 
 type RendererRegistryLike = {
   get?: (typeName: string) => unknown;

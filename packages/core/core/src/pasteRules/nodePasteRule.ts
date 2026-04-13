@@ -1,6 +1,6 @@
 import type { NodeType } from "lumenpage-model";
 
-import { PasteRule, type ExtendedRegExpMatchArray, type PasteRuleFinder } from "../PasteRule";
+import { PasteRule, type ExtendedRegExpMatchArray, type PasteRuleFinder } from "../PasteRule.js";
 
 type JSONContent = Record<string, any>;
 

@@ -1,5 +1,5 @@
-import { BeforeInput, Commands, Drop, FocusEvents, Keymap, Paste } from "./extensions";
-import type { AnyExtensionInput, EnableRules } from "./types";
+import { BeforeInput, Commands, Drop, FocusEvents, Keymap, Paste } from "./extensions/index.js";
+import type { AnyExtensionInput, EnableRules } from "./types.js";
 
 const EXTENSION_TYPES = new Set(["extension", "node", "mark"]);
 

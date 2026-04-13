@@ -1,5 +1,5 @@
 import { Node } from "lumenpage-core";
-import { pageBreakNodeSpec } from "./pageBreak";
+import { pageBreakNodeSpec } from "./pageBreak.js";
 
 type PageBreakCommands<ReturnType> = {
   setPageBreak: () => ReturnType;
@@ -12,7 +12,7 @@ declare module "lumenpage-core" {
   }
 }
 
-export { pageBreakNodeSpec } from "./pageBreak";
+export { pageBreakNodeSpec } from "./pageBreak.js";
 
 export const PageBreak = Node.create({
   name: "pageBreak",

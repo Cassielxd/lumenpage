@@ -1,5 +1,5 @@
 import { Step } from "lumenpage-transform";
-import { createChangeSummary } from "./changeSummary";
+import { createChangeSummary } from "./changeSummary.js";
 
 export const CHANGE_SOURCE_META = "lumenpageChangeSource";
 

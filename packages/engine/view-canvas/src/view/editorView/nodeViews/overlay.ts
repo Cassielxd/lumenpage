@@ -1,13 +1,13 @@
-import { docPosToTextOffset } from "../../../core";
-import { emitGhostTrace } from "../../debugTrace";
-import { getLineAtOffset } from "../../layoutIndex";
-import { getLayoutVersion } from "../../layoutRuntimeMetadata";
-import { getEditorInternalsSections } from "../internals";
+import { docPosToTextOffset } from "../../../core/index.js";
+import { emitGhostTrace } from "../../debugTrace.js";
+import { getLineAtOffset } from "../../layoutIndex.js";
+import { getLayoutVersion } from "../../layoutRuntimeMetadata.js";
+import { getEditorInternalsSections } from "../internals.js";
 import {
   getNodeViewEntryPos,
   requiresBoxAnchoredOverlay,
   resolveNodeViewBoxRect,
-} from "./overlayGeometry";
+} from "./overlayGeometry.js";
 import { resolveNodeViewEntryAtCoords } from "./overlayHitTesting.js";
 import { findNodeViewEntryAtDocPos } from "./overlayHitTestingHeuristics.js";
 import { syncNodeViewOverlayEntry } from "./overlayEntrySync.js";

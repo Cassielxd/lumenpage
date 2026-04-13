@@ -3,7 +3,7 @@ import { Extension } from "lumenpage-core";
 import {
   createActiveBlockSelectionPlugin,
   type ActiveBlockPluginOptions,
-} from "./activeBlock";
+} from "./activeBlock.js";
 
 export type ActiveBlockExtensionOptions = ActiveBlockPluginOptions;
 
@@ -24,4 +24,4 @@ export const createActiveBlockSelectionExtension = (
 
 export const ActiveBlock = ActiveBlockSelectionExtension;
 
-export { createActiveBlockSelectionPlugin } from "./activeBlock";
+export { createActiveBlockSelectionPlugin };

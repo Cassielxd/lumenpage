@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { commitNodeViewOverlayVisibility } from "./dist/view/editorView/nodeViews/overlayVisibilityCommit.js";
+import { commitNodeViewOverlayVisibility } from "../dist/view/editorView/nodeViews/overlayVisibilityCommit.js";
 
 test("commitNodeViewOverlayVisibility hides stale overlays and preserves next visible set", () => {
   const hiddenPayloads = [];

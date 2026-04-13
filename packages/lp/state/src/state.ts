@@ -1,8 +1,8 @@
 import {Node, Mark, Schema} from "lumenpage-model"
 
-import {Selection, TextSelection} from "./selection"
-import {Transaction} from "./transaction"
-import {Plugin, StateField} from "./plugin"
+import {Selection, TextSelection} from "./selection.js"
+import {Transaction} from "./transaction.js"
+import {Plugin, StateField} from "./plugin.js"
 
 function bind<T extends Function>(f: T, self: any): T {
   return !self || !f ? f : f.bind(self)

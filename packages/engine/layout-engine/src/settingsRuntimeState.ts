@@ -3,7 +3,7 @@ import type {
   LayoutSettingsLike,
   LayoutSettingsPerfState,
   LayoutSettingsRuntimeState,
-} from "./engine/types";
+} from "./engine/types.js";
 
 type LayoutSettingsWithRuntimeState = LayoutSettingsLike & {
   runtimeState?: LayoutSettingsRuntimeState | null;

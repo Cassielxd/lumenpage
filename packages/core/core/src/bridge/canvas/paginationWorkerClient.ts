@@ -1,4 +1,4 @@
-﻿import type { PaginationDocWorkerResponse } from "./paginationWorker";
+﻿import type { PaginationDocWorkerResponse } from "./paginationWorker.js";
 import {
   DEFAULT_PAGE_GAP,
   DEFAULT_PAGE_HEIGHT,

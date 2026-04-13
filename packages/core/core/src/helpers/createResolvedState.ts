@@ -1,4 +1,4 @@
-import type { ResolvedState } from "../types";
+import type { ResolvedState } from "../types.js";
 
 export const createResolvedState = (): ResolvedState => ({
   plugins: [],

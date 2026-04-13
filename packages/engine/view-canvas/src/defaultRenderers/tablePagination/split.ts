@@ -1,4 +1,4 @@
-import { buildSplitResultWithFragments } from "./splitResult";
+import { buildSplitResultWithFragments } from "./splitResult.js";
 
 const getTableSliceMeta = (line) => line?.tableOwnerMeta || line?.tableMeta || null;
 

@@ -1,7 +1,7 @@
-import { getExtensionField } from "./getExtensionField";
-import { isExtensionRulesEnabled } from "./isExtensionRulesEnabled";
-import { createResolvedState } from "./createResolvedState";
-import { callOrReturn } from "../utilities/callOrReturn";
+import { getExtensionField } from "./getExtensionField.js";
+import { isExtensionRulesEnabled } from "./isExtensionRulesEnabled.js";
+import { createResolvedState } from "./createResolvedState.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
 import type {
   CommandMap,
   EditorPlugin,
@@ -11,7 +11,7 @@ import type {
   KeyboardShortcutMap,
   ResolvedState,
   StateExtender,
-} from "../types";
+} from "../types.js";
 
 export const resolveStateByExtensionInstances = ({
   instances,

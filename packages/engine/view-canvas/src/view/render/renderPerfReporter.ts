@@ -1,5 +1,5 @@
-import { emitGhostTrace, now } from "../debugTrace";
-import { getViewLayoutPerfSummary, setViewRenderPerfSummary } from "../settingsRuntimeState";
+import { emitGhostTrace, now } from "../debugTrace.js";
+import { getViewLayoutPerfSummary, setViewRenderPerfSummary } from "../settingsRuntimeState.js";
 
 export type RendererPerfSummary = {
   ms: number;

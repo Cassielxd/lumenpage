@@ -1,7 +1,13 @@
 import RopeSequence from "rope-sequence"
 import {Mapping, Step, StepMap, Transform} from "lumenpage-transform"
-import {Plugin, PluginKey} from "lumenpage-state"
-import type {Command, EditorState, Transaction, SelectionBookmark} from "lumenpage-state"
+import {
+  Plugin,
+  PluginKey,
+  type Command,
+  type EditorState,
+  type Transaction,
+  type SelectionBookmark,
+} from "lumenpage-state"
 
 // ProseMirror 的历史记录不仅仅是回滚到之前状态的方式
 // 因为 ProseMirror 支持应用更改而不将其添加到历史记录中

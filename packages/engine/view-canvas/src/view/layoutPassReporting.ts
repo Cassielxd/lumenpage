@@ -1,4 +1,4 @@
-import { emitGhostTrace, now } from "./debugTrace";
+import { emitGhostTrace, now } from "./debugTrace.js";
 import {
   getLayoutGhostTrace,
   getLayoutPerfSummary,
@@ -6,8 +6,8 @@ import {
   getLayoutWorkerDebug,
   isProgressiveLayoutApplied,
   isProgressiveLayoutTruncated,
-} from "./layoutRuntimeMetadata";
-import { getViewLayoutPerfSummary } from "./settingsRuntimeState";
+} from "./layoutRuntimeMetadata.js";
+import { getViewLayoutPerfSummary } from "./settingsRuntimeState.js";
 
 export const applyResolvedLayoutAndReport = ({
   layout,

@@ -1,5 +1,5 @@
 ﻿import { NodeSelection } from "lumenpage-state";
-import { resolveNodeSelectionDecision } from "./selectionPolicy";
+import { resolveNodeSelectionDecision } from "./selectionPolicy.js";
 
 // Selection interactions: node targeting + node selection application.
 export const createSelectionInteractions = ({

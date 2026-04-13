@@ -1,14 +1,14 @@
 ﻿import React, { useCallback, useState } from "react";
 import type { Plugin } from "lumenpage-state";
-import { InfoPanel } from "../components/info-panel";
-import { Heading } from "../components/heading";
-import JSONTree from "../components/json-tree";
-import { List } from "../components/list";
-import { SplitView, SplitViewCol } from "../components/split-view";
+import { InfoPanel } from "../components/info-panel.js";
+import { Heading } from "../components/heading.js";
+import JSONTree from "../components/json-tree.js";
+import { List } from "../components/list.js";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
 import { useAtomValue } from "jotai";
-import { editorStateAtom } from "../state/editor-state";
-import SearchBar from "../components/search-bar";
-import Button from "../components/button";
+import { editorStateAtom } from "../state/editor-state.js";
+import SearchBar from "../components/search-bar.js";
+import Button from "../components/button.js";
 
 export function valueRenderer(raw: string, ...rest: Array<string>) {
   if (typeof rest[0] === "function") {

@@ -1,7 +1,7 @@
 import {Slice, Node, Schema} from "lumenpage-model"
 
-import {Step, StepResult} from "./step"
-import {StepMap, Mappable} from "./map"
+import {Step, StepResult} from "./step.js"
+import {StepMap, Mappable} from "./map.js"
 
 /// Replace a part of the document with a slice of new content.
 export class ReplaceStep extends Step {

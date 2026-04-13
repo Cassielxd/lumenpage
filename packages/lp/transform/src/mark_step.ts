@@ -1,6 +1,6 @@
 import {Fragment, Slice, Node, Mark, Schema} from "lumenpage-model"
-import {Step, StepResult} from "./step"
-import {Mappable} from "./map"
+import {Step, StepResult} from "./step.js"
+import {Mappable} from "./map.js"
 
 function mapFragment(fragment: Fragment, f: (child: Node, parent: Node, i: number) => Node, parent: Node): Fragment {
   let mapped = []

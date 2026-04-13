@@ -1,5 +1,5 @@
-import { breakLines } from "../lineBreaker";
-import { textblockToRuns } from "../textRuns";
+import { breakLines } from "../lineBreaker.js";
+import { textblockToRuns } from "../textRuns.js";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 

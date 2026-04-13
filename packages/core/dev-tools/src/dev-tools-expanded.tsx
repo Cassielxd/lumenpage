@@ -1,26 +1,26 @@
 import React, { MouseEventHandler } from "react";
 import "@compiled/react";
 import { Dock } from "react-dock";
-import { Tab, Tabs, TabList, TabPanel } from "./components/tabs";
+import { Tab, Tabs, TabList, TabPanel } from "./components/tabs.js";
 import {
   devToolsOpenedAtom,
   devToolsSizeAtom,
   devToolTabIndexAtom,
-} from "./state/global";
-import StateTab from "./tabs/state";
-import HistoryTab from "./tabs/history";
-import SchemaTab from "./tabs/schema";
-import PluginsTab from "./tabs/plugins";
-import StructureTab from "./tabs/structure";
-import SnapshotsTab from "./tabs/snapshots";
-import PagesTab from "./tabs/pages";
-import CSSReset from "./components/css-reset";
-import { NodePicker, NodePickerTrigger } from "./components/node-picker";
-import SaveSnapshotButton from "./components/save-snapshot-button";
-import theme from "./theme";
+} from "./state/global.js";
+import StateTab from "./tabs/state.js";
+import HistoryTab from "./tabs/history.js";
+import SchemaTab from "./tabs/schema.js";
+import PluginsTab from "./tabs/plugins.js";
+import StructureTab from "./tabs/structure.js";
+import SnapshotsTab from "./tabs/snapshots.js";
+import PagesTab from "./tabs/pages.js";
+import CSSReset from "./components/css-reset.js";
+import { NodePicker, NodePickerTrigger } from "./components/node-picker/index.js";
+import SaveSnapshotButton from "./components/save-snapshot-button.js";
+import theme from "./theme.js";
 import { useAtom, useAtomValue } from "jotai";
-import { useNodePicker } from "./state/node-picker";
-import type { rollbackHistoryFn } from "./hooks/use-rollback-history";
+import { useNodePicker } from "./state/node-picker.js";
+import type { rollbackHistoryFn } from "./hooks/use-rollback-history.js";
 
 const CloseButton = ({
   children,

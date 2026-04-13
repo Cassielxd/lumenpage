@@ -1,4 +1,4 @@
-import { warnLegacyCanvasConfigUsage } from "../legacyConfigWarnings";
+import { warnLegacyCanvasConfigUsage } from "../legacyConfigWarnings.js";
 
 export const createEditorTextRuntime = ({
   dom,

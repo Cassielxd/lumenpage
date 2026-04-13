@@ -1,6 +1,6 @@
 import type { Delta } from "jsondiffpatch";
 import { nanoid } from "nanoid";
-import { IdleScheduler } from "./idle-scheduler";
+import { IdleScheduler } from "./idle-scheduler.js";
 
 export class JsonDiffWorker {
   queue = new Map();

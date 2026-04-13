@@ -1,4 +1,4 @@
-import { getOrBuildPageReuseIndex } from "./pageReuseIndex";
+import { getOrBuildPageReuseIndex } from "./pageReuseIndex.js";
 
 /**
  * 计算本次文档变更带来的文本偏移增量，用于复用旧页时校正 absolute offset。

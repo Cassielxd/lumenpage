@@ -1,11 +1,11 @@
-export { createEditorViewProps } from "./createEditorViewProps";
-export { collectNodeSelectionTypes, createSelectionGeometry } from "./selectionGeometry";
+export { createEditorViewProps } from "./createEditorViewProps.js";
+export { collectNodeSelectionTypes, createSelectionGeometry } from "./selectionGeometry.js";
 export {
   attachExtensionPaginationDocWorker,
   type PaginationDocWorkerRequest,
   type PaginationDocWorkerResponse,
-} from "./paginationWorker";
+} from "./paginationWorker.js";
 export {
   PaginationDocWorkerClient,
   type PaginationDocWorkerClientRequest,
-} from "./paginationWorkerClient";
+} from "./paginationWorkerClient.js";

@@ -6,7 +6,7 @@ import {
   getRendererPageCacheEntry,
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
-} from "./render/pageCanvasCache";
+} from "./render/pageCanvasCache.js";
 import {
   type RendererPageDisplayList,
 } from "./render/pageDisplayList.js";

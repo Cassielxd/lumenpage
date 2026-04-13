@@ -1,14 +1,14 @@
 import { Plugin, PluginKey } from "lumenpage-state";
 import { Decoration, DecorationSet } from "lumenpage-view-canvas";
 
-import { getTrackChangeIdsAtPos } from "./trackChangeMark";
+import { getTrackChangeIdsAtPos } from "./trackChangeMark.js";
 import {
   TRACK_CHANGE_META,
   createDefaultTrackChangesOptions,
   normalizeTrackChangeId,
   type TrackChangesOptions,
   type TrackChangePluginState,
-} from "./types";
+} from "./types.js";
 
 const createDefaultPluginState = (enabled = false): TrackChangePluginState => ({
   enabled,

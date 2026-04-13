@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { optionBoxRenderer } from "./renderer";
-import { optionBoxNodeSpec } from "./optionBox";
+import { optionBoxRenderer } from "./renderer.js";
+import { optionBoxNodeSpec } from "./optionBox.js";
 
-export { optionBoxNodeSpec, serializeOptionBoxToText } from "./optionBox";
-export { optionBoxRenderer } from "./renderer";
+export { optionBoxNodeSpec, serializeOptionBoxToText } from "./optionBox.js";
+export { optionBoxRenderer } from "./renderer.js";
 
 type InsertOptionBoxOptions = {
   title?: string;

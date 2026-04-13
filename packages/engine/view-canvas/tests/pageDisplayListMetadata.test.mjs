@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { syncRendererPageDisplayListMetadata } from "./dist/view/render/pageDisplayListMetadata.js";
+import { syncRendererPageDisplayListMetadata } from "../dist/view/render/pageDisplayListMetadata.js";
 
 test("syncRendererPageDisplayListMetadata writes signature and layout version when page exists", () => {
   const calls = [];

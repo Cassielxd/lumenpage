@@ -12,11 +12,11 @@ export {
   createSegmentText,
   createLinebreakSegmentText,
   type SegmenterOptions,
-} from "./segmenter";
-export { measureTextWidth, getFontSize } from "./measure";
-export { getPageX } from "./pageAlign";
-export { getVisiblePages } from "./virtualization";
-export { findLineForOffset, offsetAtX, getCaretRect, getCaretFromPoint } from "./caret";
+} from "./segmenter.js";
+export { measureTextWidth, getFontSize } from "./measure.js";
+export { getPageX } from "./pageAlign.js";
+export { getVisiblePages } from "./virtualization.js";
+export { findLineForOffset, offsetAtX, getCaretRect, getCaretFromPoint } from "./caret.js";
 export {
   findNearestLineOwnerWithCapability,
   getNearestContentOwner,
@@ -25,8 +25,8 @@ export {
   isLineVisualBlock,
   isTableLayoutLine,
   type LayoutCapability,
-} from "./layoutSemantics";
-export { coordsAtPos, posAtCoords } from "./posIndex";
+} from "./layoutSemantics.js";
+export { coordsAtPos, posAtCoords } from "./posIndex.js";
 export {
   buildLayoutIndex,
   buildPartialLayoutIndex,
@@ -46,6 +46,6 @@ export {
   posAtCoordsIndexed,
   mergeLayoutIndex,
   resolveStablePageEntryPrefixCount,
-} from "./layoutIndex";
-export type { LayoutIndex } from "./layoutIndex";
-export { createSelectionMovement } from "./selectionMovement";
+} from "./layoutIndex.js";
+export type { LayoutIndex } from "./layoutIndex.js";
+export { createSelectionMovement } from "./selectionMovement.js";

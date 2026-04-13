@@ -3,7 +3,7 @@ import type {
   LayoutLine,
   LayoutResult,
   TopLevelIndexableDoc,
-} from "./types";
+} from "./types.js";
 
 const getDocChildCount = (doc: TopLevelIndexableDoc | null | undefined) =>
   Number.isFinite(doc?.childCount) ? Number(doc?.childCount) : 0;

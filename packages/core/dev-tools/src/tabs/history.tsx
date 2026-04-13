@@ -1,19 +1,19 @@
 ﻿import React from "react";
 import "@compiled/react";
-import { InfoPanel } from "../components/info-panel";
-import { Heading } from "../components/heading";
-import { List } from "../components/list";
-import JSONDiff from "../components/json-diff";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import { Highlighter } from "../components/highlighter";
-import theme from "../theme";
+import { InfoPanel } from "../components/info-panel.js";
+import { Heading } from "../components/heading.js";
+import { List } from "../components/list.js";
+import JSONDiff from "../components/json-diff.js";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import { Highlighter } from "../components/highlighter.js";
+import theme from "../theme.js";
 import { atom, useAtom, useAtomValue } from "jotai";
 import {
   historyAtom,
   historyDiffsAtom,
   HistoryItem,
   historyRolledBackToAtom,
-} from "../state/history";
+} from "../state/history.js";
 import type { Selection } from "lumenpage-state";
 
 const Section = ({ children }: { children: React.ReactNode }) => (

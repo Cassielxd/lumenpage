@@ -1,4 +1,4 @@
-import type { CanvasEditorViewProps, QueryEditorProp } from "./types";
+import type { CanvasEditorViewProps, QueryEditorProp } from "./types.js";
 
 const nullQueryEditorProp = ((() => null) as unknown) as QueryEditorProp;
 

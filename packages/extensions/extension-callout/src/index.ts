@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { calloutRenderer } from "./renderer";
-import { calloutNodeSpec } from "./callout";
+import { calloutRenderer } from "./renderer.js";
+import { calloutNodeSpec } from "./callout.js";
 
-export { calloutNodeSpec, serializeCalloutToText } from "./callout";
-export { calloutRenderer } from "./renderer";
+export { calloutNodeSpec, serializeCalloutToText } from "./callout.js";
+export { calloutRenderer } from "./renderer.js";
 
 type CalloutCommandMethods<ReturnType> = {
   insertCallout: (attrs?: Record<string, unknown>) => ReturnType;

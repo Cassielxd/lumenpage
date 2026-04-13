@@ -4,9 +4,12 @@ import {
   getRendererPageShellSignature,
 } from "./pageSignature.js";
 import {
+  type RendererPageFragmentPassDisplayListItem,
+  type RendererPageLineCompatDisplayListItem,
   type RendererPageDisplayListContext,
-  type RendererPageDisplayListItem,
+  type RendererPageShellDisplayListItem,
 } from "./pageDisplayList.js";
+import type { PageCompatPassPlan, PageFragmentPassPlan } from "./pageRenderTypes.js";
 
 const drawDefaultPageBackground = ({
   ctx,
@@ -81,7 +84,7 @@ export const buildPageShellDisplayListItem = ({
   context,
 }: {
   context: RendererPageDisplayListContext;
-}): RendererPageDisplayListItem => ({
+}): RendererPageShellDisplayListItem => ({
   kind: "page-shell",
   signature: getRendererPageShellSignature({
     width: context.width,
@@ -90,30 +93,34 @@ export const buildPageShellDisplayListItem = ({
 });
 
 export const buildPageFragmentPassDisplayListItem = ({
-  context,
+  fragmentPass,
+  registry,
 }: {
-  context: RendererPageDisplayListContext;
-}): RendererPageDisplayListItem => ({
+  fragmentPass: PageFragmentPassPlan;
+  registry: any;
+}): RendererPageFragmentPassDisplayListItem => ({
   kind: "fragment-pass",
   signature: getRendererFragmentPassSignature({
-    plan: context.plan,
-    registry: context.registry,
+    fragmentPass,
+    registry,
   }),
+  pass: fragmentPass,
 });
 
 export const buildPageLineCompatDisplayListItem = ({
-  context,
+  compatPass,
 }: {
-  context: RendererPageDisplayListContext;
-}): RendererPageDisplayListItem | null => {
-  if (context.plan.compatPass.lineEntries.length === 0) {
+  compatPass: PageCompatPassPlan;
+}): RendererPageLineCompatDisplayListItem | null => {
+  if (compatPass.lineEntries.length === 0) {
     return null;
   }
 
   return {
     kind: "line-compat-pass",
     signature: getRendererLineCompatPassSignature({
-      plan: context.plan,
+      compatPass,
     }),
+    pass: compatPass,
   };
 };

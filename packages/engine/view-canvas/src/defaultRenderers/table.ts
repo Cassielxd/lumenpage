@@ -3,12 +3,12 @@ import { NodeSelection } from "lumenpage-state";
 import {
   tableCellSelectionToRects,
   tableRangeSelectionToCellRects,
-} from "../view/render/selection";
+} from "../view/render/selection.js";
 import {
   matchesTableSelectionNodeType,
   normalizeTableSelectionSemantics,
   type TableSelectionSemantics,
-} from "../view/tableSelectionSemantics";
+} from "../view/tableSelectionSemantics.js";
 
 type TableSelectionGeometryConfig = TableSelectionSemantics;
 

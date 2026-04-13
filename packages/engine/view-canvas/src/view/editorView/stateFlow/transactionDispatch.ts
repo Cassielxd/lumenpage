@@ -1,5 +1,5 @@
-import { warnLegacyCanvasConfigUsage } from "../legacyConfigWarnings";
-import { getEditorInternalsSections } from "../internals";
+import { warnLegacyCanvasConfigUsage } from "../legacyConfigWarnings.js";
+import { getEditorInternalsSections } from "../internals.js";
 
 export const createTransactionDispatcher = ({
   view,

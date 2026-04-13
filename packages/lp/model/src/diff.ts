@@ -1,4 +1,4 @@
-import {Fragment} from "./fragment"
+import {Fragment} from "./fragment.js"
 
 export function findDiffStart(a: Fragment, b: Fragment, pos: number): number | null {
   for (let i = 0;; i++) {

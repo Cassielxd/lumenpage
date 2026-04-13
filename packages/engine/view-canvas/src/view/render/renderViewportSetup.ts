@@ -1,11 +1,11 @@
-import { type RendererViewportState } from "./rendererViewportState";
+import { type RendererViewportState } from "./rendererViewportState.js";
 
 import {
   getLayoutChangeSummary,
   getLayoutVersion,
   setLayoutForceRedraw,
   shouldForceLayoutRedraw,
-} from "../layoutRuntimeMetadata";
+} from "../layoutRuntimeMetadata.js";
 
 const alignToDevicePixel = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 const toDevicePixels = (value: number, dpr: number) => Math.max(1, Math.round(value * dpr));

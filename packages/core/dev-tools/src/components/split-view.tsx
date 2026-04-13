@@ -1,6 +1,6 @@
 import React from "react";
 import { css } from "@compiled/react";
-import theme from "../theme";
+import theme from "../theme.js";
 
 export const SplitView = ({
   children,

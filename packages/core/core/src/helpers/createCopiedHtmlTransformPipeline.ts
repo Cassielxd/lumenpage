@@ -1,9 +1,9 @@
 import type { Slice } from "lumenpage-model";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 
-import { getExtensionField } from "./getExtensionField";
-import { sortExtensions } from "./sortExtensions";
-import type { AnyExtension, ExtensionContext } from "../types";
+import { getExtensionField } from "./getExtensionField.js";
+import { sortExtensions } from "./sortExtensions.js";
+import type { AnyExtension, ExtensionContext } from "../types.js";
 
 export const createCopiedHtmlTransformPipeline = ({
   extensions,

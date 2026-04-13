@@ -1,5 +1,5 @@
-import type { LayoutBox, LayoutFragment } from "./nodeRegistry";
-import { buildPageBoxesFromLines } from "./pageBoxes";
+import type { LayoutBox, LayoutFragment } from "./nodeRegistry.js";
+import { buildPageBoxesFromLines } from "./pageBoxes.js";
 
 const sortFragmentsByPosition = <T extends { x?: number; y?: number }>(fragments: T[]) =>
   fragments.sort((a, b) => {

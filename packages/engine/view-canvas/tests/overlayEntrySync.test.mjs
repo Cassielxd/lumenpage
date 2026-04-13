@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { syncNodeViewOverlayEntry } from "./dist/view/editorView/nodeViews/overlayEntrySync.js";
+import { syncNodeViewOverlayEntry } from "../dist/view/editorView/nodeViews/overlayEntrySync.js";
 
 test("syncNodeViewOverlayEntry reuses cached box geometry when layout is still compatible", () => {
   let lastPayload = null;

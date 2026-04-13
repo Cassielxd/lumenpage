@@ -1,6 +1,6 @@
 import { Extension } from "lumenpage-core";
 
-import { createSlashCommandPlugin, type SlashCommandOptions } from "./slash-command";
+import { createSlashCommandPlugin, type SlashCommandOptions } from "./slash-command.js";
 
 export const SlashCommandExtension = Extension.create<SlashCommandOptions>({
   name: "slashCommand",
@@ -32,6 +32,6 @@ export {
   type SlashCommandRenderProps,
   type SlashCommandRenderLifecycle,
   type SlashCommandOptions,
-} from "./slash-command";
+} from "./slash-command.js";
 
 export default SlashCommandExtension;

@@ -18,9 +18,9 @@ import {
   selectCurrentAndBelowTableCell,
   selectCurrentAndNextTableCell,
   splitTableCell,
-} from "./commands";
-import { CellSelection } from "./cellSelection";
-import { getTableTextLength, serializeTableToText, tableNodeSpecs } from "./specs";
+} from "./commands.js";
+import { CellSelection } from "./cellSelection.js";
+import { getTableTextLength, serializeTableToText, tableNodeSpecs } from "./specs.js";
 import { defaultTableRenderer as tableRenderer } from "lumenpage-render-engine";
 import {
   createDefaultTableSelectionGeometry as createTableSelectionGeometry,

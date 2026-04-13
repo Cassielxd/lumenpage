@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getRendererPageDisplayListSignature } from "./dist/view/render/pageDisplayListSignature.js";
+import { getRendererPageDisplayListSignature } from "../dist/view/render/pageDisplayListSignature.js";
 
 test("renderer page display-list signature depends on item kind and signature only", () => {
   const first = getRendererPageDisplayListSignature([

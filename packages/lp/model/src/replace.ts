@@ -1,7 +1,7 @@
-import {Fragment} from "./fragment"
-import {Schema} from "./schema"
-import {Node, TextNode} from "./node"
-import {ResolvedPos} from "./resolvedpos"
+import {Fragment} from "./fragment.js"
+import {Schema} from "./schema.js"
+import {Node, TextNode} from "./node.js"
+import {ResolvedPos} from "./resolvedpos.js"
 
 /// Error type raised by [`Node.replace`](#model.Node.replace) when
 /// given an invalid replacement.

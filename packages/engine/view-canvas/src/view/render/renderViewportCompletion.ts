@@ -1,7 +1,7 @@
-import { emitGhostTrace, now } from "../debugTrace";
-import { getLayoutChangeSummary } from "../layoutRuntimeMetadata";
-import { type RendererPerfSummary, reportRendererPerf } from "./renderPerfReporter";
-import { type RendererViewportState } from "./rendererViewportState";
+import { emitGhostTrace, now } from "../debugTrace.js";
+import { getLayoutChangeSummary } from "../layoutRuntimeMetadata.js";
+import { type RendererPerfSummary, reportRendererPerf } from "./renderPerfReporter.js";
+import { type RendererViewportState } from "./rendererViewportState.js";
 
 export const completeRendererViewportPass = ({
   settings,

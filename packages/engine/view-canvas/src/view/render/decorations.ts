@@ -1,15 +1,15 @@
-import { getFontSize, measureTextWidth } from "../measure";
-import { getLayoutVersion, getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
-import { selectionToRects } from "./selection";
+import { getFontSize, measureTextWidth } from "../measure.js";
+import { getLayoutVersion, getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata.js";
+import { selectionToRects } from "./selection.js";
 import {
   collectAllLayoutBoxesForRange,
   collectTextLineItemsForRange,
   resolveEmptyLineWidth,
   resolveLayoutBoxRect,
   resolveLineVisualBox,
-} from "./geometry";
-import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations";
-import { getLinesInRange } from "../caret";
+} from "./geometry.js";
+import { normalizeDecorations, type CanvasDecoration, type DecorationSet } from "../decorations.js";
+import { getLinesInRange } from "../caret.js";
 import { resolveListMarker } from "lumenpage-render-engine";
 
 // Cache for decoration draw data to avoid recomputing on every frame

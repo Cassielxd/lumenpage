@@ -1,4 +1,4 @@
-import type { CanvasHooks, ResolvedStructure } from "../types";
+import type { CanvasHooks, ResolvedStructure } from "../types.js";
 
 export const applyCanvasHooks = (
   target: ResolvedStructure["canvas"],

@@ -1,6 +1,6 @@
-import { bindViewDomEvents } from "./events/domBindings";
-import { createNodeEventRouting } from "./events/nodeEventRouting";
-import { createViewportSyncScheduler } from "./events/viewportSync";
+import { bindViewDomEvents } from "./events/domBindings.js";
+import { createNodeEventRouting } from "./events/nodeEventRouting.js";
+import { createViewportSyncScheduler } from "./events/viewportSync.js";
 
 export const createViewEventHandlers = ({
   getState,

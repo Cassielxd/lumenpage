@@ -1,19 +1,19 @@
-import { getVisiblePages } from "../virtualization";
+import { getVisiblePages } from "../virtualization.js";
 import {
   enforceRendererPageCacheLimit,
   ensureRendererCanvasPool,
   pruneRendererPageCache,
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
-} from "./pageCanvasCache";
-import { type RendererPageDisplayList } from "./pageDisplayList";
-import { runPageCompositePass } from "./pageCompositePass";
+} from "./pageCanvasCache.js";
+import { type RendererPageDisplayList } from "./pageDisplayList.js";
+import { runPageCompositePass } from "./pageCompositePass.js";
 import {
   pageHasVisualBlock,
   pageIsReusedFromDifferentSource,
   runPageRedrawPass,
-} from "./pageRedrawPass";
-import { getLayoutChangeSummary, isPageReused } from "../layoutRuntimeMetadata";
+} from "./pageRedrawPass.js";
+import { getLayoutChangeSummary, isPageReused } from "../layoutRuntimeMetadata.js";
 
 export const renderPageSurfacePass = ({
   layout,

@@ -1,5 +1,5 @@
 ﻿import type { Node } from "lumenpage-model";
-import type { ExtendedFragment, JSONNode } from "../types/prosemirror";
+import type { ExtendedFragment, JSONNode } from "../types/prosemirror.js";
 
 function findNode(
   fullPath: Array<string | number>,

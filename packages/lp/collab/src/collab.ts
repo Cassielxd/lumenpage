@@ -1,5 +1,10 @@
-import {Plugin, PluginKey, TextSelection} from "lumenpage-state"
-import type {EditorState, Transaction} from "lumenpage-state"
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type EditorState,
+  type Transaction,
+} from "lumenpage-state"
 import {Step, Transform} from "lumenpage-transform"
 
 class Rebaseable {

@@ -1,31 +1,31 @@
-import { findLineForOffset, offsetAtX } from "../caret";
-import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
+import { findLineForOffset, offsetAtX } from "../caret.js";
+import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata.js";
 import {
   buildLayoutIndex as runtimeBuildLayoutIndex,
   findLineForOffsetIndexed as runtimeFindLineForOffsetIndexed,
   getLineAtOffset as runtimeGetLineAtOffset,
   getLinesInRange as runtimeGetLinesInRange,
   getTextLineItemsInRange as runtimeGetTextLineItemsInRange,
-} from "../layoutIndex";
+} from "../layoutIndex.js";
 import {
   findNearestLineOwnerWithCapability,
   hasLayoutCapability,
   isLineVisualBlock,
   isTableLayoutLine,
-} from "../layoutSemantics";
-import { measureTextWidth } from "../measure";
+} from "../layoutSemantics.js";
+import { measureTextWidth } from "../measure.js";
 import {
   matchesTableSelectionNodeType,
   normalizeTableSelectionSemantics,
   type TableSelectionSemantics,
-} from "../tableSelectionSemantics";
+} from "../tableSelectionSemantics.js";
 import {
   collectAllLayoutBoxesForRange,
   collectTextLineItemsForRange,
   resolveEmptyLineWidth,
   resolveLayoutBoxRect,
   resolveLineVisualBox,
-} from "./geometry";
+} from "./geometry.js";
 
 const getLineHeight = (line, layout) =>
   Number.isFinite(line.lineHeight) ? line.lineHeight : layout.lineHeight;

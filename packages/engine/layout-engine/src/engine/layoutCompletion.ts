@@ -1,13 +1,13 @@
-import { finalizeLayoutPages } from "./layoutFinalization";
-import { finalizeLayoutPerf } from "./perfSummary";
-import { materializeLayoutGeometry } from "../pageGeometry";
+import { finalizeLayoutPages } from "./layoutFinalization.js";
+import { finalizeLayoutPerf } from "./perfSummary.js";
+import { materializeLayoutGeometry } from "../pageGeometry.js";
 import {
   setLayoutGhostTrace,
   setLayoutPaginationDiagnostics,
   setLayoutPerfSummary,
   setProgressiveLayoutState,
-} from "../runtimeMetadata";
-import { getLayoutSettingsPerfSummary, setLayoutSettingsPerfSummary } from "../settingsRuntimeState";
+} from "../runtimeMetadata.js";
+import { getLayoutSettingsPerfSummary, setLayoutSettingsPerfSummary } from "../settingsRuntimeState.js";
 
 export const completeLayoutRun = ({
   session,

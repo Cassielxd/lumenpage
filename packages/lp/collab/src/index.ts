@@ -1,1 +1,1 @@
-export * from "./collab"
+export * from "./collab.js"

@@ -1,6 +1,6 @@
 import { Extension } from "lumenpage-core";
 
-import { createMentionPlugin, type MentionPluginOptions } from "./mention";
+import { createMentionPlugin, type MentionPluginOptions } from "./mention.js";
 
 export const MentionExtension = Extension.create<MentionPluginOptions>({
   name: "mention",
@@ -32,4 +32,4 @@ export {
   type MentionRenderProps,
   type MentionRenderLifecycle,
   type MentionPluginOptions,
-} from "./mention";
+} from "./mention.js";

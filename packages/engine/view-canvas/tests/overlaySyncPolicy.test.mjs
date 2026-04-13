@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   canReuseCachedOverlayState,
   shouldEmitNodeOverlayTrace,
-} from "./dist/view/editorView/nodeViews/overlaySyncPolicy.js";
+} from "../dist/view/editorView/nodeViews/overlaySyncPolicy.js";
 
 test("canReuseCachedOverlayState rejects stale viewport and layout versions", () => {
   assert.equal(

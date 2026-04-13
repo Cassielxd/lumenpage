@@ -3,7 +3,7 @@ import {
   getAdjacentTextLineItem,
   getTextLineItemAtOffset,
   offsetAtXIndexed,
-} from "./layoutIndex";
+} from "./layoutIndex.js";
 
 export const createSelectionMovement = ({
   getLayout,

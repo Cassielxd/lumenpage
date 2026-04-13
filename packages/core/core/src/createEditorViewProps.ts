@@ -1,1 +1,1 @@
-export { createEditorViewProps } from "./bridge/canvas/createEditorViewProps";
+export { createEditorViewProps } from "./bridge/canvas/createEditorViewProps.js";

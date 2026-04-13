@@ -1,5 +1,5 @@
-import { PAGE_REUSE_SIGNATURE_VERSION } from "./pageReuseFlags";
-import { getObjectSignature, hashNumber, hashString } from "./signature";
+import { PAGE_REUSE_SIGNATURE_VERSION } from "./pageReuseFlags.js";
+import { getObjectSignature, hashNumber, hashString } from "./signature.js";
 
 /**
  * 清理页面上的复用签名缓存，强制下次重新计算。

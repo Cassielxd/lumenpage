@@ -1,5 +1,5 @@
 import { createUnsplittableBlockPagination } from "lumenpage-render-engine";
-import { resolveEmbedPanelDefaultSize } from "./embedPanel";
+import { resolveEmbedPanelDefaultSize } from "./embedPanel.js";
 
 const trimText = (value: unknown) => String(value || "").trim();
 

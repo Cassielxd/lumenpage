@@ -1,7 +1,7 @@
-import { createDomDragHandlers } from "./drag/domHandlers";
-import { createDropCursorController } from "./drag/dropCursor";
-import { createInternalDragController } from "./drag/internalDrag";
-import { createDragRuntimeState } from "./drag/state";
+import { createDomDragHandlers } from "./drag/domHandlers.js";
+import { createDropCursorController } from "./drag/dropCursor.js";
+import { createInternalDragController } from "./drag/internalDrag.js";
+import { createDragRuntimeState } from "./drag/state.js";
 
 export const createDragHandlers = ({
   view,

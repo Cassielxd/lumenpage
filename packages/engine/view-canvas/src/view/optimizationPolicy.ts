@@ -1,4 +1,4 @@
-import { patchViewOptimizationPerf } from "./settingsRuntimeState";
+import { patchViewOptimizationPerf } from "./settingsRuntimeState.js";
 
 export type OptimizationPolicy = {
   enableExperimentalOptimizations: boolean;

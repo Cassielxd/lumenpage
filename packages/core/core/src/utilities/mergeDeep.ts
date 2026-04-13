@@ -1,4 +1,4 @@
-import { isPlainObject } from "./isPlainObject";
+import { isPlainObject } from "./isPlainObject.js";
 
 export const mergeDeep = <T>(base: T, patch: any): T => {
   if (patch == null) {

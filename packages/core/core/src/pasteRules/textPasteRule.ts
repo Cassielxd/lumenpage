@@ -1,4 +1,4 @@
-import { PasteRule, type PasteRuleFinder } from "../PasteRule";
+import { PasteRule, type PasteRuleFinder } from "../PasteRule.js";
 
 export const textPasteRule = (config: { find: PasteRuleFinder; replace: string }) =>
   new PasteRule({

@@ -2,9 +2,9 @@
 import { useSetAtom } from "jotai";
 import { Selection } from "lumenpage-state";
 import type { EditorView } from "lumenpage-view-types";
-import { editorStateAtom } from "../state/editor-state";
-import { type HistoryItem, historyRolledBackToAtom } from "../state/history";
-import getEditorStateClass from "../state/get-editor-state";
+import { editorStateAtom } from "../state/editor-state.js";
+import { type HistoryItem, historyRolledBackToAtom } from "../state/history.js";
+import getEditorStateClass from "../state/get-editor-state.js";
 
 export type rollbackHistoryFn = (
   historyItem: HistoryItem,

@@ -3,8 +3,8 @@
  * 主要职责：把坐标转换为文本偏移，供点击/拖拽命中使用。
  */
 
-import { getCaretFromPoint, getCaretRect } from "./caret";
-import { findLineForOffsetIndexed, getCaretRectIndexed, posAtCoordsIndexed } from "./layoutIndex";
+import { getCaretFromPoint, getCaretRect } from "./caret.js";
+import { findLineForOffsetIndexed, getCaretRectIndexed, posAtCoordsIndexed } from "./layoutIndex.js";
 
 type PosAtCoordsOptions = {
   layoutIndex?: any;

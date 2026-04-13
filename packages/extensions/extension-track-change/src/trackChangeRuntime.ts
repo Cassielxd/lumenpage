@@ -2,16 +2,16 @@ import { ChangeSet, simplifyChanges } from "lumenpage-extension-changeset";
 import { Extension } from "lumenpage-core";
 import { Selection, TextSelection } from "lumenpage-state";
 
-import { findTrackChangeRanges, rangeHasTrackChangeMark } from "./trackChangeMark";
-import { createTrackChangePlugin, getTrackChangePluginState } from "./trackChangePlugin";
-import { rewriteTransactionAsTrackChanges } from "./rewriteTransaction";
+import { findTrackChangeRanges, rangeHasTrackChangeMark } from "./trackChangeMark.js";
+import { createTrackChangePlugin, getTrackChangePluginState } from "./trackChangePlugin.js";
+import { rewriteTransactionAsTrackChanges } from "./rewriteTransaction.js";
 import {
   TRACK_CHANGE_META,
   createDefaultTrackChangesOptions,
   markTrackChangeTransaction,
   normalizeTrackChangeId,
   type TrackChangesOptions,
-} from "./types";
+} from "./types.js";
 
 type TrackChangesRuntimeCommandMethods<ReturnType> = {
   setTrackChanges: (enabled: boolean) => ReturnType;

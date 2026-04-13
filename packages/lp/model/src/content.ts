@@ -1,5 +1,5 @@
-import {Fragment} from "./fragment"
-import {NodeType} from "./schema"
+import {Fragment} from "./fragment.js"
+import {NodeType} from "./schema.js"
 
 type MatchEdge = {type: NodeType, next: ContentMatch}
 

@@ -1,5 +1,5 @@
-import {compareDeep} from "./comparedeep"
-import {Attrs, MarkType, Schema} from "./schema"
+import {compareDeep} from "./comparedeep.js"
+import {Attrs, MarkType, Schema} from "./schema.js"
 
 /// A mark is a piece of information that can be attached to a node,
 /// such as it being emphasized, in code font, or a link. It has a

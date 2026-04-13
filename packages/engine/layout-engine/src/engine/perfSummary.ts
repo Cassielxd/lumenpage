@@ -1,4 +1,4 @@
-import type { PaginationSyncDiagnostics } from "./paginationDiagnostics";
+import type { PaginationSyncDiagnostics } from "./paginationDiagnostics.js";
 
 /**
  * 在布局结束后补齐 perf 字段，并生成统一的调试摘要。

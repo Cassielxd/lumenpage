@@ -3,7 +3,7 @@ import {
   createWorkerPaginationRunsPayload,
   getWorkerPaginationIneligibleReason,
   isWorkerPaginationEligibleDoc,
-} from "./paginationWorkerClient";
+} from "./paginationWorkerClient.js";
 
 export type PaginationAsyncRequesterKind = "provider" | "runs-worker";
 

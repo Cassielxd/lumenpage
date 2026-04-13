@@ -1,4 +1,4 @@
-import { getEditorInternalsSections } from "./internals";
+import { getEditorInternalsSections } from "./internals.js";
 
 export const destroyView = (view) => {
   const { core, stateAccessors, viewSync, domEvents } = getEditorInternalsSections(view);

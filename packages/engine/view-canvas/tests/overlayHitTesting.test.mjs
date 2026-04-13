@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 import {
   findFallbackNodeViewEntryAtDocPos,
   findNodeViewEntryAtDocPos,
-} from "./dist/view/editorView/nodeViews/overlayHitTestingHeuristics.js";
-import { resolveNodeViewEntryAtCoords } from "./dist/view/editorView/nodeViews/overlayHitTesting.js";
+} from "../dist/view/editorView/nodeViews/overlayHitTestingHeuristics.js";
+import { resolveNodeViewEntryAtCoords } from "../dist/view/editorView/nodeViews/overlayHitTesting.js";
 
 test("findFallbackNodeViewEntryAtDocPos prefers the smallest containing node view", () => {
   const entry = findFallbackNodeViewEntryAtDocPos({

@@ -1,15 +1,15 @@
-import { arePagesEquivalent } from "./pageReuseEquivalence";
+import { arePagesEquivalent } from "./pageReuseEquivalence.js";
 import {
   getPageFragmentAnchorSummary,
   getPageFragmentChainSignature,
   pageHasFragmentAnchor,
-} from "./fragmentContinuation";
+} from "./fragmentContinuation.js";
 import {
   addFragmentBoundaryTextRangeCandidates,
   addRootRangeCandidates,
   addTextRangeCandidates,
-} from "./pageReuseIndex";
-import { getPageSignature } from "./pageReuseSignature";
+} from "./pageReuseIndex.js";
+import { getPageSignature } from "./pageReuseSignature.js";
 
 type CollectPageReuseCandidatesOptions = {
   pageIndex: number;

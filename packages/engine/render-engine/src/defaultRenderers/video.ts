@@ -1,4 +1,4 @@
-import { hasFragmentOwnerType } from "./fragmentOwners";
+import { hasFragmentOwnerType } from "./fragmentOwners.js";
 
 const resolvePositiveDimension = (value: unknown) => {
   if (value == null) {

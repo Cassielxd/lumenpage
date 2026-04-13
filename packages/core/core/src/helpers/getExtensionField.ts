@@ -1,4 +1,4 @@
-import type { AnyExtension } from "../types";
+import type { AnyExtension } from "../types.js";
 
 export const getExtensionField = <Value = any>(
   extension: AnyExtension | null | undefined,

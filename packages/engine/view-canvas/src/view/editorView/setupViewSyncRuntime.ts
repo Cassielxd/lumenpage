@@ -5,18 +5,18 @@ import {
   getDocTextLength,
   getSelectionOffsets,
   textOffsetToDocPos,
-} from "../../core";
-import { buildLayoutIndex } from "../layoutIndex";
-import { coordsAtPos, posAtCoords } from "../posIndex";
-import { selectionToRects } from "../render/selection";
-import { createRenderSync } from "../renderSync";
-import { createA11yStatusUpdater } from "./a11y";
-import { createCoordinateHelpers } from "./coords";
-import { createDecorationResolver } from "./decorations";
-import { applyDefaultA11y } from "./dom";
-import { createViewAttributeApplier } from "./propsState";
-import { scrollViewIntoView } from "./publicApi";
-import { createDebugLoggers, createRuntimeHelpers } from "./runtimeHelpers";
+} from "../../core/index.js";
+import { buildLayoutIndex } from "../layoutIndex.js";
+import { coordsAtPos, posAtCoords } from "../posIndex.js";
+import { selectionToRects } from "../render/selection.js";
+import { createRenderSync } from "../renderSync.js";
+import { createA11yStatusUpdater } from "./a11y.js";
+import { createCoordinateHelpers } from "./coords.js";
+import { createDecorationResolver } from "./decorations.js";
+import { applyDefaultA11y } from "./dom.js";
+import { createViewAttributeApplier } from "./propsState.js";
+import { scrollViewIntoView } from "./publicApi.js";
+import { createDebugLoggers, createRuntimeHelpers } from "./runtimeHelpers.js";
 
 export const createEditorViewSyncRuntime = ({
   view,

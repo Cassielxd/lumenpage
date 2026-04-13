@@ -1,5 +1,5 @@
 import { Node } from "lumenpage-core";
-import { blockquoteNodeSpec } from "./blockquote";
+import { blockquoteNodeSpec } from "./blockquote.js";
 
 type BlockquoteCommands<ReturnType> = {
   setBlockquote: () => ReturnType;

@@ -1,8 +1,8 @@
-import { now } from "./debugTrace";
+import { now } from "./debugTrace.js";
 import {
   type PaginationAsyncRequester,
   type PaginationAsyncRequesterKind,
-} from "./paginationRequester";
+} from "./paginationRequester.js";
 
 type ResolveLayoutExecutionStrategyArgs = {
   doc: any;

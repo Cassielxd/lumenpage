@@ -1,7 +1,7 @@
 import React from "react";
 import { css } from "@compiled/react";
-import JSONTree from "./json-tree";
-import theme from "../theme";
+import JSONTree from "./json-tree.js";
+import theme from "../theme.js";
 
 const updatedStyles = css({
   color: theme.main,

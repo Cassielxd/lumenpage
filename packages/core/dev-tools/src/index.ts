@@ -1,9 +1,9 @@
 import { createApp, type App as VueApp } from "vue";
 import type { EditorView } from "lumenpage-view-types";
-import { DevToolsApp } from "./app";
-import { createDevToolsController } from "./controller";
-import { ensureDevToolsStyles } from "./styles";
-import type { DevToolsOptions } from "./types";
+import { DevToolsApp } from "./app.js";
+import { createDevToolsController } from "./controller.js";
+import { ensureDevToolsStyles } from "./styles.js";
+import type { DevToolsOptions } from "./types.js";
 
 const DEVTOOLS_CLASS_NAME = "__lumenpage-dev-tools__";
 

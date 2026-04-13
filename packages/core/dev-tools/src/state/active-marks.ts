@@ -1,7 +1,7 @@
 ﻿import { atom } from "jotai";
 import type { Mark } from "lumenpage-model";
 import type { EditorState } from "lumenpage-state";
-import { editorStateAtom } from "./editor-state";
+import { editorStateAtom } from "./editor-state.js";
 
 export const activeMarksAtom = atom((get) => {
   const editorState = get(editorStateAtom);

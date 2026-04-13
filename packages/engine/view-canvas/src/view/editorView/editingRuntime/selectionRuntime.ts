@@ -1,4 +1,4 @@
-import { createSelectionMovement } from "../../selectionMovement";
+import { createSelectionMovement } from "../../selectionMovement.js";
 
 export const createSelectionMovementRuntime = ({
   getLayout,

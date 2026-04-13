@@ -5,8 +5,8 @@ import {
   joinListItemBackward,
   splitListItem,
   toggleTaskItemChecked,
-} from "./list/commands";
-import { listNodeSpecs } from "./list/specs";
+} from "./list/commands.js";
+import { listNodeSpecs } from "./list/specs.js";
 
 type ListItemCommands<ReturnType> = {
   splitListItem: () => ReturnType;
@@ -20,20 +20,20 @@ declare module "lumenpage-core" {
   }
 }
 
-export { serializeListToText, containerOffsetMapping } from "./list/offsetMapping";
+export { serializeListToText, containerOffsetMapping } from "./list/offsetMapping.js";
 export {
   defaultBulletListRenderer as bulletListRenderer,
   defaultOrderedListRenderer as orderedListRenderer,
   defaultTaskListRenderer as taskListRenderer,
 } from "lumenpage-render-engine";
-export { listNodeSpecs } from "./list/specs";
+export { listNodeSpecs } from "./list/specs.js";
 export {
   backspaceEmptyListItem,
   createToggleListCommand,
   joinListItemBackward,
   splitListItem,
   toggleTaskItemChecked,
-} from "./list/commands";
+} from "./list/commands.js";
 
 export const listItemNodeSpec = listNodeSpecs.listItem;
 export const taskItemNodeSpec = listNodeSpecs.taskItem;

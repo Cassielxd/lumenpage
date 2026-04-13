@@ -1,1 +1,1 @@
-export { createChainableState } from "./helpers/createChainableState";
+export { createChainableState } from "./helpers/createChainableState.js";

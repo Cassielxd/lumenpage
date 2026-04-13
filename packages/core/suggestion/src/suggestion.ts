@@ -7,7 +7,7 @@ import {
   type SuggestionMatch,
   type SuggestionMatchTrigger,
   type SuggestionRange,
-} from "./findSuggestionMatch";
+} from "./findSuggestionMatch.js";
 
 export type SuggestionCoords = {
   left: number;

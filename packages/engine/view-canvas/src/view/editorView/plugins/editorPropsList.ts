@@ -3,7 +3,7 @@ import type {
   DispatchEditorProp,
   HookReturn,
   QueryEditorProp,
-} from "../types";
+} from "../types.js";
 
 export const createEditorPropsRuntime = ({
   view,

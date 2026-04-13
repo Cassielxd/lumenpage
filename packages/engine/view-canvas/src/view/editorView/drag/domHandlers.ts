@@ -1,7 +1,7 @@
 import { Slice } from "lumenpage-model";
 
-import { isEditorDomEventHandled } from "../plugins";
-import { isDragCopy, resolveDraggableNodeRange, resolveDropSelection } from "./helpers";
+import { isEditorDomEventHandled } from "../plugins.js";
+import { isDragCopy, resolveDraggableNodeRange, resolveDropSelection } from "./helpers.js";
 
 export const createDomDragHandlers = ({
   view,

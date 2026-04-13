@@ -1,25 +1,25 @@
-import { blockquoteRenderer } from "./blockquote";
-import { codeBlockRenderer } from "./codeBlock";
-import { headingRenderer } from "./heading";
-import { horizontalRuleRenderer } from "./horizontalRule";
-import { imageRenderer } from "./image";
-import { paragraphRenderer } from "./paragraph";
-import { pageBreakRenderer } from "./pageBreak";
-import { splitTableBlock, tableRenderer } from "./table";
-import { videoRenderer } from "./video";
+import { blockquoteRenderer } from "./blockquote.js";
+import { codeBlockRenderer } from "./codeBlock.js";
+import { headingRenderer } from "./heading.js";
+import { horizontalRuleRenderer } from "./horizontalRule.js";
+import { imageRenderer } from "./image.js";
+import { paragraphRenderer } from "./paragraph.js";
+import { pageBreakRenderer } from "./pageBreak.js";
+import { splitTableBlock, tableRenderer } from "./table.js";
+import { videoRenderer } from "./video.js";
 import {
   bulletListRenderer,
   orderedListRenderer,
   renderListMarker,
   resolveListMarker,
   taskListRenderer,
-} from "./list";
+} from "./list.js";
 import {
   createImplicitBlockFragmentOwner,
   ensureBlockFragmentOwner,
   hasFragmentOwnerType,
   shiftFragmentOwners,
-} from "./fragmentOwners";
+} from "./fragmentOwners.js";
 
 export { blockquoteRenderer };
 export { codeBlockRenderer };

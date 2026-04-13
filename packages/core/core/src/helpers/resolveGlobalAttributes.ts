@@ -1,8 +1,10 @@
-import { getExtensionField } from "./getExtensionField";
-import { createExtensionContext } from "./createExtensionContext";
-import { callOrReturn } from "../utilities/callOrReturn";
-import type { ExtensionInstance, GlobalAttributes } from "../types";
-import type { ExtensionContextRuntime } from "./createExtensionContext";
+import { getExtensionField } from "./getExtensionField.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
+import type { ExtensionInstance, GlobalAttributes } from "../types.js";
+import {
+  createExtensionContext,
+  type ExtensionContextRuntime,
+} from "./createExtensionContext.js";
 
 export const resolveGlobalAttributes = ({
   instances,

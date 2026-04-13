@@ -1,11 +1,11 @@
-import {Fragment} from "./fragment"
-import {Slice} from "./replace"
-import {Mark} from "./mark"
-import {Node, TextNode} from "./node"
-import {ContentMatch} from "./content"
-import {ResolvedPos} from "./resolvedpos"
-import {Schema, Attrs, NodeType, MarkType} from "./schema"
-import {DOMNode} from "./dom"
+import {Fragment} from "./fragment.js"
+import {Slice} from "./replace.js"
+import {Mark} from "./mark.js"
+import {Node, TextNode} from "./node.js"
+import {ContentMatch} from "./content.js"
+import {ResolvedPos} from "./resolvedpos.js"
+import {Schema, Attrs, NodeType, MarkType} from "./schema.js"
+import {DOMNode} from "./dom.js"
 
 /// These are the options recognized by the
 /// [`parse`](#model.DOMParser.parse) and

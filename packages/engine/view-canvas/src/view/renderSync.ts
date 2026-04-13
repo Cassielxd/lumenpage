@@ -1,9 +1,9 @@
-import { createLayoutPassCoordinator } from "./layoutPassCoordinator";
-import { createLayoutApplyCoordinator } from "./layoutApplyCoordinator";
-import { createRenderFrameCoordinator } from "./renderFrameCoordinator";
-import { createRenderSyncPerfLog } from "./renderSyncPerfLog";
-import { createRenderSyncScheduling } from "./renderSyncScheduling";
-import { createStateSyncCoordinator } from "./stateSyncCoordinator";
+import { createLayoutPassCoordinator } from "./layoutPassCoordinator.js";
+import { createLayoutApplyCoordinator } from "./layoutApplyCoordinator.js";
+import { createRenderFrameCoordinator } from "./renderFrameCoordinator.js";
+import { createRenderSyncPerfLog } from "./renderSyncPerfLog.js";
+import { createRenderSyncScheduling } from "./renderSyncScheduling.js";
+import { createStateSyncCoordinator } from "./stateSyncCoordinator.js";
 
 export const createRenderSync = ({
   getEditorState,

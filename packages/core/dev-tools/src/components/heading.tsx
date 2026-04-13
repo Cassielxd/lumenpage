@@ -1,6 +1,6 @@
 import React, { MouseEventHandler } from "react";
 import { css } from "@compiled/react";
-import theme from "../theme";
+import theme from "../theme.js";
 
 const headingStyles = css({
   color: theme.softerMain,

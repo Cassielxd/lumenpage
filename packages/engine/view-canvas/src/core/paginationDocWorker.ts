@@ -4,14 +4,14 @@ import {
   setLayoutPerfSummary,
   setLayoutTransportPerf,
   setLayoutWorkerDebug,
-} from "../view/layoutRuntimeMetadata";
-import { getViewLayoutPerfSummary, initializeViewPerfState } from "../view/settingsRuntimeState";
+} from "../view/layoutRuntimeMetadata.js";
+import { getViewLayoutPerfSummary, initializeViewPerfState } from "../view/settingsRuntimeState.js";
 import {
   DEFAULT_PAGE_GAP,
   DEFAULT_PAGE_HEIGHT,
   DEFAULT_PAGE_MARGIN,
   DEFAULT_PAGE_WIDTH,
-} from "../pageDefaults";
+} from "../pageDefaults.js";
 
 const toNumberOrFallback = (value: unknown, fallback: number) =>
   Number.isFinite(value) ? Number(value) : fallback;

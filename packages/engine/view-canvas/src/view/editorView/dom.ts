@@ -1,10 +1,10 @@
-import { measureTextWidth } from "../measure";
+import { measureTextWidth } from "../measure.js";
 import {
   DEFAULT_PAGE_GAP,
   DEFAULT_PAGE_HEIGHT,
   DEFAULT_PAGE_MARGIN,
   DEFAULT_PAGE_WIDTH,
-} from "../../pageDefaults";
+} from "../../pageDefaults.js";
 
 // 视图默认配置，集中维护以便复用与覆盖。
 export const DEFAULT_SETTINGS = {

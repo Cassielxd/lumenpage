@@ -1,4 +1,4 @@
-import type { CommandProps, EditorCommand, LegacyCommand, RawCommands } from "../types";
+import type { CommandProps, EditorCommand, LegacyCommand, RawCommands } from "../types.js";
 
 type FirstCommandItem = LegacyCommand | EditorCommand | ((props: CommandProps) => boolean);
 

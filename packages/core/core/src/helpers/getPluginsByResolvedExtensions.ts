@@ -1,9 +1,9 @@
 import { inputRules } from "lumenpage-inputrules";
 import { keymap } from "lumenpage-keymap";
 
-import { pasteRulesPlugin } from "../PasteRule";
-import type { Editor } from "../Editor";
-import type { EditorPlugin, ResolvedExtensions } from "../types";
+import { pasteRulesPlugin } from "../PasteRule.js";
+import type { Editor } from "../Editor.js";
+import type { EditorPlugin, ResolvedExtensions } from "../types.js";
 
 export const getPluginsByResolvedExtensions = ({
   editor,

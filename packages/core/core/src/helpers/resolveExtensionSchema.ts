@@ -8,18 +8,18 @@ import type {
   TagParseRule,
 } from "lumenpage-model";
 
-import { getAttributeSpecs } from "./getAttributeSpecs";
-import { getExtensionField } from "./getExtensionField";
-import { getRenderedAttributes } from "./getRenderedAttributes";
-import { injectExtensionAttributesToParseRules } from "./injectExtensionAttributesToParseRule";
-import { resolveConfigField } from "./resolveConfigField";
-import { mergeDeep } from "../utilities/mergeDeep";
+import { getAttributeSpecs } from "./getAttributeSpecs.js";
+import { getExtensionField } from "./getExtensionField.js";
+import { getRenderedAttributes } from "./getRenderedAttributes.js";
+import { injectExtensionAttributesToParseRules } from "./injectExtensionAttributesToParseRule.js";
+import { resolveConfigField } from "./resolveConfigField.js";
+import { mergeDeep } from "../utilities/mergeDeep.js";
 import type {
   AttributeConfigs,
   ExtensionContext,
   ExtensionInstance,
   HTMLAttributes,
-} from "../types";
+} from "../types.js";
 
 type GeneratedNodeSpec = NodeSpec & { topNode?: boolean };
 

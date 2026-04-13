@@ -1,2 +1,2 @@
-export { docToOffsetText, textOffsetToDocPos, docPosToTextOffset } from "../../mapping/offsetMapping";
+export { docToOffsetText, textOffsetToDocPos, docPosToTextOffset } from "../../mapping/offsetMapping.js";
 

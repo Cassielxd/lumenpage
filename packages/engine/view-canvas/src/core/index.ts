@@ -3,9 +3,9 @@
  * 涓昏鑱岃矗锛氱粺涓€杈撳嚭缂栬緫鍣ㄧ姸鎬併€佸懡浠ゃ€侀€夊尯涓庡竷灞€鐩稿叧 API銆?
  */
 
-export { applyTransaction } from "./editor/state";
+export { applyTransaction } from "./editor/state.js";
 
-export { LayoutPipeline } from "../layout-pagination";
+export { LayoutPipeline } from "../layout-pagination/index.js";
 
 export { breakLines, docToRuns, NodeRendererRegistry, textToRuns, textblockToRuns } from "lumenpage-render-engine";
 
@@ -14,20 +14,20 @@ export {
   docPosToTextOffset,
   docToOffsetText,
   getDocTextLength,
-} from "../mapping/offsetMapping";
+} from "../mapping/offsetMapping.js";
 export {
   createSelectionStateAtOffset,
   getSelectionOffsets,
   getSelectionAnchorOffset,
   createSelectionLogger,
-} from "./editor/selectionUtils";
-export { createEditorOps } from "./editor/editorOps";
+} from "./editor/selectionUtils.js";
+export { createEditorOps } from "./editor/editorOps.js";
 
-export { createChangeSummary } from "./editor/changeSummary";
-export { createChangeEvent, serializeSteps, deserializeSteps, setChangeSource, getChangeSource, CHANGE_SOURCE_META } from "./editor/changeEvent";
-export { createBlockIdPlugin, createBlockIdTransaction } from "./editor/blockIdPlugin";
+export { createChangeSummary } from "./editor/changeSummary.js";
+export { createChangeEvent, serializeSteps, deserializeSteps, setChangeSource, getChangeSource, CHANGE_SOURCE_META } from "./editor/changeEvent.js";
+export { createBlockIdPlugin, createBlockIdTransaction } from "./editor/blockIdPlugin.js";
 export {
   attachPaginationDocWorker,
   type PaginationDocWorkerRequest,
   type PaginationDocWorkerResponse,
-} from "./paginationDocWorker";
+} from "./paginationDocWorker.js";

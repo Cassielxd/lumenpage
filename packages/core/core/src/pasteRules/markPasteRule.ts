@@ -1,6 +1,6 @@
 import type { MarkType } from "lumenpage-model";
 
-import { PasteRule, type ExtendedRegExpMatchArray, type PasteRuleFinder } from "../PasteRule";
+import { PasteRule, type ExtendedRegExpMatchArray, type PasteRuleFinder } from "../PasteRule.js";
 
 const callOrReturn = <Value>(
   value: Value | ((match: ExtendedRegExpMatchArray, event: ClipboardEvent | null) => Value),

@@ -5,7 +5,8 @@ import {
   type RendererPageDisplayListItem,
 } from "./pageDisplayList.js";
 import { getRendererPageDisplayListSignature } from "./pageDisplayListSignature.js";
-import { createPageRenderPlan, type DefaultRender } from "./pageRenderPlan.js";
+import { createPageRenderPasses } from "./pageRenderPassFactory.js";
+import type { DefaultRender } from "./pageRenderTypes.js";
 import {
   buildPageFragmentPassDisplayListItem,
   buildPageLineCompatDisplayListItem,
@@ -37,7 +38,7 @@ export const buildRendererPageDisplayList = ({
   nodeViewProvider,
   createDefaultRender,
 }: BuildRendererPageDisplayListOptions): RendererPageDisplayList => {
-  const plan = createPageRenderPlan({
+  const passes = createPageRenderPasses({
     page,
     registry,
     nodeViewProvider,
@@ -48,7 +49,6 @@ export const buildRendererPageDisplayList = ({
     settings,
     registry,
     createDefaultRender,
-    plan,
     runtime: fragmentPassRuntime,
     width,
     height,
@@ -59,11 +59,12 @@ export const buildRendererPageDisplayList = ({
       context,
     }),
     buildPageFragmentPassDisplayListItem({
-      context,
+      fragmentPass: passes.fragmentPass,
+      registry,
     }),
   ];
   const compatItem = buildPageLineCompatDisplayListItem({
-    context,
+    compatPass: passes.compatPass,
   });
   if (compatItem) {
     items.push(compatItem);

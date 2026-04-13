@@ -1,4 +1,4 @@
-import type { PopupRect } from "./popupController";
+import type { PopupRect } from "./popupController.js";
 
 const toFinite = (value: unknown) => {
   const next = Number(value);

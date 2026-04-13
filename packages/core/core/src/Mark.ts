@@ -1,5 +1,5 @@
-﻿import type { MarkConfig } from "./types";
-import { Extendable } from "./Extendable";
+﻿import type { MarkConfig } from "./types.js";
+import { Extendable } from "./Extendable.js";
 
 export class Mark<Options = any, Storage = any> extends Extendable<
   Options,

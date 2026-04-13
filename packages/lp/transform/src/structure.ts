@@ -1,8 +1,8 @@
 import {Slice, Fragment, NodeRange, NodeType, Node, Mark, Attrs, ContentMatch} from "lumenpage-model"
 
-import {Transform} from "./transform"
-import {ReplaceStep, ReplaceAroundStep} from "./replace_step"
-import {clearIncompatible} from "./mark"
+import {Transform} from "./transform.js"
+import {ReplaceStep, ReplaceAroundStep} from "./replace_step.js"
+import {clearIncompatible} from "./mark.js"
 
 function canCut(node: Node, start: number, end: number) {
   return (start == 0 || node.canReplace(start, node.childCount)) &&

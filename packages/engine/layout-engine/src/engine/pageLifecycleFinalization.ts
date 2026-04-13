@@ -1,9 +1,9 @@
 import {
   resolveFinalizePageReuseDecision,
   shouldStopAtProgressiveCutoff,
-} from "./pageContinuation";
-import { createPaginationSyncDiagnostics } from "./paginationDiagnostics";
-import { newPage, populatePageDerivedState } from "./pageState";
+} from "./pageContinuation.js";
+import { createPaginationSyncDiagnostics } from "./paginationDiagnostics.js";
+import { newPage, populatePageDerivedState } from "./pageState.js";
 
 export function finalizeCurrentPage(options: {
   session: any;

@@ -1,8 +1,8 @@
 import React, { MouseEventHandler } from "react";
 import { useAtomValue } from "jotai";
-import theme from "../theme";
-import { useSnapshots } from "../state/snapshots";
-import { editorStateAtom } from "../state/editor-state";
+import theme from "../theme.js";
+import { useSnapshots } from "../state/snapshots.js";
+import { editorStateAtom } from "../state/editor-state.js";
 import { css } from "@compiled/react";
 
 const saveSnapshotButtonStyles = css({

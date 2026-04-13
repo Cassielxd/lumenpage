@@ -8,14 +8,14 @@ import {
   getTrackChangeMarksAtPos,
   listTrackChanges,
   rangeHasTrackChangeMark,
-} from "./trackChangeMark";
+} from "./trackChangeMark.js";
 import {
   TrackChangePluginKey,
   createTrackChangePlugin,
   getTrackChangePluginState,
-} from "./trackChangePlugin";
-import { TrackChangeRuntime } from "./trackChangeRuntime";
-import { createDefaultTrackChangesOptions, type TrackChangesOptions } from "./types";
+} from "./trackChangePlugin.js";
+import { TrackChangeRuntime } from "./trackChangeRuntime.js";
+import { createDefaultTrackChangesOptions, type TrackChangesOptions } from "./types.js";
 
 export const TrackChanges = Extension.create<TrackChangesOptions>({
   name: "trackChanges",
@@ -35,7 +35,7 @@ export {
   normalizeTrackChangeAttrs,
   normalizeTrackChangeId,
   normalizeTrackChangeKind,
-} from "./types";
+} from "./types.js";
 export type {
   TrackChangeAttrs,
   TrackChangeKind,
@@ -44,7 +44,7 @@ export type {
   TrackChangeRange,
   TrackChangeRecord,
   TrackChangesOptions,
-} from "./types";
+} from "./types.js";
 export {
   TrackChangeMark,
   findTrackChangeRange,
@@ -53,12 +53,12 @@ export {
   getTrackChangeMarksAtPos,
   listTrackChanges,
   rangeHasTrackChangeMark,
-} from "./trackChangeMark";
+} from "./trackChangeMark.js";
 export {
   TrackChangePluginKey,
   createTrackChangePlugin,
   getTrackChangePluginState,
-} from "./trackChangePlugin";
-export { TrackChangeRuntime } from "./trackChangeRuntime";
+} from "./trackChangePlugin.js";
+export { TrackChangeRuntime } from "./trackChangeRuntime.js";
 
 export default TrackChanges;

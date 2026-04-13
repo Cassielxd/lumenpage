@@ -1,9 +1,9 @@
 import {Fragment, Slice, Node, ResolvedPos, NodeType, ContentMatch, Attrs} from "lumenpage-model"
 
-import {Step} from "./step"
-import {ReplaceStep, ReplaceAroundStep} from "./replace_step"
-import {Transform} from "./transform"
-import {insertPoint} from "./structure"
+import {Step} from "./step.js"
+import {ReplaceStep, ReplaceAroundStep} from "./replace_step.js"
+import {Transform} from "./transform.js"
+import {insertPoint} from "./structure.js"
 
 /// ‘Fit’ a slice into a given position in the document, producing a
 /// [step](#transform.Step) that inserts it. Will return null if

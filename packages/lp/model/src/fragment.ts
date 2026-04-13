@@ -1,6 +1,6 @@
-import {findDiffStart, findDiffEnd} from "./diff"
-import {Node, TextNode} from "./node"
-import {Schema} from "./schema"
+import {findDiffStart, findDiffEnd} from "./diff.js"
+import {Node, TextNode} from "./node.js"
+import {Schema} from "./schema.js"
 
 /// A fragment represents a node's collection of child nodes.
 ///

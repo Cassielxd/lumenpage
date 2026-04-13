@@ -1,5 +1,5 @@
-import { getEditorInternalsSections } from "../internals";
-import { callBooleanPropHandlers, toInsets } from "./shared";
+import { getEditorInternalsSections } from "../internals.js";
+import { callBooleanPropHandlers, toInsets } from "./shared.js";
 
 export const viewCoordsAtPos = (
   view: any,

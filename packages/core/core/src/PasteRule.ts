@@ -1,8 +1,8 @@
 import { Plugin, PluginKey } from "lumenpage-state";
 
-import type { Editor } from "./Editor";
-import { CommandManager } from "./CommandManager";
-import { createChainableState } from "./helpers/createChainableState";
+import type { Editor } from "./Editor.js";
+import { CommandManager } from "./CommandManager.js";
+import { createChainableState } from "./helpers/createChainableState.js";
 
 export type Range = {
   from: number;

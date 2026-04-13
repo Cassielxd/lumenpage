@@ -1,5 +1,9 @@
-import type { NodeLayoutResult, NodeLayoutSplitFragment, NodeRenderer } from "./node";
-import { resolveNodeRendererLayoutCapabilities } from "./node";
+import {
+  resolveNodeRendererLayoutCapabilities,
+  type NodeLayoutResult,
+  type NodeLayoutSplitFragment,
+  type NodeRenderer,
+} from "./node.js";
 
 export type RendererFragmentModel = "none" | "continuation";
 

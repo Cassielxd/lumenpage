@@ -1,4 +1,4 @@
-import { getTextStyleKey } from "./mark";
+import { getTextStyleKey } from "./mark.js";
 
 /*
  * 行分割器：根据测量宽度把 runs 断行，输出 line 列表。

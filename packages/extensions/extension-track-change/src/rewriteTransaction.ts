@@ -5,13 +5,13 @@ import { Selection, TextSelection } from "lumenpage-state";
 import {
   fragmentHasTrackChangeMark,
   rangeHasTrackChangeMark,
-} from "./trackChangeMark";
+} from "./trackChangeMark.js";
 import {
   markTrackChangeTransaction,
   normalizeTrackChangeAttrs,
   type TrackChangeAttrs,
   type TrackChangesOptions,
-} from "./types";
+} from "./types.js";
 
 const createTrackChangeId = () => {
   const randomUuid =

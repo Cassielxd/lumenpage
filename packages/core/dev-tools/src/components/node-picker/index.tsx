@@ -1,9 +1,9 @@
 import React, { MouseEventHandler } from "react";
 import "@compiled/react";
 import { useSetAtom } from "jotai";
-import theme from "../../theme";
-import { useNodePicker } from "../../state/node-picker";
-import { devToolTabIndexAtom } from "../../state/global";
+import theme from "../../theme.js";
+import { useNodePicker } from "../../state/node-picker.js";
+import { devToolTabIndexAtom } from "../../state/global.js";
 
 const icon =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACYAAAAmCAQAAAACNCElAAAAxklEQVRIx+2Vuw3DMAxEXWUD9VrKvTYJRzAygWpPkSVcBlDtJS6Fg8AQqQ+lAEECXU08iid+pmnoTwWDKzbU6IEbLnkYQaMlD9uA6iqAUArQwDBgX4T1Z+uF4Q4PB/sZmH/1e1BCRZiLhqgWKsJsYjJLUPkDEJKjvmPWwnwCtcKoW4O5VnpTFmaVb8o3LXONOiZAcI3aYe5UIFXiUmv77doOc7oUpDoozLU5iiPFqYtcW4W01LJP3FEiwzXBLG9SUBNq6Ef0BJ8IApq+rItIAAAAAElFTkSuQmCC";

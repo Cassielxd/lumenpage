@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveNodeViewOverlaySyncTarget } from "./dist/view/editorView/nodeViews/overlayEntryTarget.js";
+import { resolveNodeViewOverlaySyncTarget } from "../dist/view/editorView/nodeViews/overlayEntryTarget.js";
 
 test("resolveNodeViewOverlaySyncTarget keeps line-based entries on layout line lookup", () => {
   const lookups = [];

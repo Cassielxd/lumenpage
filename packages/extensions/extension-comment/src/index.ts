@@ -6,10 +6,10 @@ import {
   findCommentAnchorRanges,
   getCommentMarksAtPos,
   getCommentThreadIdsAtPos,
-} from "./commentAnchor";
-import { CommentsPluginKey, createCommentsPlugin, getCommentsPluginState } from "./commentsPlugin";
-import { CommentsRuntime } from "./commentsRuntime";
-import { createDefaultCommentsOptions, type CommentsOptions } from "./types";
+} from "./commentAnchor.js";
+import { CommentsPluginKey, createCommentsPlugin, getCommentsPluginState } from "./commentsPlugin.js";
+import { CommentsRuntime } from "./commentsRuntime.js";
+import { createDefaultCommentsOptions, type CommentsOptions } from "./types.js";
 
 export const Comments = Extension.create<CommentsOptions>({
   name: "comments",
@@ -28,14 +28,14 @@ export {
   isResolvedCommentThread,
   markCommentTransaction,
   normalizeCommentId,
-} from "./types";
+} from "./types.js";
 export type {
   CommentAnchorAttrs,
   CommentStoreAdapter,
   CommentsOptions,
   CommentsPluginState,
   CommentThreadRecord,
-} from "./types";
+} from "./types.js";
 export {
   CommentAnchor,
   type CommentAnchorRange,
@@ -43,8 +43,8 @@ export {
   findCommentAnchorRanges,
   getCommentMarksAtPos,
   getCommentThreadIdsAtPos,
-} from "./commentAnchor";
-export { CommentsPluginKey, createCommentsPlugin, getCommentsPluginState } from "./commentsPlugin";
-export { CommentsRuntime } from "./commentsRuntime";
+} from "./commentAnchor.js";
+export { CommentsPluginKey, createCommentsPlugin, getCommentsPluginState } from "./commentsPlugin.js";
+export { CommentsRuntime } from "./commentsRuntime.js";
 
 export default Comments;

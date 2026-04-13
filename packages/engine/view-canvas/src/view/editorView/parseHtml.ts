@@ -1,5 +1,5 @@
-import { createHtmlParser } from "../htmlParser";
-import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
+import { createHtmlParser } from "../htmlParser.js";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings.js";
 
 // HTML 解析入口：优先走插件覆写的 clipboardParser/domParser，再回退默认解析器。
 export const createParseHtmlToSlice = ({

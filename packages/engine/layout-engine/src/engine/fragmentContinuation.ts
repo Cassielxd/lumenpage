@@ -1,4 +1,4 @@
-import { getObjectSignature, hashNumber, hashString } from "./signature";
+import { getObjectSignature, hashNumber, hashString } from "./signature.js";
 
 type FragmentContinuationLike = {
   fromPrev?: boolean;

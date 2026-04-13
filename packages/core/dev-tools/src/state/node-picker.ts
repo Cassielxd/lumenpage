@@ -1,7 +1,7 @@
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import findNodeIn, { findPMNode } from "../utils/find-node";
-import { editorStateAtom } from "./editor-state";
-import { expandPathAtom } from "./expand-path";
+import findNodeIn, { findPMNode } from "../utils/find-node.js";
+import { editorStateAtom } from "./editor-state.js";
+import { expandPathAtom } from "./expand-path.js";
 
 const NODE_PICKER_DEFAULT = {
   top: 0,

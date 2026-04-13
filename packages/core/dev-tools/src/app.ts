@@ -7,17 +7,17 @@ import {
   getPlugins,
   getSchemaSummary,
   getStateSummary,
-} from "./controller";
+} from "./controller.js";
 import {
   collapsedStateFormatSelection,
   expandedStateFormatSelection,
-} from "./utils/format-selection-object";
-import findNodeIn from "./utils/find-node";
+} from "./utils/format-selection-object.js";
+import findNodeIn from "./utils/find-node.js";
 import type {
   DevToolsController,
   DevToolsHistoryItem,
   DevToolsTabKey,
-} from "./types";
+} from "./types.js";
 
 const TAB_LABELS: Array<{ key: DevToolsTabKey; label: string }> = [
   { key: "state", label: "State" },

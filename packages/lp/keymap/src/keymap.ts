@@ -1,6 +1,5 @@
 import {base, keyName} from "w3c-keyname"
-import { Plugin } from "lumenpage-state"
-import type { Command } from "lumenpage-state"
+import { Plugin, type Command } from "lumenpage-state"
 import type { EditorView } from "lumenpage-view-types"
 
 const mac = typeof navigator != "undefined" && /Mac|iP(hone|[oa]d)/.test(navigator.platform)

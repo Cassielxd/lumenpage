@@ -1,9 +1,9 @@
-import { getPageSignature } from "./pageReuseSignature";
+import { getPageSignature } from "./pageReuseSignature.js";
 import {
   getPageFragmentAnchorSummary,
   getPageFragmentBoundaryRanges,
   getPageFragmentChainSignature,
-} from "./fragmentContinuation";
+} from "./fragmentContinuation.js";
 
 const addIndexEntry = (index: Map<string, number[]>, key: string | null, pageIndex: number) => {
   if (!key) {

@@ -1,7 +1,7 @@
 // @ts-ignore
 import MarkdownIt from "markdown-it"
 import Token from "markdown-it/lib/token.mjs"
-import {schema} from "./schema"
+import {schema} from "./schema.js"
 import {Mark, MarkType, Node, Attrs, Schema, NodeType} from "lumenpage-model"
 import { sanitizeImageSrc, sanitizeLinkHref } from "lumenpage-link"
 

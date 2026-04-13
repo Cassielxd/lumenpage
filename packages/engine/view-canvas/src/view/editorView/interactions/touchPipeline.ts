@@ -1,4 +1,4 @@
-import { createTouchHandlers } from "../../input/touchHandlers";
+import { createTouchHandlers } from "../../input/touchHandlers.js";
 
 export const createTouchInteractionHandlers = ({
   settings,

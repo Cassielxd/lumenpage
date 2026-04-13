@@ -1,18 +1,18 @@
-export { LayoutPipeline } from "./engine";
-export { breakLines } from "./lineBreaker";
-export { docToRuns, textToRuns, textblockToRuns } from "./textRuns";
-export { createNodeRegistry } from "./nodeRegistryBuilder";
-export { NodeRendererRegistry } from "./nodeRegistry";
-export { buildPageBoxesFromLines, createPageBoxCollector } from "./pageBoxes";
-export { buildPageFragmentsFromBoxes, buildPageFragmentsFromLines } from "./pageFragments";
-export { materializeLayoutGeometry, materializePageGeometry } from "./pageGeometry";
+export { LayoutPipeline } from "./engine.js";
+export { breakLines } from "./lineBreaker.js";
+export { docToRuns, textToRuns, textblockToRuns } from "./textRuns.js";
+export { createNodeRegistry } from "./nodeRegistryBuilder.js";
+export { NodeRendererRegistry } from "./nodeRegistry.js";
+export { buildPageBoxesFromLines, createPageBoxCollector } from "./pageBoxes.js";
+export { buildPageFragmentsFromBoxes, buildPageFragmentsFromLines } from "./pageFragments.js";
+export { materializeLayoutGeometry, materializePageGeometry } from "./pageGeometry.js";
 export {
   ensureLayoutSettingsPerfState,
   getLayoutSettingsPerfState,
   getLayoutSettingsPerfSummary,
   getLayoutSettingsRuntimeState,
   setLayoutSettingsPerfSummary,
-} from "./settingsRuntimeState";
+} from "./settingsRuntimeState.js";
 export {
   clearPageRenderSignature,
   getLayoutChangeSummary,
@@ -49,7 +49,7 @@ export {
   setPageSourcePageIndex,
   setProgressiveLayoutState,
   shouldForceLayoutRedraw,
-} from "./runtimeMetadata";
+} from "./runtimeMetadata.js";
 export {
   consumeForcedFirstLine,
   materializeSplitResult,
@@ -63,7 +63,7 @@ export {
   type LeafOverflowDecision,
   type MaterializedSplitResult,
   type RendererReusePolicy,
-} from "./paginationPolicy";
+} from "./paginationPolicy.js";
 export type {
   LayoutBlockIndexRange,
   LayoutCapabilityFlags,
@@ -85,7 +85,7 @@ export type {
   LayoutTransportPerf,
   LayoutWorkerDebugInfo,
   TopLevelIndexableDoc,
-} from "./engine/types";
+} from "./engine/types.js";
 export type {
   ContainerStyle,
   LayoutBox,
@@ -95,4 +95,4 @@ export type {
   NodeLayoutResult,
   NodeLayoutSplitFragment,
   NodeRenderer,
-} from "./nodeRegistry";
+} from "./nodeRegistry.js";

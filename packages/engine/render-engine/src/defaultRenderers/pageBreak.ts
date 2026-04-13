@@ -1,4 +1,4 @@
-import { createUnsplittableBlockPagination } from "../modernUnsplittable";
+import { createUnsplittableBlockPagination } from "../modernUnsplittable.js";
 
 const buildPageBreakLayout = (ctx: any) => {
   const settings = ctx?.settings || {};

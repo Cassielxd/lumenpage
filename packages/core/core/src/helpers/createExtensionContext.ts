@@ -1,9 +1,9 @@
 import type { NodeRendererRegistry } from "lumenpage-layout-engine";
 import type { Schema } from "lumenpage-model";
 
-import type { Editor } from "../Editor";
-import type { ExtensionManager } from "../ExtensionManager";
-import type { ExtensionContext, ExtensionStorage } from "../types";
+import type { Editor } from "../Editor.js";
+import type { ExtensionManager } from "../ExtensionManager.js";
+import type { ExtensionContext, ExtensionStorage } from "../types.js";
 
 export type ExtensionContextRuntime = {
   editor: Editor | null;

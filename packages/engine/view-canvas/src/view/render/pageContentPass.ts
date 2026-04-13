@@ -2,7 +2,7 @@ import {
   type RendererPageDisplayList,
 } from "./pageDisplayList.js";
 import { executeRendererPageDisplayList } from "./pageDisplayListExecutor.js";
-import { type DefaultRender } from "./pageRenderPlan.js";
+import type { DefaultRender } from "./pageRenderTypes.js";
 import {
   getPageLayoutVersionToken,
   setPageRenderSignature,
@@ -11,7 +11,7 @@ import {
 import { syncRendererPageDisplayListMetadata } from "./pageDisplayListMetadata.js";
 import { buildRendererPageDisplayList } from "./pageDisplayListBuilder.js";
 
-export { getRendererPageFragments } from "./pageRenderPlan.js";
+export { getRendererPageFragments } from "./pageRenderFragments.js";
 
 export const renderPageContentPass = ({
   ctx,

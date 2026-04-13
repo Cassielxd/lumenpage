@@ -1,5 +1,5 @@
-import { buildPageBoxesFromLines } from "./pageBoxes";
-import { buildPageFragmentsFromBoxes } from "./pageFragments";
+import { buildPageBoxesFromLines } from "./pageBoxes.js";
+import { buildPageFragmentsFromBoxes } from "./pageFragments.js";
 
 const pageHasFragmentOwners = (page: any) =>
   Array.isArray(page?.lines) &&

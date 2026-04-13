@@ -1,6 +1,6 @@
-import { layoutLeafBlockOnPage } from "./layoutLeafTraversal";
+import { layoutLeafBlockOnPage } from "./layoutLeafTraversal.js";
 import { resolveContainerLayoutContext, isLeafLayoutNode } from "lumenpage-render-engine";
-import { updateChangedBoundaryProgress } from "./changeBoundary";
+import { updateChangedBoundaryProgress } from "./changeBoundary.js";
 
 export type LayoutTraversalSession = {
   page: any;

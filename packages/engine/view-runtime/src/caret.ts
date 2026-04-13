@@ -3,8 +3,8 @@
  * 涓昏鑱岃矗锛氭牴鎹枃鏈亸绉昏绠楀厜鏍囦綅缃紱鏍规嵁鍧愭爣鍙嶇畻鍋忕Щ銆?
  */
 
-import { measureTextWidth, getFontSize } from "./measure";
-import { hasLayoutCapability } from "./layoutSemantics";
+import { measureTextWidth, getFontSize } from "./measure.js";
+import { hasLayoutCapability } from "./layoutSemantics.js";
 import {
   getBaselineOffset,
   getFontForOffset,
@@ -16,12 +16,12 @@ import {
   getPageOffsetDelta,
   getRunOffsetDelta,
   isVisualBlockLine,
-} from "./textLineGeometry";
+} from "./textLineGeometry.js";
 import {
   getNearestTextLineBoxOnPage,
   getTextLineBoxHitAtPoint,
   getTextLineOffsetHit,
-} from "./textLineHit";
+} from "./textLineHit.js";
 
 const getBoxTop = (box) => (Number.isFinite(box?.y) ? Number(box.y) : null);
 

@@ -1,9 +1,9 @@
 import { NodeSelection, Selection } from "lumenpage-state";
 import { sanitizeDocJson } from "lumenpage-link";
 
-import { docPosToTextOffset, textOffsetToDocPos } from "../core";
-import { coordsAtPos, posAtCoords } from "./posIndex";
-import { destroyView } from "./editorView/lifecycle";
+import { docPosToTextOffset, textOffsetToDocPos } from "../core/index.js";
+import { coordsAtPos, posAtCoords } from "./posIndex.js";
+import { destroyView } from "./editorView/lifecycle.js";
 import {
   dispatchViewTransaction,
   focusView,
@@ -18,10 +18,10 @@ import {
   viewCoordsAtPos,
   viewHasFocus,
   viewPosAtCoords,
-} from "./editorView/publicApi";
-import { getEditorInternalsSections } from "./editorView/internals";
-import { setupCanvasEditorView } from "./editorView/setup";
-import type { CanvasEditorViewProps } from "./editorView/types";
+} from "./editorView/publicApi.js";
+import { getEditorInternalsSections } from "./editorView/internals.js";
+import { setupCanvasEditorView } from "./editorView/setup.js";
+import type { CanvasEditorViewProps } from "./editorView/types.js";
 
 export class CanvasEditorView {
   dom;

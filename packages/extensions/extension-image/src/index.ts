@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
 import { defaultImageRenderer as imageRenderer } from "lumenpage-render-engine";
 import { createDefaultImageNodeView } from "lumenpage-view-canvas";
-import { imageNodeSpec } from "./image";
+import { imageNodeSpec } from "./image.js";
 
 type ImageCommands<ReturnType> = {
   setImage: (attributes?: Record<string, unknown>) => ReturnType;
@@ -15,7 +15,7 @@ declare module "lumenpage-core" {
 }
 
 export { imageNodeSpec };
-export { serializeImageToText } from "./image";
+export { serializeImageToText } from "./image.js";
 export { defaultImageRenderer as imageRenderer } from "lumenpage-render-engine";
 
 export const Image = Node.create({

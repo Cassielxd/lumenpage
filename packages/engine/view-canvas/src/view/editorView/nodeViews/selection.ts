@@ -1,7 +1,7 @@
 import { NodeSelection } from "lumenpage-state";
 
-import { getPageOffsetDelta } from "../../layoutRuntimeMetadata";
-import { resolveNodeSelectionDecision } from "../selectionPolicy";
+import { getPageOffsetDelta } from "../../layoutRuntimeMetadata.js";
+import { resolveNodeSelectionDecision } from "../selectionPolicy.js";
 
 export const createNodeViewSelectionHandlers = ({
   managerState,

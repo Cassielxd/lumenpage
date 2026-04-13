@@ -1,4 +1,4 @@
-import { getFragmentSliceAnchorKey } from "../engine/fragmentContinuation";
+import { getFragmentSliceAnchorKey } from "../engine/fragmentContinuation.js";
 
 const hasSliceFlags = (line) => {
   const attrs = line?.blockAttrs || {};

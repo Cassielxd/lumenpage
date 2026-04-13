@@ -3,27 +3,27 @@ import type { NodeRendererRegistry } from "lumenpage-layout-engine";
 import type { Transaction } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 
-import type { Editor } from "./Editor";
-import { bindExtensionEditorEvents } from "./helpers/bindExtensionEditorEvents";
-import { createClipboardTextParser } from "./helpers/createClipboardTextParser";
-import { createClipboardTextSerializer } from "./helpers/createClipboardTextSerializer";
-import { createCopiedHtmlTransformPipeline } from "./helpers/createCopiedHtmlTransformPipeline";
-import { createExtensionContext, type ExtensionContextRuntime } from "./helpers/createExtensionContext";
-import { createExtensionInstances } from "./helpers/createExtensionInstances";
-import { createDispatchTransactionPipeline } from "./helpers/createDispatchTransactionPipeline";
-import { createHtmlTransformPipeline } from "./helpers/createHtmlTransformPipeline";
-import { createSliceTransformPipeline } from "./helpers/createSliceTransformPipeline";
-import { createTextTransformPipeline } from "./helpers/createTextTransformPipeline";
-import { getPluginsByResolvedExtensions } from "./helpers/getPluginsByResolvedExtensions";
-import { resolveClipboardParser } from "./helpers/resolveClipboardParser";
-import { resolveClipboardSerializer } from "./helpers/resolveClipboardSerializer";
-import { resolveExtensions } from "./helpers/resolveExtensions";
-import { resolveExtensionOptions } from "./helpers/resolveExtensionOptions";
-import { resolveExtensionStorage } from "./helpers/resolveExtensionStorage";
-import { resolveGlobalAttributes as resolveGlobalAttributesByExtensionInstances } from "./helpers/resolveGlobalAttributes";
-import { resolveStateByExtensionInstances } from "./helpers/resolveStateByExtensionInstances";
-import { resolveStructureByExtensionInstances } from "./helpers/resolveStructureByExtensionInstances";
-import { resolveExtensionSchema } from "./schemaFields";
+import type { Editor } from "./Editor.js";
+import { bindExtensionEditorEvents } from "./helpers/bindExtensionEditorEvents.js";
+import { createClipboardTextParser } from "./helpers/createClipboardTextParser.js";
+import { createClipboardTextSerializer } from "./helpers/createClipboardTextSerializer.js";
+import { createCopiedHtmlTransformPipeline } from "./helpers/createCopiedHtmlTransformPipeline.js";
+import { createExtensionContext, type ExtensionContextRuntime } from "./helpers/createExtensionContext.js";
+import { createExtensionInstances } from "./helpers/createExtensionInstances.js";
+import { createDispatchTransactionPipeline } from "./helpers/createDispatchTransactionPipeline.js";
+import { createHtmlTransformPipeline } from "./helpers/createHtmlTransformPipeline.js";
+import { createSliceTransformPipeline } from "./helpers/createSliceTransformPipeline.js";
+import { createTextTransformPipeline } from "./helpers/createTextTransformPipeline.js";
+import { getPluginsByResolvedExtensions } from "./helpers/getPluginsByResolvedExtensions.js";
+import { resolveClipboardParser } from "./helpers/resolveClipboardParser.js";
+import { resolveClipboardSerializer } from "./helpers/resolveClipboardSerializer.js";
+import { resolveExtensions } from "./helpers/resolveExtensions.js";
+import { resolveExtensionOptions } from "./helpers/resolveExtensionOptions.js";
+import { resolveExtensionStorage } from "./helpers/resolveExtensionStorage.js";
+import { resolveGlobalAttributes as resolveGlobalAttributesByExtensionInstances } from "./helpers/resolveGlobalAttributes.js";
+import { resolveStateByExtensionInstances } from "./helpers/resolveStateByExtensionInstances.js";
+import { resolveStructureByExtensionInstances } from "./helpers/resolveStructureByExtensionInstances.js";
+import { resolveExtensionSchema } from "./schemaFields.js";
 import type {
   AnyExtension,
   AnyExtensionInput,
@@ -37,7 +37,7 @@ import type {
   ResolvedExtensions,
   ResolvedState,
   ResolvedStructure,
-} from "./types";
+} from "./types.js";
 
 
 export class ExtensionManager {

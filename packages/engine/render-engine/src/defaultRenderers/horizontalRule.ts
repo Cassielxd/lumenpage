@@ -1,4 +1,4 @@
-import { hasFragmentOwnerType } from "./fragmentOwners";
+import { hasFragmentOwnerType } from "./fragmentOwners.js";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 

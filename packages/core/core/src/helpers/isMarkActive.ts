@@ -1,7 +1,7 @@
 import type { MarkType } from "lumenpage-model";
 import type { EditorState } from "lumenpage-state";
 
-import { matchAttributes } from "./matchAttributes";
+import { matchAttributes } from "./matchAttributes.js";
 
 export const isMarkActive = (
   state: EditorState,

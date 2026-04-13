@@ -1,4 +1,4 @@
-import { createSelectionLogger } from "../../../core";
+import { createSelectionLogger } from "../../../core/index.js";
 
 export const createDebugLoggers = ({
   debugConfig,

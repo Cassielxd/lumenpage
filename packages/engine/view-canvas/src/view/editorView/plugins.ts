@@ -3,7 +3,7 @@
   DispatchEditorProp,
   HookReturn,
   QueryEditorProp,
-} from "./types";
+} from "./types.js";
 
 const DOM_EVENT_HANDLED_FLAG = "__lumen_dom_event_handled__";
 

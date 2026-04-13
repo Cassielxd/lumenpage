@@ -1,6 +1,6 @@
 import { Extension } from "lumenpage-core";
 
-import { createDragHandlePlugin } from "./dragHandle";
+import { createDragHandlePlugin } from "./dragHandle.js";
 
 export type DragHandleOptions = {
   schema?: any;
@@ -47,4 +47,4 @@ export const createDragHandleExtension = (options: DragHandleOptions) =>
 
 export const DragHandle = DragHandleExtension;
 
-export { createBlockDragHandleNodeViews, createDragHandlePlugin } from "./dragHandle";
+export { createBlockDragHandleNodeViews, createDragHandlePlugin } from "./dragHandle.js";

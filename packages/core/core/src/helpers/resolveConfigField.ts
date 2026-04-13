@@ -1,6 +1,6 @@
-import { getExtensionField } from "./getExtensionField";
-import { callOrReturn } from "../utilities/callOrReturn";
-import type { ExtensionContext, ExtensionInstance } from "../types";
+import { getExtensionField } from "./getExtensionField.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
+import type { ExtensionContext, ExtensionInstance } from "../types.js";
 
 export const resolveConfigField = <Value>(
   instance: ExtensionInstance,

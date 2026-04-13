@@ -1,1 +1,1 @@
-export { collectNodeSelectionTypes, createSelectionGeometry } from "./bridge/canvas/selectionGeometry";
+export { collectNodeSelectionTypes, createSelectionGeometry } from "./bridge/canvas/selectionGeometry.js";

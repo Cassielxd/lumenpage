@@ -1,11 +1,11 @@
 import { Node } from "lumenpage-model";
 import { StepMap } from "lumenpage-transform";
 
-import { Change, Span, type ChangeJSON } from "./change";
-import { computeDiff, DefaultEncoder, type TokenEncoder } from "./diff";
+import { Change, Span, type ChangeJSON } from "./change.js";
+import { computeDiff, DefaultEncoder, type TokenEncoder } from "./diff.js";
 
 export { Change, Span, type ChangeJSON };
-export { simplifyChanges } from "./simplify";
+export { simplifyChanges } from "./simplify.js";
 export type { TokenEncoder };
 
 /// A change set tracks the changes to a document from a given point

@@ -33,7 +33,7 @@ export const executeRendererPageDisplayListItem = ({
         layout: context.layout,
         registry: context.registry,
         defaultRender: context.createDefaultRender(ctx),
-        plan: context.plan,
+        fragmentPass: item.pass,
         runtime: context.runtime,
       });
       return;
@@ -43,7 +43,7 @@ export const executeRendererPageDisplayListItem = ({
         layout: context.layout,
         registry: context.registry,
         defaultRender: context.createDefaultRender(ctx),
-        plan: context.plan,
+        compatPass: item.pass,
         runtime: context.runtime,
       });
       return;

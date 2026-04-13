@@ -1,9 +1,9 @@
-import { executeLayoutPass } from "./layoutPassExecution";
-import { resolveLayoutPassPlan } from "./layoutPassPlan";
-import { applyResolvedLayoutAndReport } from "./layoutPassReporting";
-import { resolvePaginationAsyncRequester } from "./paginationRequester";
-import { createProgressiveLayoutController } from "./progressiveLayoutController";
-import { now } from "./debugTrace";
+import { executeLayoutPass } from "./layoutPassExecution.js";
+import { resolveLayoutPassPlan } from "./layoutPassPlan.js";
+import { applyResolvedLayoutAndReport } from "./layoutPassReporting.js";
+import { resolvePaginationAsyncRequester } from "./paginationRequester.js";
+import { createProgressiveLayoutController } from "./progressiveLayoutController.js";
+import { now } from "./debugTrace.js";
 
 type CreateLayoutPassCoordinatorArgs = {
   getEditorState: () => any;

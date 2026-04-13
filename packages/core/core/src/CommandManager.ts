@@ -1,8 +1,8 @@
 import type { EditorState, Transaction } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 
-import type { Editor } from "./Editor";
-import { createChainableState } from "./helpers/createChainableState";
+import type { Editor } from "./Editor.js";
+import { createChainableState } from "./helpers/createChainableState.js";
 import type {
   AnyCommand,
   CanCommands,
@@ -12,7 +12,7 @@ import type {
   EditorCommand,
   LegacyCommand,
   SingleCommands,
-} from "./types";
+} from "./types.js";
 
 type CommandRuntime = {
   state?: EditorState | null;

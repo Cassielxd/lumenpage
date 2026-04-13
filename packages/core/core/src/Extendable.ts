@@ -1,6 +1,6 @@
-import { getExtensionField } from "./helpers/getExtensionField";
-import { mergeDeep } from "./utilities/mergeDeep";
-import type { AnyExtension, ExtendableConfig } from "./types";
+import { getExtensionField } from "./helpers/getExtensionField.js";
+import { mergeDeep } from "./utilities/mergeDeep.js";
+import type { AnyExtension, ExtendableConfig } from "./types.js";
 
 export class Extendable<
   Options = any,
@@ -60,5 +60,5 @@ export class Extendable<
   }
 }
 
-export { getExtensionField } from "./helpers/getExtensionField";
-export { mergeDeep } from "./utilities/mergeDeep";
+export { getExtensionField } from "./helpers/getExtensionField.js";
+export { mergeDeep } from "./utilities/mergeDeep.js";

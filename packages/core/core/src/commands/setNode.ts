@@ -1,8 +1,8 @@
 import { setBlockType } from "lumenpage-commands";
 import type { NodeType } from "lumenpage-model";
 
-import { getNodeType } from "../helpers/getNodeType";
-import type { RawCommands } from "../types";
+import { getNodeType } from "../helpers/getNodeType.js";
+import type { RawCommands } from "../types.js";
 
 declare module "lumenpage-core" {
   interface Commands<ReturnType> {

@@ -1,6 +1,6 @@
 import { AllSelection, Selection } from "lumenpage-state";
 
-import type { FocusPosition, RawCommands } from "../types";
+import type { FocusPosition, RawCommands } from "../types.js";
 
 declare module "lumenpage-core" {
   interface Commands<ReturnType> {

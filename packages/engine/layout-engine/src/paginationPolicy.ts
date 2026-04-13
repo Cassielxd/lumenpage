@@ -1,11 +1,11 @@
-﻿import { validateNormalizedSplitFragments } from "./fragments/invariants";
+﻿import { validateNormalizedSplitFragments } from "./fragments/invariants.js";
 import {
   type LayoutSplitContinuation,
   createAutoSplitResult,
   normalizeSplitFragments,
-} from "./fragments/normalize";
-import type { NodeRenderer } from "./nodeRegistry";
-import { resolveLineHeight } from "./engine/lineLayout";
+} from "./fragments/normalize.js";
+import type { NodeRenderer } from "./nodeRegistry.js";
+import { resolveLineHeight } from "./engine/lineLayout.js";
 import {
   resolveNodeRendererLayoutCapabilities,
   resolveRendererFragmentModel,

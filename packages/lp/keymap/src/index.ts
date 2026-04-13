@@ -1,1 +1,1 @@
-export { keymap, keydownHandler } from "./keymap";
+export { keymap, keydownHandler } from "./keymap.js";

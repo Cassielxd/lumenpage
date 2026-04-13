@@ -1,6 +1,6 @@
-import { breakLines } from "../lineBreaker";
-import { textblockToRuns } from "../textRuns";
-import { hasFragmentOwnerType } from "./fragmentOwners";
+import { breakLines } from "../lineBreaker.js";
+import { textblockToRuns } from "../textRuns.js";
+import { hasFragmentOwnerType } from "./fragmentOwners.js";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 

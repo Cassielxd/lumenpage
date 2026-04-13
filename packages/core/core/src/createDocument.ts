@@ -1,2 +1,2 @@
-export { createDocument } from "./helpers/createDocument";
-export type { EditorContent, EditorJSONContent, EditorJSONMark } from "./helpers/createDocument";
+export { createDocument } from "./helpers/createDocument.js";
+export type { EditorContent, EditorJSONContent, EditorJSONMark } from "./helpers/createDocument.js";

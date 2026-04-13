@@ -1,5 +1,10 @@
-import {Plugin, Transaction, EditorState, TextSelection} from "lumenpage-state"
-import type {Command} from "lumenpage-state"
+import {
+  Plugin,
+  Transaction,
+  EditorState,
+  TextSelection,
+  type Command,
+} from "lumenpage-state"
 import type { EditorView } from "lumenpage-view-types"
 
 /// Input rules are regular expressions describing a piece of text

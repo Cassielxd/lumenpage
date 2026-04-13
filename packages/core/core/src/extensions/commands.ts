@@ -1,5 +1,7 @@
-import * as commands from "../commands";
-import {
+import * as commands from "../commands/index.js";
+import { Extension } from "../Extension.js";
+
+const {
   createParagraphNear,
   deleteSelection,
   enter,
@@ -11,8 +13,7 @@ import {
   selectNodeBackward,
   selectNodeForward,
   splitBlock,
-} from "../commands";
-import { Extension } from "../Extension";
+} = commands;
 
 export const basicCommands = {
   deleteSelection,

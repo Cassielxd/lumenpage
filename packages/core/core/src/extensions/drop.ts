@@ -1,7 +1,7 @@
 import { Plugin, PluginKey } from "lumenpage-state";
 import type { CanvasEditorView } from "lumenpage-view-canvas";
 
-import { Extension } from "../Extension";
+import { Extension } from "../Extension.js";
 
 export const dropPluginKey = new PluginKey("drop");
 

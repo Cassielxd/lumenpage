@@ -1,5 +1,5 @@
 import { Node } from "lumenpage-core";
-import { tableNodeSpecs } from "../table/specs";
+import { tableNodeSpecs } from "../table/specs.js";
 
 export const tableCellNodeSpec = tableNodeSpecs.tableCell;
 

@@ -1,7 +1,7 @@
 import type { DOMOutputSpec } from "lumenpage-model";
 
-import { mergeAttributes } from "../utilities/mergeAttributes";
-import type { HTMLAttributes, UnknownRecord } from "../types";
+import { mergeAttributes } from "../utilities/mergeAttributes.js";
+import type { HTMLAttributes, UnknownRecord } from "../types.js";
 
 const isPlainAttributesObject = (value: unknown): value is UnknownRecord =>
   !!value &&

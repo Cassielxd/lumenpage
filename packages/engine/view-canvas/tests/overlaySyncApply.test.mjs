@@ -6,7 +6,7 @@ import {
   applyResolvedOverlayFrame,
   createOverlayCacheState,
   hideOverlayEntry,
-} from "./dist/view/editorView/nodeViews/overlaySyncApply.js";
+} from "../dist/view/editorView/nodeViews/overlaySyncApply.js";
 
 test("hideOverlayEntry hides node view overlays", () => {
   let lastPayload = null;

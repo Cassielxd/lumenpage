@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createPageFragmentPassRuntime,
   resetPageFragmentPassRuntime,
-} from "./dist/view/render/pageFragmentPassRuntime.js";
+} from "../dist/view/render/pageFragmentPassRuntime.js";
 
 test("page fragment pass runtime resets rendered fragment-owned text keys", () => {
   const runtime = createPageFragmentPassRuntime();

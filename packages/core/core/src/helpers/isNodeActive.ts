@@ -1,7 +1,7 @@
 import type { NodeType } from "lumenpage-model";
 import type { EditorState } from "lumenpage-state";
 
-import { matchAttributes } from "./matchAttributes";
+import { matchAttributes } from "./matchAttributes.js";
 
 export const isNodeActive = (
   state: EditorState,

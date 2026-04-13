@@ -1,4 +1,4 @@
-import type { AnyExtension, AnyExtensionInput } from "../types";
+import type { AnyExtension, AnyExtensionInput } from "../types.js";
 
 export const flattenExtensions = (
   input: ReadonlyArray<AnyExtensionInput> | AnyExtensionInput

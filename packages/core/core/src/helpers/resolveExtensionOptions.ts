@@ -1,6 +1,6 @@
-import { getExtensionField } from "./getExtensionField";
-import { callOrReturn } from "../utilities/callOrReturn";
-import type { AnyExtension } from "../types";
+import { getExtensionField } from "./getExtensionField.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
+import type { AnyExtension } from "../types.js";
 
 export const resolveExtensionOptions = (extension: AnyExtension) => {
   const defaults = callOrReturn(

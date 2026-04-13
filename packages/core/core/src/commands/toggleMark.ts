@@ -1,8 +1,8 @@
 import type { MarkType } from "lumenpage-model";
 
-import { getMarkType } from "../helpers/getMarkType";
-import { isMarkActive } from "../helpers/isMarkActive";
-import type { RawCommands } from "../types";
+import { getMarkType } from "../helpers/getMarkType.js";
+import { isMarkActive } from "../helpers/isMarkActive.js";
+import type { RawCommands } from "../types.js";
 
 declare module "lumenpage-core" {
   interface Commands<ReturnType> {

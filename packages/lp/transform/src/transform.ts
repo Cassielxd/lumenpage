@@ -1,11 +1,11 @@
 import {Node, NodeType, Mark, MarkType, ContentMatch, Slice, Fragment, NodeRange, Attrs} from "lumenpage-model"
-import {Mapping} from "./map"
-import {Step} from "./step"
-import {addMark, removeMark, clearIncompatible} from "./mark"
-import {replaceStep, replaceRange, replaceRangeWith, deleteRange} from "./replace"
-import {lift, wrap, setBlockType, setNodeMarkup, split, join} from "./structure"
-import {AttrStep, DocAttrStep} from "./attr_step"
-import {AddNodeMarkStep, RemoveNodeMarkStep} from "./mark_step"
+import {Mapping} from "./map.js"
+import {Step} from "./step.js"
+import {addMark, removeMark, clearIncompatible} from "./mark.js"
+import {replaceStep, replaceRange, replaceRangeWith, deleteRange} from "./replace.js"
+import {lift, wrap, setBlockType, setNodeMarkup, split, join} from "./structure.js"
+import {AttrStep, DocAttrStep} from "./attr_step.js"
+import {AddNodeMarkStep, RemoveNodeMarkStep} from "./mark_step.js"
 
 /// @internal
 export let TransformError = class extends Error {}

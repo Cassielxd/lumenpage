@@ -1,4 +1,4 @@
-﻿import { getLineAtOffset } from "../layoutIndex";
+﻿import { getLineAtOffset } from "../layoutIndex.js";
 
 // 生成 a11y 状态更新函数，负责播报光标/选区位置。
 export const createA11yStatusUpdater = ({

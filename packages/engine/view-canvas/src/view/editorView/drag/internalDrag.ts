@@ -1,4 +1,4 @@
-import { isDragCopy, isEditable, resolveDraggableNodeRange, resolveDropSelection } from "./helpers";
+import { isDragCopy, isEditable, resolveDraggableNodeRange, resolveDropSelection } from "./helpers.js";
 
 export const createInternalDragController = ({
   view,

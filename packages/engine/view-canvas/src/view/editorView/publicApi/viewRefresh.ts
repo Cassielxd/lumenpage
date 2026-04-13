@@ -1,11 +1,11 @@
-import type { CanvasEditorViewProps } from "../types";
-import { getEditorInternalsSections } from "../internals";
-import { setLayoutForceRedraw } from "../../layoutRuntimeMetadata";
+import type { CanvasEditorViewProps } from "../types.js";
+import { getEditorInternalsSections } from "../internals.js";
+import { setLayoutForceRedraw } from "../../layoutRuntimeMetadata.js";
 import {
   applySettingsPatch,
   isPlainObject,
   shouldUseLayoutRefreshForSettings,
-} from "./shared";
+} from "./shared.js";
 
 export const forceViewRender = (
   view: any,

@@ -1,5 +1,5 @@
-import { materializePageGeometry } from "../pageGeometry";
-import { markPagesReused } from "../runtimeMetadata";
+import { materializePageGeometry } from "../pageGeometry.js";
+import { markPagesReused } from "../runtimeMetadata.js";
 
 /**
  * 创建一个新的页面对象，并初始化布局所需的基础字段。

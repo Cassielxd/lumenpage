@@ -1,6 +1,6 @@
 import { Plugin } from "lumenpage-state";
 
-import { Extension } from "../Extension";
+import { Extension } from "../Extension.js";
 
 export const BeforeInput = Extension.create({
   name: "beforeInput",

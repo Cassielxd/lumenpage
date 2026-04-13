@@ -1,12 +1,12 @@
 ﻿import React from "react";
 import { useAtom, useAtomValue } from "jotai";
 import type { EditorView } from "lumenpage-view-types";
-import { devToolsOpenedAtom, devToolsSizeAtom } from "./state/global";
-import DevToolsCollapsed from "./dev-tools-collapsed";
-import DevToolsExpanded from "./dev-tools-expanded";
-import { useResizeDocument } from "./hooks/use-resize-document";
-import { useSubscribeToEditorView } from "./hooks/use-subscribe-to-editor-view";
-import { useRollbackHistory } from "./hooks/use-rollback-history";
+import { devToolsOpenedAtom, devToolsSizeAtom } from "./state/global.js";
+import DevToolsCollapsed from "./dev-tools-collapsed.js";
+import DevToolsExpanded from "./dev-tools-expanded.js";
+import { useResizeDocument } from "./hooks/use-resize-document.js";
+import { useSubscribeToEditorView } from "./hooks/use-subscribe-to-editor-view.js";
+import { useRollbackHistory } from "./hooks/use-rollback-history.js";
 
 export default function DevTools(props: DevToolsProps) {
   const [isOpen, setIsOpen] = useAtom(devToolsOpenedAtom);

@@ -1,6 +1,6 @@
 import { Fragment, Node } from "lumenpage-model";
 
-import { Change, Span } from "./change";
+import { Change, Span } from "./change.js";
 
 let letter: RegExp | undefined
 // If the runtime support unicode properties in regexps, that's a good

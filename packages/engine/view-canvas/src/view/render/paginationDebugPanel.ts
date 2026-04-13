@@ -1,4 +1,4 @@
-import { getPageOffsetDelta } from "../layoutRuntimeMetadata";
+import { getPageOffsetDelta } from "../layoutRuntimeMetadata.js";
 
 const buildTablePaginationDebug = (layout: any, visibleRange: any) => {
   if (!layout?.pages?.length) {

@@ -1,5 +1,5 @@
 import { drawWavyLine as drawMarkWavyLine } from "lumenpage-render-engine";
-import { type DecorationDrawData } from "./decorations";
+import { type DecorationDrawData } from "./decorations.js";
 
 export type RendererOverlayDisplayListItem = {
   kind:

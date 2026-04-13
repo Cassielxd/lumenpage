@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   resolveCachedOverlayReuseFrame,
   resolveOverlaySyncFrame,
-} from "./dist/view/editorView/nodeViews/overlayFrame.js";
+} from "../dist/view/editorView/nodeViews/overlayFrame.js";
 
 test("resolveCachedOverlayReuseFrame adjusts y by scroll delta and preserves visibility", () => {
   const frame = resolveCachedOverlayReuseFrame({

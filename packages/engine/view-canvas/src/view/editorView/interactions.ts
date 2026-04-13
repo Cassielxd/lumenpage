@@ -1,7 +1,7 @@
-import { createDragHandlers } from "./drag";
-import { createPointerInteractionHandlers } from "./interactions/pointerPipeline";
-import { createInteractionResolvers } from "./interactions/resolvers";
-import { createTouchInteractionHandlers } from "./interactions/touchPipeline";
+import { createDragHandlers } from "./drag.js";
+import { createPointerInteractionHandlers } from "./interactions/pointerPipeline.js";
+import { createInteractionResolvers } from "./interactions/resolvers.js";
+import { createTouchInteractionHandlers } from "./interactions/touchPipeline.js";
 
 export const createInteractionPipeline = ({
   view,

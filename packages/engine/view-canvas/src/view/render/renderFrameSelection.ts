@@ -1,4 +1,4 @@
-import { now } from "../debugTrace";
+import { now } from "../debugTrace.js";
 
 type CreateRenderFrameSelectionArgs = {
   queryEditorProp?: (name: string, args?: any) => any;

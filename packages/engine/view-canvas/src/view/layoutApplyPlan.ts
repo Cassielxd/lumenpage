@@ -2,7 +2,7 @@ import {
   buildPartialLayoutIndex,
   mergeLayoutIndex,
   resolveStablePageEntryPrefixCount,
-} from "./layoutIndex";
+} from "./layoutIndex.js";
 
 type ResolveLayoutIndexApplyPlanArgs = {
   nextLayout: any;

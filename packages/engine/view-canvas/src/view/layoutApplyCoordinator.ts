@@ -1,11 +1,11 @@
-import { now } from "./debugTrace";
+import { now } from "./debugTrace.js";
 import {
   isProgressiveLayoutApplied,
   setLayoutChangeSummary,
   setLayoutForceRedraw,
   setLayoutVersion,
-} from "./layoutRuntimeMetadata";
-import { resolveLayoutIndexApplyPlan } from "./layoutApplyPlan";
+} from "./layoutRuntimeMetadata.js";
+import { resolveLayoutIndexApplyPlan } from "./layoutApplyPlan.js";
 
 type CreateLayoutApplyCoordinatorArgs = {
   getEditorState: () => any;

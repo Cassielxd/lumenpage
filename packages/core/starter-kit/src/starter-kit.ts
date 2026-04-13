@@ -17,7 +17,7 @@ import {
   Strike,
   Text,
   UndoRedo,
-} from "./extensions";
+} from "./extensions.js";
 
 type ExtensionOptions = Record<string, any> | false;
 

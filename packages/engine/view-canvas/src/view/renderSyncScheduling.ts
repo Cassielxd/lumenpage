@@ -1,4 +1,4 @@
-import { getLayoutVersion as getResolvedLayoutVersion } from "./layoutRuntimeMetadata";
+import { getLayoutVersion as getResolvedLayoutVersion } from "./layoutRuntimeMetadata.js";
 
 type CreateRenderSyncSchedulingArgs = {
   renderer: any;

@@ -2,7 +2,7 @@ import {
   renderListMarker,
   resolveNodeRendererCompatCapabilities,
 } from "lumenpage-render-engine";
-import type { LineRenderPlan } from "./lineRenderPlan";
+import type { LineRenderPlan } from "./lineRenderPlan.js";
 
 type RenderLineBodyPassArgs = {
   ctx: any;

@@ -1,10 +1,10 @@
 ﻿import { useSetAtom } from "jotai";
 import type { EditorView } from "lumenpage-view-types";
 import React from "react";
-import { editorStateAtom } from "../state/editor-state";
-import { editorViewAtom } from "../state/editor-view";
-import { historyWriteAtom } from "../state/history";
-import subscribeOnUpdates from "../utils/subscribe-on-updates";
+import { editorStateAtom } from "../state/editor-state.js";
+import { editorViewAtom } from "../state/editor-view.js";
+import { historyWriteAtom } from "../state/history.js";
+import subscribeOnUpdates from "../utils/subscribe-on-updates.js";
 
 export function useSubscribeToEditorView(
   editorView: EditorView,
@@ -14,10 +14,10 @@ export function useSubscribeToEditorView(
   const historyDispatcher = useSetAtom(historyWriteAtom);
   const setEditorState = useSetAtom(editorStateAtom);
   const diffWorker = diffWorkerInstance
-    ? import("../state/json-diff-worker").then(
+    ? import("../state/json-diff-worker.js").then(
         ({ JsonDiffWorker }) => new JsonDiffWorker(diffWorkerInstance),
       )
-    : import("../state/json-diff-main").then(
+    : import("../state/json-diff-main.js").then(
         ({ JsonDiffMain }) => new JsonDiffMain(),
       );
 

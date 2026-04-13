@@ -1,13 +1,13 @@
-import { emitGhostTrace, now } from "../debugTrace";
-import { getRendererPageCacheEntry, type RendererPageCacheEntry } from "./pageCanvasCache";
-import { type RendererPageDisplayList } from "./pageDisplayList";
+import { emitGhostTrace, now } from "../debugTrace.js";
+import { getRendererPageCacheEntry, type RendererPageCacheEntry } from "./pageCanvasCache.js";
+import { type RendererPageDisplayList } from "./pageDisplayList.js";
 import {
   getPageRenderSignature,
   getPageRenderSignatureVersion,
   getPageSourcePageIndex,
   isPageReused,
   setPageLayoutVersionToken,
-} from "../layoutRuntimeMetadata";
+} from "../layoutRuntimeMetadata.js";
 
 export type PageCacheDisposition = "hit" | "miss" | "recreated";
 

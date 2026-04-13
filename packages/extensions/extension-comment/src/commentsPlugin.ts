@@ -1,7 +1,7 @@
 import { Plugin, PluginKey } from "lumenpage-state";
 import { Decoration, DecorationSet } from "lumenpage-view-canvas";
 
-import { getCommentThreadIdsAtPos } from "./commentAnchor";
+import { getCommentThreadIdsAtPos } from "./commentAnchor.js";
 import {
   createDefaultCommentsOptions,
   isResolvedCommentThread,
@@ -10,7 +10,7 @@ import {
   type CommentsPluginState,
   type CommentStoreAdapter,
   type CommentThreadRecord,
-} from "./types";
+} from "./types.js";
 
 const DEFAULT_PLUGIN_STATE: CommentsPluginState = {
   activeThreadId: null,

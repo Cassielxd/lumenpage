@@ -1,11 +1,11 @@
 import { Extension } from "lumenpage-core";
 
-import { CommentsPluginKey, createCommentsPlugin } from "./commentsPlugin";
+import { CommentsPluginKey, createCommentsPlugin } from "./commentsPlugin.js";
 import {
   createDefaultCommentsOptions,
   normalizeCommentId,
   type CommentsOptions,
-} from "./types";
+} from "./types.js";
 
 type CommentCommandMethods<ReturnType> = {
   activateCommentThread: (threadId: string | null) => ReturnType;

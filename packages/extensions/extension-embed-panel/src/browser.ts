@@ -1,5 +1,5 @@
 import { Extension } from "lumenpage-core";
-import { createEmbedPanelNodeView } from "./nodeView";
+import { createEmbedPanelNodeView } from "./nodeView.js";
 
 export const EmbedPanelBrowserViewExtension = Extension.create({
   name: "embedPanelBrowserView",
@@ -12,4 +12,4 @@ export const EmbedPanelBrowserViewExtension = Extension.create({
   },
 });
 
-export { createEmbedPanelNodeView } from "./nodeView";
+export { createEmbedPanelNodeView } from "./nodeView.js";

@@ -1,5 +1,5 @@
-import { createSelectionMovementRuntime } from "./editingRuntime/selectionRuntime";
-import { createTextOpsRuntime } from "./textOpsRuntime";
+import { createSelectionMovementRuntime } from "./editingRuntime/selectionRuntime.js";
+import { createTextOpsRuntime } from "./textOpsRuntime.js";
 
 // 编辑运行时：组装编辑操作与光标移动，保持原有依赖注入与执行顺序。
 export const createEditingRuntime = ({

@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { templateRenderer } from "./renderer";
-import { templateNodeSpec } from "./template";
+import { templateRenderer } from "./renderer.js";
+import { templateNodeSpec } from "./template.js";
 
-export { templateNodeSpec, serializeTemplateToText } from "./template";
-export { templateRenderer } from "./renderer";
+export { templateNodeSpec, serializeTemplateToText } from "./template.js";
+export { templateRenderer } from "./renderer.js";
 
 type InsertTemplateOptions = {
   title?: string;

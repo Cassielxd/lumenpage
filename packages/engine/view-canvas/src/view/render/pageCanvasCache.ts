@@ -1,4 +1,4 @@
-import type { RendererPageDisplayList } from "./pageDisplayList";
+import type { RendererPageDisplayList } from "./pageDisplayList.js";
 
 export type RendererPageCanvasSlot = {
   canvas: HTMLCanvasElement;

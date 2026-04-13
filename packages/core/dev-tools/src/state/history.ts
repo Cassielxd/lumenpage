@@ -3,8 +3,8 @@ import { atom } from "jotai";
 import { nanoid } from "nanoid";
 import { DOMSerializer } from "lumenpage-model";
 import type { EditorState, Selection, Transaction } from "lumenpage-state";
-import type { JsonDiffMain } from "./json-diff-main";
-import type { JsonDiffWorker } from "./json-diff-worker";
+import type { JsonDiffMain } from "./json-diff-main.js";
+import type { JsonDiffWorker } from "./json-diff-worker.js";
 
 const HISTORY_SIZE = 200;
 

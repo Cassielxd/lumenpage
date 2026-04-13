@@ -1,5 +1,5 @@
-import { attachInputBridge } from "../../input/bridge";
-import { isEditorDomEventHandled } from "../plugins";
+import { attachInputBridge } from "../../input/bridge.js";
+import { isEditorDomEventHandled } from "../plugins.js";
 
 export const attachEditorInputBridge = ({
   inputEl,

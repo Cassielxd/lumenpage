@@ -1,8 +1,8 @@
-﻿import { breakLines } from "../lineBreaker";
-import { createPageBoxCollector } from "../pageBoxes";
-import { textToRuns } from "../textRuns";
-import { computeLineX, measureLinesHeight, resolveLineHeight } from "./lineLayout";
-import { newPage, populatePageDerivedState } from "./pageState";
+﻿import { breakLines } from "../lineBreaker.js";
+import { createPageBoxCollector } from "../pageBoxes.js";
+import { textToRuns } from "../textRuns.js";
+import { computeLineX, measureLinesHeight, resolveLineHeight } from "./lineLayout.js";
+import { newPage, populatePageDerivedState } from "./pageState.js";
 
 /**
  * 从已经分好样式的文本 runs 生成简单布局结果。

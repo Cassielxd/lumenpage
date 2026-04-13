@@ -1,4 +1,4 @@
-import { pageHasFragmentAnchor } from "./fragmentContinuation";
+import { pageHasFragmentAnchor } from "./fragmentContinuation.js";
 
 export function resolveSyncAfterTextOffset(changeSummary: any) {
   const newRange = changeSummary?.newRange;

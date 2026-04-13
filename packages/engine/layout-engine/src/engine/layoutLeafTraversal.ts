@@ -1,19 +1,19 @@
-import { resolveLeafBlockLayout } from "./leafBlockLayout";
-import { applyResumeAnchorToLeafBlock, resolveLeafBlockSetup } from "./leafBlockSetup";
-import { placeForcedFirstLeafLine, placeLeafLinesOnPage } from "./leafPlacement";
+import { resolveLeafBlockLayout } from "./leafBlockLayout.js";
+import { applyResumeAnchorToLeafBlock, resolveLeafBlockSetup } from "./leafBlockSetup.js";
+import { placeForcedFirstLeafLine, placeLeafLinesOnPage } from "./leafPlacement.js";
 import {
   getFittableLineCount,
   measureLinesHeight,
   normalizeChunkRelativeY,
-} from "./lineLayout";
-import { applyFragmentContinuation } from "./pageReuseEquivalence";
-import { appendPageReuseSignature } from "./pageReuseSignature";
+} from "./lineLayout.js";
+import { applyFragmentContinuation } from "./pageReuseEquivalence.js";
+import { appendPageReuseSignature } from "./pageReuseSignature.js";
 import {
   consumeForcedFirstLine,
   resolveLeafSplitAction,
-} from "../paginationPolicy";
+} from "../paginationPolicy.js";
 import { ensureBlockFragmentOwner } from "lumenpage-render-engine";
-import { updateChangedBoundaryProgress } from "./changeBoundary";
+import { updateChangedBoundaryProgress } from "./changeBoundary.js";
 
 export function layoutLeafBlockOnPage(options: {
   session: any;

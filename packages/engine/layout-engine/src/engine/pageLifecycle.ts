@@ -1,7 +1,7 @@
-import { createPageBoxCollector, type PageBoxCollector } from "../pageBoxes";
-import { finalizeCurrentPage } from "./pageLifecycleFinalization";
-import type { PaginationSyncDiagnostics } from "./paginationDiagnostics";
-import { maybeSyncCurrentPage } from "./pageLifecycleSync";
+import { createPageBoxCollector, type PageBoxCollector } from "../pageBoxes.js";
+import { finalizeCurrentPage } from "./pageLifecycleFinalization.js";
+import type { PaginationSyncDiagnostics } from "./paginationDiagnostics.js";
+import { maybeSyncCurrentPage } from "./pageLifecycleSync.js";
 
 export type LayoutPaginationSession = {
   pages: any[];

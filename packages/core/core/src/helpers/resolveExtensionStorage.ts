@@ -1,7 +1,7 @@
-import { getExtensionField } from "./getExtensionField";
-import { callOrReturn } from "../utilities/callOrReturn";
-import type { AnyExtension, ExtensionStorage } from "../types";
-import type { ExtensionContextRuntime } from "./createExtensionContext";
+import { getExtensionField } from "./getExtensionField.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
+import type { AnyExtension, ExtensionStorage } from "../types.js";
+import type { ExtensionContextRuntime } from "./createExtensionContext.js";
 
 export const resolveExtensionStorage = ({
   extension,

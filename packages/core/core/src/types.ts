@@ -4,9 +4,9 @@ import type { NodeRenderer, NodeRendererRegistry } from "lumenpage-layout-engine
 import type { Command as StateCommand, EditorState, Plugin, Transaction } from "lumenpage-state";
 import type { CanvasEditorView, NodeViewFactory } from "lumenpage-view-canvas";
 
-import type { Editor } from "./Editor";
-import type { ExtensionManager } from "./ExtensionManager";
-import type { PasteRule } from "./PasteRule";
+import type { Editor } from "./Editor.js";
+import type { ExtensionManager } from "./ExtensionManager.js";
+import type { PasteRule } from "./PasteRule.js";
 
 export type ExtensionType = "extension" | "node" | "mark";
 
@@ -51,7 +51,7 @@ export type NormalizeCommandMethods<T, ReturnType> = {
   [Key in keyof T]: NormalizeCommandMethod<T[Key], ReturnType>;
 };
 
-type RegisteredCommands<ReturnType> = import("./index").Commands<ReturnType>;
+type RegisteredCommands<ReturnType> = import("./index.js").Commands<ReturnType>;
 
 export type UnionCommands<ReturnType = AnyCommand> = UnionToIntersection<
   ValueOf<

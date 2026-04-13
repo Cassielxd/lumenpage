@@ -5,7 +5,7 @@ import type {
   HTMLAttributes,
   ParseHTMLSource,
   UnknownRecord,
-} from "../types";
+} from "../types.js";
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   !!value && typeof value === "object" && !Array.isArray(value);

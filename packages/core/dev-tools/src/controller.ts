@@ -1,12 +1,11 @@
 import { prettyPrint } from "html";
 import { DOMSerializer } from "lumenpage-model";
-import { Selection } from "lumenpage-state";
-import type { EditorState, Transaction } from "lumenpage-state";
+import { Selection, type EditorState, type Transaction } from "lumenpage-state";
 import type { EditorView } from "lumenpage-view-types";
 import { nanoid } from "nanoid";
 import { ref, shallowRef } from "vue";
-import { JsonDiffMain } from "./state/json-diff-main";
-import { JsonDiffWorker } from "./state/json-diff-worker";
+import { JsonDiffMain } from "./state/json-diff-main.js";
+import { JsonDiffWorker } from "./state/json-diff-worker.js";
 import type {
   DevToolsController,
   DevToolsHistoryDiff,
@@ -16,8 +15,8 @@ import type {
   DevToolsSnapshot,
   SelectionSummary,
   SelectionWithJSON,
-} from "./types";
-import subscribeOnUpdates from "./utils/subscribe-on-updates";
+} from "./types.js";
+import subscribeOnUpdates from "./utils/subscribe-on-updates.js";
 
 const SNAPSHOTS_KEY = "lumenpage-dev-tools-snapshots";
 const HISTORY_LIMIT = 200;

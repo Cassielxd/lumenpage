@@ -4,20 +4,20 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import {
   expandedStateFormatSelection,
   collapsedStateFormatSelection,
-} from "../utils/format-selection-object";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import JSONTree from "../components/json-tree";
+} from "../utils/format-selection-object.js";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import JSONTree from "../components/json-tree.js";
 import {
   Heading,
   HeadingWithButton,
   HeadingButton,
-} from "../components/heading";
-import theme from "../theme";
-import { activeMarksAtom } from "../state/active-marks";
-import { expandPathAtom } from "../state/expand-path";
-import { editorStateAtom } from "../state/editor-state";
-import { logNodeFromJSON } from "../utils/log-node-from-json";
-import type { JSONMark, JSONNode } from "../types/prosemirror";
+} from "../components/heading.js";
+import theme from "../theme.js";
+import { activeMarksAtom } from "../state/active-marks.js";
+import { expandPathAtom } from "../state/expand-path.js";
+import { editorStateAtom } from "../state/editor-state.js";
+import { logNodeFromJSON } from "../utils/log-node-from-json.js";
+import type { JSONMark, JSONNode } from "../types/prosemirror.js";
 
 const JSONTreeWrapper = ({ children }: { children: React.ReactNode }) => (
   <div

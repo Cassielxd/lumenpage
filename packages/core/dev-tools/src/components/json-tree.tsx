@@ -1,8 +1,8 @@
 ﻿import type { Mark, MarkType, NodeType } from "lumenpage-model";
 import React from "react";
 import { JSONTree } from "react-json-tree";
-import { jsonTreeTheme } from "../theme";
-import { JSONNode } from "../types/prosemirror";
+import { jsonTreeTheme } from "../theme.js";
+import { JSONNode } from "../types/prosemirror.js";
 
 type GetItemString = (
   nodeType: string,

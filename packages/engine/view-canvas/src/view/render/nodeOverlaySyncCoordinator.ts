@@ -1,5 +1,5 @@
-import { emitGhostTrace } from "../debugTrace";
-import { getLayoutVersion } from "../layoutRuntimeMetadata";
+import { emitGhostTrace } from "../debugTrace.js";
+import { getLayoutVersion } from "../layoutRuntimeMetadata.js";
 
 type CreateNodeOverlaySyncCoordinatorArgs = {
   scrollArea: any;

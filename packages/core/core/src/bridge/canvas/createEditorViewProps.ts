@@ -1,7 +1,7 @@
 import type { Transaction } from "lumenpage-state";
 import type { CanvasEditorViewProps } from "lumenpage-view-canvas";
 
-import type { Editor } from "../../Editor";
+import type { Editor } from "../../Editor.js";
 
 export const createEditorViewProps = ({
   editor,

@@ -1,4 +1,4 @@
-import type { NormalizedSplitFragments } from "./normalize";
+import type { NormalizedSplitFragments } from "./normalize.js";
 
 export type SplitFragmentValidation = {
   ok: boolean;

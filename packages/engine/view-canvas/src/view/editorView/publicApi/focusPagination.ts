@@ -1,5 +1,5 @@
-import { isTableLayoutLine } from "../../layoutSemantics";
-import { getEditorInternalsSections } from "../internals";
+import { isTableLayoutLine } from "../../layoutSemantics.js";
+import { getEditorInternalsSections } from "../internals.js";
 
 export const viewHasFocus = (view: any) => {
   const { core } = getEditorInternalsSections(view);

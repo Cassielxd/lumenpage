@@ -1,6 +1,6 @@
 import { Plugin, PluginKey } from "lumenpage-state";
 
-import { Extension } from "../Extension";
+import { Extension } from "../Extension.js";
 
 export const focusEventsPluginKey = new PluginKey("focusEvents");
 

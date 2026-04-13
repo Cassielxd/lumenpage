@@ -5,7 +5,7 @@ import {
   chooseBestNodeViewBoxCandidate,
   requiresBoxAnchoredOverlay,
   resolveExpectedOverlaySize,
-} from "./dist/view/editorView/nodeViews/overlayGeometryHeuristics.js";
+} from "../dist/view/editorView/nodeViews/overlayGeometryHeuristics.js";
 
 const createLayout = () => ({
   pageWidth: 600,

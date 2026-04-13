@@ -1,6 +1,6 @@
 import type { MarkSpec, NodeSpec } from "lumenpage-model";
 
-import type { ExtensionInstance, ResolvedStructure } from "../types";
+import type { ExtensionInstance, ResolvedStructure } from "../types.js";
 
 export const applyExtensionSchema = ({
   target,

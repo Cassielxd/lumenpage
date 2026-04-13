@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import theme from "../theme";
+import theme from "../theme.js";
 import { css } from "@compiled/react";
 
 interface SearchBarProps {

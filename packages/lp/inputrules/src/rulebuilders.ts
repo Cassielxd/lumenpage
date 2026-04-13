@@ -1,4 +1,4 @@
-import {InputRule} from "./inputrules"
+import {InputRule} from "./inputrules.js"
 import {findWrapping, canJoin} from "lumenpage-transform"
 import {NodeType, Node, Attrs} from "lumenpage-model"
 

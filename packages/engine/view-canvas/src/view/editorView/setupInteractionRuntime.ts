@@ -1,14 +1,14 @@
 import { DOMParser as PMDOMParser } from "lumenpage-model";
-import { createSelectionStateAtOffset, getSelectionAnchorOffset, getSelectionOffsets } from "../../core";
-import { posAtCoords } from "../posIndex";
-import { createEditingRuntime } from "./editingRuntime";
-import { createEditorInputPipeline } from "./inputPipeline";
-import { createInteractionPipeline } from "./interactions";
-import { createNodeViewBindings } from "./nodeViewBindings";
-import { createParseHtmlToSlice } from "./parseHtml";
-import { createSelectionInteractions } from "./selectionInteractions";
-import { createViewEventHandlers } from "./events";
-import { createSliceFromText } from "./text";
+import { createSelectionStateAtOffset, getSelectionAnchorOffset, getSelectionOffsets } from "../../core/index.js";
+import { posAtCoords } from "../posIndex.js";
+import { createEditingRuntime } from "./editingRuntime.js";
+import { createEditorInputPipeline } from "./inputPipeline.js";
+import { createInteractionPipeline } from "./interactions.js";
+import { createNodeViewBindings } from "./nodeViewBindings.js";
+import { createParseHtmlToSlice } from "./parseHtml.js";
+import { createSelectionInteractions } from "./selectionInteractions.js";
+import { createViewEventHandlers } from "./events.js";
+import { createSliceFromText } from "./text.js";
 
 export const createEditorViewInteractionRuntime = ({
   view,

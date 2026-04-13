@@ -1,6 +1,6 @@
 ﻿import type { EditorView, EditorProps } from "lumenpage-view-types"
-import {EditorState, EditorStateConfig} from "./state"
-import {Transaction} from "./transaction"
+import {EditorState, EditorStateConfig} from "./state.js"
+import {Transaction} from "./transaction.js"
 
 /// This is the type passed to the [`Plugin`](#state.Plugin)
 /// constructor. It provides a definition for a plugin.

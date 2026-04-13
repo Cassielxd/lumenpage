@@ -1,11 +1,11 @@
 import { Node } from "lumenpage-core";
 import { sanitizeLinkHref } from "lumenpage-link";
-import { createDefaultFileNodeView } from "./nodeView";
-import { fileRenderer } from "./renderer";
-import { fileNodeSpec } from "./file";
+import { createDefaultFileNodeView } from "./nodeView.js";
+import { fileRenderer } from "./renderer.js";
+import { fileNodeSpec } from "./file.js";
 
-export { fileNodeSpec, serializeFileToText } from "./file";
-export { fileRenderer } from "./renderer";
+export { fileNodeSpec, serializeFileToText } from "./file.js";
+export { fileRenderer } from "./renderer.js";
 
 type InsertFileOptions = {
   href: string;

@@ -8,7 +8,7 @@ import {
   updateYFragment,
   yXmlFragmentToLumenRootNode,
   type LumenYjsBindingMeta,
-} from "./yjsDocument";
+} from "./yjsDocument.js";
 
 export type CollaborationPluginTransactionMeta = {
   isChangeOrigin?: boolean;

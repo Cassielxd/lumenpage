@@ -1,4 +1,4 @@
-import type { CommandProps, EditorCommand, RawCommands } from "../types";
+import type { CommandProps, EditorCommand, RawCommands } from "../types.js";
 
 declare module "lumenpage-core" {
   interface Commands<ReturnType> {

@@ -1,7 +1,7 @@
-import { cleanupUnslicedDuplicateSlices } from "../fragments/cleanup";
-import { cloneAndShiftPages } from "./pageReuseEquivalence";
-import { invalidatePageReuseSignature } from "./pageReuseSignature";
-import { markReusedPages, populatePageDerivedState } from "./pageState";
+import { cleanupUnslicedDuplicateSlices } from "../fragments/cleanup.js";
+import { cloneAndShiftPages } from "./pageReuseEquivalence.js";
+import { invalidatePageReuseSignature } from "./pageReuseSignature.js";
+import { markReusedPages, populatePageDerivedState } from "./pageState.js";
 
 /**
  * 在主布局循环结束后统一处理尾页复用、重复切片清理和页面几何补齐。

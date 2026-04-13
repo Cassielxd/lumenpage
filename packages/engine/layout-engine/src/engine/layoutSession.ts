@@ -1,6 +1,6 @@
-import { createPageBoxCollector } from "../pageBoxes";
-import { newPage } from "./pageState";
-import type { LayoutPaginationSession } from "./pageLifecycle";
+import { createPageBoxCollector } from "../pageBoxes.js";
+import { newPage } from "./pageState.js";
+import type { LayoutPaginationSession } from "./pageLifecycle.js";
 
 export const createLayoutPipelineSession = ({
   marginTop,

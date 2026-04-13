@@ -3,7 +3,7 @@ import { Extension } from "lumenpage-core";
 import {
   CollaborationCaretPluginKey,
   createCollaborationCaretPlugin,
-} from "./collaborationCaretPlugin";
+} from "./collaborationCaretPlugin.js";
 
 export type CollaborationCaretUser = {
   clientId: number;

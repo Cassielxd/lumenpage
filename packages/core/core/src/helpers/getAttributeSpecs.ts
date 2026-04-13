@@ -1,6 +1,6 @@
 import type { AttributeSpec } from "lumenpage-model";
 
-import type { AttributeConfigs } from "../types";
+import type { AttributeConfigs } from "../types.js";
 
 export type AttributeSpecMap = Record<string, AttributeSpec>;
 

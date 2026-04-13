@@ -1,1 +1,1 @@
-export * from "./collaboration-caret";
+export * from "./collaboration-caret.js";

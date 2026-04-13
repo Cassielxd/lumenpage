@@ -3,7 +3,7 @@
  * 主要职责：继承/代理核心 Renderer。
  */
 
-import { Renderer } from "../renderer";
+import { Renderer } from "../renderer.js";
 
 export class CanvasRenderer extends Renderer {
   updateRegistry(registry) {

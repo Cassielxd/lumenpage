@@ -11,7 +11,7 @@ declare module "lumenpage-core" {
   }
 }
 
-export { hardBreakNodeSpec } from "./hardBreak";
+export { hardBreakNodeSpec } from "./hardBreak.js";
 
 export const HardBreak = Node.create({
   name: "hardBreak",

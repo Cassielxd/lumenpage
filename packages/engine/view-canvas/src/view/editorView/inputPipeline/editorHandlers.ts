@@ -1,4 +1,4 @@
-import { serializeSliceToHtml } from "../text";
+import { serializeSliceToHtml } from "../text.js";
 
 export const createInputPipelineEditorHandlers = ({
   dom,

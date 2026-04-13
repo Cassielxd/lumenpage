@@ -4,10 +4,10 @@ export {
   type PopupController,
   type PopupReference,
   type PopupRect,
-} from "./popupController";
+} from "./popupController.js";
 export {
   createPopupRenderRuntime,
   type PopupRenderLifecycle,
   type PopupRenderRuntime,
-} from "./popupLifecycle";
-export { toPopupRect, toViewportPopupRect } from "./coords";
+} from "./popupLifecycle.js";
+export { toPopupRect, toViewportPopupRect } from "./coords.js";

@@ -23,7 +23,7 @@ export {
   resolveNodeRendererLayoutCapabilities,
   resolveNodeRendererRenderCapabilities,
   resolveNodeRendererViewCapabilities,
-} from "./node";
+} from "./node.js";
 export {
   addMarkDrawInstruction,
   composeMarkRenderAdapters,
@@ -48,17 +48,17 @@ export {
   type MarkRenderAdapter,
   type MarkStyleState,
   type MarkStyleValue,
-} from "./mark";
-export { breakLines } from "./lineBreaker";
-export { docToRuns, textToRuns, textblockToRuns } from "./textRuns";
-export { resolveContainerLayoutContext, type ResolvedContainerLayoutContext } from "./containerLayout";
-export { isLeafLayoutNode, resolveNodeLayoutRole, type NodeLayoutRole } from "./layoutRole";
+} from "./mark.js";
+export { breakLines } from "./lineBreaker.js";
+export { docToRuns, textToRuns, textblockToRuns } from "./textRuns.js";
+export { resolveContainerLayoutContext, type ResolvedContainerLayoutContext } from "./containerLayout.js";
+export { isLeafLayoutNode, resolveNodeLayoutRole, type NodeLayoutRole } from "./layoutRole.js";
 export {
   resolveNodeSplitFragments,
   resolveRendererFragmentModel,
   type RendererFragmentModel,
-} from "./pagination";
-export * from "./defaultRenderers/index";
-export { createUnsplittableBlockPagination, type UnsplittableBlockLayout } from "./modernUnsplittable";
+} from "./pagination.js";
+export * from "./defaultRenderers/index.js";
+export { createUnsplittableBlockPagination, type UnsplittableBlockLayout } from "./modernUnsplittable.js";
 
 

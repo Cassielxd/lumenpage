@@ -1,6 +1,6 @@
 ﻿import type { EditorState } from "lumenpage-state";
-import { findNodeJSON } from "./find-node";
-import { JSONNode } from "../types/prosemirror";
+import { findNodeJSON } from "./find-node.js";
+import { JSONNode } from "../types/prosemirror.js";
 
 export const logNodeFromJSON =
   (state: EditorState) =>

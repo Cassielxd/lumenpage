@@ -1,6 +1,6 @@
 import { Node } from "lumenpage-core";
 
-export { paragraphNodeSpec } from "./paragraph";
+export { paragraphNodeSpec } from "./paragraph.js";
 export { defaultParagraphRenderer as paragraphRenderer } from "lumenpage-render-engine";
 
 type ParagraphCommands<ReturnType> = {

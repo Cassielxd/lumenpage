@@ -1,11 +1,11 @@
-export {Selection, SelectionRange, TextSelection, NodeSelection, AllSelection} from "./selection"
-export type {SelectionBookmark} from "./selection"
+export {Selection, SelectionRange, TextSelection, NodeSelection, AllSelection} from "./selection.js"
+export type {SelectionBookmark} from "./selection.js"
 
-export {Transaction} from "./transaction"
-export type {Command} from "./transaction"
+export {Transaction} from "./transaction.js"
+export type {Command} from "./transaction.js"
 
-export {EditorState} from "./state"
-export type {EditorStateConfig} from "./state"
+export {EditorState} from "./state.js"
+export type {EditorStateConfig} from "./state.js"
 
-export {Plugin, PluginKey} from "./plugin"
-export type {PluginSpec, StateField, PluginView} from "./plugin"
+export {Plugin, PluginKey} from "./plugin.js"
+export type {PluginSpec, StateField, PluginView} from "./plugin.js"

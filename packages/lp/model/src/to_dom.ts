@@ -1,8 +1,8 @@
-import {Fragment} from "./fragment"
-import {Node} from "./node"
-import {Schema, NodeType, MarkType} from "./schema"
-import {Mark} from "./mark"
-import {DOMNode} from "./dom"
+import {Fragment} from "./fragment.js"
+import {Node} from "./node.js"
+import {Schema, NodeType, MarkType} from "./schema.js"
+import {Mark} from "./mark.js"
+import {DOMNode} from "./dom.js"
 
 /// A description of a DOM structure. Can be either a string, which is
 /// interpreted as a text node, a DOM node, which is interpreted as

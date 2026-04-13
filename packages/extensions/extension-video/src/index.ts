@@ -1,7 +1,7 @@
 import { Node } from "lumenpage-core";
 import { defaultVideoRenderer as videoRenderer } from "lumenpage-render-engine";
 import { createDefaultVideoNodeView } from "lumenpage-view-canvas";
-import { videoNodeSpec } from "./video";
+import { videoNodeSpec } from "./video.js";
 
 type VideoCommands<ReturnType> = {
   setVideo: (attributes?: Record<string, unknown>) => ReturnType;
@@ -15,7 +15,7 @@ declare module "lumenpage-core" {
 }
 
 export { videoNodeSpec };
-export { serializeVideoToText } from "./video";
+export { serializeVideoToText } from "./video.js";
 export { defaultVideoRenderer as videoRenderer } from "lumenpage-render-engine";
 
 export const Video = Node.create({

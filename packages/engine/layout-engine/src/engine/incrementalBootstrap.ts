@@ -1,7 +1,7 @@
-import { resolveLayoutOffsetDelta, resolvePreviousPageReuseState } from "./incrementalState";
-import { resolveResumeAnchorPlan } from "./resumeAnchor";
-import { markReusedPages, newPage } from "./pageState";
-import type { LayoutPaginationSession } from "./pageLifecycle";
+import { resolveLayoutOffsetDelta, resolvePreviousPageReuseState } from "./incrementalState.js";
+import { resolveResumeAnchorPlan } from "./resumeAnchor.js";
+import { markReusedPages, newPage } from "./pageState.js";
+import type { LayoutPaginationSession } from "./pageLifecycle.js";
 
 export const resolveIncrementalBootstrapState = ({
   previousLayout,

@@ -1,6 +1,6 @@
 ﻿import React from "react";
 import type { EditorView } from "lumenpage-view-types";
-import DevTools from "./dev-tools";
+import DevTools from "./dev-tools.js";
 import { createRoot, Root } from "react-dom/client";
 
 const DEVTOOLS_CLASS_NAME = "__prosemirror-dev-tools__";

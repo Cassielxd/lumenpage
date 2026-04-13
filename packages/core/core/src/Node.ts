@@ -1,5 +1,5 @@
-﻿import type { NodeConfig } from "./types";
-import { Extendable } from "./Extendable";
+﻿import type { NodeConfig } from "./types.js";
+import { Extendable } from "./Extendable.js";
 
 export class Node<Options = any, Storage = any> extends Extendable<
   Options,

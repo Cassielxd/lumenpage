@@ -1,4 +1,4 @@
-export { callOrReturn } from "./callOrReturn";
-export { isPlainObject } from "./isPlainObject";
-export { mergeAttributes } from "./mergeAttributes";
-export { mergeDeep } from "./mergeDeep";
+export { callOrReturn } from "./callOrReturn.js";
+export { isPlainObject } from "./isPlainObject.js";
+export { mergeAttributes } from "./mergeAttributes.js";
+export { mergeDeep } from "./mergeDeep.js";

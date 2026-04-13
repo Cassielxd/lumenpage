@@ -1,5 +1,5 @@
-import { createSelectionLogger } from "../../core";
-import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
+import { createSelectionLogger } from "../../core/index.js";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings.js";
 
 // 运行时通用辅助：页面宽度、文档文本、输入层定位与节点类型判断。
 export const createRuntimeHelpers = ({

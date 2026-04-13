@@ -1,4 +1,4 @@
-import { getCaretFromPoint } from "../../caret";
+import { getCaretFromPoint } from "../../caret.js";
 
 const resolveClosestNodeViewBlockId = (event: any) => {
   const target = event?.target;

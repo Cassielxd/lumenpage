@@ -1,9 +1,16 @@
 ﻿import {joinPoint, canJoin, findWrapping, liftTarget, canSplit,
         ReplaceStep, ReplaceAroundStep, replaceStep} from "lumenpage-transform"
 import {Slice, Fragment, Node, NodeType, Attrs, MarkType, ResolvedPos, ContentMatch} from "lumenpage-model"
-import {Selection, EditorState, Transaction, TextSelection, NodeSelection,
-        SelectionRange, AllSelection} from "lumenpage-state"
-import type {Command} from "lumenpage-state"
+import {
+  Selection,
+  EditorState,
+  Transaction,
+  TextSelection,
+  NodeSelection,
+  SelectionRange,
+  AllSelection,
+  type Command,
+} from "lumenpage-state"
 import type { EditorView } from "lumenpage-view-types"
 
 function hasIdAttr(node: Node): boolean {

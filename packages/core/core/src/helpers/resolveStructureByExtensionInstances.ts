@@ -1,14 +1,14 @@
 import type { MarkSpec, NodeSpec } from "lumenpage-model";
 import type { NodeViewFactory } from "lumenpage-view-canvas";
 
-import { applyCanvasHooks } from "./applyCanvasHooks";
-import { applyExtensionSchema } from "./applyExtensionSchema";
-import { applyGlobalAttributesToSchema } from "./applyGlobalAttributesToSchema";
-import { createResolvedCanvas } from "./createResolvedCanvas";
-import { createResolvedLayout } from "./createResolvedLayout";
-import { createResolvedSchema } from "./createResolvedSchema";
-import { getExtensionField } from "./getExtensionField";
-import { callOrReturn } from "../utilities/callOrReturn";
+import { applyCanvasHooks } from "./applyCanvasHooks.js";
+import { applyExtensionSchema } from "./applyExtensionSchema.js";
+import { applyGlobalAttributesToSchema } from "./applyGlobalAttributesToSchema.js";
+import { createResolvedCanvas } from "./createResolvedCanvas.js";
+import { createResolvedLayout } from "./createResolvedLayout.js";
+import { createResolvedSchema } from "./createResolvedSchema.js";
+import { getExtensionField } from "./getExtensionField.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
 import type {
   CanvasHooks,
   ExtensionContext,
@@ -20,7 +20,7 @@ import type {
   MarkAnnotationResolver,
   MarkAnnotationResolverMap,
   ResolvedStructure,
-} from "../types";
+} from "../types.js";
 
 export const resolveStructureByExtensionInstances = ({
   instances,

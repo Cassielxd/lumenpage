@@ -1,5 +1,5 @@
-import { now } from "./debugTrace";
-import { isProgressiveLayoutApplied, isProgressiveLayoutTruncated } from "./layoutRuntimeMetadata";
+import { now } from "./debugTrace.js";
+import { isProgressiveLayoutApplied, isProgressiveLayoutTruncated } from "./layoutRuntimeMetadata.js";
 
 const CONTINUOUS_EDIT_THRESHOLD = 3;
 

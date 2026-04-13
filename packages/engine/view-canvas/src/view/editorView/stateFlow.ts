@@ -1,5 +1,5 @@
-import { createSelectionOffsetUpdater } from "./stateFlow/selectionOffsets";
-import { createTransactionDispatcher } from "./stateFlow/transactionDispatch";
+import { createSelectionOffsetUpdater } from "./stateFlow/selectionOffsets.js";
+import { createTransactionDispatcher } from "./stateFlow/transactionDispatch.js";
 
 // 状态流封装：统一 dispatchTransaction 与文本偏移选区更新逻辑。
 export const createStateFlow = ({

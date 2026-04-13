@@ -1,4 +1,4 @@
-import { type RendererPageDisplayListItem } from "./pageDisplayList.js";
+import { type RendererPageDisplayListSignatureItem } from "./pageDisplayList.js";
 
 const hashNumber = (hash: number, value: unknown) => {
   const num = Number.isFinite(value) ? Math.round(Number(value)) : 0;
@@ -19,7 +19,7 @@ const hashString = (hash: number, value: unknown) => {
 };
 
 export const getRendererPageDisplayListSignature = (
-  items: RendererPageDisplayListItem[]
+  items: RendererPageDisplayListSignatureItem[]
 ): number | null => {
   if (!Array.isArray(items) || items.length === 0) {
     return null;

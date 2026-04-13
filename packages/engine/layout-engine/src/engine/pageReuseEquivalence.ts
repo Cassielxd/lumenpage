@@ -1,5 +1,5 @@
-import { materializePageGeometry } from "../pageGeometry";
-import { getPageSignature } from "./pageReuseSignature";
+import { materializePageGeometry } from "../pageGeometry.js";
+import { getPageSignature } from "./pageReuseSignature.js";
 import {
   applyContinuationMetadataPatch,
   buildPageBoundaryAnchorToken,
@@ -8,15 +8,15 @@ import {
   hashFragmentContinuationState,
   pageHasFragmentAnchor,
   readLineFragmentContinuationState,
-} from "./fragmentContinuation";
-import { getObjectSignature, hashNumber, hashString } from "./signature";
+} from "./fragmentContinuation.js";
+import { getObjectSignature, hashNumber, hashString } from "./signature.js";
 import {
   clearPageRenderSignature,
   getPageOffsetDelta,
   getPageSourcePageIndex,
   setPageOffsetDelta,
   setPageSourcePageIndex,
-} from "../runtimeMetadata";
+} from "../runtimeMetadata.js";
 
 /**
  * 生成页面结束状态的 token，用于校验复用页与新布局页是否一致。

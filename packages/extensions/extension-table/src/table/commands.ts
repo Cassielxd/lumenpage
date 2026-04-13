@@ -1,5 +1,5 @@
 import { Selection, TextSelection } from "lumenpage-state";
-import { CellSelection } from "./cellSelection";
+import { CellSelection } from "./cellSelection.js";
 
 const isTableCellTypeName = (typeName) => typeName === "tableCell" || typeName === "tableHeader";
 

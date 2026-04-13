@@ -1,4 +1,4 @@
-import { adjustFragmentOwners, adjustLineOffsets, cloneLine, computeLineX, resolveLineHeight } from "./lineLayout";
+import { adjustFragmentOwners, adjustLineOffsets, cloneLine, computeLineX, resolveLineHeight } from "./lineLayout.js";
 
 type PlaceLeafLinesOptions = {
   linesToPlace: any[];

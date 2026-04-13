@@ -6,11 +6,11 @@ import {
   lineHasTextContent,
   resolveNodeViewEntry,
   resolveSelectableAtResolvedPos,
-} from "./nodeViews/helpers";
-import { createNodeViewDocumentSync } from "./nodeViews/documentSync";
-import { createNodeViewOverlaySync } from "./nodeViews/overlay";
-import { createNodeViewSelectionHandlers } from "./nodeViews/selection";
-import { createNodeViewManagerState } from "./nodeViews/state";
+} from "./nodeViews/helpers.js";
+import { createNodeViewDocumentSync } from "./nodeViews/documentSync.js";
+import { createNodeViewOverlaySync } from "./nodeViews/overlay.js";
+import { createNodeViewSelectionHandlers } from "./nodeViews/selection.js";
+import { createNodeViewManagerState } from "./nodeViews/state.js";
 
 export const createNodeViewManager = ({
   view,

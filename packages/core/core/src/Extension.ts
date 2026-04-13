@@ -1,5 +1,5 @@
-import type { ExtensionConfig } from "./types";
-import { Extendable } from "./Extendable";
+import type { ExtensionConfig } from "./types.js";
+import { Extendable } from "./Extendable.js";
 
 export class Extension<Options = any, Storage = any> extends Extendable<
   Options,

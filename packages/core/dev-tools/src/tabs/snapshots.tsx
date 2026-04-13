@@ -1,15 +1,15 @@
 import React, { MouseEventHandler } from "react";
 import "@compiled/react";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import { List } from "../components/list";
-import { InfoPanel } from "../components/info-panel";
-import theme from "../theme";
-import { Snapshot, useSnapshots } from "../state/snapshots";
-import getEditorStateClass from "../state/get-editor-state";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import { List } from "../components/list.js";
+import { InfoPanel } from "../components/info-panel.js";
+import theme from "../theme.js";
+import { Snapshot, useSnapshots } from "../state/snapshots.js";
+import getEditorStateClass from "../state/get-editor-state.js";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { editorViewAtom } from "../state/editor-view";
-import { editorStateAtom } from "../state/editor-state";
-import { historyWriteAtom } from "../state/history";
+import { editorViewAtom } from "../state/editor-view.js";
+import { editorStateAtom } from "../state/editor-state.js";
+import { historyWriteAtom } from "../state/history.js";
 
 const ActionButton = ({
   children,

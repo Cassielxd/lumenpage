@@ -1,4 +1,4 @@
-import type { CanvasSelectionGeometry, ResolvedStructure } from "../../types";
+import type { CanvasSelectionGeometry, ResolvedStructure } from "../../types.js";
 
 const hasGeometryHandler = (
   geometry: CanvasSelectionGeometry,

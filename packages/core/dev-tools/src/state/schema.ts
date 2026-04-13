@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { editorStateAtom } from "./editor-state";
+import { editorStateAtom } from "./editor-state.js";
 
 export const schemaAtom = atom((get) => {
   const editorState = get(editorStateAtom);

@@ -6,9 +6,9 @@ import {
 } from "lumenpage-view-canvas/core";
 import { docPosToTextOffset } from "lumenpage-view-canvas/mapping";
 
-import { createSchema } from "../../createSchema";
-import { ExtensionManager } from "../../ExtensionManager";
-import type { AnyExtensionInput } from "../../types";
+import { createSchema } from "../../createSchema.js";
+import { ExtensionManager } from "../../ExtensionManager.js";
+import type { AnyExtensionInput } from "../../types.js";
 
 type WorkerScopeLike = {
   onmessage: ((event: MessageEvent<PaginationDocWorkerRequest>) => void) | null;

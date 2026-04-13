@@ -1,4 +1,4 @@
-import { createEditorOps } from "../../../core";
+import { createEditorOps } from "../../../core/index.js";
 
 export const createEditorOpsRuntime = ({
   getState,

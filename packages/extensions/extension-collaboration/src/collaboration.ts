@@ -7,8 +7,8 @@ import {
   CollaborationBinding,
   createCollaborationPlugin,
   getCollaborationPluginState,
-} from "./collaborationPlugin";
-import { isYXmlFragmentEmpty } from "./yjsDocument";
+} from "./collaborationPlugin.js";
+import { isYXmlFragmentEmpty } from "./yjsDocument.js";
 
 export interface CollaborationStorage {
   isDisabled: boolean;

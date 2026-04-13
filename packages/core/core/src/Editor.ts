@@ -2,15 +2,15 @@
 import { EditorState, Selection, type Transaction } from "lumenpage-state";
 import { CanvasEditorView, type CanvasEditorViewProps } from "lumenpage-view-canvas";
 
-import { createEditorViewProps } from "./bridge/canvas/createEditorViewProps";
-import { collectNodeSelectionTypes, createSelectionGeometry } from "./bridge/canvas/selectionGeometry";
-import { CommandManager } from "./CommandManager";
-import { defaultEditorOptions, hasSchemaSpec } from "./editorConfig";
-import { EventEmitter } from "./EventEmitter";
-import { createSchema } from "./createSchema";
-import { ExtensionManager } from "./ExtensionManager";
-import { createDocument, type EditorContent } from "./helpers/createDocument";
-import { resolveEditorExtensions } from "./resolveEditorExtensions";
+import { createEditorViewProps } from "./bridge/canvas/createEditorViewProps.js";
+import { collectNodeSelectionTypes, createSelectionGeometry } from "./bridge/canvas/selectionGeometry.js";
+import { CommandManager } from "./CommandManager.js";
+import { defaultEditorOptions, hasSchemaSpec } from "./editorConfig.js";
+import { EventEmitter } from "./EventEmitter.js";
+import { createSchema } from "./createSchema.js";
+import { ExtensionManager } from "./ExtensionManager.js";
+import { createDocument, type EditorContent } from "./helpers/createDocument.js";
+import { resolveEditorExtensions } from "./resolveEditorExtensions.js";
 import type {
   AnyExtensionInput,
   CanCommands,
@@ -28,7 +28,7 @@ import type {
   ExtensionStorage,
   ResolvedExtensions,
   SingleCommands,
-} from "./types";
+} from "./types.js";
 
 type CreateStateOptions = {
   content?: EditorContent;

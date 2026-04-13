@@ -1,5 +1,5 @@
-import { buildDecorationDrawData } from "./decorations";
-import { now } from "../debugTrace";
+import { buildDecorationDrawData } from "./decorations.js";
+import { now } from "../debugTrace.js";
 
 type CreateRenderFrameDecorationsArgs = {
   getDecorations?: () => any;

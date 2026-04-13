@@ -1,3 +1,3 @@
-export { markPasteRule } from "./markPasteRule";
-export { nodePasteRule } from "./nodePasteRule";
-export { textPasteRule } from "./textPasteRule";
+export { markPasteRule } from "./markPasteRule.js";
+export { nodePasteRule } from "./nodePasteRule.js";
+export { textPasteRule } from "./textPasteRule.js";

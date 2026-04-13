@@ -1,9 +1,9 @@
 import { renderLineBodyPass } from "./lineBodyPass.js";
+import { resolveCompatLineEntryRenderPlan } from "./pageLineEntries.js";
 import {
-  resolveCompatLineEntryRenderPlan,
+  type PageCompatPassPlan,
   type DefaultRender,
-  type PageRenderPlan,
-} from "./pageRenderPlan.js";
+} from "./pageRenderTypes.js";
 import { type PageFragmentPassRuntime } from "./pageFragmentPassRuntime.js";
 
 export const renderPageLineCompatPass = ({
@@ -11,17 +11,17 @@ export const renderPageLineCompatPass = ({
   layout,
   registry,
   defaultRender,
-  plan,
+  compatPass,
   runtime,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   layout: any;
   registry: any;
   defaultRender: DefaultRender;
-  plan: PageRenderPlan;
+  compatPass: PageCompatPassPlan;
   runtime: PageFragmentPassRuntime;
 }) => {
-  for (const entryState of plan.compatPass.lineEntries) {
+  for (const entryState of compatPass.lineEntries) {
     const renderPlan = resolveCompatLineEntryRenderPlan(entryState, runtime.renderedLeafTextKeys);
     if (!renderPlan.shouldRunCompatPass) {
       continue;

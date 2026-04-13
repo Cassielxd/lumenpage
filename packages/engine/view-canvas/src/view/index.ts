@@ -1,26 +1,26 @@
-export { Renderer } from "./renderer";
-export { CanvasRenderer } from "./render/canvasRenderer";
-export { createRenderSync } from "./renderSync";
-export { createSelectionMovement } from "./selectionMovement";
-export { attachInputBridge } from "./input/bridge";
-export { createInputHandlers } from "./input/handlers";
-export { createClipboardHandlers } from "./input/clipboard";
-export { createPointerHandlers } from "./input/pointerHandlers";
-export { coordsAtPos, posAtCoords } from "./posIndex";
-export { findLineForOffset, offsetAtX } from "./caret";
-export { selectionToRects } from "./render/selection";
-export { measureTextWidth, getFontSize } from "./measure";
-export { createHtmlParser } from "./htmlParser";
-export { CanvasEditorView } from "./editorView";
-export { createSegmentText, createLinebreakSegmentText } from "./segmenter";
-export { Decoration, DecorationSet, type CanvasDecoration, type DecorationSpec } from "./decorations";
-export { type CanvasNodeView, type NodeViewFactory } from "./nodeView";
-export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig";
+export { Renderer } from "./renderer.js";
+export { CanvasRenderer } from "./render/canvasRenderer.js";
+export { createRenderSync } from "./renderSync.js";
+export { createSelectionMovement } from "./selectionMovement.js";
+export { attachInputBridge } from "./input/bridge.js";
+export { createInputHandlers } from "./input/handlers.js";
+export { createClipboardHandlers } from "./input/clipboard.js";
+export { createPointerHandlers } from "./input/pointerHandlers.js";
+export { coordsAtPos, posAtCoords } from "./posIndex.js";
+export { findLineForOffset, offsetAtX } from "./caret.js";
+export { selectionToRects } from "./render/selection.js";
+export { measureTextWidth, getFontSize } from "./measure.js";
+export { createHtmlParser } from "./htmlParser.js";
+export { CanvasEditorView } from "./editorView.js";
+export { createSegmentText, createLinebreakSegmentText } from "./segmenter.js";
+export { Decoration, DecorationSet, type CanvasDecoration, type DecorationSpec } from "./decorations.js";
+export { type CanvasNodeView, type NodeViewFactory } from "./nodeView.js";
+export { createCanvasConfigPlugin, canvasConfigKey, getCanvasConfig, type CanvasConfig } from "./canvasConfig.js";
 export {
   clearLegacyCanvasConfigHits,
   getLegacyCanvasConfigHits,
-} from "./editorView/legacyConfigWarnings";
+} from "./editorView/legacyConfigWarnings.js";
 export type {
   CanvasEditorViewProps,
   NodeSelectionTargetArgs,
-} from "./editorView/types";
+} from "./editorView/types.js";

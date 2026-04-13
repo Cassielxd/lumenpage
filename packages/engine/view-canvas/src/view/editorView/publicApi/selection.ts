@@ -1,4 +1,4 @@
-import { getEditorInternalsSections } from "../internals";
+import { getEditorInternalsSections } from "../internals.js";
 
 export const readSomeProp = (view: any, propName: string, f?: (value: any) => any) => {
   const { viewSync } = getEditorInternalsSections(view);

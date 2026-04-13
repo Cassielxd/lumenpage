@@ -1,11 +1,11 @@
 import { Node } from "lumenpage-core";
 import { sanitizeAudioSrc } from "lumenpage-link";
-import { createDefaultAudioNodeView } from "./nodeView";
-import { audioRenderer } from "./renderer";
-import { audioNodeSpec } from "./audio";
+import { createDefaultAudioNodeView } from "./nodeView.js";
+import { audioRenderer } from "./renderer.js";
+import { audioNodeSpec } from "./audio.js";
 
-export { audioNodeSpec, serializeAudioToText } from "./audio";
-export { audioRenderer } from "./renderer";
+export { audioNodeSpec, serializeAudioToText } from "./audio.js";
+export { audioRenderer } from "./renderer.js";
 
 type InsertAudioOptions = {
   src: string;

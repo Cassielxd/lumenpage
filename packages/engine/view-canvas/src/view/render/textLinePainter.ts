@@ -1,4 +1,4 @@
-import { measureTextWidth, getFontSize } from "../measure";
+import { measureTextWidth, getFontSize } from "../measure.js";
 import {
   drawRunBackground,
   drawRunMarkInstructions,

@@ -1,10 +1,10 @@
 import type { DOMParser as PMDOMParser, Node as PMNode, ResolvedPos, Slice } from "lumenpage-model";
 import type { EditorState, Selection, Transaction } from "lumenpage-state";
 
-import type { CanvasViewConfig } from "../canvasConfig";
-import type { CanvasEditorView } from "../editorView";
-import type { CanvasDecoration, DecorationSet } from "../decorations";
-import type { NodeViewFactory } from "../nodeView";
+import type { CanvasViewConfig } from "../canvasConfig.js";
+import type { CanvasEditorView } from "../editorView.js";
+import type { CanvasDecoration, DecorationSet } from "../decorations.js";
+import type { NodeViewFactory } from "../nodeView.js";
 
 export type CanvasEditorViewHandle = CanvasEditorView;
 

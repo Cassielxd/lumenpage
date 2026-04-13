@@ -4,7 +4,7 @@ import {
   markCommentTransaction,
   normalizeCommentId,
   type CommentAnchorAttrs,
-} from "./types";
+} from "./types.js";
 
 type CommentAnchorCommandMethods<ReturnType> = {
   setCommentAnchor: (attrs?: Partial<CommentAnchorAttrs>) => ReturnType;

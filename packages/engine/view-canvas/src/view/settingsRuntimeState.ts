@@ -6,7 +6,7 @@ import {
   type LayoutSettingsRuntimeState,
   setLayoutSettingsPerfSummary,
 } from "lumenpage-layout-engine";
-import type { RendererPerfSummary } from "./render/renderPerfReporter";
+import type { RendererPerfSummary } from "./render/renderPerfReporter.js";
 
 export type ViewSettingsPerfState = LayoutSettingsPerfState & {
   render?: RendererPerfSummary | null;

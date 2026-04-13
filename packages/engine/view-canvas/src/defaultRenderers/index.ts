@@ -1,7 +1,7 @@
 import { getDefaultNodeRenderer as getBaseDefaultNodeRenderer } from "lumenpage-render-engine";
-import { createDefaultImageNodeView, imageRenderer } from "./image";
-import { createTableSelectionGeometry, tableRenderer } from "./table";
-import { createDefaultVideoNodeView, videoRenderer } from "./video";
+import { createDefaultImageNodeView, imageRenderer } from "./image.js";
+import { createTableSelectionGeometry, tableRenderer } from "./table.js";
+import { createDefaultVideoNodeView, videoRenderer } from "./video.js";
 
 const canvasRuntimeRenderers: Record<string, any> = {
   image: imageRenderer,

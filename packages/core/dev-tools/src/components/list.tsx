@@ -1,6 +1,6 @@
 import React, { MouseEventHandler } from "react";
 import "@compiled/react";
-import theme from "../theme";
+import theme from "../theme.js";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = () => undefined;

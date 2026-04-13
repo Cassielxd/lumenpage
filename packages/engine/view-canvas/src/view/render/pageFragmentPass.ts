@@ -2,14 +2,12 @@ import { resolveNodeRendererRenderCapabilities } from "lumenpage-render-engine";
 import {
   type DefaultRender,
   type PageFragmentPassPlan,
-  type PageRenderPlan,
-  getTextLineFragmentKey,
-  isTextLineFragment,
-} from "./pageRenderPlan.js";
+} from "./pageRenderTypes.js";
 import {
   resetPageFragmentPassRuntime,
   type PageFragmentPassRuntime,
 } from "./pageFragmentPassRuntime.js";
+import { getTextLineFragmentKey, isTextLineFragment } from "./pageRenderFragments.js";
 
 const renderFragmentTree = ({
   ctx,
@@ -81,25 +79,25 @@ export const renderPageFragmentPass = ({
   layout,
   registry,
   defaultRender,
-  plan,
+  fragmentPass,
   runtime,
 }: {
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   layout: any;
   registry: any;
   defaultRender: DefaultRender;
-  plan: PageRenderPlan;
+  fragmentPass: PageFragmentPassPlan;
   runtime: PageFragmentPassRuntime;
 }) => {
   resetPageFragmentPassRuntime(runtime);
-  for (const fragment of plan.fragmentPass.pageFragments) {
+  for (const fragment of fragmentPass.pageFragments) {
     renderFragmentTree({
       ctx,
       fragment,
       layout,
       registry,
       defaultRender,
-      fragmentPass: plan.fragmentPass,
+      fragmentPass,
       runtime,
     });
   }

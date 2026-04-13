@@ -1,4 +1,4 @@
-import type { ExtendedWindow } from "../types/window";
+import type { ExtendedWindow } from "../types/window.js";
 
 export class IdleScheduler {
   task = undefined;

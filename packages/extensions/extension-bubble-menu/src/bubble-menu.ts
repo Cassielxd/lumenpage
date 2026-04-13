@@ -1,6 +1,6 @@
 import { Extension } from "lumenpage-core";
 
-import { BubbleMenuPlugin, type BubbleMenuPluginProps } from "./bubble-menu-plugin";
+import { BubbleMenuPlugin, type BubbleMenuPluginProps } from "./bubble-menu-plugin.js";
 
 export type BubbleMenuOptions = Omit<BubbleMenuPluginProps, "editor">;
 

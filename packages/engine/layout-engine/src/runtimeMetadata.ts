@@ -4,7 +4,7 @@ import type {
   LayoutResultRuntimeMeta,
   LayoutTransportPerf,
   LayoutWorkerDebugInfo,
-} from "./engine/types";
+} from "./engine/types.js";
 
 type LayoutPageLike = {
   runtimeMeta?: LayoutPageRuntimeMeta | null;

@@ -1,9 +1,9 @@
-import { breakLines } from "../lineBreaker";
-import { docToRuns, textblockToRuns } from "../textRuns";
-import { resolveContainerLayoutContext } from "../containerLayout";
-import { isLeafLayoutNode } from "../layoutRole";
-import { resolveNodeSplitFragments, resolveRendererFragmentModel } from "../pagination";
-import { ensureBlockFragmentOwner, shiftFragmentOwners } from "./fragmentOwners";
+import { breakLines } from "../lineBreaker.js";
+import { docToRuns, textblockToRuns } from "../textRuns.js";
+import { resolveContainerLayoutContext } from "../containerLayout.js";
+import { isLeafLayoutNode } from "../layoutRole.js";
+import { resolveNodeSplitFragments, resolveRendererFragmentModel } from "../pagination.js";
+import { ensureBlockFragmentOwner, shiftFragmentOwners } from "./fragmentOwners.js";
 
 type ListMode = "bullet" | "ordered" | "task";
 

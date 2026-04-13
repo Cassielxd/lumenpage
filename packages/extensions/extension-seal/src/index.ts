@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { sealRenderer } from "./renderer";
-import { sealNodeSpec } from "./seal";
+import { sealRenderer } from "./renderer.js";
+import { sealNodeSpec } from "./seal.js";
 
-export { sealNodeSpec, serializeSealToText } from "./seal";
-export { sealRenderer } from "./renderer";
+export { sealNodeSpec, serializeSealToText } from "./seal.js";
+export { sealRenderer } from "./renderer.js";
 
 type InsertSealOptions = {
   text: string;

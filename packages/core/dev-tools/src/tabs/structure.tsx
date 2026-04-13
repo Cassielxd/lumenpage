@@ -2,17 +2,17 @@
 import "@compiled/react";
 import { atom, useAtom, useAtomValue } from "jotai";
 import type { Node } from "lumenpage-model";
-import theme from "../theme";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import JSONTree from "../components/json-tree";
+import theme from "../theme.js";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import JSONTree from "../components/json-tree.js";
 import {
   Heading,
   HeadingWithButton,
   HeadingButton,
-} from "../components/heading";
-import { nodeColorsAtom } from "../state/node-colors";
-import { editorStateAtom } from "../state/editor-state";
-import { ExtendedFragment } from "../types/prosemirror";
+} from "../components/heading.js";
+import { nodeColorsAtom } from "../state/node-colors.js";
+import { editorStateAtom } from "../state/editor-state.js";
+import { ExtendedFragment } from "../types/prosemirror.js";
 
 const GraphWrapper = ({ children }: { children: React.ReactNode }) => (
   <div

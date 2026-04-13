@@ -1,9 +1,9 @@
-import { resolveMaybeSyncDecision } from "./pageSync";
-import { updateFragmentBoundaryProgress } from "./changeBoundary";
+import { resolveMaybeSyncDecision } from "./pageSync.js";
+import { updateFragmentBoundaryProgress } from "./changeBoundary.js";
 import {
   findFirstPageFragmentAnchorAfterTextOffset,
   pageHasFragmentAnchor,
-} from "./fragmentContinuation";
+} from "./fragmentContinuation.js";
 
 export function maybeSyncCurrentPage(options: {
   session: any;

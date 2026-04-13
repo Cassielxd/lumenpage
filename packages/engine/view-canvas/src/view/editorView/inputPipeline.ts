@@ -1,7 +1,7 @@
-import { createClipboardHandlers } from "../input/clipboard";
-import { createInputHandlers } from "../input/handlers";
-import { attachEditorInputBridge } from "./inputPipeline/bridge";
-import { createInputPipelineEditorHandlers } from "./inputPipeline/editorHandlers";
+import { createClipboardHandlers } from "../input/clipboard.js";
+import { createInputHandlers } from "../input/handlers.js";
+import { attachEditorInputBridge } from "./inputPipeline/bridge.js";
+import { createInputPipelineEditorHandlers } from "./inputPipeline/editorHandlers.js";
 
 // 输入管线装配：聚合 editorProps 回调、beforeinput/input、剪贴板与输入桥接。
 export const createEditorInputPipeline = ({

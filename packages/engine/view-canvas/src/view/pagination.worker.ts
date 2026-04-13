@@ -1,5 +1,5 @@
-import { LayoutPipeline } from "../layout-pagination/engine";
-import { createLinebreakSegmentText } from "./segmenter";
+import { LayoutPipeline } from "../layout-pagination/engine.js";
+import { createLinebreakSegmentText } from "./segmenter.js";
 
 type PaginationWorkerRequest = {
   id: number;

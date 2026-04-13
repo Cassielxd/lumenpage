@@ -1,6 +1,6 @@
 import { Node } from "lumenpage-core";
 
-export { headingNodeSpec } from "./heading";
+export { headingNodeSpec } from "./heading.js";
 export { defaultHeadingRenderer as headingRenderer } from "lumenpage-render-engine";
 
 type HeadingAttributes = number | { level?: number; [key: string]: unknown };

@@ -1,19 +1,19 @@
-import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags";
-import { arePagesEquivalent } from "./pageReuseEquivalence";
-import { getPageOffsetDelta } from "../runtimeMetadata";
+import { ENABLE_SAME_INDEX_TAIL_REUSE } from "./pageReuseFlags.js";
+import { arePagesEquivalent } from "./pageReuseEquivalence.js";
+import { getPageOffsetDelta } from "../runtimeMetadata.js";
 import {
   createPaginationSyncDiagnostics,
   type PaginationSyncDiagnostics,
-} from "./paginationDiagnostics";
+} from "./paginationDiagnostics.js";
 import {
   buildPageBoundaryAnchorToken,
   getPagePreferredBoundaryAnchor,
   getPageFragmentAnchorSummary,
   hashFragmentContinuationState,
   readLineFragmentContinuationState,
-} from "./fragmentContinuation";
-import { getObjectSignature, hashNumber, hashString } from "./signature";
-import type { LayoutPage, LayoutResult } from "./types";
+} from "./fragmentContinuation.js";
+import { getObjectSignature, hashNumber, hashString } from "./signature.js";
+import type { LayoutPage, LayoutResult } from "./types.js";
 
 type FinalizePageReuseDecisionOptions = {
   cascadePagination: boolean;

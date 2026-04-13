@@ -1,6 +1,6 @@
 import { NodeSelection } from "lumenpage-state";
 
-import { createPointerHandlers } from "../../input/pointerHandlers";
+import { createPointerHandlers } from "../../input/pointerHandlers.js";
 
 export const createPointerInteractionHandlers = ({
   view,

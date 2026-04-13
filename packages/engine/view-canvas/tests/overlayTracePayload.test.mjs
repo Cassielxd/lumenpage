@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createOverlayFrameTracePayload,
   createOverlayReasonTracePayload,
-} from "./dist/view/editorView/nodeViews/overlayTracePayload.js";
+} from "../dist/view/editorView/nodeViews/overlayTracePayload.js";
 
 test("createOverlayReasonTracePayload keeps reuse diagnostics on cached traces", () => {
   const payload = createOverlayReasonTracePayload({

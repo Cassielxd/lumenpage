@@ -1,5 +1,5 @@
-import { now } from "../debugTrace";
-import { getLayoutVersion as resolveLayoutVersion } from "../layoutRuntimeMetadata";
+import { now } from "../debugTrace.js";
+import { getLayoutVersion as resolveLayoutVersion } from "../layoutRuntimeMetadata.js";
 
 export const executeRenderFramePass = ({
   renderer,

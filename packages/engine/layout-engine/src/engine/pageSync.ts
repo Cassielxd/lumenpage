@@ -1,9 +1,9 @@
-import { collectPageReuseCandidates, findEquivalentPageIndex } from "./pageSyncCandidates";
-import { createPaginationSyncDiagnostics } from "./paginationDiagnostics";
-import { resolveMaybeSyncPrecheck } from "./pageSyncPrecheck";
+import { collectPageReuseCandidates, findEquivalentPageIndex } from "./pageSyncCandidates.js";
+import { createPaginationSyncDiagnostics } from "./paginationDiagnostics.js";
+import { resolveMaybeSyncPrecheck } from "./pageSyncPrecheck.js";
 
-export * from "./pageSyncCandidates";
-export * from "./pageSyncPrecheck";
+export * from "./pageSyncCandidates.js";
+export * from "./pageSyncPrecheck.js";
 
 /**
  * 统一解析当前页是否可以与旧布局中的某一页对齐。

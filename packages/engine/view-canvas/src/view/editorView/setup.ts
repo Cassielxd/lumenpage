@@ -1,16 +1,16 @@
-import { applyTransaction, createChangeEvent, docPosToTextOffset, LayoutPipeline, textOffsetToDocPos } from "../../core";
-import { Renderer } from "../renderer";
-import { initEditorViewEnvironment } from "./bootstrap";
-import { bindViewDomEvents } from "./events";
-import { createEditorInternals } from "./internals";
-import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings";
-import { createNodeViewManager } from "./nodeViews";
-import { createEditorPropHandlers } from "./plugins";
-import { createEditorViewRuntimeState } from "./runtimeState";
-import { createEditorViewInteractionRuntime } from "./setupInteractionRuntime";
-import { createEditorViewSyncRuntime } from "./setupViewSyncRuntime";
-import { createStateFlow } from "./stateFlow";
-import type { CanvasEditorViewProps } from "./types";
+import { applyTransaction, createChangeEvent, docPosToTextOffset, LayoutPipeline, textOffsetToDocPos } from "../../core/index.js";
+import { Renderer } from "../renderer.js";
+import { initEditorViewEnvironment } from "./bootstrap.js";
+import { bindViewDomEvents } from "./events.js";
+import { createEditorInternals } from "./internals.js";
+import { warnLegacyCanvasConfigUsage } from "./legacyConfigWarnings.js";
+import { createNodeViewManager } from "./nodeViews.js";
+import { createEditorPropHandlers } from "./plugins.js";
+import { createEditorViewRuntimeState } from "./runtimeState.js";
+import { createEditorViewInteractionRuntime } from "./setupInteractionRuntime.js";
+import { createEditorViewSyncRuntime } from "./setupViewSyncRuntime.js";
+import { createStateFlow } from "./stateFlow.js";
+import type { CanvasEditorViewProps } from "./types.js";
 
 export type CanvasEditorViewSetupResult = {
   state: any;

@@ -1,6 +1,6 @@
 import {ReplaceError, Schema, Slice, Node} from "lumenpage-model"
 
-import {StepMap, Mappable} from "./map"
+import {StepMap, Mappable} from "./map.js"
 
 const stepsByID: {[id: string]: {fromJSON(schema: Schema, json: any): Step}} = Object.create(null)
 

@@ -1,11 +1,11 @@
 import React from "react";
 import { useAtomValue } from "jotai";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import { Heading } from "../components/heading";
-import JSONTree from "../components/json-tree";
-import { InfoPanel } from "../components/info-panel";
-import { editorViewAtom } from "../state/editor-view";
-import { editorStateAtom } from "../state/editor-state";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import { Heading } from "../components/heading.js";
+import JSONTree from "../components/json-tree.js";
+import { InfoPanel } from "../components/info-panel.js";
+import { editorViewAtom } from "../state/editor-view.js";
+import { editorStateAtom } from "../state/editor-state.js";
 
 const buildFallbackPaginationInfo = (view: any) => {
   const layout = view?._internals?.getLayout?.() ?? null;

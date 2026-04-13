@@ -1,4 +1,4 @@
-import { getEditorInternalsSections } from "../internals";
+import { getEditorInternalsSections } from "../internals.js";
 
 export const toInsets = (value: any, fallback = 0) => {
   if (Number.isFinite(value)) {

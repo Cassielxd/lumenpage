@@ -1,6 +1,6 @@
 ﻿import { atom } from "jotai";
 import type { Schema } from "lumenpage-model";
-import { editorStateAtom } from "./editor-state";
+import { editorStateAtom } from "./editor-state.js";
 
 export const nodeColorsAtom = atom((get) => {
   const editorState = get(editorStateAtom);

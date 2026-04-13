@@ -1,9 +1,9 @@
 import React from "react";
-import { SplitView, SplitViewCol } from "../components/split-view";
-import JSONTree from "../components/json-tree";
-import { Heading } from "../components/heading";
+import { SplitView, SplitViewCol } from "../components/split-view.js";
+import JSONTree from "../components/json-tree.js";
+import { Heading } from "../components/heading.js";
 import { useAtomValue } from "jotai";
-import { schemaAtom } from "../state/schema";
+import { schemaAtom } from "../state/schema.js";
 
 const ignoreFields = ["schema", "contentExpr", "schema", "parseDOM", "toDOM"];
 

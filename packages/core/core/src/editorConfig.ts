@@ -1,5 +1,5 @@
-import type { ResolvedStructure } from "./types";
-import type { EditorOptions } from "./Editor";
+import type { ResolvedStructure } from "./types.js";
+import type { EditorOptions } from "./Editor.js";
 
 export const defaultEditorOptions: EditorOptions = {
   extensions: [],

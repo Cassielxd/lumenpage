@@ -1,9 +1,9 @@
-import { now } from "./debugTrace";
-import { createCaretFrameUpdater } from "./caretFrameUpdater";
-import { createNodeOverlaySyncCoordinator } from "./render/nodeOverlaySyncCoordinator";
-import { createRenderFrameDecorations } from "./render/renderFrameDecorations";
-import { executeRenderFramePass } from "./render/renderFramePass";
-import { createRenderFrameSelection } from "./render/renderFrameSelection";
+import { now } from "./debugTrace.js";
+import { createCaretFrameUpdater } from "./caretFrameUpdater.js";
+import { createNodeOverlaySyncCoordinator } from "./render/nodeOverlaySyncCoordinator.js";
+import { createRenderFrameDecorations } from "./render/renderFrameDecorations.js";
+import { executeRenderFramePass } from "./render/renderFramePass.js";
+import { createRenderFrameSelection } from "./render/renderFrameSelection.js";
 
 type CreateRenderFrameCoordinatorArgs = {
   renderer: any;

@@ -1,7 +1,7 @@
-import { getExtensionField } from "./getExtensionField";
-import { sortExtensions } from "./sortExtensions";
-import { callOrReturn } from "../utilities/callOrReturn";
-import type { AnyExtension, ClipboardParserLike, ExtensionContext } from "../types";
+import { getExtensionField } from "./getExtensionField.js";
+import { sortExtensions } from "./sortExtensions.js";
+import { callOrReturn } from "../utilities/callOrReturn.js";
+import type { AnyExtension, ClipboardParserLike, ExtensionContext } from "../types.js";
 
 export const resolveClipboardParser = ({
   extensions,

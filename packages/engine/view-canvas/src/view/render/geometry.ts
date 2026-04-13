@@ -1,6 +1,6 @@
-import { getNearestContentOwner } from "../layoutSemantics";
-import { getTextLineItemsInRange } from "../layoutIndex";
-import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata";
+import { getNearestContentOwner } from "../layoutSemantics.js";
+import { getTextLineItemsInRange } from "../layoutIndex.js";
+import { getPageOffsetDelta as readPageOffsetDelta } from "../layoutRuntimeMetadata.js";
 
 const TEXT_LINE_FRAGMENT_ROLE = "text-line";
 

@@ -1,10 +1,10 @@
 import { Node } from "lumenpage-core";
-import { createDefaultWebPageNodeView } from "./nodeView";
-import { webPageRenderer } from "./renderer";
-import { sanitizeWebPageHref, webPageNodeSpec } from "./webPage";
+import { createDefaultWebPageNodeView } from "./nodeView.js";
+import { webPageRenderer } from "./renderer.js";
+import { sanitizeWebPageHref, webPageNodeSpec } from "./webPage.js";
 
-export { sanitizeWebPageHref, webPageNodeSpec, serializeWebPageToText } from "./webPage";
-export { webPageRenderer } from "./renderer";
+export { sanitizeWebPageHref, webPageNodeSpec, serializeWebPageToText } from "./webPage.js";
+export { webPageRenderer } from "./renderer.js";
 
 type InsertWebPageOptions = {
   href: string;

@@ -1,9 +1,9 @@
 import { Node } from "lumenpage-core";
-import { textBoxRenderer } from "./renderer";
-import { textBoxNodeSpec } from "./textBox";
+import { textBoxRenderer } from "./renderer.js";
+import { textBoxNodeSpec } from "./textBox.js";
 
-export { textBoxNodeSpec, serializeTextBoxToText } from "./textBox";
-export { textBoxRenderer } from "./renderer";
+export { textBoxNodeSpec, serializeTextBoxToText } from "./textBox.js";
+export { textBoxRenderer } from "./renderer.js";
 
 type InsertTextBoxOptions = {
   title?: string;

@@ -1,4 +1,4 @@
-﻿import { getTextStyleKey, resolveTextStyle } from "./mark";
+﻿import { getTextStyleKey, resolveTextStyle } from "./mark.js";
 
 /*
  * Convert text blocks and documents into layout runs.
@@ -65,7 +65,7 @@ const buildStyle = (baseFont, marks, settings = null, registry = null) =>
     (name) => registry?.getMarkAnnotationResolver?.(name)
   );
 
-import { resolveNodeRendererLayoutCapabilities } from "./node";
+import { resolveNodeRendererLayoutCapabilities } from "./node.js";
 
 export function textblockToRuns(
   block,

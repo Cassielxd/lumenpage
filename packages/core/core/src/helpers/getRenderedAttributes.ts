@@ -1,5 +1,5 @@
-import { mergeAttributes } from "../utilities/mergeAttributes";
-import type { AttributeConfigs, HTMLAttributes, UnknownRecord } from "../types";
+import { mergeAttributes } from "../utilities/mergeAttributes.js";
+import type { AttributeConfigs, HTMLAttributes, UnknownRecord } from "../types.js";
 
 const isRecord = (value: unknown): value is UnknownRecord =>
   !!value && typeof value === "object" && !Array.isArray(value);

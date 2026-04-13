@@ -1,4 +1,4 @@
-import { readSliceContinuation } from "./continuation";
+import { readSliceContinuation } from "./continuation.js";
 
 type SplitResultPayload = {
   lines: any[];

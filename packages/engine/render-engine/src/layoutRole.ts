@@ -1,5 +1,4 @@
-import type { NodeRenderer } from "./node";
-import { resolveNodeRendererLayoutCapabilities } from "./node";
+import { resolveNodeRendererLayoutCapabilities, type NodeRenderer } from "./node.js";
 
 export type NodeLayoutRole = "leaf" | "container";
 

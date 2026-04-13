@@ -1,25 +1,25 @@
-import { now } from "../debugTrace";
-import { type DecorationDrawData } from "./decorations";
-import { updatePaginationDebugPanel } from "./paginationDebugPanel";
+import { now } from "../debugTrace.js";
+import { type DecorationDrawData } from "./decorations.js";
+import { updatePaginationDebugPanel } from "./paginationDebugPanel.js";
 import {
   buildRendererOverlayDisplayList,
   executeRendererOverlayDisplayList,
-} from "./overlayRenderer";
+} from "./overlayRenderer.js";
 import {
   completeRendererViewportPass,
-} from "./renderViewportCompletion";
-import { renderPageSurfacePass } from "./pageSurfacePass";
+} from "./renderViewportCompletion.js";
+import { renderPageSurfacePass } from "./pageSurfacePass.js";
 import {
   prepareRendererViewportSetup,
-} from "./renderViewportSetup";
+} from "./renderViewportSetup.js";
 import {
   type RendererPageCacheEntry,
   type RendererPageCanvasSlot,
-} from "./pageCanvasCache";
-import { type RendererPageDisplayList } from "./pageDisplayList";
-import { type RendererViewportState } from "./rendererViewportState";
+} from "./pageCanvasCache.js";
+import { type RendererPageDisplayList } from "./pageDisplayList.js";
+import { type RendererViewportState } from "./rendererViewportState.js";
 
-export type { RendererViewportState } from "./rendererViewportState";
+export type { RendererViewportState } from "./rendererViewportState.js";
 
 export const runRendererViewportPass = ({
   layout,

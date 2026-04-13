@@ -1,13 +1,13 @@
-﻿import { getCanvasConfig, type CanvasViewConfig } from "../canvasConfig";
-import type { CanvasEditorViewProps } from "./types";
-import { initializeViewPerfState } from "../settingsRuntimeState";
+﻿import { getCanvasConfig, type CanvasViewConfig } from "../canvasConfig.js";
+import type { CanvasEditorViewProps } from "./types.js";
+import { initializeViewPerfState } from "../settingsRuntimeState.js";
 import {
   DEFAULT_SETTINGS,
   applyDefaultA11y,
   applyDefaultStyles,
   createA11yStatusElement,
   createDefaultDom,
-} from "./dom";
+} from "./dom.js";
 
 const LEGACY_STRATEGY_KEYS = [
   "getText",

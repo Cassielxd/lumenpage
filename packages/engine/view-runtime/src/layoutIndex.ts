@@ -1,8 +1,8 @@
-import { findLineForOffset, getCaretFromPoint, offsetAtX } from "./caret";
-import { getFontForOffset, getBaselineOffset, getLineHeight, getLineXForOffset, isVisualBlockLine } from "./textLineGeometry";
-import { getFontSize } from "./measure";
-import { getPageOffsetDelta, getPageSourcePageIndex, isPageReused } from "./pageRuntimeMeta";
-import { getTextLineBoxHitAtPoint, getTextLineOffsetHit } from "./textLineHit";
+import { findLineForOffset, getCaretFromPoint, offsetAtX } from "./caret.js";
+import { getFontForOffset, getBaselineOffset, getLineHeight, getLineXForOffset, isVisualBlockLine } from "./textLineGeometry.js";
+import { getFontSize } from "./measure.js";
+import { getPageOffsetDelta, getPageSourcePageIndex, isPageReused } from "./pageRuntimeMeta.js";
+import { getTextLineBoxHitAtPoint, getTextLineOffsetHit } from "./textLineHit.js";
 
 type LayoutLineItem = {
   pageIndex: number;

@@ -1,19 +1,19 @@
-export { Editor } from "./Editor";
-export type { EditorOptions } from "./Editor";
-export { CommandManager } from "./CommandManager";
-export * as commands from "./commands";
-export * as extensions from "./extensions";
-export * as helpers from "./helpers";
-export * as utilities from "./utilities";
-export * from "./commands";
-export { BeforeInput, Commands, FocusEvents, Keymap, basicCommands, focusEventsPluginKey } from "./extensions";
-export { Drop, Paste, dropPluginKey, pastePluginKey } from "./extensions";
-export { EventEmitter } from "./EventEmitter";
-export { Extension } from "./Extension";
-export { ExtensionManager } from "./ExtensionManager";
-export * from "./helpers";
-export { Mark } from "./Mark";
-export { Node } from "./Node";
+export { Editor } from "./Editor.js";
+export type { EditorOptions } from "./Editor.js";
+export { CommandManager } from "./CommandManager.js";
+export * as commands from "./commands/index.js";
+export * as extensions from "./extensions/index.js";
+export * as helpers from "./helpers/index.js";
+export * as utilities from "./utilities/index.js";
+export * from "./commands/index.js";
+export { BeforeInput, Commands, FocusEvents, Keymap, basicCommands, focusEventsPluginKey } from "./extensions/index.js";
+export { Drop, Paste, dropPluginKey, pastePluginKey } from "./extensions/index.js";
+export { EventEmitter } from "./EventEmitter.js";
+export { Extension } from "./Extension.js";
+export { ExtensionManager } from "./ExtensionManager.js";
+export * from "./helpers/index.js";
+export { Mark } from "./Mark.js";
+export { Node } from "./Node.js";
 export {
   PasteRule,
   pasteRulesPlugin,
@@ -21,19 +21,19 @@ export {
   type PasteRuleFinder,
   type PasteRuleMatch,
   type Range,
-} from "./PasteRule";
-export { markPasteRule, nodePasteRule, textPasteRule } from "./pasteRules";
-export { createSchema } from "./createSchema";
-export * from "./utilities";
+} from "./PasteRule.js";
+export { markPasteRule, nodePasteRule, textPasteRule } from "./pasteRules/index.js";
+export { createSchema } from "./createSchema.js";
+export * from "./utilities/index.js";
 export {
   attachExtensionPaginationDocWorker,
   type PaginationDocWorkerRequest,
   type PaginationDocWorkerResponse,
-} from "./paginationWorker";
+} from "./paginationWorker.js";
 export {
   PaginationDocWorkerClient,
   type PaginationDocWorkerClientRequest,
-} from "./paginationWorkerClient";
+} from "./paginationWorkerClient.js";
 
 export interface Commands<ReturnType = boolean> {}
 
@@ -90,5 +90,5 @@ export type {
   ResolvedStructure,
   SchemaSpec,
   SingleCommands,
-} from "./types";
+} from "./types.js";
 
