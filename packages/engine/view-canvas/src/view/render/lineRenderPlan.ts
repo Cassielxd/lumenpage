@@ -13,18 +13,22 @@ const lineHasTextPayload = (line: any) => {
   return line.runs.some((run: any) => typeof run?.text === "string" && run.text.length > 0);
 };
 
-const lineHasAuxiliaryVisualPass = (line: any, hasNodeViewRender = false) => {
+const lineHasAuxiliaryVisualPass = ({
+  hasNodeViewRender = false,
+  hasContainerCompatWork = false,
+  hasListMarkerCompatWork = false,
+}: {
+  hasNodeViewRender?: boolean;
+  hasContainerCompatWork?: boolean;
+  hasListMarkerCompatWork?: boolean;
+}) => {
   if (hasNodeViewRender) {
     return true;
   }
-  if (Array.isArray(line?.containers) && line.containers.length > 0) {
+  if (hasContainerCompatWork) {
     return true;
   }
-  return !!(
-    line?.listMarker ||
-    line?.blockAttrs?.listOwnerMarkerText ||
-    line?.blockAttrs?.markerText
-  );
+  return hasListMarkerCompatWork;
 };
 
 const rendererHandlesListMarkerInFragment = (renderer: any) =>
@@ -50,20 +54,27 @@ export type LineRenderPlan = {
 export const resolveLineRenderPlan = (
   line: any,
   renderer: any,
-  options: { hasNodeViewRender?: boolean; hasLeafTextFragment?: boolean } = {}
+  options: {
+    hasNodeViewRender?: boolean;
+    hasLeafTextFragment?: boolean;
+    hasContainerCompatWork?: boolean;
+  } = {}
 ): LineRenderPlan => {
   const render = resolveNodeRendererRenderCapabilities(renderer);
   const compat = resolveNodeRendererCompatCapabilities(renderer);
   const hasTextPayload = lineHasTextPayload(line);
-  const hasAuxiliaryPass = lineHasAuxiliaryVisualPass(line, options.hasNodeViewRender === true);
   const hasFragmentRenderer = typeof render.renderFragment === "function";
   const hasFragmentOwner =
     Array.isArray(line?.fragmentOwners) && line.fragmentOwners.length > 0;
   const hasLeafTextFragment = options.hasLeafTextFragment === true;
   const usesDefaultTextLineRenderer = compat.lineBodyMode === "default-text";
   const fragmentHandlesListMarker = rendererHandlesListMarkerInFragment(renderer);
-  const shouldRunContainerPass =
-    Array.isArray(line?.containers) && line.containers.length > 0;
+  const hasContainerCompatWork =
+    options.hasContainerCompatWork === true ||
+    (options.hasContainerCompatWork !== false &&
+      Array.isArray(line?.containers) &&
+      line.containers.length > 0);
+  const shouldRunContainerPass = hasContainerCompatWork;
   const shouldRunListMarkerPass =
     !(
       fragmentHandlesListMarker &&
@@ -75,6 +86,11 @@ export const resolveLineRenderPlan = (
       line?.blockAttrs?.listOwnerMarkerText ||
       line?.blockAttrs?.markerText
     );
+  const hasAuxiliaryPass = lineHasAuxiliaryVisualPass({
+    hasNodeViewRender: options.hasNodeViewRender === true,
+    hasContainerCompatWork,
+    hasListMarkerCompatWork: shouldRunListMarkerPass,
+  });
   const shouldRunNodeViewPass = options.hasNodeViewRender === true;
   const shouldSkipBodyPassAfterFragment =
     hasFragmentRenderer && hasFragmentOwner && !hasAuxiliaryPass && !hasTextPayload;

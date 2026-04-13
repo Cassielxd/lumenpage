@@ -1,6 +1,7 @@
 import { breakLines } from "lumenpage-render-engine";
 
 const trimText = (value: unknown) => String(value || "").trim();
+const TEXT_LINE_ROLE = "text-line";
 
 const buildMathRuns = (text: string, font: string) => [
   {
@@ -32,11 +33,50 @@ const buildMathRuns = (text: string, font: string) => [
   },
 ];
 
+const buildMathBlockAttrs = ({
+  source,
+  padding,
+  width,
+  outerX,
+}: {
+  source: string;
+  padding: number;
+  width: number;
+  outerX: number;
+}) => ({
+  source,
+  mathPadding: padding,
+  width,
+  fragmentOwnerMeta: {
+    mathMeta: {
+      source,
+      padding,
+      width,
+      label: "SUM",
+    },
+  },
+  layoutCapabilities: {
+    "visual-block": true,
+  },
+  visualBounds: {
+    x: outerX,
+    width,
+  },
+});
+
 const layoutMathBlock = ({ node, settings }: { node: any; settings: any }) => {
   const source = trimText(node.attrs?.source) || "Formula";
   const font = settings.mathFont || "18px Cambria Math, Times New Roman, serif";
   const padding = 16;
-  const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right - padding * 2;
+  const outerX = settings.margin.left;
+  const width = settings.pageWidth - settings.margin.left - settings.margin.right;
+  const maxWidth = width - padding * 2;
+  const blockAttrs = buildMathBlockAttrs({
+    source,
+    padding,
+    width,
+    outerX,
+  });
   const lines = breakLines(
     buildMathRuns(source, font),
     maxWidth,
@@ -55,14 +95,12 @@ const layoutMathBlock = ({ node, settings }: { node: any; settings: any }) => {
     ) +
     padding * 2;
   lines.forEach((line: any, index: number) => {
-    line.x = settings.margin.left + padding;
+    line.x = outerX + padding;
     line.blockType = "math";
     line.blockAttrs = {
-      source,
-      mathPadding: padding,
+      ...blockAttrs,
       mathLineIndex: index,
       mathLineCount: lines.length,
-      width: maxWidth + padding * 2,
     };
   });
   return {
@@ -71,11 +109,7 @@ const layoutMathBlock = ({ node, settings }: { node: any; settings: any }) => {
     height: totalHeight,
     blockLineHeight: settings.lineHeight,
     blockType: "math",
-    blockAttrs: {
-      source,
-      mathPadding: padding,
-      width: maxWidth + padding * 2,
-    },
+    blockAttrs,
   };
 };
 
@@ -86,8 +120,55 @@ const cloneMathLines = (lines: any[]) =>
     blockAttrs: line?.blockAttrs ? { ...line.blockAttrs } : {},
   }));
 
+const isTextLineFragment = (fragment: any) =>
+  String(fragment?.role || "") === TEXT_LINE_ROLE || String(fragment?.type || "") === TEXT_LINE_ROLE;
+
+const drawMathChromeSegment = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  isFirst,
+  isLast,
+  label,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isFirst: boolean;
+  isLast: boolean;
+  label: string;
+}) => {
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + height);
+  ctx.moveTo(x + width, y);
+  ctx.lineTo(x + width, y + height);
+  if (isFirst) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y);
+  }
+  if (isLast) {
+    ctx.moveTo(x, y + height);
+    ctx.lineTo(x + width, y + height);
+  }
+  ctx.stroke();
+
+  ctx.fillStyle = "#2563eb";
+  ctx.font = "14px Arial";
+  ctx.fillText(label, x + 10, y + 20);
+};
+
 export const mathRenderer = {
   allowSplit: false,
+  lineBodyMode: "default-text" as const,
 
   layoutBlock({ node, settings }: { node: any; settings: any }) {
     return layoutMathBlock({ node, settings });
@@ -209,42 +290,30 @@ export const mathRenderer = {
     };
   },
 
-  renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }: any) {
-    const padding = Number(line.blockAttrs?.mathPadding) || 16;
-    const width = Number(line.blockAttrs?.width) || 240;
-    const x = pageX + layout.margin.left;
-    const y = pageTop + line.y;
-    const height = line.lineHeight ?? layout.lineHeight;
-    const lineIndex = Number(line.blockAttrs?.mathLineIndex) || 0;
-    const lineCount = Number(line.blockAttrs?.mathLineCount) || 1;
-    const isFirst = lineIndex === 0;
-    const isLast = lineIndex === Math.max(0, lineCount - 1);
-
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y + height);
-    ctx.moveTo(x + width, y);
-    ctx.lineTo(x + width, y + height);
-    if (isFirst) {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + width, y);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "math") {
+      return;
     }
-    if (isLast) {
-      ctx.moveTo(x, y + height);
-      ctx.lineTo(x + width, y + height);
-    }
-    ctx.stroke();
 
-    ctx.fillStyle = "#2563eb";
-    ctx.font = "14px Arial";
-    ctx.fillText("SUM", x + 10, y + 20);
+    const x = pageX + (Number(fragment?.x) || 0);
+    const width = Number(fragment?.width) || 0;
+    const label = String(fragment?.meta?.mathMeta?.label || "SUM");
+    const childFragments = Array.isArray(fragment?.children)
+      ? fragment.children.filter((child: any) => isTextLineFragment(child))
+      : [];
+    const segments = childFragments.length > 0 ? childFragments : [fragment];
 
-    if (defaultRender) {
-      defaultRender(line, pageX + padding, pageTop, layout);
-    }
+    segments.forEach((segment: any, index: number) => {
+      drawMathChromeSegment({
+        ctx,
+        x,
+        y: pageTop + (Number(segment?.y) || 0),
+        width,
+        height: Number(segment?.height) || 0,
+        isFirst: index === 0,
+        isLast: index === segments.length - 1,
+        label,
+      });
+    });
   },
 };

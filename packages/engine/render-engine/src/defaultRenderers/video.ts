@@ -1,5 +1,3 @@
-import { hasFragmentOwnerType } from "./fragmentOwners.js";
-
 const resolvePositiveDimension = (value: unknown) => {
   if (value == null) {
     return null;
@@ -198,16 +196,6 @@ export const videoRenderer = {
     };
   },
 
-  renderLine({ ctx, line, pageX, pageTop }) {
-    const width = line.videoMeta?.width ?? line.width ?? 0;
-    const height = line.videoMeta?.height ?? line.lineHeight ?? 0;
-    if (width <= 0 || height <= 0) return;
-    if (hasFragmentOwnerType(line, "video", line?.blockId)) {
-      return;
-    }
-
-    drawVideoPlaceholder({ ctx, x: pageX + line.x, y: pageTop + line.y, width, height });
-  },
   renderFragment({ ctx, fragment, pageX, pageTop }) {
     if (fragment?.type !== "video") {
       return;

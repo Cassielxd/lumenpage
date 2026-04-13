@@ -175,7 +175,7 @@ const runtimeExtensions = [
 | `extension-comment` | 评论锚点和评论线程 | `configure` | `Comments.configure(...)` |
 | `extension-drag-handle` | 块拖拽手柄 | `configure` | `editorMount.ts` |
 | `extension-mention` | mention 实体插入 | `configure` | `editorMount.ts` |
-| `extension-popup` | 弹出层基础能力 | 直接加入或按场景使用 | 作为 UI/交互基础设施 |
+| `popup-runtime` | 弹出层基础运行时 | 按场景引用 | 作为 UI/交互基础设施 |
 | `extension-slash-command` | `/` 命令面板 | `configure` | `editorMount.ts` |
 | `extension-smart-input-rules` | 智能输入规则 | `StarterKit` 或直接加入 | 由编辑器输入规则链使用 |
 | `extension-tag` | 标签节点 | 直接加入 | `documentExtensions.ts` |

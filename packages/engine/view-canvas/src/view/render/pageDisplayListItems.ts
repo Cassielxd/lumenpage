@@ -1,8 +1,8 @@
 import {
-  getRendererFragmentPassSignature,
-  getRendererLineCompatPassSignature,
   getRendererPageShellSignature,
 } from "./pageSignature.js";
+import { getRendererFragmentPassSignature } from "./pageFragmentSignature.js";
+import { getRendererCompatPassSignature } from "./pageCompatSignature.js";
 import {
   type RendererPageFragmentPassDisplayListItem,
   type RendererPageLineCompatDisplayListItem,
@@ -118,7 +118,7 @@ export const buildPageLineCompatDisplayListItem = ({
 
   return {
     kind: "line-compat-pass",
-    signature: getRendererLineCompatPassSignature({
+    signature: getRendererCompatPassSignature({
       compatPass,
     }),
     pass: compatPass,

@@ -41,7 +41,6 @@ export const executeRendererPageDisplayListItem = ({
       renderPageLineCompatPass({
         ctx,
         layout: context.layout,
-        registry: context.registry,
         defaultRender: context.createDefaultRender(ctx),
         compatPass: item.pass,
         runtime: context.runtime,

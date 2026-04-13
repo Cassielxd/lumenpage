@@ -7,6 +7,26 @@ const buildTextBoxLayout = ({ node, settings }: { node: any; settings: any }) =>
   const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
   const width = Math.max(1, Math.min(maxWidth, Math.min(420, maxWidth)));
   const height = 120;
+  const title = trimText(attrs.title) || "Text Box";
+  const text = trimText(attrs.text) || "Text";
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    fragmentOwnerMeta: {
+      textBoxMeta: {
+        title,
+        text,
+      },
+    },
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -16,10 +36,10 @@ const buildTextBoxLayout = ({ node, settings }: { node: any; settings: any }) =>
     runs: [],
     x: settings.margin.left,
     blockType: "textBox",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     textBoxMeta: {
-      title: trimText(attrs.title) || "Text Box",
-      text: trimText(attrs.text) || "Text",
+      title,
+      text,
       width,
       height,
     },
@@ -28,9 +48,40 @@ const buildTextBoxLayout = ({ node, settings }: { node: any; settings: any }) =>
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
+};
+
+const drawTextBoxBlock = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  title,
+  text,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  title: string;
+  text: string;
+}) => {
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#64748b";
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x, y, width, height);
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 14px Arial";
+  ctx.fillText(title, x + 16, y + 24);
+  ctx.fillStyle = "#475569";
+  ctx.font = "13px Arial";
+  ctx.fillText(text.slice(0, 120), x + 16, y + 56);
 };
 
 export const textBoxRenderer = {
@@ -47,22 +98,18 @@ export const textBoxRenderer = {
       blockAttrs: layout.blockAttrs,
     };
   },
-  renderLine({ ctx, line, pageX, pageTop }: any) {
-    const meta = line.textBoxMeta;
-    if (!meta) return;
-    const x = pageX + line.x;
-    const y = pageTop + line.y;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x, y, meta.width, meta.height);
-    ctx.strokeStyle = "#64748b";
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(x, y, meta.width, meta.height);
-    ctx.setLineDash([]);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 14px Arial";
-    ctx.fillText(meta.title, x + 16, y + 24);
-    ctx.fillStyle = "#475569";
-    ctx.font = "13px Arial";
-    ctx.fillText(meta.text.slice(0, 120), x + 16, y + 56);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "textBox") {
+      return;
+    }
+    drawTextBoxBlock({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      title: String(fragment?.meta?.textBoxMeta?.title || "Text Box"),
+      text: String(fragment?.meta?.textBoxMeta?.text || "Text"),
+    });
   },
 };

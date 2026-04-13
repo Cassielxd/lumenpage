@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "lumenpage-core": "workspace:*",
-    "lumenpage-extension-popup": "workspace:*",
+    "lumenpage-popup-runtime": "workspace:*",
     "lumenpage-suggestion": "workspace:*",
     "lumenpage-state": "workspace:*"
   },

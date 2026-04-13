@@ -317,7 +317,7 @@ const extensions = [DragHandleExtension.configure({ onlyTopLevel: true })];
 
 - 作用：块 ID
 
-### `lumenpage-extension-popup`
+### `lumenpage-popup-runtime`
 
 - 作用：弹层基础设施
 

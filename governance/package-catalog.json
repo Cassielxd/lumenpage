@@ -291,8 +291,8 @@
       "visibility": "public",
       "action": "keep"
     },
-    "lumenpage-extension-popup": {
-      "layer": "extensions",
+    "lumenpage-popup-runtime": {
+      "layer": "core",
       "visibility": "public",
       "action": "keep"
     },

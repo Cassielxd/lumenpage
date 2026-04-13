@@ -1,5 +1,3 @@
-import { hasFragmentOwnerType } from "./fragmentOwners.js";
-
 const resolvePositiveDimension = (value: unknown) => {
   if (value == null) {
     return null;
@@ -223,23 +221,6 @@ export const imageRenderer = {
     };
   },
 
-  renderLine({ ctx, line, pageX, pageTop, layout }) {
-    const meta = line.imageMeta;
-    if (!meta) return;
-    if (hasFragmentOwnerType(line, "image", line?.blockId)) {
-      return;
-    }
-
-    drawImagePlaceholder({
-      ctx,
-      x: pageX + line.x,
-      y: pageTop + line.y,
-      width: meta.width,
-      height: meta.height,
-      label: meta.alt || "Image",
-      font: layout.font,
-    });
-  },
   renderFragment({ ctx, fragment, pageX, pageTop, layout }) {
     if (fragment?.type !== "image") {
       return;

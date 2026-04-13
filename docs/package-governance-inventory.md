@@ -91,7 +91,7 @@
 - `extension-link`
 - `extension-mention`
 - `extension-bubble-menu`
-- `extension-popup`
+- `popup-runtime`
 - `extension-drag-handle`
 - `extension-active-block`
 - `extension-block-id`

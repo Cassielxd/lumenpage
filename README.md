@@ -209,7 +209,7 @@ apps/backend-server
 - [extension-comment](./packages/extensions/extension-comment)
 - [extension-drag-handle](./packages/extensions/extension-drag-handle)
 - [extension-mention](./packages/extensions/extension-mention)
-- [extension-popup](./packages/extensions/extension-popup)
+- [popup-runtime](./packages/core/popup-runtime)
 - [extension-slash-command](./packages/extensions/extension-slash-command)
 - [extension-tag](./packages/extensions/extension-tag)
 - [extension-track-change](./packages/extensions/extension-track-change)

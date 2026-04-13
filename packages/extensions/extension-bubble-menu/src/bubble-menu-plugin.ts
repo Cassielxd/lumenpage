@@ -19,7 +19,7 @@ import {
   type PopupRenderRuntime,
   type PopupRect,
   type PopupReference,
-} from "lumenpage-extension-popup";
+} from "lumenpage-popup-runtime";
 
 export type BubbleMenuAction = {
   id: string;

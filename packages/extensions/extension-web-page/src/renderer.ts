@@ -21,6 +21,12 @@ const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) =>
     lineHeight: height,
     width,
     height,
+    fragmentOwnerMeta: {
+      webPageMeta: {
+        href: String(attrs.href || ""),
+        title,
+      },
+    },
     layoutCapabilities: {
       "visual-block": true,
     },
@@ -56,6 +62,47 @@ const buildWebPageLayout = ({ node, settings }: { node: any; settings: any }) =>
   };
 };
 
+const drawWebPageBlock = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  href,
+  title,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  href: string;
+  title: string;
+}) => {
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.strokeRect(x, y, width, height);
+
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillRect(x, y, width, 40);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "14px Arial";
+  ctx.fillText(title, x + 16, y + 24);
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px Arial";
+  ctx.fillText(href || "https://", x + 16, y + 56);
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(x + 16, y + 72, width - 32, Math.max(80, height - 88));
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.strokeRect(x + 16, y + 72, width - 32, Math.max(80, height - 88));
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "13px Arial";
+  ctx.fillText("Web page preview", x + 28, y + 104);
+};
+
 export const webPageRenderer = {
   allowSplit: false,
   ...createUnsplittableBlockPagination("webPage", buildWebPageLayout),
@@ -72,36 +119,18 @@ export const webPageRenderer = {
     };
   },
 
-  renderLine({ ctx, line, pageX, pageTop }: any) {
-    const meta = line.webPageMeta;
-    if (!meta) return;
-
-    const x = pageX + line.x;
-    const y = pageTop + line.y;
-    const width = meta.width;
-    const height = meta.height;
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.strokeRect(x, y, width, height);
-
-    ctx.fillStyle = "#e2e8f0";
-    ctx.fillRect(x, y, width, 40);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "14px Arial";
-    ctx.fillText(meta.title, x + 16, y + 24);
-
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12px Arial";
-    ctx.fillText(meta.href || "https://", x + 16, y + 56);
-
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(x + 16, y + 72, width - 32, Math.max(80, height - 88));
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.strokeRect(x + 16, y + 72, width - 32, Math.max(80, height - 88));
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "13px Arial";
-    ctx.fillText("Web page preview", x + 28, y + 104);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "webPage") {
+      return;
+    }
+    drawWebPageBlock({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      href: String(fragment?.meta?.webPageMeta?.href || ""),
+      title: String(fragment?.meta?.webPageMeta?.title || "Embedded page"),
+    });
   },
 };

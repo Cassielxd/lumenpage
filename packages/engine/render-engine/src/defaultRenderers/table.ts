@@ -2,7 +2,7 @@ import { breakLines } from "../lineBreaker.js";
 import { docToRuns, textblockToRuns } from "../textRuns.js";
 import { resolveContainerLayoutContext } from "../containerLayout.js";
 import { isLeafLayoutNode } from "../layoutRole.js";
-import { ensureBlockFragmentOwner, hasFragmentOwnerType, shiftFragmentOwners } from "./fragmentOwners.js";
+import { ensureBlockFragmentOwner, shiftFragmentOwners } from "./fragmentOwners.js";
 
 const normalizeTableCellBackground = (value) => {
   const text = String(value || "").trim();
@@ -579,12 +579,6 @@ const layoutCell = (cell, settings, registry, maxWidth, cellBaseX) => {
     cellBaseX,
   });
 };
-
-const hasTableFragmentOwner = (line) =>
-  hasFragmentOwnerType(line, "table", line?.blockId) ||
-  (Array.isArray(line?.fragmentOwners)
-    ? line.fragmentOwners.some((owner) => owner?.role === "table")
-    : false);
 
 const drawTableChrome = ({ ctx, tableX, tableY, tableMeta }) => {
   if (!tableMeta || !Number.isFinite(tableMeta?.tableWidth) || !Number.isFinite(tableMeta?.tableHeight)) {
@@ -2050,22 +2044,6 @@ export const tableRenderer = {
         ),
       },
     };
-  },
-
-  renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }) {
-    const tableMeta = line.tableOwnerMeta || line.tableMeta;
-    if (tableMeta && !hasTableFragmentOwner(line)) {
-      const tableXOffset = Number.isFinite(tableMeta?.tableXOffset)
-        ? tableMeta.tableXOffset
-        : 0;
-      const tableX = pageX + layout.margin.left + tableXOffset;
-      const relativeY = typeof line.relativeY === "number" ? line.relativeY : 0;
-      const tableTop = tableMeta.tableTop || 0;
-      const tableY = pageTop + line.y - relativeY + tableTop;
-      drawTableChrome({ ctx, tableX, tableY, tableMeta });
-    }
-
-    defaultRender(line, pageX, pageTop, layout);
   },
   renderFragment({ ctx, fragment, pageX, pageTop }) {
     if (fragment?.role !== "table" || !fragment?.meta) {

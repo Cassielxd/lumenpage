@@ -1,5 +1,3 @@
-import { hasFragmentOwnerType } from "./fragmentOwners.js";
-
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
 export const horizontalRuleNodeSpec: any = {
@@ -187,21 +185,6 @@ export const horizontalRuleRenderer = {
       nextCursor: null,
       exhausted: true,
     };
-  },
-  renderLine({ ctx, line, pageX, pageTop, layout }: any) {
-    const width = Math.max(0, Number.isFinite(line?.width) ? Number(line.width) : 0);
-    const x = pageX + (Number.isFinite(line?.x) ? Number(line.x) : layout.margin.left);
-    const height = line.lineHeight ?? layout.lineHeight;
-    const y = pageTop + line.y + height / 2;
-    if (hasFragmentOwnerType(line, "horizontalRule", line?.blockId)) {
-      return;
-    }
-    ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + width, y);
-    ctx.stroke();
   },
   renderFragment({ ctx, fragment, pageX, pageTop, layout }: any) {
     if (fragment?.type !== "horizontalRule") {

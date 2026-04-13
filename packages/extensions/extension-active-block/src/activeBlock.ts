@@ -4,9 +4,27 @@ import { Decoration, DecorationSet } from "lumenpage-view-canvas";
 export type ActiveBlockPluginOptions = {
   includeTypes?: string[];
   excludeTypes?: string[];
+  backgroundColor?: string | null;
   borderColor?: string;
   borderWidth?: number;
+  borderTopWidth?: number;
+  borderRightWidth?: number;
+  borderBottomWidth?: number;
   borderLeftWidth?: number;
+};
+
+const DEFAULT_ACTIVE_BLOCK_BACKGROUND = "rgba(59, 230, 246, 0.12)";
+const DEFAULT_ACTIVE_BLOCK_BORDER_COLOR = "rgba(59, 230, 246, 0.8)";
+
+const resolveOptionalNumber = (value: unknown) =>
+  Number.isFinite(value) ? Number(value) : undefined;
+
+const resolveOptionalColor = (value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 };
 
 const resolveActiveTopLevelRange = (state: any) => {
@@ -62,12 +80,23 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
     return null;
   }
 
-  const borderColor = options.borderColor || "rgba(59,230,246,0.8)";
-  const borderLeftWidth = Number.isFinite(options.borderLeftWidth)
-    ? Number(options.borderLeftWidth)
-    : Number.isFinite(options.borderWidth)
-      ? Number(options.borderWidth)
-      : 1;
+  const backgroundColor =
+    options.backgroundColor === null
+      ? undefined
+      : resolveOptionalColor(options.backgroundColor) ?? DEFAULT_ACTIVE_BLOCK_BACKGROUND;
+  const borderWidth = resolveOptionalNumber(options.borderWidth);
+  const borderTopWidth = resolveOptionalNumber(options.borderTopWidth) ?? borderWidth;
+  const borderRightWidth = resolveOptionalNumber(options.borderRightWidth) ?? borderWidth;
+  const borderBottomWidth = resolveOptionalNumber(options.borderBottomWidth) ?? borderWidth;
+  const borderLeftWidth = resolveOptionalNumber(options.borderLeftWidth) ?? borderWidth;
+  const hasBorder =
+    borderTopWidth != null ||
+    borderRightWidth != null ||
+    borderBottomWidth != null ||
+    borderLeftWidth != null;
+  const borderColor = hasBorder
+    ? resolveOptionalColor(options.borderColor) ?? DEFAULT_ACTIVE_BLOCK_BORDER_COLOR
+    : undefined;
   const blockId =
     range.node?.attrs && typeof range.node.attrs === "object" && range.node.attrs.id != null
       ? String(range.node.attrs.id)
@@ -79,10 +108,13 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
       range.from,
       range.to,
       {
+        backgroundColor,
         borderColor,
-        borderWidth: undefined,
+        borderWidth: borderWidth ?? undefined,
+        borderTopWidth,
+        borderRightWidth,
+        borderBottomWidth,
         borderLeftWidth,
-        backgroundColor: undefined,
         blockId,
         nodeType,
         blockOutline: true,

@@ -1,4 +1,7 @@
-import { resolveNodeRendererCompatCapabilities } from "lumenpage-render-engine";
+import {
+  collectLineCompatContainerPassEntries,
+  type LineCompatContainerPassEntry,
+} from "./lineCompatContainerPass.js";
 import { resolveLineRenderPlan } from "./lineRenderPlan.js";
 import { getTextLineFragmentKey } from "./pageRenderFragments.js";
 
@@ -8,6 +11,7 @@ export type PageLineEntry = {
   renderer: any;
   renderPlan: ReturnType<typeof resolveLineRenderPlan>;
   textLineKey: string | null;
+  containerCompatEntries: LineCompatContainerPassEntry[];
 };
 
 export type PageCompatLineEntry = PageLineEntry & {
@@ -27,8 +31,13 @@ export const collectPageLineEntries = ({
   return pageLines.map((line): PageLineEntry => {
     const nodeView = nodeViewProvider?.(line);
     const renderer = registry?.get(line.blockType);
+    const containerCompatEntries = collectLineCompatContainerPassEntries({
+      line,
+      registry,
+    });
     const renderPlan = resolveLineRenderPlan(line, renderer, {
       hasNodeViewRender: !!nodeView?.render,
+      hasContainerCompatWork: containerCompatEntries.length > 0,
     });
     return {
       line,
@@ -36,6 +45,7 @@ export const collectPageLineEntries = ({
       renderer,
       renderPlan,
       textLineKey: getTextLineFragmentKey(line),
+      containerCompatEntries,
     };
   });
 };
@@ -54,20 +64,6 @@ export const buildLeafTextLineEntryMap = (lineEntries: PageLineEntry[]) => {
   return leafTextLineEntries;
 };
 
-const hasCompatContainerWork = (line: any, registry: any) => {
-  const containers = Array.isArray(line?.containers) ? line.containers : [];
-  if (containers.length === 0 || !registry) {
-    return false;
-  }
-  return containers.some((container) => {
-    const containerRenderer = registry.get(container?.type);
-    const compat = resolveNodeRendererCompatCapabilities(containerRenderer);
-    return (
-      typeof compat.renderContainer === "function" && compat.containerRenderMode !== "fragment"
-    );
-  });
-};
-
 export const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
   typeof entry.textLineKey === "string" &&
   entry.textLineKey.length > 0 &&
@@ -77,7 +73,7 @@ export const isLeafTextExpectedFromFragment = (entry: PageLineEntry) =>
   !entry.renderPlan.shouldRunNodeViewPass &&
   entry.renderPlan.usesDefaultTextLineRenderer;
 
-export const buildPageCompatLineEntries = (lineEntries: PageLineEntry[], registry: any) =>
+export const buildPageCompatLineEntries = (lineEntries: PageLineEntry[]) =>
   lineEntries
     .map((entry): PageCompatLineEntry => {
       const fragmentOwnsLeafText = isLeafTextExpectedFromFragment(entry);
@@ -87,13 +83,15 @@ export const buildPageCompatLineEntries = (lineEntries: PageLineEntry[], registr
       };
     })
     .filter((entry) => {
+      const hasContainerCompatWork =
+        Array.isArray(entry.containerCompatEntries) && entry.containerCompatEntries.length > 0;
       const hasRendererCompatWork =
         entry.renderPlan.shouldRunRendererLinePass && !entry.fragmentOwnsLeafText;
       const hasLeafTextCompatWork =
         entry.renderPlan.shouldRunLeafTextPass && !entry.fragmentOwnsLeafText;
 
       return (
-        hasCompatContainerWork(entry.line, registry) ||
+        hasContainerCompatWork ||
         entry.renderPlan.shouldRunListMarkerPass ||
         entry.renderPlan.shouldRunNodeViewPass ||
         hasRendererCompatWork ||
@@ -107,6 +105,8 @@ export const resolveCompatLineEntryRenderPlan = (
 ) =>
   resolveLineRenderPlan(entry.line, entry.renderer, {
     hasNodeViewRender: !!entry.nodeView?.render,
+    hasContainerCompatWork:
+      Array.isArray(entry.containerCompatEntries) && entry.containerCompatEntries.length > 0,
     hasLeafTextFragment:
       entry.fragmentOwnsLeafText &&
       typeof entry.textLineKey === "string" &&

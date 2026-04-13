@@ -5,7 +5,7 @@ import {
   type PopupController,
   type PopupControllerOptions,
   type PopupRect,
-} from "lumenpage-extension-popup";
+} from "lumenpage-popup-runtime";
 import {
   Suggestion,
   exitSuggestion,

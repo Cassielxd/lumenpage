@@ -1,24 +1,7 @@
-import type { PageCompatPassPlan, PageFragmentPassPlan, PageRenderPasses } from "./pageRenderTypes.js";
-import {
-  buildLeafTextLineEntryMap,
-  buildPageCompatLineEntries,
-  collectPageLineEntries,
-  isLeafTextExpectedFromFragment,
-  type PageLineEntry,
-} from "./pageLineEntries.js";
-import { getRendererPageFragments } from "./pageRenderFragments.js";
-
-const buildFragmentPassPlan = (lineEntries: PageLineEntry[], page: any): PageFragmentPassPlan => ({
-  pageFragments: getRendererPageFragments(page),
-  leafTextLineEntries: buildLeafTextLineEntryMap(lineEntries),
-  fragmentOwnedTextLineEntries: lineEntries.filter((entry) =>
-    isLeafTextExpectedFromFragment(entry)
-  ),
-});
-
-const buildCompatPassPlan = (lineEntries: PageLineEntry[], registry: any): PageCompatPassPlan => ({
-  lineEntries: buildPageCompatLineEntries(lineEntries, registry),
-});
+import type { PageRenderPasses } from "./pageRenderTypes.js";
+import { collectPageLineEntries } from "./pageLineEntries.js";
+import { createPageCompatPassPlan } from "./pageCompatPassFactory.js";
+import { createPageFragmentPassPlan } from "./pageFragmentPassFactory.js";
 
 export const createPageRenderPasses = ({
   page,
@@ -36,7 +19,12 @@ export const createPageRenderPasses = ({
   });
 
   return {
-    fragmentPass: buildFragmentPassPlan(lineEntries, page),
-    compatPass: buildCompatPassPlan(lineEntries, registry),
+    fragmentPass: createPageFragmentPassPlan({
+      page,
+      lineEntries,
+    }),
+    compatPass: createPageCompatPassPlan({
+      lineEntries,
+    }),
   };
 };

@@ -13,9 +13,9 @@
 
 位置：
 
-- `packages/extensions/extension-popup/src/popupLifecycle.ts`
-- `packages/extensions/extension-popup/src/popupController.ts`
-- `packages/extensions/extension-popup/src/coords.ts`
+- `packages/core/popup-runtime/src/popupLifecycle.ts`
+- `packages/core/popup-runtime/src/popupController.ts`
+- `packages/core/popup-runtime/src/coords.ts`
 
 核心能力：
 
@@ -64,7 +64,7 @@
 
 ## 开发约束
 
-1. 浮层扩展必须复用 `extension-popup` 的 controller 与 lifecycle，不允许每个扩展自行维护一套悬浮层状态机。
+1. 浮层扩展必须复用 `popup-runtime` 的 controller 与 lifecycle，不允许每个扩展自行维护一套悬浮层状态机。
 2. 浮层坐标必须先转换到 viewport，再交给 popup controller。
 3. 自定义 `render` 必须实现 `onExit`，或者保证 fallback hide 生效。
 4. 多实例场景必须按 view 维度隔离运行时，不允许模块级单例状态污染。

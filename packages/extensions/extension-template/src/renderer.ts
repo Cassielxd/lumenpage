@@ -12,6 +12,27 @@ const buildTemplateLayout = ({ node, settings }: { node: any; settings: any }) =
   const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
   const width = Math.max(1, Math.min(maxWidth, Math.min(560, maxWidth)));
   const height = 132;
+  const title = String(attrs.title || "").trim() || "Template";
+  const summary = String(attrs.summary || "").trim();
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    fragmentOwnerMeta: {
+      templateMeta: {
+        title,
+        summary,
+        items,
+      },
+    },
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -21,10 +42,10 @@ const buildTemplateLayout = ({ node, settings }: { node: any; settings: any }) =
     runs: [],
     x: settings.margin.left,
     blockType: "templateBlock",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     templateMeta: {
-      title: String(attrs.title || "").trim() || "Template",
-      summary: String(attrs.summary || "").trim(),
+      title,
+      summary,
       items,
       width,
       height,
@@ -34,9 +55,44 @@ const buildTemplateLayout = ({ node, settings }: { node: any; settings: any }) =
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
+};
+
+const drawTemplateBlock = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  title,
+  summary,
+  items,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  title: string;
+  summary: string;
+  items: string[];
+}) => {
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.strokeRect(x, y, width, height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 15px Arial";
+  ctx.fillText(title, x + 16, y + 24);
+  ctx.fillStyle = "#475569";
+  ctx.font = "13px Arial";
+  ctx.fillText(summary.slice(0, 84), x + 16, y + 48);
+  items.forEach((item, index) => {
+    ctx.fillStyle = "#334155";
+    ctx.fillText(`- ${item}`, x + 16, y + 76 + index * 18);
+  });
 };
 
 export const templateRenderer = {
@@ -53,24 +109,19 @@ export const templateRenderer = {
       blockAttrs: layout.blockAttrs,
     };
   },
-  renderLine({ ctx, line, pageX, pageTop }: any) {
-    const meta = line.templateMeta;
-    if (!meta) return;
-    const x = pageX + line.x;
-    const y = pageTop + line.y;
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(x, y, meta.width, meta.height);
-    ctx.strokeStyle = "#cbd5e1";
-    ctx.strokeRect(x, y, meta.width, meta.height);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 15px Arial";
-    ctx.fillText(meta.title, x + 16, y + 24);
-    ctx.fillStyle = "#475569";
-    ctx.font = "13px Arial";
-    ctx.fillText(meta.summary.slice(0, 84), x + 16, y + 48);
-    meta.items.forEach((item: string, index: number) => {
-      ctx.fillStyle = "#334155";
-      ctx.fillText(`- ${item}`, x + 16, y + 76 + index * 18);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "templateBlock") {
+      return;
+    }
+    drawTemplateBlock({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      title: String(fragment?.meta?.templateMeta?.title || "Template"),
+      summary: String(fragment?.meta?.templateMeta?.summary || ""),
+      items: Array.isArray(fragment?.meta?.templateMeta?.items) ? fragment.meta.templateMeta.items : [],
     });
   },
 };

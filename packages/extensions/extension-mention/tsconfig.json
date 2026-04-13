@@ -15,7 +15,7 @@
       "path": "../../core/core"
     },
     {
-      "path": "../extension-popup"
+      "path": "../../core/popup-runtime"
     },
     {
       "path": "../../core/suggestion"

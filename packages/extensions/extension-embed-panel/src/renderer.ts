@@ -33,10 +33,21 @@ const buildEmbedPanelLayout = ({ node, settings }: { node: any; settings: any })
     Math.min(maxWidth, resolvePositiveDimension(attrs.width) ?? Math.min(defaultSize.width, maxWidth)),
   );
   const height = Math.max(1, resolvePositiveDimension(attrs.height) ?? defaultSize.height);
+  const kind = String(attrs.kind || "diagram");
+  const title = trimText(attrs.title);
+  const source = trimText(attrs.source);
   const blockAttrs = {
     lineHeight: height,
     width,
     height,
+    fragmentOwnerMeta: {
+      embedPanelMeta: {
+        kind,
+        title,
+        source,
+        style,
+      },
+    },
     layoutCapabilities: {
       "visual-block": true,
     },
@@ -56,9 +67,9 @@ const buildEmbedPanelLayout = ({ node, settings }: { node: any; settings: any })
     blockType: "embedPanel",
     blockAttrs,
     embedPanelMeta: {
-      kind: String(attrs.kind || "diagram"),
-      title: trimText(attrs.title),
-      source: trimText(attrs.source),
+      kind,
+      title,
+      source,
       width,
       height,
       style,
@@ -71,6 +82,51 @@ const buildEmbedPanelLayout = ({ node, settings }: { node: any; settings: any })
     blockAttrs,
     length: 1,
   };
+};
+
+const drawEmbedPanelBlock = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  kind,
+  title,
+  source,
+  style,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  kind: string;
+  title: string;
+  source: string;
+  style: { border: string; background: string; accent: string; label: string };
+}) => {
+  ctx.fillStyle = style.background;
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = style.border;
+  ctx.strokeRect(x, y, width, height);
+  ctx.fillStyle = style.accent;
+  ctx.fillRect(x, y, width, Math.min(36, height));
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "13px Arial";
+  ctx.fillText(style.label, x + 14, y + 23);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "14px Arial";
+  ctx.fillText(title || style.label, x + 14, y + 58);
+  ctx.fillStyle = "#475569";
+  ctx.font = "12px Consolas, Courier New, monospace";
+  ctx.fillText(previewSource(source), x + 14, y + 84);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "12px Arial";
+  ctx.fillText(
+    kind ? "Stored as source, ready for renderer upgrade." : "Stored as source",
+    x + 14,
+    y + 108,
+  );
 };
 
 export const embedPanelRenderer = {
@@ -87,30 +143,20 @@ export const embedPanelRenderer = {
       blockAttrs: { ...layout.blockAttrs },
     };
   },
-  renderLine({ ctx, line, pageX, pageTop }: any) {
-    const meta = line.embedPanelMeta;
-    if (!meta) return;
-    const x = pageX + line.x;
-    const y = pageTop + line.y;
-    const width = meta.width;
-    const height = meta.height;
-    ctx.fillStyle = meta.style.background;
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = meta.style.border;
-    ctx.strokeRect(x, y, width, height);
-    ctx.fillStyle = meta.style.accent;
-    ctx.fillRect(x, y, width, Math.min(36, height));
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "13px Arial";
-    ctx.fillText(meta.style.label, x + 14, y + 23);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "14px Arial";
-    ctx.fillText(meta.title || meta.style.label, x + 14, y + 58);
-    ctx.fillStyle = "#475569";
-    ctx.font = "12px Consolas, Courier New, monospace";
-    ctx.fillText(previewSource(meta.source), x + 14, y + 84);
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px Arial";
-    ctx.fillText("Stored as source, ready for renderer upgrade.", x + 14, y + 108);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "embedPanel") {
+      return;
+    }
+    drawEmbedPanelBlock({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      kind: String(fragment?.meta?.embedPanelMeta?.kind || "diagram"),
+      title: String(fragment?.meta?.embedPanelMeta?.title || ""),
+      source: String(fragment?.meta?.embedPanelMeta?.source || ""),
+      style: fragment?.meta?.embedPanelMeta?.style || resolveKindStyle(fragment?.meta?.embedPanelMeta?.kind),
+    });
   },
 };

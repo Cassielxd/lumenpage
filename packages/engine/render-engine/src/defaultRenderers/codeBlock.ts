@@ -1,6 +1,5 @@
 import { breakLines } from "../lineBreaker.js";
 import { textblockToRuns } from "../textRuns.js";
-import { hasFragmentOwnerType } from "./fragmentOwners.js";
 
 const readIdAttr = (dom: Element | null) => dom?.getAttribute?.("data-node-id") || null;
 
@@ -342,59 +341,6 @@ export const codeBlockRenderer = {
       nextCursor,
       exhausted: !nextCursor,
     };
-  },
-  renderLine({ ctx, line, pageX, pageTop, layout, defaultRender }: any) {
-    const background = line.blockAttrs?.codeBlockBackground ?? "#f3f4f6";
-    const borderColor = line.blockAttrs?.codeBlockBorderColor ?? "#e5e7eb";
-    const width = Math.max(
-      0,
-      Number.isFinite(line.blockAttrs?.codeBlockOuterWidth)
-        ? Number(line.blockAttrs.codeBlockOuterWidth)
-        : layout.pageWidth - layout.margin.left - layout.margin.right,
-    );
-    const x =
-      pageX +
-      (Number.isFinite(line.blockAttrs?.codeBlockOuterX)
-        ? Number(line.blockAttrs.codeBlockOuterX)
-        : layout.margin.left);
-    const y = pageTop + line.y;
-    const height = line.lineHeight ?? layout.lineHeight;
-    if (hasFragmentOwnerType(line, "codeBlock", line?.blockId)) {
-      if (defaultRender) {
-        defaultRender(line, pageX, pageTop, layout);
-      }
-      return;
-    }
-    const lineIndex = Number.isFinite(line.blockAttrs?.codeBlockLineIndex)
-      ? line.blockAttrs.codeBlockLineIndex
-      : 0;
-    const lineCount = Number.isFinite(line.blockAttrs?.codeBlockLineCount)
-      ? line.blockAttrs.codeBlockLineCount
-      : 1;
-    const isFirst = lineIndex === 0;
-    const isLast = lineIndex === Math.max(0, lineCount - 1);
-    const isPageTop = line.y <= layout.margin.top + 0.5;
-    ctx.fillStyle = background;
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y + height);
-    ctx.moveTo(x + width, y);
-    ctx.lineTo(x + width, y + height);
-    if (isFirst || isPageTop) {
-      ctx.moveTo(x, y);
-      ctx.lineTo(x + width, y);
-    }
-    if (isLast) {
-      ctx.moveTo(x, y + height);
-      ctx.lineTo(x + width, y + height);
-    }
-    ctx.stroke();
-    if (defaultRender) {
-      defaultRender(line, pageX, pageTop, layout);
-    }
   },
   renderFragment({ ctx, fragment, pageX, pageTop }: any) {
     if (fragment?.type !== "codeBlock") {

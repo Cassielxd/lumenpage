@@ -12,6 +12,25 @@ const buildOptionBoxLayout = ({ node, settings }: { node: any; settings: any }) 
   const maxWidth = settings.pageWidth - settings.margin.left - settings.margin.right;
   const width = Math.max(1, Math.min(maxWidth, Math.min(520, maxWidth)));
   const height = Math.max(96, 52 + items.length * 22);
+  const title = String(attrs.title || "").trim() || "Options";
+  const blockAttrs = {
+    lineHeight: height,
+    width,
+    height,
+    fragmentOwnerMeta: {
+      optionBoxMeta: {
+        title,
+        items,
+      },
+    },
+    layoutCapabilities: {
+      "visual-block": true,
+    },
+    visualBounds: {
+      x: settings.margin.left,
+      width,
+    },
+  };
   const line = {
     text: "",
     start: 0,
@@ -21,9 +40,9 @@ const buildOptionBoxLayout = ({ node, settings }: { node: any; settings: any }) 
     runs: [],
     x: settings.margin.left,
     blockType: "optionBox",
-    blockAttrs: { lineHeight: height, width, height },
+    blockAttrs,
     optionBoxMeta: {
-      title: String(attrs.title || "").trim() || "Options",
+      title,
       items,
       width,
       height,
@@ -33,9 +52,43 @@ const buildOptionBoxLayout = ({ node, settings }: { node: any; settings: any }) 
     width,
     height,
     line,
-    blockAttrs: { width, height, lineHeight: height },
+    blockAttrs,
     length: 1,
   };
+};
+
+const drawOptionBoxBlock = ({
+  ctx,
+  x,
+  y,
+  width,
+  height,
+  title,
+  items,
+}: {
+  ctx: any;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  title: string;
+  items: string[];
+}) => {
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#94a3b8";
+  ctx.strokeRect(x, y, width, height);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 14px Arial";
+  ctx.fillText(title, x + 16, y + 24);
+  ctx.font = "13px Arial";
+  ctx.fillStyle = "#334155";
+  items.forEach((item, index) => {
+    const itemY = y + 50 + index * 22;
+    ctx.strokeStyle = "#64748b";
+    ctx.strokeRect(x + 16, itemY - 10, 12, 12);
+    ctx.fillText(item, x + 36, itemY);
+  });
 };
 
 export const optionBoxRenderer = {
@@ -52,25 +105,18 @@ export const optionBoxRenderer = {
       blockAttrs: layout.blockAttrs,
     };
   },
-  renderLine({ ctx, line, pageX, pageTop }: any) {
-    const meta = line.optionBoxMeta;
-    if (!meta) return;
-    const x = pageX + line.x;
-    const y = pageTop + line.y;
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(x, y, meta.width, meta.height);
-    ctx.strokeStyle = "#94a3b8";
-    ctx.strokeRect(x, y, meta.width, meta.height);
-    ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 14px Arial";
-    ctx.fillText(meta.title, x + 16, y + 24);
-    ctx.font = "13px Arial";
-    ctx.fillStyle = "#334155";
-    meta.items.forEach((item: string, index: number) => {
-      const itemY = y + 50 + index * 22;
-      ctx.strokeStyle = "#64748b";
-      ctx.strokeRect(x + 16, itemY - 10, 12, 12);
-      ctx.fillText(item, x + 36, itemY);
+  renderFragment({ ctx, fragment, pageX, pageTop }: any) {
+    if (fragment?.type !== "optionBox") {
+      return;
+    }
+    drawOptionBoxBlock({
+      ctx,
+      x: pageX + (Number(fragment?.x) || 0),
+      y: pageTop + (Number(fragment?.y) || 0),
+      width: Number(fragment?.width) || 0,
+      height: Number(fragment?.height) || 0,
+      title: String(fragment?.meta?.optionBoxMeta?.title || "Options"),
+      items: Array.isArray(fragment?.meta?.optionBoxMeta?.items) ? fragment.meta.optionBoxMeta.items : [],
     });
   },
 };

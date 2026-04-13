@@ -25,5 +25,7 @@ export type {
   PageFragmentPassPlan,
   PageRenderPasses,
 } from "./pageRenderTypes.js";
+export { createPageCompatPassPlan } from "./pageCompatPassFactory.js";
+export { createPageFragmentPassPlan } from "./pageFragmentPassFactory.js";
 export { getRendererPageFragments, getTextLineFragmentKey, isTextLineFragment } from "./pageRenderFragments.js";
 export { buildLeafTextLineEntryMap, collectPageLineEntries, isLeafTextExpectedFromFragment } from "./pageLineEntries.js";

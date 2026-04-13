@@ -132,7 +132,7 @@
    - `packages/extensions/extension-table/src/*`
    - `packages/engine/layout-engine/src/engine.ts`
 2. 浮层、mention、bubble-menu 问题
-   - `packages/extensions/extension-popup/src/*`
+   - `packages/core/popup-runtime/src/*`
    - `packages/extensions/extension-mention/src/*`
    - `packages/extensions/extension-bubble-menu/src/*`
 3. 默认 canvas 渲染问题

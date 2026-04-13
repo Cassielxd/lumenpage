@@ -115,7 +115,7 @@
                            "path":  "packages/extensions/extension-paragraph"
                        },
                        {
-                           "path":  "packages/extensions/extension-popup"
+                           "path":  "packages/core/popup-runtime"
                        },
                        {
                            "path":  "packages/extensions/extension-bubble-menu"

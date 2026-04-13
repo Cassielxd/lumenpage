@@ -22,7 +22,7 @@
 ## 依赖关系
 ### Workspace 依赖
 - `lumenpage-core`
-- `lumenpage-extension-popup`
+- `lumenpage-popup-runtime`
 - `lumenpage-state`
 - `lumenpage-suggestion`
 

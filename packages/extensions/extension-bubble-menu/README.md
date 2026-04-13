@@ -23,7 +23,7 @@
 ## 依赖关系
 ### Workspace 依赖
 - `lumenpage-core`
-- `lumenpage-extension-popup`
+- `lumenpage-popup-runtime`
 - `lumenpage-state`
 
 ### 第三方依赖
@@ -47,4 +47,3 @@ const editor = new Editor({
 
 ## 备注
 - 无额外备注。
-

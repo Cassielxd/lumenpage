@@ -25,7 +25,7 @@ importers:
         specifier: ^3.3.3
         version: 3.8.1
       typescript:
-        specifier: ^5.5.4
+        specifier: ^5.9.3
         version: 5.9.3
 
   apps/backend-server:
@@ -479,6 +479,16 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  packages/core/popup-runtime:
+    dependencies:
+      '@floating-ui/dom':
+        specifier: 1.7.4
+        version: 1.7.4
+    devDependencies:
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/core/starter-kit:
     dependencies:
       lumenpage-core:
@@ -723,9 +733,9 @@ importers:
       lumenpage-core:
         specifier: workspace:*
         version: link:../../core/core
-      lumenpage-extension-popup:
+      lumenpage-popup-runtime:
         specifier: workspace:*
-        version: link:../extension-popup
+        version: link:../../core/popup-runtime
       lumenpage-state:
         specifier: workspace:*
         version: link:../../lp/state
@@ -1090,9 +1100,9 @@ importers:
       lumenpage-core:
         specifier: workspace:*
         version: link:../../core/core
-      lumenpage-extension-popup:
+      lumenpage-popup-runtime:
         specifier: workspace:*
-        version: link:../extension-popup
+        version: link:../../core/popup-runtime
       lumenpage-state:
         specifier: workspace:*
         version: link:../../lp/state
@@ -1165,16 +1175,6 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
-  packages/extensions/extension-popup:
-    dependencies:
-      '@floating-ui/dom':
-        specifier: 1.7.4
-        version: 1.7.4
-    devDependencies:
-      typescript:
-        specifier: ^5.5.4
-        version: 5.9.3
-
   packages/extensions/extension-seal:
     dependencies:
       lumenpage-core:
@@ -1212,9 +1212,9 @@ importers:
       lumenpage-core:
         specifier: workspace:*
         version: link:../../core/core
-      lumenpage-extension-popup:
+      lumenpage-popup-runtime:
         specifier: workspace:*
-        version: link:../extension-popup
+        version: link:../../core/popup-runtime
       lumenpage-state:
         specifier: workspace:*
         version: link:../../lp/state

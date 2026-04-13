@@ -1,3 +1,7 @@
+import { resolveNodeRendererRenderCapabilities } from "lumenpage-render-engine";
+import type { PageFragmentPassPlan } from "./pageRenderTypes.js";
+import { getRendererLinePaintEntriesSignature } from "./pageLineEntrySignature.js";
+
 const hashNumber = (hash: number, value: unknown) => {
   const num = Number.isFinite(value) ? Math.round(Number(value)) : 0;
 
@@ -157,6 +161,31 @@ export const getRendererFragmentTreePaintSignature = ({
   hash = hashNumber(hash, nodeSignatures.length);
   for (const nodeSignature of nodeSignatures) {
     hash = hashNumber(hash, nodeSignature);
+  }
+  return hash >>> 0;
+};
+
+export const getRendererFragmentPassSignature = ({
+  fragmentPass,
+  registry,
+}: {
+  fragmentPass: PageFragmentPassPlan;
+  registry: any;
+}) => {
+  let hash = getRendererFragmentTreePaintSignature({
+    nodes: fragmentPass.pageFragments || null,
+    registry,
+    hasVisualSelf: (node, targetRegistry) => {
+      const fragmentRenderer = node?.type ? targetRegistry?.get(node.type) : null;
+      const render = resolveNodeRendererRenderCapabilities(fragmentRenderer);
+      return typeof render.renderFragment === "function";
+    },
+  });
+  if (fragmentPass.fragmentOwnedTextLineEntries.length > 0) {
+    hash = hashNumber(
+      hash,
+      getRendererLinePaintEntriesSignature(fragmentPass.fragmentOwnedTextLineEntries)
+    );
   }
   return hash >>> 0;
 };
