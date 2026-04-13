@@ -62,12 +62,12 @@ const createActiveBlockDecorations = (state: any, options: ActiveBlockPluginOpti
     return null;
   }
 
-  const borderColor = options.borderColor || "rgba(59, 130, 246, 0.8)";
+  const borderColor = options.borderColor || "rgba(59,230,246,0.8)";
   const borderLeftWidth = Number.isFinite(options.borderLeftWidth)
     ? Number(options.borderLeftWidth)
     : Number.isFinite(options.borderWidth)
       ? Number(options.borderWidth)
-      : 3;
+      : 1;
   const blockId =
     range.node?.attrs && typeof range.node.attrs === "object" && range.node.attrs.id != null
       ? String(range.node.attrs.id)
