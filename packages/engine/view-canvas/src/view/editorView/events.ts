@@ -12,6 +12,8 @@ export const createViewEventHandlers = ({
   consumeSkipNextClickSelection,
   focusInput,
   handleDecorationClick,
+  hasClickableDecorationAt,
+  setRootCursor,
   debugLog,
   updateStatus,
   updateCaret,
@@ -29,6 +31,8 @@ export const createViewEventHandlers = ({
   consumeSkipNextClickSelection: () => boolean;
   focusInput: () => void;
   handleDecorationClick: (event: any, coords: any) => boolean;
+  hasClickableDecorationAt: (coords: any) => boolean;
+  setRootCursor: (value: string) => void;
   debugLog: (...args: any[]) => void;
   updateStatus: () => void;
   updateCaret: (updatePreferred: boolean) => void;
@@ -46,6 +50,8 @@ export const createViewEventHandlers = ({
     consumeSkipNextClickSelection,
     focusInput,
     handleDecorationClick,
+    hasClickableDecorationAt,
+    setRootCursor,
     debugLog,
     eventTiming,
   });

@@ -33,6 +33,7 @@ export const createEditorViewInteractionRuntime = ({
   updateCaret,
   scheduleRender,
   handleDecorationClick,
+  hasClickableDecorationAt,
   debugLog,
 }: {
   view: any;
@@ -57,6 +58,7 @@ export const createEditorViewInteractionRuntime = ({
   updateCaret: (updatePreferred: boolean) => void;
   scheduleRender: () => void;
   handleDecorationClick: (event: any, coords: any) => boolean;
+  hasClickableDecorationAt: (coords: any) => boolean;
   debugLog: (...args: any[]) => void;
 }) => {
   const { setSelectionFromHit, setNodeSelectionAtPos } = createSelectionInteractions({
@@ -234,6 +236,10 @@ export const createEditorViewInteractionRuntime = ({
       }
     },
     handleDecorationClick,
+    hasClickableDecorationAt,
+    setRootCursor: (value: string) => {
+      dom.root.style.cursor = value;
+    },
     debugLog,
     updateStatus,
     updateCaret,

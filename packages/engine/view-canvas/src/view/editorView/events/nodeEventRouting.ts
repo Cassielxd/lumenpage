@@ -43,6 +43,8 @@ export const createNodeEventRouting = ({
   consumeSkipNextClickSelection,
   focusInput,
   handleDecorationClick,
+  hasClickableDecorationAt,
+  setRootCursor,
   debugLog,
   eventTiming = false,
 }: {
@@ -54,6 +56,8 @@ export const createNodeEventRouting = ({
   consumeSkipNextClickSelection: () => boolean;
   focusInput: () => void;
   handleDecorationClick: (event: any, coords: any) => boolean;
+  hasClickableDecorationAt: (coords: any) => boolean;
+  setRootCursor: (value: string) => void;
   debugLog: (...args: any[]) => void;
   eventTiming?: boolean;
 }) => {
@@ -155,6 +159,19 @@ export const createNodeEventRouting = ({
     }
   };
 
+  const onPointerHover = (event: any) => {
+    try {
+      const coords = getEventCoords(event);
+      setRootCursor(hasClickableDecorationAt(coords) ? "pointer" : "");
+    } catch (_error) {
+      setRootCursor("");
+    }
+  };
+
+  const onPointerLeave = () => {
+    setRootCursor("");
+  };
+
   const onRootFocus = () => {
     const startedAt = eventTiming ? now() : 0;
     focusInput();
@@ -164,6 +181,8 @@ export const createNodeEventRouting = ({
   return {
     onClickFocus,
     onDoubleClick,
+    onPointerHover,
+    onPointerLeave,
     onRootFocus,
   };
 };

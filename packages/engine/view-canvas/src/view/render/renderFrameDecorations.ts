@@ -1,5 +1,8 @@
 import { buildDecorationDrawData } from "./decorations.js";
-import { handleDecorationWidgetClick } from "./decorationWidgetHitTesting.js";
+import {
+  handleDecorationWidgetClick,
+  hitTestDecorationWidgetAtCoords,
+} from "./decorationWidgetHitTesting.js";
 import { now } from "../debugTrace.js";
 
 type CreateRenderFrameDecorationsArgs = {
@@ -125,5 +128,12 @@ export const createRenderFrameDecorations = ({
         coords,
         widgets: lastDecorationData?.widgets ?? null,
       }),
+    hasClickableDecorationAt: ({ coords }: { coords: any }) => {
+      const hit = hitTestDecorationWidgetAtCoords({
+        widgets: lastDecorationData?.widgets ?? null,
+        coords,
+      });
+      return typeof hit?.widget?.decoration?.spec?.onClick === "function";
+    },
   };
 };

@@ -150,6 +150,10 @@ export const createRenderFrameCoordinator = ({
         event,
         coords,
       }),
+    hasClickableDecorationAt: (coords: any) =>
+      decorationFrame.hasClickableDecorationAt({
+        coords,
+      }),
     onLayoutApplied: (layout: any) => {
       lastLayoutPageCount = layout?.pages?.length ?? 0;
     },

@@ -203,6 +203,8 @@ export const createRenderSync = ({
     updateLayout: scheduling.updateLayout,
     handleDecorationClick: (event: any, coords: any) =>
       renderFrameCoordinator?.handleDecorationClick(event, coords) === true,
+    hasClickableDecorationAt: (coords: any) =>
+      renderFrameCoordinator?.hasClickableDecorationAt(coords) === true,
     syncAfterStateChange,
     dispatchTransaction,
     requestScrollIntoView,
