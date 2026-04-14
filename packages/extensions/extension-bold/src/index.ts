@@ -1,4 +1,4 @@
-import { Mark } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Mark } from "lumenpage-core";
 
 type BoldCommands<ReturnType> = {
   setBold: () => ReturnType;
@@ -20,6 +20,11 @@ export const Bold = Mark.create({
       setBold: () => ({ commands }) => commands.setMark(this.name),
       toggleBold: () => ({ commands }) => commands.toggleMark(this.name),
       unsetBold: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleBold[0]]: () => this.editor.commands.toggleBold(),
     };
   },
   parseHTML() {

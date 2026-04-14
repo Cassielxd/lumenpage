@@ -1,4 +1,4 @@
-import { Mark } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Mark } from "lumenpage-core";
 
 type ItalicCommands<ReturnType> = {
   setItalic: () => ReturnType;
@@ -20,6 +20,11 @@ export const Italic = Mark.create({
       setItalic: () => ({ commands }) => commands.setMark(this.name),
       toggleItalic: () => ({ commands }) => commands.toggleMark(this.name),
       unsetItalic: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleItalic[0]]: () => this.editor.commands.toggleItalic(),
     };
   },
   parseHTML() {

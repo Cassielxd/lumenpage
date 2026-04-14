@@ -43,11 +43,20 @@ const resolveRelativeTsSpecifier = (specifier, parentURL) => {
   const basePath = specifier.startsWith("/")
     ? specifier
     : path.resolve(path.dirname(parentPath), specifier);
+  const strippedJsBasePath = basePath.replace(/\.(?:[cm]?js)$/i, "");
 
   const directCandidate = resolveFileCandidate(basePath);
 
   if (directCandidate) {
     return directCandidate;
+  }
+
+  if (strippedJsBasePath !== basePath) {
+    const strippedCandidate = resolveFileCandidate(`${strippedJsBasePath}.ts`);
+
+    if (strippedCandidate) {
+      return strippedCandidate;
+    }
   }
 
   for (const extension of [".ts", ".js", ".mjs"]) {

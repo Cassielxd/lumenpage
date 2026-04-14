@@ -1,4 +1,4 @@
-import { Node } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Node } from "lumenpage-core";
 import { createToggleListCommand, listNodeSpecs } from "lumenpage-extension-list-item";
 
 type OrderedListCommands<ReturnType> = {
@@ -21,6 +21,11 @@ export const OrderedList = Node.create({
   addCommands() {
     return {
       toggleOrderedList: () => createToggleListCommand(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleOrderedList[0]]: () => this.editor.commands.toggleOrderedList(),
     };
   },
 });

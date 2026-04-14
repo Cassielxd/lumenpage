@@ -1,4 +1,4 @@
-import { Node } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Node } from "lumenpage-core";
 import { createToggleListCommand, listNodeSpecs } from "lumenpage-extension-list-item";
 
 type BulletListCommands<ReturnType> = {
@@ -21,6 +21,11 @@ export const BulletList = Node.create({
   addCommands() {
     return {
       toggleBulletList: () => createToggleListCommand(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleBulletList[0]]: () => this.editor.commands.toggleBulletList(),
     };
   },
 });

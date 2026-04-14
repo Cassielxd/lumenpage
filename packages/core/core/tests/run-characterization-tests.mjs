@@ -13,3 +13,4 @@ await import("./paste-rule.characterization.test.mjs");
 await import("./delete-selection.characterization.test.mjs");
 await import("./pagination-reuse.characterization.test.mjs");
 await import("./list-item-backspace.characterization.test.mjs");
+await import("./keyboard-shortcuts.characterization.test.mjs");

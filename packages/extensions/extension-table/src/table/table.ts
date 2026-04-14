@@ -1,4 +1,4 @@
-import { Node } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Node } from "lumenpage-core";
 import { NodeSelection } from "lumenpage-state";
 import {
   addTableColumnAfter,
@@ -148,6 +148,8 @@ export const Table = Node.create({
       "Shift-Backspace": handleBackward,
       Delete: handleForward,
       "Mod-Delete": handleForward,
+      [EDITOR_SHORTCUTS.nextTableCell[0]]: () => this.editor.commands.goToNextTableCell(),
+      [EDITOR_SHORTCUTS.previousTableCell[0]]: () => this.editor.commands.goToPreviousTableCell(),
     };
   },
   addCommands() {

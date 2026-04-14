@@ -40,6 +40,7 @@ import {
 import { DragHandleExtension } from "lumenpage-extension-drag-handle";
 import { EmbedPanelBrowserViewExtension } from "lumenpage-extension-embed-panel/browser";
 import { MentionExtension } from "lumenpage-extension-mention";
+import ContextMenu from "lumenpage-extension-context-menu";
 import { SlashCommandExtension } from "lumenpage-extension-slash-command";
 import * as Y from "yjs";
 
@@ -50,6 +51,8 @@ import {
   createLumenCollaborationRuntime,
   type LumenCollaborationState,
 } from "./collaboration";
+import { createLumenContextMenuItems } from "./contextMenuCase";
+import { createLumenContextMenuRenderer } from "./contextMenuRenderer";
 import { PaginationDocWorkerClient } from "./paginationDocWorkerClient";
 import { createPlaygroundPermissionPlugin } from "./permissionPlugin";
 import { createPlaygroundI18n } from "./i18n";
@@ -79,6 +82,7 @@ type MountPlaygroundEditorParams = {
   onDocumentLockStateChange?: ((snapshot: DocumentLockStateSnapshot) => void) | null;
   onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
   onDocumentChange?: ((snapshot: { docChanged: boolean }) => void) | null;
+  onManualSave?: (() => Promise<boolean> | boolean | void) | null;
   onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
 };
 
@@ -557,6 +561,7 @@ export const mountPlaygroundEditor = ({
   onDocumentLockStateChange,
   onTrackChangeStateChange,
   onDocumentChange,
+  onManualSave,
   onStatsChange,
 }: MountPlaygroundEditorParams): MountedPlaygroundEditor => {
   const findPageIndexForOffset = (layout: any, offset: number, layoutIndex: any = null) => {
@@ -640,6 +645,8 @@ export const mountPlaygroundEditor = ({
 
   const bubbleMenuElement = host.ownerDocument.createElement("div");
   const bubbleMenuRenderer = createLumenBubbleMenuRenderer({ locale: flags.locale });
+  const contextMenuElement = host.ownerDocument.createElement("div");
+  const contextMenuRenderer = createLumenContextMenuRenderer();
 
   const extensions = [
     ...createLumenDocumentExtensions({
@@ -665,6 +672,12 @@ export const mountPlaygroundEditor = ({
     ActiveBlockSelectionExtension,
     MentionExtension.configure(createMentionPluginOptions()),
     SlashCommandExtension.configure(createSlashCommandOptions(flags.locale)),
+    ContextMenu.configure({
+      element: contextMenuElement,
+      render: contextMenuRenderer,
+      items: createLumenContextMenuItems({ locale: flags.locale }),
+      shouldShow: ({ editor }) => getPermissionMode() === "full" && editor.isEditable === true,
+    }),
     BubbleMenu.configure({
       element: bubbleMenuElement,
       render: bubbleMenuRenderer,
@@ -776,6 +789,16 @@ export const mountPlaygroundEditor = ({
       }
 
       const isMod = !!event?.metaKey || !!event?.ctrlKey;
+      const normalizedKey = String(event?.key || "").toLowerCase();
+      const isManualSaveKey =
+        isMod && !event?.altKey && !event?.shiftKey && normalizedKey === "s";
+      if (isManualSaveKey) {
+        event?.preventDefault?.();
+        void Promise.resolve(onManualSave?.()).catch((error) => {
+          console.error("[lumen] manual save shortcut failed", error);
+        });
+        return true;
+      }
       const isEnter = event?.key === "Enter";
       if (!isMod || !isEnter) {
         return false;

@@ -1,4 +1,4 @@
-import { Mark } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Mark } from "lumenpage-core";
 
 type StrikeCommands<ReturnType> = {
   setStrike: () => ReturnType;
@@ -20,6 +20,11 @@ export const Strike = Mark.create({
       setStrike: () => ({ commands }) => commands.setMark(this.name),
       toggleStrike: () => ({ commands }) => commands.toggleMark(this.name),
       unsetStrike: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleStrike[0]]: () => this.editor.commands.toggleStrike(),
     };
   },
   parseHTML() {

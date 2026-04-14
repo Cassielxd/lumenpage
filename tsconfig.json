@@ -67,6 +67,9 @@
                            "path":  "packages/extensions/extension-document-lock"
                        },
                        {
+                           "path":  "packages/extensions/extension-context-menu"
+                       },
+                       {
                            "path":  "packages/extensions/extension-embed-panel"
                        },
                        {

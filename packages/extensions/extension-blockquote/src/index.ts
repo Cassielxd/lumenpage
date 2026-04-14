@@ -1,4 +1,4 @@
-import { Node } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Node } from "lumenpage-core";
 import { blockquoteNodeSpec } from "./blockquote.js";
 
 type BlockquoteCommands<ReturnType> = {
@@ -43,6 +43,11 @@ export const Blockquote = Node.create({
 
           return false;
         },
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleBlockquote[0]]: () => this.editor.commands.toggleBlockquote(),
     };
   },
   parseHTML() {

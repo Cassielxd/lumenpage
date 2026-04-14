@@ -29,7 +29,7 @@ export const useWorkspaceSnapshotPersistence = ({
   let observedSnapshotDocument: Y.Doc | null = null;
   let detachSnapshotObserver: (() => void) | null = null;
   let snapshotSaveTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  let snapshotSavePromise: Promise<void> | null = null;
+  let snapshotSavePromise: Promise<boolean> | null = null;
   let pendingSnapshotSave = false;
   let lastSnapshotSaveError = "";
 
@@ -78,18 +78,25 @@ export const useWorkspaceSnapshotPersistence = ({
     lastSnapshotSaveError = "";
   };
 
-  const flushWorkspaceSnapshotSave = async () => {
+  const runWorkspaceSnapshotSave = async (options?: { force?: boolean }) => {
     clearSnapshotSaveTimer();
-    if (!pendingSnapshotSave) {
-      if (snapshotSavePromise) {
-        await snapshotSavePromise;
+    if (snapshotSavePromise) {
+      const inFlightResult = await snapshotSavePromise;
+      if (!pendingSnapshotSave && options?.force !== true) {
+        return inFlightResult;
       }
-      return;
+    }
+    if (!pendingSnapshotSave && options?.force !== true) {
+      return false;
     }
     pendingSnapshotSave = false;
+    if (!canPersistLocalSnapshot()) {
+      return false;
+    }
     snapshotSavePromise = (async () => {
       try {
         await saveWorkspaceSnapshot();
+        return true;
       } catch (error) {
         const message =
           error instanceof Error ? error.message || saveFailedMessage.value : saveFailedMessage.value;
@@ -97,11 +104,20 @@ export const useWorkspaceSnapshotPersistence = ({
           onSaveError(message);
           lastSnapshotSaveError = message;
         }
+        return false;
       } finally {
         snapshotSavePromise = null;
       }
     })();
-    await snapshotSavePromise;
+    return await snapshotSavePromise;
+  };
+
+  const flushWorkspaceSnapshotSave = async () => {
+    return await runWorkspaceSnapshotSave();
+  };
+
+  const saveWorkspaceSnapshotNow = async () => {
+    return await runWorkspaceSnapshotSave({ force: true });
   };
 
   const scheduleWorkspaceSnapshotSave = () => {
@@ -153,6 +169,7 @@ export const useWorkspaceSnapshotPersistence = ({
 
   return {
     flushWorkspaceSnapshotSave,
+    saveWorkspaceSnapshotNow,
     scheduleWorkspaceSnapshotSave,
     setSnapshotDocument,
     resetWorkspaceSnapshotPersistence,

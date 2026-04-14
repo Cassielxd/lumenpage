@@ -102,6 +102,7 @@ type UseWorkspaceEditorRuntimeOptions = {
   onDocumentLockStateChange?: ((snapshot: DocumentLockStateSnapshot) => void) | null;
   onTrackChangeStateChange?: ((snapshot: TrackChangeStateSnapshot) => void) | null;
   onDocumentChange?: ((snapshot: { docChanged: boolean }) => void) | null;
+  onManualSave?: (() => Promise<boolean> | boolean | void) | null;
   onStatsChange?: ((stats: EditorStatsSnapshot) => void) | null;
 };
 
@@ -216,6 +217,7 @@ export const useWorkspaceEditorRuntime = ({
   onDocumentLockStateChange,
   onTrackChangeStateChange,
   onDocumentChange,
+  onManualSave,
   onStatsChange,
 }: UseWorkspaceEditorRuntimeOptions) => {
   const editor = shallowRef<LumenEditor | null>(null);
@@ -434,6 +436,7 @@ export const useWorkspaceEditorRuntime = ({
       },
       onTrackChangeStateChange: onTrackChangeStateChange || undefined,
       onDocumentChange: onDocumentChange || undefined,
+      onManualSave: onManualSave || undefined,
       onStatsChange: onStatsChange || undefined,
     });
     attachMountedEditor(mounted, runtimeFlags);

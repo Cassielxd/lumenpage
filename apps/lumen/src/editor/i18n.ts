@@ -509,6 +509,66 @@ export type PlaygroundI18n = {
     jump: string;
     unlockOne: string;
   };
+  contextMenu: {
+    undo: string;
+    redo: string;
+    textStyles: string;
+    toggleBold: string;
+    toggleItalic: string;
+    toggleUnderline: string;
+    toggleStrike: string;
+    toggleInlineCode: string;
+    toggleSubscript: string;
+    toggleSuperscript: string;
+    paragraphActions: string;
+    toggleTaskList: string;
+    alignActions: string;
+    alignLeft: string;
+    alignCenter: string;
+    alignRight: string;
+    selectAll: string;
+    transformBlock: string;
+    turnToParagraph: string;
+    turnToHeading1: string;
+    turnToHeading2: string;
+    turnToHeading3: string;
+    turnToBlockquote: string;
+    turnToCodeBlock: string;
+    turnToBulletList: string;
+    turnToOrderedList: string;
+    deleteCurrentBlock: string;
+    linkActions: string;
+    openLink: string;
+    copyLink: string;
+    unsetLink: string;
+    tableActions: string;
+    addTableRowBefore: string;
+    addTableRowAfter: string;
+    deleteTableRow: string;
+    addTableColumnBefore: string;
+    addTableColumnAfter: string;
+    deleteTableColumn: string;
+    mergeTableCellRight: string;
+    splitTableCell: string;
+    mergeSelectedTableCells: string;
+    deleteCurrentTable: string;
+    trackChanges: string;
+    enableTrackChanges: string;
+    disableTrackChanges: string;
+    focusCurrentChange: string;
+    acceptCurrentChange: string;
+    rejectCurrentChange: string;
+    acceptAllChanges: string;
+    rejectAllChanges: string;
+    lockSelection: string;
+    unlockCurrent: string;
+    clearAllLocks: string;
+    lockSettings: string;
+    enableProtection: string;
+    disableProtection: string;
+    showLockMarkers: string;
+    hideLockMarkers: string;
+  };
   layoutActions: {
     lineHeightTitle: string;
     lineHeightLabel: string;
@@ -2035,6 +2095,67 @@ PLAYGROUND_I18N["zh-CN"].documentLockPanel = {
   unlockOne: "\u89e3\u9501",
 };
 
+PLAYGROUND_I18N["zh-CN"].contextMenu = {
+  undo: "\u64a4\u9500",
+  redo: "\u91cd\u505a",
+  textStyles: "\u6587\u5b57\u6837\u5f0f",
+  toggleBold: "\u52a0\u7c97",
+  toggleItalic: "\u659c\u4f53",
+  toggleUnderline: "\u4e0b\u5212\u7ebf",
+  toggleStrike: "\u5220\u9664\u7ebf",
+  toggleInlineCode: "\u884c\u5185\u4ee3\u7801",
+  toggleSubscript: "\u4e0b\u6807",
+  toggleSuperscript: "\u4e0a\u6807",
+  paragraphActions: "\u6bb5\u843d",
+  toggleTaskList: "\u4efb\u52a1\u5217\u8868",
+  alignActions: "\u5bf9\u9f50\u65b9\u5f0f",
+  alignLeft: "\u5de6\u5bf9\u9f50",
+  alignCenter: "\u5c45\u4e2d\u5bf9\u9f50",
+  alignRight: "\u53f3\u5bf9\u9f50",
+  selectAll: "\u5168\u9009",
+  transformBlock: "\u5757\u64cd\u4f5c",
+  turnToParagraph: "\u8f6c\u4e3a\u6b63\u6587",
+  turnToHeading1: "\u8f6c\u4e3a\u6807\u9898 1",
+  turnToHeading2: "\u8f6c\u4e3a\u6807\u9898 2",
+  turnToHeading3: "\u8f6c\u4e3a\u6807\u9898 3",
+  turnToBlockquote: "\u8f6c\u4e3a\u5f15\u7528",
+  turnToCodeBlock: "\u8f6c\u4e3a\u4ee3\u7801\u5757",
+  turnToBulletList: "\u8f6c\u4e3a\u65e0\u5e8f\u5217\u8868",
+  turnToOrderedList: "\u8f6c\u4e3a\u6709\u5e8f\u5217\u8868",
+  deleteCurrentBlock: "\u5220\u9664\u5f53\u524d\u5185\u5bb9",
+  linkActions: "\u94fe\u63a5",
+  openLink: "\u6253\u5f00\u94fe\u63a5",
+  copyLink: "\u590d\u5236\u94fe\u63a5",
+  unsetLink: "\u53d6\u6d88\u94fe\u63a5",
+  tableActions: "\u8868\u683c",
+  addTableRowBefore: "\u4e0a\u65b9\u63d2\u5165\u884c",
+  addTableRowAfter: "\u4e0b\u65b9\u63d2\u5165\u884c",
+  deleteTableRow: "\u5220\u9664\u5f53\u524d\u884c",
+  addTableColumnBefore: "\u5de6\u4fa7\u63d2\u5165\u5217",
+  addTableColumnAfter: "\u53f3\u4fa7\u63d2\u5165\u5217",
+  deleteTableColumn: "\u5220\u9664\u5f53\u524d\u5217",
+  mergeTableCellRight: "\u5408\u5e76\u53f3\u4fa7\u5355\u5143\u683c",
+  splitTableCell: "\u62c6\u5206\u5355\u5143\u683c",
+  mergeSelectedTableCells: "\u5408\u5e76\u5df2\u9009\u5355\u5143\u683c",
+  deleteCurrentTable: "\u5220\u9664\u5f53\u524d\u8868\u683c",
+  trackChanges: "\u4fee\u8ba2",
+  enableTrackChanges: "\u5f00\u542f\u4fee\u8ba2\u6a21\u5f0f",
+  disableTrackChanges: "\u5173\u95ed\u4fee\u8ba2\u6a21\u5f0f",
+  focusCurrentChange: "\u5b9a\u4f4d\u5f53\u524d\u4fee\u8ba2",
+  acceptCurrentChange: "\u63a5\u53d7\u5f53\u524d\u4fee\u8ba2",
+  rejectCurrentChange: "\u62d2\u7edd\u5f53\u524d\u4fee\u8ba2",
+  acceptAllChanges: "\u63a5\u53d7\u5168\u90e8\u4fee\u8ba2",
+  rejectAllChanges: "\u62d2\u7edd\u5168\u90e8\u4fee\u8ba2",
+  lockSelection: "\u9501\u5b9a\u9009\u533a",
+  unlockCurrent: "\u89e3\u9501\u5f53\u524d\u9501\u5b9a",
+  clearAllLocks: "\u6e05\u9664\u5168\u90e8\u9501\u5b9a",
+  lockSettings: "\u9501\u5b9a\u8bbe\u7f6e",
+  enableProtection: "\u5f00\u542f\u9501\u5b9a\u62e6\u622a",
+  disableProtection: "\u5173\u95ed\u9501\u5b9a\u62e6\u622a",
+  showLockMarkers: "\u663e\u793a\u9501\u5b9a\u6807\u8bb0",
+  hideLockMarkers: "\u9690\u85cf\u9501\u5b9a\u6807\u8bb0",
+};
+
 PLAYGROUND_I18N["en-US"].documentLockPanel = {
   title: "Document Locks",
   enabled: "Enabled",
@@ -2061,6 +2182,67 @@ PLAYGROUND_I18N["en-US"].documentLockPanel = {
   blockRange: "Block",
   jump: "Jump",
   unlockOne: "Unlock",
+};
+
+PLAYGROUND_I18N["en-US"].contextMenu = {
+  undo: "Undo",
+  redo: "Redo",
+  textStyles: "Text Styles",
+  toggleBold: "Bold",
+  toggleItalic: "Italic",
+  toggleUnderline: "Underline",
+  toggleStrike: "Strike",
+  toggleInlineCode: "Inline Code",
+  toggleSubscript: "Subscript",
+  toggleSuperscript: "Superscript",
+  paragraphActions: "Paragraph",
+  toggleTaskList: "Task List",
+  alignActions: "Alignment",
+  alignLeft: "Align Left",
+  alignCenter: "Align Center",
+  alignRight: "Align Right",
+  selectAll: "Select All",
+  transformBlock: "Block",
+  turnToParagraph: "Turn Into Paragraph",
+  turnToHeading1: "Turn Into Heading 1",
+  turnToHeading2: "Turn Into Heading 2",
+  turnToHeading3: "Turn Into Heading 3",
+  turnToBlockquote: "Turn Into Blockquote",
+  turnToCodeBlock: "Turn Into Code Block",
+  turnToBulletList: "Turn Into Bullet List",
+  turnToOrderedList: "Turn Into Ordered List",
+  deleteCurrentBlock: "Delete Current Content",
+  linkActions: "Link",
+  openLink: "Open Link",
+  copyLink: "Copy Link",
+  unsetLink: "Remove Link",
+  tableActions: "Table",
+  addTableRowBefore: "Insert Row Above",
+  addTableRowAfter: "Insert Row Below",
+  deleteTableRow: "Delete Current Row",
+  addTableColumnBefore: "Insert Column Left",
+  addTableColumnAfter: "Insert Column Right",
+  deleteTableColumn: "Delete Current Column",
+  mergeTableCellRight: "Merge Right Cell",
+  splitTableCell: "Split Cell",
+  mergeSelectedTableCells: "Merge Selected Cells",
+  deleteCurrentTable: "Delete Current Table",
+  trackChanges: "Track Changes",
+  enableTrackChanges: "Enable Track Changes",
+  disableTrackChanges: "Disable Track Changes",
+  focusCurrentChange: "Focus Current Change",
+  acceptCurrentChange: "Accept Current Change",
+  rejectCurrentChange: "Reject Current Change",
+  acceptAllChanges: "Accept All Changes",
+  rejectAllChanges: "Reject All Changes",
+  lockSelection: "Lock Selection",
+  unlockCurrent: "Unlock Current Lock",
+  clearAllLocks: "Clear All Locks",
+  lockSettings: "Lock Settings",
+  enableProtection: "Enable Lock Protection",
+  disableProtection: "Disable Lock Protection",
+  showLockMarkers: "Show Lock Markers",
+  hideLockMarkers: "Hide Lock Markers",
 };
 
 PLAYGROUND_I18N["zh-CN"].collaborationPanel = {

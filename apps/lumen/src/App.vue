@@ -288,6 +288,7 @@ const {
 });
 const {
   flushWorkspaceSnapshotSave,
+  saveWorkspaceSnapshotNow,
   scheduleWorkspaceSnapshotSave,
   setSnapshotDocument,
   resetWorkspaceSnapshotPersistence,
@@ -505,6 +506,17 @@ const {
     if (docChanged) {
       scheduleWorkspaceSnapshotSave();
     }
+  },
+  onManualSave: async () => {
+    if (realtimeCollaborationEnabled.value) {
+      showToolbarMessage(i18n.value.app.saved, "success");
+      return true;
+    }
+    const saved = await saveWorkspaceSnapshotNow();
+    if (saved) {
+      showToolbarMessage(i18n.value.app.saved, "success");
+    }
+    return saved;
   },
   onStatsChange: handleStatsChange,
 });

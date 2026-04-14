@@ -1,4 +1,4 @@
-import { Mark } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Mark } from "lumenpage-core";
 
 type CodeCommands<ReturnType> = {
   setCode: () => ReturnType;
@@ -23,6 +23,11 @@ export const Code = Mark.create({
       toggleCode: () => ({ commands }) => commands.toggleMark(this.name),
       toggleInlineCode: () => ({ commands }) => commands.toggleMark(this.name),
       unsetCode: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleInlineCode[0]]: () => this.editor.commands.toggleInlineCode(),
     };
   },
   parseHTML() {

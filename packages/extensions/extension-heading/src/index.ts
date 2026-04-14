@@ -1,4 +1,4 @@
-import { Node } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Node } from "lumenpage-core";
 
 export { headingNodeSpec } from "./heading.js";
 export { defaultHeadingRenderer as headingRenderer } from "lumenpage-render-engine";
@@ -37,6 +37,13 @@ export const Heading = Node.create({
       setHeading: (attributes) => ({ commands }) => commands.setNode(this.name, resolveHeadingAttributes(attributes)),
       toggleHeading: (attributes) => ({ commands }) =>
         commands.toggleNode(this.name, "paragraph", resolveHeadingAttributes(attributes)),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleHeading1[0]]: () => this.editor.commands.toggleHeading({ level: 1 }),
+      [EDITOR_SHORTCUTS.toggleHeading2[0]]: () => this.editor.commands.toggleHeading({ level: 2 }),
+      [EDITOR_SHORTCUTS.toggleHeading3[0]]: () => this.editor.commands.toggleHeading({ level: 3 }),
     };
   },
   addAttributes() {

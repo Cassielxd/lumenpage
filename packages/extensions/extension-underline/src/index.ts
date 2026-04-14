@@ -1,4 +1,4 @@
-import { Mark } from "lumenpage-core";
+import { EDITOR_SHORTCUTS, Mark } from "lumenpage-core";
 
 type UnderlineCommands<ReturnType> = {
   setUnderline: () => ReturnType;
@@ -20,6 +20,11 @@ export const Underline = Mark.create({
       setUnderline: () => ({ commands }) => commands.setMark(this.name),
       toggleUnderline: () => ({ commands }) => commands.toggleMark(this.name),
       unsetUnderline: () => ({ commands }) => commands.unsetMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return {
+      [EDITOR_SHORTCUTS.toggleUnderline[0]]: () => this.editor.commands.toggleUnderline(),
     };
   },
   parseHTML() {

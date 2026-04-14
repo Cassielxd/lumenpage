@@ -1,6 +1,13 @@
 export { Editor } from "./Editor.js";
 export type { EditorOptions } from "./Editor.js";
 export { CommandManager } from "./CommandManager.js";
+export {
+  EDITOR_SHORTCUTS,
+  formatShortcutLabel,
+  getPrimaryShortcutBinding,
+  getShortcutDisplayLabel,
+  type EditorShortcutBinding,
+} from "./keyboardShortcuts.js";
 export * as commands from "./commands/index.js";
 export * as extensions from "./extensions/index.js";
 export * as helpers from "./helpers/index.js";

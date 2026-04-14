@@ -206,6 +206,11 @@
       "visibility": "public",
       "action": "keep"
     },
+    "lumenpage-extension-context-menu": {
+      "layer": "extensions",
+      "visibility": "public",
+      "action": "keep"
+    },
     "lumenpage-extension-drag-handle": {
       "layer": "extensions",
       "visibility": "public",
